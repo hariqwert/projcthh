@@ -1247,7 +1247,7 @@ export async function handleLiveStream(req: Request, res: Response) {
         return res.redirect(302, req_id);
     }
 
-    if (req_id && (req_id.startsWith('jtv-') || req_id.startsWith('mdtv-') || req_id.startsWith('jtv_') || req_id.startsWith('mdtv_'))) {
+    if (req_id && (req_id.startsWith('jtv-') || req_id.startsWith('mdtv-') || req_id.startsWith('jtv_') || req_id.startsWith('mdtv_') || /^\d+$/.test(req_id))) {
         try {
             const ch = await JtvService.resolveChannel(req_id);
             if (ch && (ch.manifest_url || ch.full_stream_url || ch.stream_url)) {

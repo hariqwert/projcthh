@@ -665,6 +665,7 @@ window.switchTab = switchTab;
         fetchSiteLockSettings();
         fetchDeveloperSettings();
         fetchFeatures();
+        if (typeof loadGlobalBackgroundConfig === 'function') loadGlobalBackgroundConfig();
     }
     if (tabId === 'sports') {
         loadSportsStreams();
@@ -5352,7 +5353,7 @@ window.searchAdminMusic = async function(target = 'maintenance') {
         }
 
         resultsDiv.innerHTML = adminTracksQueue.map((track, idx) => `
-            <div class="flex items-center justify-between p-2 hover:bg-white/10 rounded-xl border border-transparent hover:border-pink-500/30 transition-all">
+            <div class="flex items-center justify-between p-2 hover:bg-white/10 rounded-xl border border-transparent hover:border-indigo-500/30 transition-all">
                 <div onclick="selectAdminTrack(${idx}, '${target}')" class="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
                     <img src="${track.img}" class="w-9 h-9 rounded-lg object-cover flex-shrink-0 shadow" onerror="this.src='https://images.unsplash.com/photo-1614680376593-902f74fa0d41?w=100'">
                     <div class="flex-1 min-w-0">
@@ -5361,6 +5362,12 @@ window.searchAdminMusic = async function(target = 'maintenance') {
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
+                    ${target === 'bgAudio' ? `
+                    <button type="button" onclick="selectAdminTrack(${idx}, 'bgAudio')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/30">
+                        <svg class="w-3.5 h-3.5 fill-none stroke-currentColor stroke-[3]" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                        <span>Select Track</span>
+                    </button>
+                    ` : `
                     <button type="button" onclick="selectAdminTrack(${idx}, '${target}')" class="bg-pink-600/30 hover:bg-pink-600 text-pink-300 hover:text-white font-bold px-2.5 py-1 rounded-lg text-[10px] cursor-pointer flex items-center gap-1 transition-all" title="Preview Play">
                         <svg class="w-3 h-3 fill-currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         <span>Play</span>
@@ -5368,6 +5375,7 @@ window.searchAdminMusic = async function(target = 'maintenance') {
                     <button type="button" onclick="addTrackToAdminPlaylist(${idx}, '${target}')" class="bg-teal-600 hover:bg-teal-500 text-black font-bold p-1.5 rounded-lg text-[9px] cursor-pointer flex items-center justify-center transition-all shadow" title="Add to Playlist">
                         <svg class="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                     </button>
+                    `}
                 </div>
             </div>
         `).join('');
@@ -5385,7 +5393,7 @@ window.searchAdminMusic = async function(target = 'maintenance') {
                         <div class="text-[10px] text-slate-400 truncate">${escapeHtml(track.artist)}</div>
                     </div>
                 </div>
-                <button type="button" onclick="selectAdminTrack(${idx}, '${target}')" class="bg-pink-600 hover:bg-pink-500 text-white font-bold px-2 py-1 rounded-lg text-[10px]">Play</button>
+                <button type="button" onclick="selectAdminTrack(${idx}, '${target}')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1 rounded-lg text-[10px]">Select</button>
             </div>
         `).join('');
     }
@@ -5395,15 +5403,28 @@ window.selectAdminTrack = function(idx, target = 'maintenance') {
     if(target === 'bgAudio') {
         const track = adminTracksQueue[idx];
         if(!track) return;
-        document.getElementById('bgAudioUrl').value = track.url;
-        document.getElementById('bgAudioType').value = 'audio';
-        document.getElementById('bgAudioSelectedTitle').innerText = track.title;
-        document.getElementById('bgAudioSelectedArtist').innerText = track.artist;
-        document.getElementById('bgAudioSelectedImg').src = track.img || '/assets/vinyl_placeholder.png';
+        const urlEl = document.getElementById('bgAudioUrl');
+        const typeEl = document.getElementById('bgAudioType');
+        const titleEl = document.getElementById('bgAudioSelectedTitle');
+        const artistEl = document.getElementById('bgAudioSelectedArtist');
+        const imgEl = document.getElementById('bgAudioSelectedImg');
         const preview = document.getElementById('bgAudioPreview');
-        preview.src = track.url;
-        preview.classList.remove('hidden');
-        document.getElementById('bgAudioResults').classList.add('hidden');
+
+        if (urlEl) urlEl.value = track.url;
+        if (typeEl) typeEl.value = 'audio';
+        if (titleEl) titleEl.innerText = track.title;
+        if (artistEl) artistEl.innerText = track.artist;
+        if (imgEl) imgEl.src = track.img || '/assets/vinyl_placeholder.png';
+        if (preview) {
+            preview.src = track.url;
+            preview.classList.remove('hidden');
+            preview.play().catch(() => {});
+        }
+        const resultsDiv = document.getElementById('bgAudioResults');
+        if (resultsDiv) resultsDiv.classList.add('hidden');
+        if (typeof showToast === 'function') {
+            showToast('Success', `Selected "${track.title}" for Global Ambient Audio! Click "Save Global Audio Configuration" to apply live.`, 'success');
+        }
         return;
     }
     const track = adminTracksQueue[idx];
@@ -9816,7 +9837,10 @@ window.saveScheduleOnly = async function() {
 // --- BACKGROUND CONFIGURATION (Injected) ---
 async function loadGlobalBackgroundConfig() {
     try {
-        const res = await fetch('/api/admin/backgrounds', { headers: { 'Authorization': 'Bearer ' + token } });
+        const adminToken = localStorage.getItem('adminToken') || (typeof token !== 'undefined' ? token : '') || (typeof getAdminToken === 'function' ? getAdminToken() : '');
+        const headers = {};
+        if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+        const res = await fetch('/api/admin/backgrounds', { headers, credentials: 'same-origin' });
         const data = await res.json();
         if (data.status === 'success' && data.backgrounds) {
             if (data.backgrounds.index && document.getElementById('bgIndexType')) {
@@ -9847,12 +9871,13 @@ async function loadGlobalBackgroundConfig() {
                         document.getElementById('bgAudioTarget').value = data.backgrounds.globalAudio.target;
                     }
                     const preview = document.getElementById('bgAudioPreview');
-                    preview.src = data.backgrounds.globalAudio.url;
-                    preview.classList.remove('hidden');
+                    if (preview) {
+                        preview.src = data.backgrounds.globalAudio.url;
+                        preview.classList.remove('hidden');
+                    }
                 }
             }
             if (document.getElementById('bgMusicUseSongVideo')) {
-
                 document.getElementById('bgMusicUseSongVideo').checked = data.backgrounds.musicUseSongVideo !== false;
             }
         }
@@ -9863,12 +9888,15 @@ async function loadGlobalBackgroundConfig() {
 
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
-        if(typeof token !== 'undefined' && token) loadGlobalBackgroundConfig();
+        loadGlobalBackgroundConfig();
     }, 1000);
 });
 
 document.getElementById('backgroundConfigForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const adminToken = localStorage.getItem('adminToken') || (typeof token !== 'undefined' ? token : '') || (typeof getAdminToken === 'function' ? getAdminToken() : '');
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
     const payload = {
         index: { type: document.getElementById('bgIndexType').value, url: document.getElementById('bgIndex').value },
         consumet: { type: document.getElementById('bgConsumetType').value, url: document.getElementById('bgConsumet').value },
@@ -9880,7 +9908,8 @@ document.getElementById('backgroundConfigForm')?.addEventListener('submit', asyn
     try {
         const res = await fetch('/api/admin/backgrounds', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            headers,
+            credentials: 'same-origin',
             body: JSON.stringify(payload)
         });
         const data = await res.json();
@@ -9896,13 +9925,18 @@ document.getElementById('backgroundConfigForm')?.addEventListener('submit', asyn
 
 
 window.clearBgAudio = function() {
-    document.getElementById('bgAudioUrl').value = '';
-    document.getElementById('bgAudioType').value = 'auto';
-    document.getElementById('bgAudioSelectedTitle').innerText = 'No Audio Selected';
-    document.getElementById('bgAudioSelectedArtist').innerText = 'Search above to set';
-    document.getElementById('bgAudioSelectedImg').src = '/assets/vinyl_placeholder.png';
-    document.getElementById('bgAudioPreview').src = '';
-    document.getElementById('bgAudioPreview').classList.add('hidden');
+    const urlEl = document.getElementById('bgAudioUrl');
+    const typeEl = document.getElementById('bgAudioType');
+    const titleEl = document.getElementById('bgAudioSelectedTitle');
+    const artistEl = document.getElementById('bgAudioSelectedArtist');
+    const imgEl = document.getElementById('bgAudioSelectedImg');
+    const preview = document.getElementById('bgAudioPreview');
+    if (urlEl) urlEl.value = '';
+    if (typeEl) typeEl.value = 'auto';
+    if (titleEl) titleEl.innerText = 'No Audio Selected';
+    if (artistEl) artistEl.innerText = 'Search above to set';
+    if (imgEl) imgEl.src = '/assets/vinyl_placeholder.png';
+    if (preview) { preview.src = ''; preview.classList.add('hidden'); }
 };
 
 window.saveBgAudio = async function() {
@@ -9923,16 +9957,19 @@ window.saveBgAudio = async function() {
         }
     };
     try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
         const res = await fetch('/api/admin/backgrounds', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+            headers,
+            credentials: 'same-origin',
             body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.status === 'success') {
             showToast('Success', data.message || 'Global ambient audio updated successfully live!', 'success');
         } else {
-            showToast('Error', data.message || 'Failed to save global audio', 'error');
+            showToast('Error', data.message || 'Failed to save global audio: ' + (data.message || 'Error'), 'error');
         }
     } catch (err) {
         showToast('Error', 'Failed to save global audio: ' + (err.message || 'Network error'), 'error');
@@ -12438,11 +12475,11 @@ async function searchHeroMusic(engine) {
         if (engine === 'jiosaavn') {
             const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}`);
             const data = await res.json();
-            items = Array.isArray(data) ? data : (data.results || data.songs || []);
+            items = Array.isArray(data) ? data : (data.tracks || data.results || data.songs || data.data || []);
         } else {
             const res = await fetch(`/api/music/yt-search-full?q=${encodeURIComponent(q)}`);
             const data = await res.json();
-            items = Array.isArray(data) ? data : (data.results || data.items || []);
+            items = Array.isArray(data) ? data : (data.tracks || data.results || data.items || data.data || []);
         }
 
         if (!items || items.length === 0) {
@@ -12451,11 +12488,11 @@ async function searchHeroMusic(engine) {
         }
 
         let html = '';
-        items.slice(0, 8).forEach(item => {
+        items.slice(0, 10).forEach(item => {
             const title = item.title || item.name || 'Unknown Track';
             const artist = item.artist || item.channel || item.author || 'Artist';
-            const artwork = item.artwork || item.image || item.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';
-            const streamUrl = item.streamUrl || item.url || (item.id ? `/api/music/yt-stream?id=${item.id}` : '');
+            const artwork = item.artwork || item.image || item.thumbnail || item.img || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';
+            const streamUrl = item.streamUrl || item.url || (item.id && engine === 'youtube' ? `/api/v1/youtube/stream?v=${encodeURIComponent(item.id)}&type=audio` : '');
             const encoded = encodeURIComponent(JSON.stringify({ title, artist, artwork, streamUrl, engine, id: item.id || '' }));
 
             html += `

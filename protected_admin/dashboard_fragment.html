@@ -1232,14 +1232,16 @@
                             <!-- Search Input -->
                             <div class="flex gap-2">
                                 <input type="text" id="bgAudioQuery" placeholder="Search a song for global background audio..."
+                                    onkeydown="if(event.key==='Enter') searchAdminMusic('bgAudio')"
                                     class="flex-1 bg-gray-900/60 border border-gray-800 focus:border-indigo-500 rounded-xl p-3 text-xs text-white outline-none transition-all">
-                                <button type="button" onclick="searchAdminMusic('bgAudio')" class="bg-indigo-600 hover:bg-indigo-500 px-4 rounded-xl font-bold text-xs text-white transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20">
+                                <button type="button" onclick="searchAdminMusic('bgAudio')" class="bg-indigo-600 hover:bg-indigo-500 px-4 rounded-xl font-bold text-xs text-white transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer">
                                     <i data-lucide="search" class="w-3.5 h-3.5"></i>
                                     <span>Search</span>
                                 </button>
                             </div>
                             
-                            <div id="bgAudioResults" class="space-y-1 mt-2 max-h-40 overflow-y-auto hidden"></div>                            <!-- Target Page Selector -->
+                            <div id="bgAudioResults" class="space-y-1 mt-2 max-h-48 overflow-y-auto hidden custom-scrollbar bg-black/60 p-2 rounded-xl border border-white/5"></div>
+                            <!-- Target Page Selector -->
                             <div class="space-y-1">
                                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 block">Target Page</label>
                                 <select id="bgAudioTarget" class="w-full bg-gray-900/60 border border-gray-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white outline-none">
@@ -1254,11 +1256,11 @@
                             <div class="p-3.5 rounded-xl bg-black/50 border border-white/5 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Current / Selected Audio</label>
-                                    <button type="button" onclick="clearBgAudio()" class="text-[9px] text-rose-400 hover:text-rose-300 transition-all font-bold">Clear Audio</button>
+                                    <button type="button" onclick="clearBgAudio()" class="text-[9px] text-rose-400 hover:text-rose-300 transition-all font-bold cursor-pointer">Clear Audio</button>
                                 </div>
                                 
                                 <div class="flex gap-3 items-center" id="bgAudioSelectedContainer">
-                                    <img id="bgAudioSelectedImg" src="/assets/vinyl_placeholder.png" class="w-10 h-10 rounded shadow-md object-cover">
+                                    <img id="bgAudioSelectedImg" src="/assets/vinyl_placeholder.png" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'" class="w-10 h-10 rounded shadow-md object-cover bg-indigo-950/40 p-1 border border-indigo-500/20">
                                     <div class="flex-1 min-w-0">
                                         <p id="bgAudioSelectedTitle" class="text-xs font-bold text-white truncate">No Audio Selected</p>
                                         <p id="bgAudioSelectedArtist" class="text-[10px] text-gray-400 truncate">Search above to set</p>
@@ -4526,7 +4528,7 @@
     <!-- Shared Admin Music Audio Element -->
     <audio id="adminMusicPlayer" preload="auto" class="hidden"></audio>
 
-    <script src="/hari.js?v=7.0"></script>
+    <script src="/hari.js?v=10.0"></script>
 
     <!-- Aetheris AI Widget -->
     <link rel="stylesheet" href="/local-ai.css">

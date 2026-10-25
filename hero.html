@@ -1,1246 +1,2227 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark scroll-smooth select-none">
 <head>
     <meta name="robots" content="noindex">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHERIS | Quantum Media Continuum</title>
-    <!-- Fonts -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <title>AETHERIS // Reality Is Just the Beginning</title>
+
+    <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Lucide Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        norvik: {
+                            orange: '#ffffff',
+                            orangeHover: '#e4e4e7',
+                            dark: '#000000',
+                            surface: '#09090b',
+                            card: '#121216',
+                            border: 'rgba(255, 255, 255, 0.12)'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Bebas Neue"', 'Impact', 'sans-serif'],
+                        tech: ['"Space Grotesk"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Lucide Icons & GSAP -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Three.js for 3D Quantum Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <!-- Three.js Spatial 3D Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- GSAP for Smooth Kinematics -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <link rel="icon" type="image/svg+xml" href="/aetheris_infinity.svg">
+
+    <!-- Manifest, Favicon & 10-Foot Spatial Remote Engine -->
+    <link rel="icon" type="image/svg+xml" href="/assets/stalker_quantum_logo.svg">
+    <link rel="manifest" href="/manifest.json">
+    <script src="/assets/tv-navigation.js" defer></script>
+
     <style>
-        * {
+        *, *::before, *::after {
             box-sizing: border-box;
-            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        body, html {
+
+        html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             min-height: 100%;
-            background-color: #02040a;
+            background: #000000;
+            color: #ffffff;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            color: #fff;
             overflow-x: hidden;
-        }
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1;
-            pointer-events: none;
-        }
-        /* Top Navigation Header */
-        header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 2.2rem 4rem;
-            z-index: 30;
-            pointer-events: auto;
-        }
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 1.1rem;
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .logo-container:hover .logo-badge-wrap {
-            transform: scale(1.08) rotate(4deg);
-            border-color: rgba(0, 245, 212, 0.6);
-            box-shadow: 0 0 35px rgba(0, 245, 212, 0.4), 0 0 20px rgba(255, 0, 85, 0.3);
-        }
-        .logo-badge-wrap {
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .logo-text-wrap {
-            display: flex;
-            flex-direction: column;
-        }
-        .logo-main-title {
-            font-family: 'Syncopate', sans-serif;
-            font-weight: 800;
-            font-size: 1.3rem;
-            letter-spacing: 0.18em;
-            background: linear-gradient(135deg, #ffffff 40%, #00f5d4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            line-height: 1.1;
-            transition: all 0.3s ease;
-        }
-        .logo-container:hover .logo-main-title {
-            text-shadow: 0 0 20px rgba(0, 245, 212, 0.6);
-        }
-        .logo-sub-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.6rem;
-            font-weight: 600;
-            letter-spacing: 0.25em;
-            color: #64748b;
-            text-transform: uppercase;
+            scroll-behavior: smooth;
         }
 
-        /* Carousel Section */
-        .hero-section {
-            position: relative;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
+        /* Cinema Scrollbars */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
         }
-        .carousel {
-            position: relative;
-            width: 100vw;
-            height: 65vh;
-            display: flex;
-            align-items: center;
-            perspective: 2000px;
-            pointer-events: auto;
-            overflow: visible;
+        ::-webkit-scrollbar-track {
+            background: #000000;
         }
-        .carousel-track {
-            display: flex;
-            gap: 4vw;
-            padding: 0 50vw;
-            transform-style: preserve-3d;
-            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-            will-change: transform;
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 9999px;
         }
-        .card {
-            flex: 0 0 clamp(320px, 55vw, 840px);
-            height: clamp(380px, 52vh, 560px);
-            position: relative;
-            border-radius: 2.5rem;
-            overflow: hidden;
-            transform-style: preserve-3d;
-            perspective: 1200px;
-            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s ease, filter 0.8s ease;
-            cursor: pointer;
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-            background: #050505;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ffffff;
         }
-        .card.active {
-            border: 1px solid rgba(0, 240, 255, 0.35);
-            box-shadow: 0 30px 70px rgba(0,0,0,0.9), 0 0 80px rgba(0, 240, 255, 0.12);
-            z-index: 10;
-        }
-        .card:not(.active) {
-            opacity: 0.3;
-            filter: grayscale(80%) brightness(0.4);
-            transform: scale(0.85) translateZ(-150px) rotateY(15deg);
-        }
-        /* Card Backgrounds */
-        .card-bg {
-            position: absolute;
-            inset: -10%;
-            background-size: cover;
-            background-position: center;
-            opacity: 0.4;
-            transform-style: preserve-3d;
-            transform: translateZ(-60px);
-            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 1s ease;
-        }
-        .card.active .card-bg {
-            opacity: 0.65;
-            transform: scale(1.15) translateZ(-60px);
-        }
-        .card:nth-child(1) .card-bg { background-image: url('https://images.unsplash.com/photo-1508344928928-7165b67de128?q=80&w=1920&auto=format&fit=crop'); }
-        .card:nth-child(2) .card-bg { background-image: url('https://plus.unsplash.com/premium_photo-1710961232986-36cead00da3c?q=80&w=1920&auto=format&fit=crop'); }
-        .card:nth-child(3) .card-bg { background-image: url('https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=1920&auto=format&fit=crop'); }
-        .card:nth-child(4) .card-bg { background-image: url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=1920&auto=format&fit=crop'); }
 
-        /* Dynamic CRT Screen for Live TV */
-        .crt-screen {
+        /* Fullscreen Hero Character Video Background */
+        .character-video-container {
             position: absolute;
             inset: 0;
-            background: #0f172a;
-            overflow: hidden;
-            border-radius: 2.5rem;
-            opacity: 0;
-            transition: opacity 1s ease;
-            z-index: 1;
-            pointer-events: none;
-        }
-        .card.active .crt-screen {
-            opacity: 0.15;
-        }
-        .crt-static {
             width: 100%;
             height: 100%;
-            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
-            background-size: 100% 4px;
-            animation: crtScanline 6s infinite linear;
-        }
-        @keyframes crtScanline {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 100%; }
-        }
-
-        /* Cinema Embers */
-        .cinema-particles {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 1s ease;
+            overflow: hidden;
             z-index: 1;
         }
-        .card.active .cinema-particles {
-            opacity: 0.35;
+
+        .character-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 30%;
+            transform: translateZ(0);
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
-        /* Live Sound Bars for Audio */
-        .audio-bars {
-            position: absolute;
-            bottom: 3.5rem;
-            right: 3.5rem;
-            display: flex;
-            align-items: flex-end;
-            gap: 4px;
-            height: 40px;
-            z-index: 10;
-            opacity: 0;
-            transform: scale(0.5);
-            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.5s;
+        /* Dedicated GPU Video Acceleration Layer */
+        video {
+            transform: translateZ(0);
+            will-change: transform;
+            backface-visibility: hidden;
+        }
+
+        /* Atmospheric Vignettes & Cinema Masks */
+        .hero-vignette-radial {
+            background: radial-gradient(ellipse 90% 70% at 50% 35%, transparent 20%, rgba(8, 8, 10, 0.6) 65%, #08080a 100%);
+        }
+
+        .hero-vignette-bottom {
+            background: linear-gradient(180deg, transparent 0%, rgba(8, 8, 10, 0.4) 45%, rgba(8, 8, 10, 0.95) 85%, #08080a 100%);
+        }
+
+        .hero-vignette-top {
+            background: linear-gradient(180deg, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0.2) 60%, transparent 100%);
+        }
+
+        /* Giant Background Depth Typography */
+        .giant-depth-text {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(5rem, 16vw, 19rem);
+            line-height: 0.82;
+            letter-spacing: 0.04em;
+            color: rgba(255, 255, 255, 0.05);
+            white-space: nowrap;
             pointer-events: none;
+            user-select: none;
+            text-align: center;
         }
-        .card.active .audio-bars {
-            opacity: 1;
-            transform: scale(1);
+
+        /* Holographic Interactive Hotspot Pins */
+        .hologram-pin {
+            position: absolute;
+            z-index: 25;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .audio-bar {
+
+        .hologram-pin:hover, .hologram-pin.active {
+            transform: scale(1.15);
+        }
+
+        .pin-radar-ring {
+            position: absolute;
+            inset: -8px;
+            border-radius: 9999px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            animation: radarPulse 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        @keyframes radarPulse {
+            0% { transform: scale(0.85); opacity: 0.9; }
+            70% { transform: scale(1.8); opacity: 0; }
+            100% { transform: scale(0.85); opacity: 0; }
+        }
+
+        /* Glass Floating Telemetry Card */
+        .telemetry-card {
+            background: rgba(14, 16, 24, 0.88);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Industrial Cards (Norvik Style) */
+        .industrial-card {
+            background: rgba(14, 14, 18, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            position: relative;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .industrial-card::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
             width: 4px;
-            background: #a855f7;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: background 0.3s ease;
+        }
+
+        .industrial-card.active, .industrial-card:hover {
+            border-color: #ffffff;
+            background: #ffffff;
+            transform: translateY(-4px);
+            box-shadow: 0 20px 45px rgba(255, 255, 255, 0.25);
+        }
+
+        .industrial-card.active *, .industrial-card:hover * {
+            color: #000000 !important;
+        }
+
+        .industrial-card.active .tag-chip, .industrial-card:hover .tag-chip {
+            background: rgba(0, 0, 0, 0.08) !important;
+            border-color: rgba(0, 0, 0, 0.25) !important;
+            color: #000000 !important;
+        }
+
+        .industrial-card.active::before, .industrial-card:hover::before {
+            background: #000000;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .tag-chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
             border-radius: 2px;
-            animation: bounceBar 1s infinite alternate ease-in-out;
-        }
-        .audio-bar:nth-child(1) { animation-delay: 0.1s; height: 40%; }
-        .audio-bar:nth-child(2) { animation-delay: 0.3s; height: 75%; }
-        .audio-bar:nth-child(3) { animation-delay: 0.5s; height: 95%; }
-        .audio-bar:nth-child(4) { animation-delay: 0.2s; height: 55%; }
-        .audio-bar:nth-child(5) { animation-delay: 0.4s; height: 85%; }
-        @keyframes bounceBar {
-            0% { height: 20%; }
-            100% { height: 100%; }
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #a1a1aa;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
-        /* 3D Opening Page for Library */
-        .book-spine-glow {
+        /* Vertical Connected Energy Conduit Line */
+        .energy-conduit-line {
             position: absolute;
-            top: 10%;
-            left: 5%;
-            width: 10px;
-            height: 80%;
-            background: linear-gradient(to right, rgba(59,130,246,0.8), transparent);
-            filter: blur(5px);
-            opacity: 0;
-            transition: opacity 1s ease;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 30%, rgba(255, 255, 255, 0.8) 70%, rgba(255, 255, 255, 0) 100%);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
             pointer-events: none;
-        }
-        .card.active .book-spine-glow {
-            opacity: 1;
-        }
-        .card.active .card-active-lib-particles {
-            opacity: 0.35;
+            z-index: 15;
         }
 
-        /* Card Content Overlay */
-        .card-overlay {
+        .conduit-energy-pulse {
+            position: absolute;
+            top: 0;
+            left: -3px;
+            width: 8px;
+            height: 35px;
+            border-radius: 9999px;
+            background: #ffffff;
+            box-shadow: 0 0 20px #ffffff, 0 0 40px #ffffff;
+            animation: conduitFlow 4s linear infinite;
+        }
+
+        @keyframes conduitFlow {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* 3D Perspective Tilt on Dashboard Surface */
+        .perspective-deck {
+            perspective: 1600px;
+        }
+
+        .dashboard-tilt-plane {
+            transform: rotateX(10deg) rotateY(-6deg) rotateZ(1.5deg);
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .dashboard-tilt-plane:hover {
+            transform: rotateX(2deg) rotateY(-1deg) rotateZ(0deg);
+        }
+
+        /* Apple TV Card Sheen Spotlight */
+        .apple-card-sheen {
+            position: relative;
+        }
+
+        .apple-card-sheen::after {
+            content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: clamp(2rem, 4vw, 4rem);
-            transform-style: preserve-3d;
-            z-index: 5;
-        }
-        .card-title {
-            font-family: 'Syncopate', sans-serif;
-            font-size: clamp(2rem, 4.5vw, 4.5rem);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            line-height: 1;
-            margin-bottom: 1rem;
-            background: linear-gradient(to right, #fff, #888);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            transform: translateZ(50px) translateY(30px);
+            border-radius: inherit;
+            padding: 1px;
+            background: radial-gradient(350px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.28), transparent 60%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
             opacity: 0;
-            text-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        .card.active .card-title {
-            transform: translateZ(50px) translateY(0);
-            opacity: 1;
-            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.2s;
-        }
-        .card-desc {
-            font-size: clamp(0.9rem, 1.3vw, 1.3rem);
-            color: #ddd;
-            max-width: 75%;
-            transform: translateZ(30px) translateY(30px);
-            opacity: 0;
-            font-weight: 300;
-            text-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        .card.active .card-desc {
-            transform: translateZ(30px) translateY(0);
-            opacity: 1;
-            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.3s;
-        }
-        .explore-btn {
-            margin-top: 1.8rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.85rem;
-            padding: 0.95rem 2.4rem;
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 100px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #fff;
-            text-decoration: none;
-            width: fit-content;
-            transform: translateZ(70px) translateY(30px);
-            opacity: 0;
-            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), background 0.3s, color 0.3s, box-shadow 0.3s;
-            pointer-events: auto;
-        }
-        .card.active .explore-btn {
-            transform: translateZ(70px) translateY(0);
-            opacity: 1;
-            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.4s, transform 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.4s, background 0.3s, color 0.3s, box-shadow 0.3s;
-        }
-        .explore-btn:hover {
-            background: #fff;
-            color: #000;
-            transform: translateZ(95px) scale(1.05) !important;
-            box-shadow: 0 15px 35px rgba(255,255,255,0.4);
+            transition: opacity 0.4s ease;
         }
 
-        .icon-wrap {
-            position: absolute;
-            top: 3rem;
-            right: 3rem;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(30px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #fff;
-            transform: translateZ(100px) rotateY(-30deg) scale(0.5);
-            opacity: 0;
-            z-index: 10;
-        }
-        .card.active .icon-wrap {
-            transform: translateZ(80px) rotateY(0deg) scale(1);
+        .apple-card-sheen:hover::after {
             opacity: 1;
-            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.5s;
         }
 
-        /* Controls */
-        .controls {
-            position: relative;
-            margin-top: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 3.5rem;
-            pointer-events: auto;
-            z-index: 20;
-        }
-        .control-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.2);
-            backdrop-filter: blur(15px);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .control-btn:hover {
-            background: #fff;
-            color: #000;
-            transform: scale(1.1);
-            box-shadow: 0 0 30px rgba(255,255,255,0.3);
-        }
-        .progress-container {
-            display: flex;
-            gap: 12px;
-        }
-        .progress-dot {
-            width: 45px;
-            height: 4px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        .progress-dot.active {
-            background: #00f0ff;
-            width: 80px;
-            box-shadow: 0 0 18px rgba(0,240,255,0.8);
+        /* Animated Real-Time Graph Pulse */
+        .animated-svg-graph {
+            stroke-dasharray: 600;
+            stroke-dashoffset: 0;
         }
 
-        /* Dynamic Background Overlay */
-        .bg-overlay {
+        /* Vinyl Disc Spinning & Equalizer Spectrum */
+        @keyframes vinylSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .vinyl-spinning {
+            animation: vinylSpin 12s linear infinite;
+        }
+
+        @keyframes eqBounce {
+            0%, 100% { height: 18%; }
+            50% { height: 95%; }
+        }
+        .eq-bar {
+            animation: eqBounce 1.2s ease-in-out infinite;
+        }
+
+        /* Inside-Out Kinetic Text Reveal */
+        .inside-out-word {
+            display: inline-block;
+            transform-origin: center center;
+            will-change: transform, opacity, letter-spacing, filter;
+        }
+
+        /* Continuous Ambient Float / Video Pulse */
+        @keyframes continuousFloat {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-8px) scale(1.015); }
+        }
+        .continuous-float {
+            animation: continuousFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes continuousPulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+        .continuous-pulse {
+            animation: continuousPulse 7s ease-in-out infinite;
+        }
+
+        @keyframes continuousGlowPulse {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.25)); }
+            50% { filter: drop-shadow(0 0 35px rgba(255, 255, 255, 0.55)); }
+        }
+        .continuous-glow {
+            animation: continuousGlowPulse 4s ease-in-out infinite;
+        }
+
+        /* Continuous Vertical Big Rolling Marquee for TV Sides */
+        @keyframes marqueeVerticalUp {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
+        }
+        @keyframes marqueeVerticalDown {
+            0% { transform: translateY(-50%); }
+            100% { transform: translateY(0); }
+        }
+        .marquee-col-up {
+            animation: marqueeVerticalUp 24s linear infinite;
+        }
+        .marquee-col-down {
+            animation: marqueeVerticalDown 24s linear infinite;
+        }
+        .marquee-col-up:hover, .marquee-col-down:hover {
+            animation-play-state: paused;
+        }
+
+        /* Continuous Horizontal Rolling Stream Ticker */
+        @keyframes marqueeHorizontal {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .marquee-track-h {
+            display: flex;
+            width: max-content;
+            animation: marqueeHorizontal 38s linear infinite;
+        }
+        .marquee-track-h:hover {
+            animation-play-state: paused;
+        }
+
+        /* Cinematic Slow TV Photo Breathing Zoom */
+        @keyframes tvCinematicZoom {
+            0% { transform: scale(1.0); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1.0); }
+        }
+        .tv-zoom-animation {
+            animation: tvCinematicZoom 10s ease-in-out infinite;
+        }
+
+        /* TV Ambient Halo Glow (Amber top cove + Cyan bottom backlight matching living room photo) */
+        .tv-ambient-halo {
+            box-shadow: 0 -20px 80px -10px rgba(245, 158, 11, 0.35), 0 30px 100px -15px rgba(6, 182, 212, 0.35), 0 0 40px rgba(0, 0, 0, 0.9);
+        }
+
+        /* Vertical Vignette Fade Mask for Side Rolling Columns */
+        .mask-gradient-y {
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+        }
+
+        /* Fullscreen Three.js 3D Undulating Perspective Grid Canvas (Deep Background Layer) */
+        #threeJsGridCanvas {
             position: fixed;
             inset: 0;
-            background: radial-gradient(circle at center, transparent 0%, #02040a 100%);
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
-            z-index: 5;
+            z-index: 0;
+            opacity: 0.45;
+            will-change: transform;
         }
 
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            header {
-                padding: 1.5rem 1.75rem;
-            }
-            .logo-main-title {
-                font-size: 1.1rem;
-            }
-            .carousel {
-                height: 52vh;
-            }
-            .card {
-                flex: 0 0 86vw;
-                height: 46vh;
-                border-radius: 1.75rem;
-            }
-            .card-overlay {
-                padding: 1.75rem;
-            }
-            .card-title {
-                font-size: 2.2rem;
-                margin-bottom: 0.5rem;
-            }
-            .card-desc {
-                font-size: 0.9rem;
-                max-width: 100%;
-            }
-            .icon-wrap {
-                top: 1.5rem;
-                right: 1.5rem;
-                width: 55px;
-                height: 55px;
-            }
-            .controls {
-                gap: 2rem;
-            }
-            .control-btn {
-                width: 48px;
-                height: 48px;
-            }
-            .progress-dot {
-                width: 25px;
-            }
-            .progress-dot.active {
-                width: 50px;
-            }
+        /* TV Focus Indicator */
+        a:focus-visible, button:focus-visible, [tabindex="0"]:focus-visible {
+            outline: 2px solid #ffffff !important;
+            outline-offset: 3px !important;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.7) !important;
         }
     </style>
+</head>
+<body class="selection:bg-white/20 selection:text-white bg-black">
 
-    <style id="tv-mobile-base">
-    /* TV/Remote D-pad focus ring */
-    .tv-focusable:focus, button:focus, a:focus { outline: 2px solid rgba(255,255,255,0.7) !important; outline-offset: 2px !important; }
-    /* Mobile touch improvements */
-    @media (max-width:768px) { button, a, [role=button] { min-height: 44px; touch-action: manipulation; } }
-    </style>
-<script src="/bg-inject.js"></script><script src="/background_injector.js"></script></head>
-<body>
-    <!-- Quantum WebGL Background Container -->
-    <div id="canvas-container"></div>
-    <div class="bg-overlay"></div>
+    <!-- ==========================================================================
+         THREE.JS 3D PERSPECTIVE CYBER WIREFRAME GRID (BLACK & WHITE HIGHLY DARK)
+         High-Contrast Real-Time Undulating Digital Terrain & Quantum Stars
+         ========================================================================== -->
+    <canvas id="threeJsGridCanvas"></canvas>
 
-    <!-- Main Wrapper -->
-    <div class="relative z-10 w-full">
-        <!-- Hero Section -->
-        <section class="hero-section">
-            <!-- Header -->
-            <header>
-                <a href="/" class="logo-container group">
-                    <div class="logo-badge-wrap relative w-11 h-11 rounded-2xl bg-black/50 border border-white/15 flex items-center justify-center p-1 shadow-[0_0_25px_rgba(0,245,212,0.25)] backdrop-blur-xl">
-                        <img src="/aetheris_infinity.svg" class="w-full h-full object-contain filter drop-shadow-[0_0_10px_rgba(0,245,212,0.5)]" alt="Aetheris">
-                    </div>
-                    <div class="logo-text-wrap">
-                        <span class="logo-main-title">AETHERIS</span>
-                        <span class="logo-sub-title">QUANTUM NEXUS</span>
-                    </div>
+    <!-- Top Command Navigation Header -->
+    <header id="mainHeader" class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 sm:px-12 py-5 hero-vignette-top backdrop-blur-md border-b border-white/[0.08] bg-black/60">
+        <!-- Brand Mark -->
+        <a href="/" class="flex items-center gap-3.5 group">
+            <div class="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center p-1.5 shadow-[0_0_15px_rgba(255,255,255,0.15)] group-hover:scale-105 transition-all">
+                <img src="/assets/stalker_quantum_logo.svg" alt="Aetheris" class="w-full h-full object-contain filter invert" onerror="this.src='/aetheris_infinity.svg'">
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="font-tech font-bold text-base sm:text-lg tracking-wider text-white">AETHERIS</span>
+                <span class="px-1.5 py-0.2 rounded bg-white text-[9px] font-mono font-black text-black uppercase tracking-widest">PRO 2.0</span>
+            </div>
+        </a>
+
+        <!-- Center Direct Navigation Links -->
+        <nav class="hidden lg:flex items-center gap-8 text-xs font-mono tracking-widest text-zinc-400 uppercase">
+            <a href="#hero-stage" class="hover:text-white transition-colors flex items-center gap-1.5 text-white">
+                <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                <span>Home</span>
+            </a>
+            <a href="#server-engine-stage" class="hover:text-white transition-colors">Channels</a>
+            <a href="#telemetry-stage" class="hover:text-white transition-colors">Telemetry</a>
+            <a href="#music-section" class="hover:text-white transition-colors">Music</a>
+            <a href="#tv-ecosystem" class="hover:text-white transition-colors">TV</a>
+            <a href="#spatial-portal-stage" class="hover:text-white transition-colors font-bold text-white">3D Grid</a>
+            <a href="/consumet.html#movies" class="hover:text-white transition-colors">Cinema</a>
+            <a href="/index.php" class="hover:text-white transition-colors">Live TV</a>
+        </nav>
+
+        <!-- Right Header Actions -->
+        <div class="flex items-center gap-3">
+            <a href="/consumet.html" class="flex items-center gap-2 px-4 h-9 rounded-md bg-white hover:bg-zinc-200 text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,255,255,0.25)]">
+                <i data-lucide="play" class="w-3 h-3 fill-current"></i>
+                <span>LAUNCH</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ==========================================================================
+         STAGE 1: FULLSCREEN HERO CHARACTER STAGE (VISION PRO INTERACTION)
+         ========================================================================== -->
+    <section id="hero-stage" class="relative w-full h-screen min-h-[680px] overflow-hidden flex flex-col justify-between p-6 sm:p-12 lg:p-16">
+        
+        <!-- Fullscreen Video Element with Poster Fallback -->
+        <div class="character-video-container" id="videoWrapper">
+            <video id="charVideo" autoplay loop muted playsinline class="character-video" poster="/assets/hero_man_vr.jpg">
+                <source src="/assets/hero_man_vr.mp4" type="video/mp4">
+            </video>
+            <!-- Vignette Overlays -->
+            <div class="absolute inset-0 hero-vignette-radial"></div>
+            <div class="absolute inset-0 hero-vignette-bottom"></div>
+        </div>
+
+        <!-- Giant Layered Background Depth Typography -->
+        <div class="absolute inset-x-0 top-1/4 flex justify-center z-10 pointer-events-none">
+            <span id="heroDepthText" class="giant-depth-text">AETHERIS CONTINUUM</span>
+        </div>
+
+        <!-- Minimal Interactive Hotspots -->
+        <div class="hologram-pin group" style="top: 28%; left: 38%;" onclick="openHotspot(0)">
+            <div class="relative w-6 h-6 rounded-full bg-white/10 border border-white/40 flex items-center justify-center text-white shadow-[0_0_15px_#ffffff]">
+                <div class="pin-radar-ring border-white"></div>
+                <i data-lucide="radio" class="w-3 h-3"></i>
+            </div>
+            <div class="hidden sm:block absolute left-8 top-1/2 -translate-y-1/2 p-2 rounded telemetry-card text-[10px] font-mono text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <span class="text-white font-bold block uppercase">[ 01 ] LIVE TV</span>
+            </div>
+        </div>
+
+        <div class="hologram-pin group" style="top: 24%; left: 54%;" onclick="openHotspot(1)">
+            <div class="relative w-6 h-6 rounded-full bg-white/10 border border-white/40 flex items-center justify-center text-white shadow-[0_0_15px_#ffffff]">
+                <div class="pin-radar-ring border-white"></div>
+                <i data-lucide="film" class="w-3 h-3"></i>
+            </div>
+            <div class="hidden sm:block absolute left-8 top-1/2 -translate-y-1/2 p-2 rounded telemetry-card text-[10px] font-mono text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <span class="text-white font-bold block uppercase">[ 02 ] 4K CINEMA</span>
+            </div>
+        </div>
+
+        <div class="hologram-pin group" style="top: 36%; left: 34%;" onclick="openHotspot(2)">
+            <div class="relative w-6 h-6 rounded-full bg-white/10 border border-white/40 flex items-center justify-center text-white shadow-[0_0_15px_#ffffff]">
+                <div class="pin-radar-ring border-white"></div>
+                <i data-lucide="headphones" class="w-3 h-3"></i>
+            </div>
+            <div class="hidden sm:block absolute right-8 top-1/2 -translate-y-1/2 p-2 rounded telemetry-card text-[10px] font-mono text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-right">
+                <span class="text-white font-bold block uppercase">[ 03 ] AUDIO</span>
+            </div>
+        </div>
+
+        <!-- Hotspot Modal Card -->
+        <div id="hotspotHUD" class="hidden absolute top-1/3 left-1/2 -translate-x-1/2 z-40 w-[90vw] max-w-sm p-6 rounded-2xl telemetry-card space-y-3 bg-black/95 border border-white/20">
+            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                <span id="hudBadge" class="text-[10px] font-mono font-bold uppercase tracking-widest text-white"></span>
+                <button type="button" onclick="closeHotspotHUD()" class="text-zinc-400 hover:text-white" aria-label="Close">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <h3 id="hudTitle" class="text-xl font-bold font-tech text-white"></h3>
+            <p id="hudDesc" class="text-xs text-zinc-400 leading-relaxed font-light"></p>
+            <div class="pt-2 flex items-center justify-between">
+                <span id="hudSpec" class="text-[10px] font-mono text-zinc-500"></span>
+                <a id="hudLink" href="#" class="px-4 py-2 rounded bg-white hover:bg-zinc-200 text-black text-xs font-mono font-bold transition-all">
+                    LAUNCH →
                 </a>
-            </header>
+            </div>
+        </div>
 
-            <!-- Carousel -->
-            <div class="carousel" id="carousel">
-                <div class="carousel-track" id="track">
+        <!-- Top Spacer -->
+        <div></div>
 
-                    <!-- Card 1: Live TV -->
-                    <div class="card active" data-index="0" onclick="goToSlide(0)">
-                        <div class="card-bg"></div>
-                        <div class="crt-screen">
-                            <div class="crt-static"></div>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                                <div class="w-16 h-12 bg-red-600/30 rounded border border-red-500/50 flex items-center justify-center animate-pulse">
-                                    <span class="text-[9px] font-bold text-red-400">CH 01</span>
-                                </div>
-                                <span class="text-[8px] tracking-widest font-black text-red-500 animate-pulse flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> SIGNAL LOCK: 100%
-                                </span>
-                            </div>
-                        </div>
-                        <div class="icon-wrap shadow-[0_0_50px_rgba(239,68,68,0.5)] text-red-500">
-                            <i data-lucide="tv" class="w-10 h-10"></i>
-                        </div>
-                        <div class="card-overlay">
-                            <h2 class="card-title">Live TV</h2>
-                            <p class="card-desc">Experience real-time global broadcasting with zero latency. Thousands of premium channels at your command.</p>
-                            <a href="/index.php" class="explore-btn">Enter Portal <i data-lucide="arrow-right"></i></a>
-                        </div>
-                    </div>
+        <!-- Bottom Foreground Content -->
+        <div class="relative z-20 w-full max-w-[1720px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-end pt-20">
+            
+            <!-- Bottom Left: Headline & CTA -->
+            <div class="lg:col-span-7 space-y-6">
+                <!-- Overline Badge -->
+                <div id="heroBadge" class="inline-flex items-center gap-2 text-[11px] font-mono font-bold text-zinc-300 tracking-widest uppercase">
+                    <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                    <span>STREAMING CONTINUUM</span>
+                </div>
 
-                    <!-- Card 2: Cinema -->
-                    <div class="card" data-index="1" onclick="goToSlide(1)">
-                        <div class="card-bg"></div>
-                        <div class="cinema-particles">
-                            <div class="absolute top-1/4 left-1/3 w-2 h-2 bg-amber-400 rounded-full blur-[1px] animate-ping"></div>
-                            <div class="absolute top-2/3 right-1/4 w-1.5 h-1.5 bg-yellow-300 rounded-full blur-[1px] animate-pulse"></div>
-                        </div>
-                        <div class="icon-wrap shadow-[0_0_50px_rgba(245,158,11,0.5)] text-amber-500">
-                            <i data-lucide="film" class="w-10 h-10"></i>
-                        </div>
-                        <div class="card-overlay">
-                            <h2 class="card-title">Cinema</h2>
-                            <p class="card-desc">Immerse yourself in 4K HDR blockbusters, trending series, and anime with zero ads.</p>
-                            <a href="/consumet.html" class="explore-btn">Explore Cinema <i data-lucide="arrow-right"></i></a>
-                        </div>
-                    </div>
+                <!-- Main Vision Headline (Inside-Out Kinetic Loading) -->
+                <h1 id="heroHeadline" class="inside-out-headline text-5xl sm:text-7xl xl:text-8xl font-sans font-light tracking-tight text-white leading-[1.02]">
+                    <span class="inside-out-word">Reality</span> 
+                    <span class="inside-out-word">Is</span> 
+                    <span class="inside-out-word">Just</span> <br>
+                    <span class="inside-out-word font-extrabold text-white">the</span> 
+                    <span class="inside-out-word font-extrabold text-white">Beginning</span>
+                </h1>
 
-                    <!-- Card 3: Audio -->
-                    <div class="card" data-index="2" onclick="goToSlide(2)">
-                        <div class="card-bg"></div>
-                        <div class="audio-bars">
-                            <div class="audio-bar"></div>
-                            <div class="audio-bar"></div>
-                            <div class="audio-bar"></div>
-                            <div class="audio-bar"></div>
-                            <div class="audio-bar"></div>
-                        </div>
-                        <div class="icon-wrap shadow-[0_0_50px_rgba(168,85,247,0.5)] text-purple-500">
-                            <i data-lucide="music" class="w-10 h-10"></i>
-                        </div>
-                        <div class="card-overlay">
-                            <h2 class="card-title">Audio</h2>
-                            <p class="card-desc">High-fidelity soundscapes. Stream millions of lossless tracks, global radio, and curated playlists effortlessly.</p>
-                            <a href="/music.html" class="explore-btn">Listen Now <i data-lucide="arrow-right"></i></a>
-                        </div>
-                    </div>
+                <!-- Action Button -->
+                <div id="heroCta" class="flex items-center gap-4 pt-2">
+                    <button type="button" onclick="scrollToServerEngine()" class="flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-mono font-bold text-xs sm:text-sm tracking-wider uppercase transition-all shadow-[0_0_30px_rgba(255,255,255,0.25)] hover:scale-105 active:scale-95">
+                        <span class="w-2 h-2 rounded-full bg-black"></span>
+                        <span>ENTER</span>
+                    </button>
 
-                    <!-- Card 4: Library -->
-                    <div class="card" data-index="3" onclick="goToSlide(3)">
-                        <div class="card-bg"></div>
-                        <div class="book-spine-glow"></div>
-                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-1000 card-active-lib-particles">
-                            <div class="absolute text-[8px] text-blue-400 font-mono animate-bounce" style="top: 25%; left: 40%;">A</div>
-                            <div class="absolute text-[10px] text-blue-300 font-serif animate-pulse" style="top: 50%; left: 35%; animation-delay: 0.3s;">Ω</div>
-                            <div class="absolute text-[9px] text-blue-500 font-sans animate-bounce" style="top: 35%; left: 60%; animation-delay: 0.6s;">&Phi;</div>
-                        </div>
-                        <div class="icon-wrap shadow-[0_0_50px_rgba(59,130,246,0.5)] text-blue-500">
-                            <i data-lucide="book-open" class="w-10 h-10"></i>
-                        </div>
-                        <div class="card-overlay">
-                            <h2 class="card-title">Library</h2>
-                            <p class="card-desc">Unlock an endless universe of knowledge. Read classic literature, treatises, and comics with dark sepia typography.</p>
-                            <a href="/books.html" class="explore-btn">Read Books <i data-lucide="arrow-right"></i></a>
-                        </div>
-                    </div>
-
+                    <button type="button" onclick="scrollToServerEngine()" class="w-11 h-11 rounded-full border border-white/20 hover:border-white/60 bg-black/60 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-110 active:scale-90" aria-label="Slide Down">
+                        <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- Navigation Controls & Dots -->
-            <div class="flex flex-col items-center gap-4 py-8 relative">
-                <div class="controls">
-                    <div class="control-btn" id="prevBtn" onclick="move(-1)">
-                        <i data-lucide="chevron-left" class="w-7 h-7"></i>
-                    </div>
-                    <div class="progress-container" id="progressDots">
-                        <div class="progress-dot active" onclick="goToSlide(0)"></div>
-                        <div class="progress-dot" onclick="goToSlide(1)"></div>
-                        <div class="progress-dot" onclick="goToSlide(2)"></div>
-                        <div class="progress-dot" onclick="goToSlide(3)"></div>
-                    </div>
-                    <div class="control-btn" id="nextBtn" onclick="move(1)">
-                        <i data-lucide="chevron-right" class="w-7 h-7"></i>
-                    </div>
-                </div>
-                <!-- Scroll indicator -->
-                <div class="mt-2 flex flex-col items-center gap-1.5 pointer-events-auto cursor-pointer animate-bounce" onclick="scrollToContent()">
-                    <span class="text-[9px] tracking-[0.4em] font-black uppercase text-zinc-500">EXPLORE ECOSYSTEM</span>
-                    <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-400"></i>
-                </div>
-            </div>
-        </section>
-
-        <!-- Detailed Long-Form Showcase Sections -->
-        <section id="details-section" class="relative z-10 w-full bg-black/70 backdrop-blur-xl border-t border-white/5 py-24 select-text pointer-events-auto">
-            <div class="max-w-6xl mx-auto px-6 space-y-28">
-                <!-- Section 1: Intro -->
-                <div class="space-y-6 text-center max-w-3xl mx-auto">
-                    <span class="inline-flex items-center gap-2 px-3.5 py-1 text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full">
-                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
-                        INTEGRATED PLATFORM
-                    </span>
-                    <h2 class="text-4xl sm:text-6xl font-black tracking-tight leading-none bg-gradient-to-r from-white via-cyan-100 to-zinc-500 bg-clip-text text-transparent uppercase">THE AETHERIS PLATFORM</h2>
-                    <p class="text-sm sm:text-lg text-zinc-300 font-light leading-relaxed">
-                        A next-generation unified media architecture engineered for high-performance streaming, real-time IPTV broadcasting, peer-to-peer acceleration, lossless audio fidelity, and digital literary exploration.
-                        AETHERIS breaks down the barriers of traditional media consumption, offering an immersive, ad-free ecosystem that seamlessly integrates over 150,000 live broadcast channels, an endless cinema archive, ultra high-resolution anime broadcasts via the Consumet engine, and high-fidelity lossless FLAC audio via our proprietary Deck interface. Built with an unwavering commitment to user privacy, quantum-encrypted delivery, and blazing fast edge-routing, our platform empowers you to explore the global media continuum without restrictions.
+            <!-- Bottom Right: Minimal Stats -->
+            <div class="lg:col-span-5 space-y-4">
+                <div id="heroCopy" class="border-t border-white/10 pt-4 space-y-1">
+                    <span class="text-xs font-mono uppercase tracking-widest text-zinc-400 font-bold block">4 ACTIVE GATEWAYS</span>
+                    <p class="text-xs font-mono text-zinc-500">
+                        TV • CINEMA • AUDIO • CODEX
                     </p>
                 </div>
 
-                <!-- Balanced Quantum Bento Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Bento 1: Live IPTV -->
-                    <div class="group relative overflow-hidden rounded-3xl bg-black/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-8 flex flex-col justify-between h-[360px] hover:border-red-500/40 transition-all duration-700 hover:bg-white/[0.02]">
-                        <div class="absolute -right-16 -top-16 w-48 h-48 bg-red-600/15 rounded-full blur-3xl group-hover:scale-125 transition-all duration-700"></div>
-                        <div class="space-y-4 relative z-10">
-                            <div class="w-12 h-12 rounded-2xl bg-red-600/15 border border-red-500/30 flex items-center justify-center text-red-400">
-                                <i data-lucide="tv" class="w-6 h-6"></i>
-                            </div>
-                            <h3 class="text-xl font-black text-white uppercase tracking-tight">HIGH-PERFORMANCE IPTV</h3>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">
-                                Direct integration with global broadcasting networks. Queries thousands of live channels worldwide with ultra-low latency handshakes and automatic EPG metadata resolution.
-                            </p>
-                        </div>
-                        <div class="relative z-10 flex items-center justify-between pt-4 border-t border-white/5 text-[11px] font-mono text-zinc-400">
-                            <span>GLOBAL STREAMS</span>
-                            <span class="text-red-400">&lt; 150MS SYNC</span>
-                        </div>
+                <div id="heroStats" class="grid grid-cols-3 gap-3 pt-2 font-mono">
+                    <div class="p-3 rounded bg-black/70 border border-white/10">
+                        <span class="text-base sm:text-lg font-bold text-white block">1,409+</span>
+                        <span class="text-[9px] text-zinc-400 uppercase tracking-widest">LIVE CHANNELS</span>
                     </div>
-
-                    <!-- Bento 2: Cinema Engine -->
-                    <div class="group relative overflow-hidden rounded-3xl bg-black/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-8 flex flex-col justify-between h-[360px] hover:border-amber-500/40 transition-all duration-700 hover:bg-white/[0.02]">
-                        <div class="absolute -left-16 -bottom-16 w-48 h-48 bg-amber-500/15 rounded-full blur-3xl group-hover:scale-125 transition-all duration-700"></div>
-                        <div class="space-y-4 relative z-10">
-                            <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                                <i data-lucide="film" class="w-6 h-6"></i>
-                            </div>
-                            <h3 class="text-xl font-black text-white uppercase tracking-tight">OTT CINEMA ENGINE</h3>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">
-                                Aggregated multi-source cinema experience supporting dynamic 4K HDR playback, responsive subtitle selection, and ad-free sandboxed streaming.
-                            </p>
-                        </div>
-                        <div class="relative z-10 flex items-center justify-between pt-4 border-t border-white/5 text-[11px] font-mono text-zinc-400">
-                            <span>AD-FREE 4K HDR</span>
-                            <span class="text-amber-400">AUTO-BITRATE</span>
-                        </div>
+                    <div class="p-3 rounded bg-black/70 border border-white/10">
+                        <span class="text-base sm:text-lg font-bold text-white block">4K UHD</span>
+                        <span class="text-[9px] text-zinc-400 uppercase tracking-widest">CINEMA</span>
                     </div>
-
-                    <!-- Bento 3: Torrent Streaming -->
-                    <div class="group relative overflow-hidden rounded-3xl bg-black/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-8 flex flex-col justify-between h-[360px] hover:border-emerald-500/40 transition-all duration-700 hover:bg-white/[0.02]">
-                        <div class="absolute -right-16 -top-16 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl group-hover:scale-125 transition-all duration-700"></div>
-                        <div class="space-y-4 relative z-10">
-                            <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                                <i data-lucide="download" class="w-6 h-6"></i>
-                            </div>
-                            <h3 class="text-xl font-black text-white uppercase tracking-tight">SWARM ACCELERATION</h3>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">
-                                In-browser peer-to-peer streaming engine. Play magnet links directly without waiting for entire file downloads or disk-heavy storage caches.
-                            </p>
-                        </div>
-                        <div class="relative z-10 flex items-center justify-between pt-4 border-t border-white/5 text-[11px] font-mono text-zinc-400">
-                            <span>P2P PROTOCOL</span>
-                            <span class="text-emerald-400">ZERO WAIT TIME</span>
-                        </div>
-                    </div>
-
-                    <!-- Bento 4: Lossless Audio (Spans 1.5 Col on Desktop) -->
-                    <div class="group relative overflow-hidden rounded-3xl bg-black/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-8 flex flex-col justify-between h-[360px] hover:border-purple-500/40 transition-all duration-700 hover:bg-white/[0.02] md:col-span-1">
-                        <div class="absolute -right-16 -bottom-16 w-48 h-48 bg-purple-500/15 rounded-full blur-3xl group-hover:scale-125 transition-all duration-700"></div>
-                        <div class="space-y-4 relative z-10">
-                            <div class="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
-                                <i data-lucide="music" class="w-6 h-6"></i>
-                            </div>
-                            <h3 class="text-xl font-black text-white uppercase tracking-tight">LOSSLESS AUDIO</h3>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">
-                                Decentralized high-fidelity music gateway. Stream millions of curated tracks, global internet radio stations, and dynamic playlist queues.
-                            </p>
-                        </div>
-                        <div class="relative z-10 flex items-center justify-between pt-4 border-t border-white/5 text-[11px] font-mono text-zinc-400">
-                            <span>LOSSLESS FLAC</span>
-                            <span class="text-purple-400">320 KBPS</span>
-                        </div>
-                    </div>
-
-                    <!-- Bento 5: Digital Codex & Library (Spans 2 Cols on Desktop) -->
-                    <div class="md:col-span-2 group relative overflow-hidden rounded-3xl bg-black/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-8 flex flex-col justify-between h-[360px] hover:border-blue-500/40 transition-all duration-700 hover:bg-white/[0.02]">
-                        <div class="absolute -left-16 -top-16 w-48 h-48 bg-blue-600/15 rounded-full blur-3xl group-hover:scale-125 transition-all duration-700"></div>
-                        <div class="space-y-4 relative z-10">
-                            <div class="w-12 h-12 rounded-2xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                                <i data-lucide="book-open" class="w-6 h-6"></i>
-                            </div>
-                            <h3 class="text-xl font-black text-white uppercase tracking-tight">DIGITAL CODEX & READERS</h3>
-                            <p class="text-xs text-zinc-400 leading-relaxed max-w-xl font-light">
-                                Access over 70,000 classic literary works, philosophical treatises, and comics with optimized typography, dark sepia reading palettes, and zero third-party dependencies.
-                            </p>
-                        </div>
-                        <div class="relative z-10 flex items-center justify-between pt-4 border-t border-white/5 text-[11px] font-mono text-zinc-400">
-                            <span>70,000+ CLASSICS</span>
-                            <span class="text-blue-400">OFFLINE MEMORY CACHE</span>
-                        </div>
-                    </div>
-                </div> <!-- Close Bento Grid -->
-
-                <!-- Deep System Capabilities -->
-                <div class="space-y-8 pt-12">
-                    <h3 class="text-xl sm:text-2xl font-black text-white uppercase tracking-wider pl-4 border-l-4 border-indigo-500">System Capabilities</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                        <!-- Card 1 -->
-                        <div class="group relative bg-zinc-950/80 backdrop-blur-xl border border-white/10 p-6 rounded-[24px] hover:border-yellow-500/50 transition-all duration-300 overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <div class="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-400 mb-5 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(234,179,8,0.15)]">
-                                <i data-lucide="zap" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="text-base font-black text-white mb-2 uppercase tracking-tight">Instant Load</h4>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">Quantum acceleration cache completely minimizes buffer times for instant stream playback.</p>
-                        </div>
-                        <!-- Card 2 -->
-                        <div class="group relative bg-zinc-950/80 backdrop-blur-xl border border-white/10 p-6 rounded-[24px] hover:border-emerald-500/50 transition-all duration-300 overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-5 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                                <i data-lucide="shield" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="text-base font-black text-white mb-2 uppercase tracking-tight">Privacy First</h4>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">Zero tracking, no analytics. Your watch history is stored entirely locally on your device.</p>
-                        </div>
-                        <!-- Card 3 -->
-                        <div class="group relative bg-zinc-950/80 backdrop-blur-xl border border-white/10 p-6 rounded-[24px] hover:border-blue-500/50 transition-all duration-300 overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-5 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-                                <i data-lucide="monitor" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="text-base font-black text-white mb-2 uppercase tracking-tight">Cross-Platform</h4>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">Responsive PWA interface seamlessly runs on Apple TV, Mobile, Desktop, and Smart TVs.</p>
-                        </div>
-                        <!-- Card 4 -->
-                        <div class="group relative bg-zinc-950/80 backdrop-blur-xl border border-white/10 p-6 rounded-[24px] hover:border-pink-500/50 transition-all duration-300 overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <div class="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 mb-5 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(236,72,153,0.15)]">
-                                <i data-lucide="cpu" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="text-base font-black text-white mb-2 uppercase tracking-tight">Adaptive Bitrate</h4>
-                            <p class="text-xs text-zinc-400 leading-relaxed font-light">Smart streaming protocol adapts to network conditions, enabling 4K playback flawlessly.</p>
-                        </div>
+                    <div class="p-3 rounded bg-black/70 border border-white/10">
+                        <span class="text-base sm:text-lg font-bold text-white block">FLAC</span>
+                        <span class="text-[9px] text-zinc-400 uppercase tracking-widest">LOSSLESS</span>
                     </div>
                 </div>
-
-                <!-- Deep Dive Tech Specs Table (Cleaned & User-Facing, No file names) -->
-                <div class="space-y-10">
-                    <div class="text-center md:text-left space-y-3">
-                        <span class="inline-flex items-center gap-2 px-3 py-1 text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            PERFORMANCE METRICS
-                        </span>
-                        <h2 class="text-3xl sm:text-4xl font-black uppercase tracking-tight">System Specification Grid</h2>
-                    </div>
-                    <div class="overflow-x-auto rounded-3xl border border-white/10 bg-zinc-950/60 backdrop-blur-lg">
-                        <table class="w-full text-left border-collapse text-xs sm:text-sm">
-                            <thead>
-                                <tr class="border-b border-white/10 bg-white/5 text-zinc-300 uppercase tracking-widest text-[10px] font-mono font-bold">
-                                    <th class="p-4 sm:p-6">Ecosystem Module</th>
-                                    <th class="p-4 sm:p-6">Core Architecture</th>
-                                    <th class="p-4 sm:p-6">Benchmark Latency</th>
-                                    <th class="p-4 sm:p-6">Stream Acceleration</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-white/5 text-zinc-400 font-light">
-                                <tr class="hover:bg-white/[0.02] transition-colors">
-                                    <td class="p-4 sm:p-6 font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                                        <span class="w-2 h-2 rounded-full bg-red-500"></span> Live TV Broadcasting
-                                    </td>
-                                    <td class="p-4 sm:p-6">Adaptive HLS Handshake Engine</td>
-                                    <td class="p-4 sm:p-6 text-emerald-400 font-semibold font-mono">&lt; 150ms handshake loop</td>
-                                    <td class="p-4 sm:p-6 font-mono text-zinc-300">Dynamic Chunking & Signal Lock</td>
-                                </tr>
-                                <tr class="hover:bg-white/[0.02] transition-colors">
-                                    <td class="p-4 sm:p-6 font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                                        <span class="w-2 h-2 rounded-full bg-amber-500"></span> Cinema Streaming
-                                    </td>
-                                    <td class="p-4 sm:p-6">Sandboxed 4K HDR Player</td>
-                                    <td class="p-4 sm:p-6 text-emerald-400 font-semibold font-mono">Instant Buffer Pre-fetch</td>
-                                    <td class="p-4 sm:p-6 font-mono text-zinc-300">Adaptive Bitrate & Subtitle Engine</td>
-                                </tr>
-                                <tr class="hover:bg-white/[0.02] transition-colors">
-                                    <td class="p-4 sm:p-6 font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Torrent Swarm
-                                    </td>
-                                    <td class="p-4 sm:p-6">P2P Swarm Accelerator</td>
-                                    <td class="p-4 sm:p-6 text-emerald-400 font-semibold font-mono">Zero Wait Buffer</td>
-                                    <td class="p-4 sm:p-6 font-mono text-zinc-300">In-Browser Magnet Mesh Stream</td>
-                                </tr>
-                                <tr class="hover:bg-white/[0.02] transition-colors">
-                                    <td class="p-4 sm:p-6 font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                                        <span class="w-2 h-2 rounded-full bg-purple-500"></span> Lossless Audio
-                                    </td>
-                                    <td class="p-4 sm:p-6">Decentralized Audius & FLAC Gateway</td>
-                                    <td class="p-4 sm:p-6 text-emerald-400 font-semibold font-mono">Real-time Audio Stream</td>
-                                    <td class="p-4 sm:p-6 font-mono text-zinc-300">320kbps High-Fidelity Pipeline</td>
-                                </tr>
-                                <tr class="hover:bg-white/[0.02] transition-colors">
-                                    <td class="p-4 sm:p-6 font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                                        <span class="w-2 h-2 rounded-full bg-blue-500"></span> Digital Codex
-                                    </td>
-                                    <td class="p-4 sm:p-6">Indexed Public Literary Catalog</td>
-                                    <td class="p-4 sm:p-6 text-emerald-400 font-semibold font-mono">Sub-Millisecond Search</td>
-                                    <td class="p-4 sm:p-6 font-mono text-zinc-300">Offline Memory Persistence</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <footer class="pt-12 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-zinc-500 font-mono">
-                    <div class="flex items-center gap-3">
-                        <div class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></div>
-                        <span class="text-zinc-400">AETHERIS SYSTEM ACTIVE • ALL CONTINUUM ENGINES OPTIMAL</span>
-                    </div>
-                    <p>&copy; 2026 AETHERIS • QUANTUM MEDIA NEXUS • ALL RIGHTS RESERVED</p>
-                </footer>
             </div>
-        </section>
-    </div>
 
-    <!-- Scripts -->
+        </div>
+
+        <!-- Atmospheric Transition Veil at Base of Stage 1 -->
+        <div class="absolute inset-x-0 bottom-0 h-44 pointer-events-none z-5 bg-gradient-to-t from-[#080504] via-[#080504]/70 to-transparent"></div>
+
+    </section>
+
+    <!-- ==========================================================================
+         STAGE 2: SERVER ROOM ENGINE & INDUSTRIAL CONDUIT (USER UPLOADED ASSETS)
+         ========================================================================== -->
+    <section id="server-engine-stage" class="relative z-20 w-full bg-[#080504] px-6 sm:px-12 lg:px-16 py-20 flex flex-col justify-between border-t border-amber-500/25 overflow-hidden">
+        
+        <!-- Clean Atmospheric Smoke & Data Cables Video Background (Uncut & Unobstructed) -->
+        <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            <video id="serverSmokeVideo" loop muted playsinline preload="none" poster="/assets/datacenter_cables.jpg"
+                   class="w-full h-full object-cover opacity-90 pointer-events-none">
+                <source src="/assets/Smoke_drifting_and_atmospheric_haze_20261025130433.mp4" type="video/mp4">
+                <source src="/assets/server_room_smoke.mp4" type="video/mp4">
+            </video>
+        </div>
+
+        <!-- Section Header with Engine Text Drop In Animation -->
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-14">
+            
+            <!-- Left Headline -->
+            <div class="lg:col-span-7 space-y-3" id="engineHeadlineWrap">
+                <div id="engineBadges" class="flex items-center gap-3">
+                    <span class="text-xs font-mono font-bold tracking-widest text-amber-400 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-md uppercase flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span>[ 01 // INDUSTRIAL PIPELINE ]</span>
+                    </span>
+                </div>
+                <h2 id="engineHeadline" class="inside-out-headline text-5xl sm:text-7xl xl:text-8xl font-display font-black tracking-tight text-white uppercase leading-none drop-shadow-[0_4px_30px_rgba(0,0,0,0.9)]">
+                    <span class="inside-out-word">STREAM</span> <br>
+                    <span class="inside-out-word text-amber-400 drop-shadow-[0_0_35px_rgba(245,158,11,0.5)]">EVERYTHING.</span>
+                </h2>
+            </div>
+
+            <!-- Right Engine Telemetry Copy & Action Buttons -->
+            <div id="engineCopyWrap" class="lg:col-span-5 space-y-5 relative z-10">
+                <p id="engineDesc" class="text-xs sm:text-sm font-mono text-zinc-300 uppercase tracking-wider leading-relaxed bg-black/90 p-4 rounded-xl border border-amber-500/30">
+                    Zero delay. Maximum clarity. Satellite feeds, cinema, lossless sound, and indexed codex.
+                </p>
+                <div id="engineActions" class="flex items-center gap-3">
+                    <a href="/consumet.html" class="px-5 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(245,158,11,0.4)]">
+                        ■ EXPLORE
+                    </a>
+                    <a href="/index.php" class="px-5 py-2.5 rounded bg-black/90 hover:bg-white/10 border border-amber-500/30 text-amber-200 hover:text-white font-mono font-bold text-xs uppercase tracking-wider transition-all">
+                        ■ LIVE TV
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- The 4 Industrial Cards Grid (Minimal Text) -->
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6" id="engineCardsGrid">
+
+            <!-- Card 1: Live TV -->
+            <a href="/index.php" class="industrial-card apple-card-sheen active p-6 sm:p-8 flex flex-col justify-between h-[320px] group text-left cursor-pointer bg-black/85 border border-amber-500/25 hover:border-amber-400 hover:shadow-[0_0_35px_rgba(245,158,11,0.3)] transition-all" tabindex="0">
+                <div class="space-y-4">
+                    <span class="font-mono text-xs font-bold tracking-widest block text-amber-400/80">[ 01 ]</span>
+                    <h3 class="text-xl sm:text-2xl font-tech font-bold uppercase tracking-tight text-white group-hover:text-amber-300 transition-colors leading-tight">
+                        LIVE SATELLITE TV
+                    </h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        1,409+ JioTV, Star Sports & Sony international broadcasts.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap pt-4">
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">1080P60</span>
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">0 DELAY</span>
+                </div>
+            </a>
+
+            <!-- Card 2: Cinema -->
+            <a href="/consumet.html" class="industrial-card apple-card-sheen p-6 sm:p-8 flex flex-col justify-between h-[320px] group text-left cursor-pointer bg-black/85 border border-amber-500/25 hover:border-amber-400 hover:shadow-[0_0_35px_rgba(245,158,11,0.3)] transition-all" tabindex="0">
+                <div class="space-y-4">
+                    <span class="font-mono text-xs font-bold tracking-widest text-amber-400/80 block">[ 02 ]</span>
+                    <h3 class="text-xl sm:text-2xl font-tech font-bold uppercase tracking-tight text-white group-hover:text-amber-300 transition-colors leading-tight">
+                        4K CINEMA & ANIME
+                    </h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        Ad-free 4K blockbusters, Asian cinema, and anime simulcasts.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap pt-4">
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">4K UHD</span>
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">MULTI-DUB</span>
+                </div>
+            </a>
+
+            <!-- Card 3: Audio Deck -->
+            <a href="/music.html" class="industrial-card apple-card-sheen p-6 sm:p-8 flex flex-col justify-between h-[320px] group text-left cursor-pointer bg-black/85 border border-amber-500/25 hover:border-amber-400 hover:shadow-[0_0_35px_rgba(245,158,11,0.3)] transition-all" tabindex="0">
+                <div class="space-y-4">
+                    <span class="font-mono text-xs font-bold tracking-widest text-amber-400/80 block">[ 03 ]</span>
+                    <h3 class="text-xl sm:text-2xl font-tech font-bold uppercase tracking-tight text-white group-hover:text-amber-300 transition-colors leading-tight">
+                        LOSSLESS AUDIO DECK
+                    </h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        Studio master 24-bit FLAC streams and 100K+ live radio.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap pt-4">
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">FLAC 24-BIT</span>
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">RADIO</span>
+                </div>
+            </a>
+
+            <!-- Card 4: Library -->
+            <a href="/books.html" class="industrial-card apple-card-sheen p-6 sm:p-8 flex flex-col justify-between h-[320px] group text-left cursor-pointer bg-black/85 border border-amber-500/25 hover:border-amber-400 hover:shadow-[0_0_35px_rgba(245,158,11,0.3)] transition-all" tabindex="0">
+                <div class="space-y-4">
+                    <span class="font-mono text-xs font-bold tracking-widest text-amber-400/80 block">[ 04 ]</span>
+                    <h3 class="text-xl sm:text-2xl font-tech font-bold uppercase tracking-tight text-white group-hover:text-amber-300 transition-colors leading-tight">
+                        DIGITAL CODEX & MANGA
+                    </h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        70,000+ classic literary works and manga with sepia reader.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap pt-4">
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">70K+ BOOKS</span>
+                    <span class="tag-chip bg-amber-500/10 text-amber-300 border-amber-500/30">SEPIA</span>
+                </div>
+            </a>
+
+        </div>
+
+        <!-- Lower-Side Pipeline Telemetry Bar -->
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto mt-12 pt-6 border-t border-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-amber-300/80">
+            <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span>CONDUIT MATRIX: <strong class="text-white">100 GBPS LOW-LOSS FIBER</strong></span>
+                <span class="text-amber-500/40">•</span>
+                <span>AUTHENTICATION: <strong class="text-white">W3C CLEARKEY + AKAMAI SHA-256</strong></span>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] text-zinc-400">
+                <span>BITRATE: <strong class="text-amber-400">18.4 MBPS</strong></span>
+                <span>BUFFER: <strong class="text-white">0.00s ZERO LATENCY</strong></span>
+                <span>TOPOLOGY: <strong class="text-white">EDGE CDN HOPS</strong></span>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ==========================================================================
+         STAGE 3: 3D HOLOGRAPHIC TELEMETRY MATRIX (FEATURING USER'S 3D VIDEO HUD)
+         ========================================================================== -->
+    <section id="telemetry-stage" class="relative z-10 w-full bg-black/75 px-6 sm:px-12 lg:px-16 py-20 flex flex-col justify-center border-t border-white/[0.06] overflow-hidden backdrop-blur-sm">
+        
+        <!-- Section 3 Dedicated Ambient Matrix Background -->
+        <div class="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950/20 via-black to-black pointer-events-none"></div>
+
+        <div class="w-full max-w-[1720px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+            
+            <!-- Left Column: Minimal Vision Copy -->
+            <div class="lg:col-span-5 space-y-6">
+                <!-- Badge -->
+                <div id="telemetryBadge" class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>[ 02 // TELEMETRY ]</span>
+                </div>
+
+                <!-- Headline (Inside-Out Kinetic Loading) -->
+                <h2 id="telemetryHeadline" class="inside-out-headline text-5xl sm:text-7xl xl:text-8xl font-display font-black tracking-tight text-white uppercase leading-none drop-shadow-2xl">
+                    <span class="inside-out-word">TOTAL</span> <br>
+                    <span class="inside-out-word text-emerald-400 drop-shadow-[0_0_35px_rgba(16,185,129,0.5)]">CONTROL.</span>
+                </h2>
+
+                <!-- Subtitle Description -->
+                <p id="telemetryDesc" class="text-xs sm:text-sm font-mono text-zinc-300 uppercase tracking-wider leading-relaxed bg-black/80 p-4 rounded-xl border border-emerald-500/30 backdrop-blur-md">
+                    Live stream monitoring across 1,409 channels. Instant edge routing and zero buffer delay.
+                </p>
+
+                <!-- Minimal Status Metrics -->
+                <div id="telemetryPills" class="grid grid-cols-3 gap-3 pt-2 font-mono text-xs">
+                    <div class="p-3 rounded-lg bg-black/80 border border-cyan-500/30 text-left">
+                        <span class="text-base sm:text-lg font-bold text-cyan-400 block">1,409</span>
+                        <span class="text-[9px] text-zinc-400 uppercase tracking-widest">CHANNELS</span>
+                    </div>
+                    <div class="p-3 rounded-lg bg-black/80 border border-emerald-500/30 text-left">
+                        <span class="text-base sm:text-lg font-bold text-emerald-400 block">0MS</span>
+                        <span class="text-[9px] text-zinc-400 uppercase tracking-widest">LATENCY</span>
+                    </div>
+                    <div class="p-3 rounded-lg bg-black/80 border border-fuchsia-500/30 text-left">
+                        <span class="text-base sm:text-lg font-bold text-fuchsia-400 block">4K UHD</span>
+                        <span class="text-[9px] text-zinc-400 uppercase tracking-widest">FEEDS</span>
+                    </div>
+                </div>
+
+                <!-- Launch Button -->
+                <div id="telemetryCta" class="pt-2">
+                    <a href="/index.php" class="inline-flex items-center gap-2.5 px-6 py-3.5 rounded bg-emerald-400 hover:bg-emerald-300 text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+                        <i data-lucide="activity" class="w-4 h-4"></i>
+                        <span>EXPLORE CHANNELS</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Right Column: Interactive 3D Perspective Glass Dashboard Surface Playing Holographic Video -->
+            <div class="lg:col-span-7 perspective-deck">
+                <div id="telemetryDeck" class="dashboard-tilt-plane apple-card-sheen w-full max-w-2xl mx-auto rounded-3xl bg-[#091512]/95 border border-emerald-500/30 p-6 sm:p-8 shadow-[0_40px_100px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.2)] space-y-6 relative overflow-hidden backdrop-blur-3xl">
+                    
+                    <!-- Seamless 3D Holographic Dashboard Video from User Assets -->
+                    <div id="telemetryVideoBox" class="w-full aspect-video rounded-2xl overflow-hidden border border-white/15 relative shadow-2xl bg-black">
+                        <video id="telemetryVideo" loop muted playsinline preload="none" class="w-full h-full object-cover">
+                            <source src="/assets/holographic_dashboard.mp4" type="video/mp4">
+                        </video>
+                        <!-- Live HUD Overlay -->
+                        <div class="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md border border-white/20 text-[10px] font-mono text-zinc-300 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                            <span>LIVE 3D HUD</span>
+                        </div>
+                        <div class="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md border border-white/20 text-[10px] font-mono text-zinc-300">
+                            <span>THROUGHPUT: 42.8 MB/S</span>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry Row -->
+                    <div id="telemetryPipelineStats" class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-mono text-zinc-500 uppercase tracking-widest block">ACTIVE PIPELINE</span>
+                            <h4 class="text-xl sm:text-2xl font-bold font-tech text-white">Live Edge Stream Hub</h4>
+                        </div>
+                        <div class="flex items-center gap-4 text-right">
+                            <div>
+                                <span class="text-2xl font-black font-mono text-white">1,409</span>
+                                <span class="text-[9px] font-mono text-zinc-500 block uppercase">Channels Up</span>
+                            </div>
+                            <div class="w-px h-8 bg-white/10"></div>
+                            <div>
+                                <span class="text-2xl font-black font-mono text-white">0ms</span>
+                                <span class="text-[9px] font-mono text-zinc-500 block uppercase">Delay</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Real-Time Bandwidth & Latency Graph (SVG Wave) -->
+                    <div id="telemetryGraphCard" class="p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-mono">
+                            <span class="text-zinc-400 flex items-center gap-2">
+                                <i data-lucide="activity" class="w-3.5 h-3.5 text-white"></i>
+                                STREAM THROUGHPUT FREQUENCY
+                            </span>
+                            <span class="text-white font-bold">PEAK: 42.8 MB/S</span>
+                        </div>
+
+                        <!-- SVG Live Graph Curve (Emerald Cyber Signal) -->
+                        <div class="w-full h-16 relative overflow-hidden">
+                            <svg class="w-full h-full" viewBox="0 0 500 100" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="streamGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.35" />
+                                        <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M 0,80 Q 70,20 140,55 T 280,30 T 420,70 T 500,25 L 500,100 L 0,100 Z" fill="url(#streamGrad)" />
+                                <path id="telemetryGraphPath" class="animated-svg-graph" d="M 0,80 Q 70,20 140,55 T 280,30 T 420,70 T 500,25" fill="none" stroke="#10b981" stroke-width="2.5" />
+                                <circle id="telemetryGraphPing" cx="280" cy="30" r="5" fill="#10b981" class="animate-ping" />
+                                <circle cx="280" cy="30" r="3.5" fill="#10b981" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Minimal Diagnostics Status -->
+                    <div id="telemetryDiagnostics" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div class="p-3 rounded-xl bg-black/60 border border-emerald-500/20 space-y-1">
+                            <span class="text-[9px] font-mono text-emerald-400 block uppercase">EDGE ROUTING</span>
+                            <p class="text-xs text-white font-mono font-bold">
+                                16 CDN Mirrors Synchronized
+                            </p>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-black/60 border border-emerald-500/20 space-y-1">
+                            <span class="text-[9px] font-mono text-emerald-400 block uppercase">FRAME INTEGRITY</span>
+                            <p class="text-xs text-white font-mono font-bold">
+                                60 FPS • Zero Packet Loss
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Lower-Side Stream Telemetry Bar -->
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto mt-12 pt-6 border-t border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-emerald-300/80">
+            <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>EDGE NODES: <strong class="text-white">64 SYNCHRONIZED CLUSTERS</strong></span>
+                <span class="text-emerald-500/40">•</span>
+                <span>REAL-TIME PING: <strong class="text-emerald-400">12MS GLOBAL AVERAGE</strong></span>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] text-zinc-400">
+                <span>PACKET LOSS: <strong class="text-emerald-400">0.00%</strong></span>
+                <span>UPTIME: <strong class="text-white">99.998%</strong></span>
+                <span>PROTOCOL: <strong class="text-white">DASH + CLEARKEY + HLS</strong></span>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ==========================================================================
+         STAGE 4: AETHERIS ACOUSTICS // PURE CINEMATIC AUDIO CONTINUUM (NO OVERLAYS)
+         ========================================================================== -->
+    <section id="music-section" class="relative z-10 w-full min-h-[95vh] bg-black px-6 sm:px-12 lg:px-16 py-20 border-t border-white/[0.06] overflow-hidden flex flex-col justify-between">
+        
+        <!-- PURE CONTINUOUS VIDEO BACKGROUND (ZERO OVERLAYS - FULL BRIGHTNESS & COLOR) -->
+        <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            <video id="musicBackgroundVideo" loop muted playsinline preload="none" class="w-full h-full object-cover">
+                <source src="/assets/music_cinematic_macro.mp4" type="video/mp4">
+                <source src="/assets/Cinematic_macro_slow-motion_camera_tracking_1080p_20261025152359.mp4" type="video/mp4">
+            </video>
+        </div>
+
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto space-y-12">
+            
+            <!-- Section Header (Clean Minimal Floating Bar) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end border-b border-amber-500/20 pb-8">
+                <div class="lg:col-span-7 space-y-4">
+                    <span id="musicBadge" class="text-xs font-mono font-bold tracking-widest text-amber-400 bg-black/80 border border-amber-500/30 px-3 py-1 rounded-md uppercase inline-flex items-center gap-2 backdrop-blur-md">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span>[ 03 // ACOUSTICS ]</span>
+                    </span>
+                    <h2 id="musicHeadline" class="inside-out-headline text-5xl sm:text-7xl xl:text-8xl font-display font-black tracking-tight text-white uppercase leading-none drop-shadow-[0_4px_30px_rgba(0,0,0,0.9)]">
+                        <span class="inside-out-word">STUDIO</span> <br>
+                        <span class="inside-out-word text-amber-400 drop-shadow-[0_0_35px_rgba(245,158,11,0.6)]">SOUND.</span>
+                    </h2>
+                </div>
+                <div class="lg:col-span-5 space-y-5">
+                    <p id="musicDesc" class="text-xs sm:text-sm font-mono text-zinc-100 uppercase tracking-wider leading-relaxed bg-black/80 p-4 rounded-xl border border-amber-500/30 backdrop-blur-md drop-shadow-xl">
+                        Lossless 24-bit audio masters and 100,000+ live radio broadcasts. Pure studio fidelity.
+                    </p>
+                    <div id="musicActions" class="flex flex-wrap items-center gap-3">
+                        <a href="/music.html" class="px-5 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+                            ■ LAUNCH AUDIO DECK
+                        </a>
+                        <a href="/music.html#radio" class="px-5 py-2.5 rounded bg-black/80 hover:bg-white/10 border border-amber-500/30 text-amber-200 hover:text-white font-mono font-bold text-xs uppercase tracking-wider transition-all backdrop-blur-md">
+                            ■ GLOBAL RADIO (100K+)
+                        </a>
+                        <button id="musicAudioToggle" type="button" onclick="toggleMusicAudio()" class="px-4 py-2.5 rounded bg-black/85 hover:bg-amber-400 hover:text-black border border-amber-500/40 text-amber-300 font-mono font-bold text-xs uppercase tracking-wider transition-all backdrop-blur-md flex items-center gap-2.5 shadow-[0_0_20px_rgba(245,158,11,0.25)]">
+                            <span class="flex items-center gap-0.5 h-3">
+                                <span class="w-0.5 h-full bg-amber-400 animate-pulse"></span>
+                                <span class="w-0.5 h-2 bg-amber-400 animate-pulse delay-75"></span>
+                                <span class="w-0.5 h-3 bg-amber-400 animate-pulse delay-150"></span>
+                            </span>
+                            <span id="musicAudioLabel">SOUND: MUTED [CLICK TO PLAY AUDIO]</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clean Ambient Negative Space to Highlight Full Macro Vinyl Video -->
+            <div class="w-full min-h-[300px] flex items-center justify-center pointer-events-none select-none">
+            </div>
+
+        </div>
+
+        <!-- Lower-Side Audio Telemetry Bar (Minimal Dark Capsule) -->
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto mt-6 pt-4 border-t border-amber-500/30 bg-black/75 px-5 py-3 rounded-2xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-amber-300">
+            <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span>AUDIO BITSTREAM: <strong class="text-white">24-BIT / 96KHZ LOSSLESS FLAC</strong></span>
+                <span class="text-amber-500/40">•</span>
+                <span>PROTOCOL: <strong class="text-amber-400">AUDIUS DECENTRALIZED STREAM</strong></span>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] text-zinc-300">
+                <span>STATIONS: <strong class="text-amber-400">100,000+ WORLDWIDE</strong></span>
+                <span>BITRATE: <strong class="text-white">1,411 KBPS BIT-PERFECT</strong></span>
+                <span>CHANNELS: <strong class="text-white">2.0 STEREO MASTER</strong></span>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ==========================================================================
+         STAGE 5: 10-FOOT LEANBACK SMART TV // PURE FULL-BLEED STREAMING (NO OVERLAYS)
+         ========================================================================== -->
+    <section id="tv-ecosystem" class="relative z-10 w-full min-h-[90vh] bg-black px-6 sm:px-12 lg:px-16 py-24 border-t border-white/[0.06] overflow-hidden flex flex-col justify-between">
+        
+        <!-- PURE CONTINUOUS VIDEO BACKGROUND (ZERO OVERLAYS) -->
+        <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            <video id="tvBackgroundVideo" loop muted playsinline preload="none" class="w-full h-full object-cover">
+                <source src="/assets/floating_glass_hud.mp4" type="video/mp4">
+            </video>
+        </div>
+
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto space-y-12">
+            
+            <!-- Section Header -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-cyan-500/20 pb-8">
+                <div class="space-y-3">
+                    <span id="tvBadge" class="text-xs font-mono font-bold tracking-widest text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 px-3 py-1 rounded-md uppercase flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span>[ 04 // 10-FOOT LEANBACK ]</span>
+                    </span>
+                    <h2 id="tvHeadline" class="inside-out-headline text-5xl sm:text-7xl xl:text-8xl font-display font-black tracking-tight text-white uppercase leading-none">
+                        <span class="inside-out-word">FOR</span> 
+                        <span class="inside-out-word">THE</span> <br>
+                        <span class="inside-out-word text-cyan-400 drop-shadow-[0_0_35px_rgba(6,182,212,0.5)]">BIG</span> 
+                        <span class="inside-out-word text-cyan-400 drop-shadow-[0_0_35px_rgba(6,182,212,0.5)]">SCREEN.</span>
+                    </h2>
+                </div>
+                <p id="tvDesc" class="text-xs sm:text-sm font-mono text-zinc-300 uppercase tracking-wider max-w-md leading-relaxed bg-black/80 p-4 rounded-xl border border-cyan-500/30 backdrop-blur-md">
+                    Zero mouse requirement. Complete spatial remote d-pad navigation engineered for Android TV, FireStick, Kodi, and TiviMate.
+                </p>
+            </div>
+
+            <!-- Giant Horizontal Backdrop Marquee Behind TV -->
+            <div class="relative w-full overflow-hidden py-2 select-none pointer-events-none opacity-25 hover:opacity-50 transition-opacity">
+                <div class="marquee-track-h flex items-center gap-10 whitespace-nowrap text-3xl sm:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-white to-cyan-400 uppercase tracking-widest">
+                    <span>• 4K ULTRA HIGH DEFINITION • SPATIAL REMOTE D-PAD • 10-FOOT LEANBACK • ZERO BUFFER STREAMING • KODI & TIVIMATE READY • 1,409 LIVE BROADCASTS</span>
+                    <span>• 4K ULTRA HIGH DEFINITION • SPATIAL REMOTE D-PAD • 10-FOOT LEANBACK • ZERO BUFFER STREAMING • KODI & TIVIMATE READY • 1,409 LIVE BROADCASTS</span>
+                </div>
+            </div>
+
+            <!-- TV Showcase Area Flanked by Big Rolling Texts on Two Sides -->
+            <div class="relative w-full max-w-7xl mx-auto flex items-center justify-center gap-4 lg:gap-8 my-4">
+                
+                <!-- Left Side: Big Rolling Text (Rolling Upwards) -->
+                <div class="hidden xl:flex flex-col justify-center items-center h-[460px] w-48 2xl:w-56 overflow-hidden relative mask-gradient-y select-none shrink-0 border-y border-amber-500/30 bg-black/60 rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(245,158,11,0.15)]">
+                    <div class="marquee-col-up flex flex-col items-center gap-12 text-center py-6">
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-300 via-amber-100 to-white/40 drop-shadow-[0_0_25px_rgba(245,158,11,0.5)]">
+                            4K HDR
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-200 via-white to-zinc-400">
+                            DOLBY VISION
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-400 via-amber-200 to-white/30 drop-shadow-[0_0_25px_rgba(245,158,11,0.5)]">
+                            120 FPS
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-white to-zinc-400">
+                            ZERO LATENCY
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-300 via-white to-zinc-500">
+                            OLED RETINA
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-400 via-amber-200 to-white/30 drop-shadow-[0_0_25px_rgba(245,158,11,0.5)]">
+                            ATMOS 7.1
+                        </span>
+                        <!-- Repeat for seamless loop -->
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-300 via-amber-100 to-white/40 drop-shadow-[0_0_25px_rgba(245,158,11,0.5)]">
+                            4K HDR
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-200 via-white to-zinc-400">
+                            DOLBY VISION
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-400 via-amber-200 to-white/30 drop-shadow-[0_0_25px_rgba(245,158,11,0.5)]">
+                            120 FPS
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-white to-zinc-400">
+                            ZERO LATENCY
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-300 via-white to-zinc-500">
+                            OLED RETINA
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-400 via-amber-200 to-white/30 drop-shadow-[0_0_25px_rgba(245,158,11,0.5)]">
+                            ATMOS 7.1
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Center: Spatial D-Pad Hero Glass Console (No video player widgets) -->
+                <div id="tvFrameWrap" class="relative flex-1 max-w-4xl mx-auto rounded-3xl p-8 sm:p-14 border border-cyan-500/40 bg-black/60 backdrop-blur-xl shadow-[0_0_50px_rgba(6,182,212,0.25)] text-center space-y-6 flex flex-col items-center justify-center">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold uppercase tracking-wider animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                        <span>SPATIAL REMOTE D-PAD ENGINE</span>
+                    </div>
+                    <h3 class="text-3xl sm:text-5xl font-display font-black text-white uppercase tracking-tight leading-tight">
+                        ENGINEERED FOR <br>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-cyan-200 to-white">ANDROID TV & KODI.</span>
+                    </h3>
+                    <p class="text-sm font-mono text-zinc-300 max-w-xl mx-auto leading-relaxed font-light">
+                        Zero mouse or touchscreen requirement. Full 4-way spatial d-pad focus handling with instant channel switching for FireStick, TiviMate, and OTT Navigator.
+                    </p>
+                    <div id="tvRemoteOverlay" class="pt-2 flex items-center justify-center gap-4 flex-wrap">
+                        <a href="/index.php?mode=tv" class="px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black font-mono font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center gap-2">
+                            <i data-lucide="tv" class="w-5 h-5"></i>
+                            <span>LAUNCH TV MODE (?mode=tv)</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Right Side: Big Rolling Text (Rolling Downwards) -->
+                <div class="hidden xl:flex flex-col justify-center items-center h-[460px] w-48 2xl:w-56 overflow-hidden relative mask-gradient-y select-none shrink-0 border-y border-cyan-500/30 bg-black/60 rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                    <div class="marquee-col-down flex flex-col items-center gap-12 text-center py-6">
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-cyan-100 to-white/40 drop-shadow-[0_0_25px_rgba(6,182,212,0.5)]">
+                            SPATIAL
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-200 via-white to-zinc-400">
+                            D-PAD
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-400 via-cyan-200 to-white/30 drop-shadow-[0_0_25px_rgba(6,182,212,0.5)]">
+                            KODI READY
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-100 via-white to-zinc-400">
+                            TIVIMATE
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-white to-zinc-500">
+                            1,409 CH
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-400 via-cyan-200 to-white/30 drop-shadow-[0_0_25px_rgba(6,182,212,0.5)]">
+                            ZERO BUFFER
+                        </span>
+                        <!-- Repeat for seamless loop -->
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-cyan-100 to-white/40 drop-shadow-[0_0_25px_rgba(6,182,212,0.5)]">
+                            SPATIAL
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-200 via-white to-zinc-400">
+                            D-PAD
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-400 via-cyan-200 to-white/30 drop-shadow-[0_0_25px_rgba(6,182,212,0.5)]">
+                            KODI READY
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-100 via-white to-zinc-400">
+                            TIVIMATE
+                        </span>
+                        <span class="text-3xl 2xl:text-4xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-white to-zinc-500">
+                            1,409 CH
+                        </span>
+                        <span class="text-2xl 2xl:text-3xl font-display font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-400 via-cyan-200 to-white/30 drop-shadow-[0_0_25px_rgba(6,182,212,0.5)]">
+                            ZERO BUFFER
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Lower-Side TV Telemetry Ticker -->
+            <div class="w-full max-w-7xl mx-auto pt-6 border-t border-cyan-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-zinc-300">
+                <div class="flex items-center gap-3">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                    <span>10-FOOT LEANBACK: <strong class="text-cyan-300">HARDWARE D-PAD ACCELERATION</strong></span>
+                    <span class="text-zinc-600">•</span>
+                    <span>RESOLUTION: <strong class="text-amber-400">4K 120HZ HDR10+</strong></span>
+                </div>
+                <div class="flex items-center gap-4 text-[11px] text-zinc-400">
+                    <span>REMOTE ARROWS: <strong class="text-white">ACTIVE</strong></span>
+                    <span>SELECT KEY: <strong class="text-cyan-400">PLAY STREAM</strong></span>
+                </div>
+            </div>
+
+            <!-- 4 Ecosystem Capabilities (Rich Colorful Bento Cards) -->
+            <div id="tvBentoGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- Bento 1: Spatial D-Pad Navigation -->
+                <div class="p-6 sm:p-8 rounded-2xl bg-black/85 border border-cyan-500/30 hover:border-cyan-400 transition-all duration-300 space-y-4 group apple-card-sheen hover:shadow-[0_0_35px_rgba(6,182,212,0.3)]">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
+                        <i data-lucide="navigation" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold font-tech text-white group-hover:text-cyan-300 transition-colors uppercase">Spatial D-Pad</h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        Pure 4-way arrow key navigation with stark focus borders. Activates on TV remotes automatically.
+                    </p>
+                    <div class="pt-2">
+                        <span class="tag-chip bg-cyan-500/15 text-cyan-300 border-cyan-500/30">REMOTE READY</span>
+                    </div>
+                </div>
+
+                <!-- Bento 2: Kodi InputStream Adaptive -->
+                <div class="p-6 sm:p-8 rounded-2xl bg-black/85 border border-blue-500/30 hover:border-blue-400 transition-all duration-300 space-y-4 group apple-card-sheen hover:shadow-[0_0_35px_rgba(59,130,246,0.3)]">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold font-tech text-white group-hover:text-blue-300 transition-colors uppercase">Kodi & TiviMate</h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        Compatible with Kodi InputStream Adaptive and TiviMate IPTV players with instant playback.
+                    </p>
+                    <div class="pt-2">
+                        <span class="tag-chip bg-blue-500/15 text-blue-300 border-blue-500/30">DIRECT STREAM</span>
+                    </div>
+                </div>
+
+                <!-- Bento 3: Offline PWA Installation -->
+                <div class="p-6 sm:p-8 rounded-2xl bg-black/85 border border-amber-500/30 hover:border-amber-400 transition-all duration-300 space-y-4 group apple-card-sheen hover:shadow-[0_0_35px_rgba(245,158,11,0.3)]">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                        <i data-lucide="smartphone" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold font-tech text-white group-hover:text-amber-300 transition-colors uppercase">Standalone App</h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        Installable with 1 click on Smart TV, FireStick, desktop, and mobile for full-bleed viewing.
+                    </p>
+                    <div class="pt-2">
+                        <span class="tag-chip bg-amber-500/15 text-amber-300 border-amber-500/30">PWA ENGINE</span>
+                    </div>
+                </div>
+
+                <!-- Bento 4: RAM Segment Pre-fetch -->
+                <div class="p-6 sm:p-8 rounded-2xl bg-black/85 border border-emerald-500/30 hover:border-emerald-400 transition-all duration-300 space-y-4 group apple-card-sheen hover:shadow-[0_0_35px_rgba(16,185,129,0.3)]">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                        <i data-lucide="zap" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold font-tech text-white group-hover:text-emerald-300 transition-colors uppercase">Zero Buffer</h3>
+                    <p class="text-xs font-mono text-zinc-400 leading-relaxed font-light">
+                        Edge caching delivers zero delay and instant channel switching with rock-solid stability.
+                    </p>
+                    <div class="pt-2">
+                        <span class="tag-chip bg-emerald-500/15 text-emerald-300 border-emerald-500/30">FAST STREAM</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ==========================================================================
+         STAGE 6: THREE.JS SPATIAL GRID CONTINUUM (/index.php, /consumet.html, /music.html, /books.html)
+         ========================================================================== -->
+    <section id="spatial-portal-stage" class="relative z-10 w-full min-h-[85vh] bg-black/75 px-6 sm:px-12 lg:px-16 py-20 border-t border-white/[0.08] overflow-hidden flex flex-col justify-between backdrop-blur-sm">
+        
+        <div class="relative z-10 w-full max-w-[1720px] mx-auto space-y-12">
+            
+            <!-- Section Header (Big Inside-Out Typography) -->
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-white/[0.12] pb-8">
+                <div class="space-y-4 max-w-3xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white/5 border border-white/15 text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                        <span>[ 05 // ACTIVE GATEWAYS ]</span>
+                    </div>
+                    <h2 id="portalHeadline" class="inside-out-headline text-5xl sm:text-7xl xl:text-8xl font-display font-black tracking-tight text-white uppercase leading-none">
+                        <span class="inside-out-word">ENTER</span> 
+                        <span class="inside-out-word">THE</span> 
+                        <span class="inside-out-word text-white">GRID.</span> <br>
+                        <span class="inside-out-word">CHOOSE</span> 
+                        <span class="inside-out-word">YOUR</span> 
+                        <span class="inside-out-word text-white">STREAM.</span>
+                    </h2>
+                </div>
+                <div class="space-y-4 max-w-md">
+                    <p class="text-xs sm:text-sm font-mono text-zinc-400 uppercase tracking-wider leading-relaxed bg-black/70 p-4 rounded-xl border border-white/10 backdrop-blur-md">
+                        Direct video endpoints. Seamless switching across satellite TV, 4K cinema, lossless studio audio, and the indexed codex.
+                    </p>
+                    <div class="flex items-center gap-3 text-xs font-mono text-zinc-400">
+                        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> 4 Active Gateways</span>
+                        <span>•</span>
+                        <span>Zero Interruption</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 Interactive 3D Portal Gateway Cards (Each with Distinct Vibrant Color Identity) -->
+            <div id="spatialGatewaysGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- Portal 1: Live TV (index.php) - Cyan & Sapphire -->
+                <a href="/index.php" class="p-8 rounded-3xl bg-gradient-to-br from-cyan-950/85 via-[#0a182d] to-black text-white border border-cyan-500/40 hover:border-cyan-300 transition-all duration-300 flex flex-col justify-between h-[370px] group shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl apple-card-sheen hover:-translate-y-2 hover:shadow-[0_0_60px_rgba(6,182,212,0.45)] relative overflow-hidden">
+                    <div class="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-cyan-500/15 blur-2xl pointer-events-none"></div>
+                    <div class="space-y-4 relative z-10">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                                <span>[ 01 // BROADCAST ]</span>
+                            </span>
+                            <div class="w-11 h-11 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:bg-cyan-400 group-hover:text-black transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                                <i data-lucide="radio" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-3xl font-display font-black uppercase tracking-tight text-white group-hover:text-cyan-300 transition-colors">
+                                LIVE SATELLITE TV
+                            </h3>
+                            <p class="text-xs font-mono text-cyan-200/70 pt-2 leading-relaxed">
+                                1,409+ JioTV, Star Sports, and international satellite broadcasts.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 pt-4 border-t border-cyan-500/20 relative z-10">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2.5 py-1 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold">1,409 CHANNELS</span>
+                            <span class="px-2.5 py-1 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold">1080P60</span>
+                        </div>
+                        <span class="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-cyan-400 group-hover:text-white group-hover:translate-x-1.5 transition-all">
+                            <span>ENTER /index.php</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                </a>
+
+                <!-- Portal 2: Cinema (consumet.html) - Vivid Fuchsia & Rose Neon -->
+                <a href="/consumet.html" class="p-8 rounded-3xl bg-gradient-to-br from-fuchsia-950/85 via-[#25092c] to-black text-white border border-fuchsia-500/40 hover:border-fuchsia-300 transition-all duration-300 flex flex-col justify-between h-[370px] group shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl apple-card-sheen hover:-translate-y-2 hover:shadow-[0_0_60px_rgba(217,70,239,0.45)] relative overflow-hidden">
+                    <div class="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-fuchsia-500/15 blur-2xl pointer-events-none"></div>
+                    <div class="space-y-4 relative z-10">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold uppercase tracking-widest text-fuchsia-400 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse"></span>
+                                <span>[ 02 // CINEMA ]</span>
+                            </span>
+                            <div class="w-11 h-11 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/30 flex items-center justify-center text-fuchsia-400 group-hover:bg-fuchsia-400 group-hover:text-black transition-all shadow-[0_0_20px_rgba(217,70,239,0.3)]">
+                                <i data-lucide="film" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-3xl font-display font-black uppercase tracking-tight text-white group-hover:text-fuchsia-300 transition-colors">
+                                4K CINEMA & ANIME
+                            </h3>
+                            <p class="text-xs font-mono text-fuchsia-200/70 pt-2 leading-relaxed">
+                                Ad-free movies, international cinema, and anime simulcasts.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 pt-4 border-t border-fuchsia-500/20 relative z-10">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2.5 py-1 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30 text-[10px] font-mono font-bold">4K UHD</span>
+                            <span class="px-2.5 py-1 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30 text-[10px] font-mono font-bold">MULTI-DUB</span>
+                        </div>
+                        <span class="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-fuchsia-400 group-hover:text-white group-hover:translate-x-1.5 transition-all">
+                            <span>ENTER /consumet.html</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                </a>
+
+                <!-- Portal 3: Lossless Audio Deck (music.html) - Solar Amber & Gold -->
+                <a href="/music.html" class="p-8 rounded-3xl bg-gradient-to-br from-amber-950/85 via-[#2b1708] to-black text-white border border-amber-500/40 hover:border-amber-300 transition-all duration-300 flex flex-col justify-between h-[370px] group shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl apple-card-sheen hover:-translate-y-2 hover:shadow-[0_0_60px_rgba(245,158,11,0.45)] relative overflow-hidden">
+                    <div class="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-amber-500/15 blur-2xl pointer-events-none"></div>
+                    <div class="space-y-4 relative z-10">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold uppercase tracking-widest text-amber-400 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                <span>[ 03 // ACOUSTICS ]</span>
+                            </span>
+                            <div class="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:bg-amber-400 group-hover:text-black transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                                <i data-lucide="headphones" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-3xl font-display font-black uppercase tracking-tight text-white group-hover:text-amber-300 transition-colors">
+                                LOSSLESS AUDIO DECK
+                            </h3>
+                            <p class="text-xs font-mono text-amber-200/70 pt-2 leading-relaxed">
+                                Audius decentralized music and 100,000+ live radio broadcasts.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 pt-4 border-t border-amber-500/20 relative z-10">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2.5 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold">24-BIT FLAC</span>
+                            <span class="px-2.5 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold">AUDIUS</span>
+                        </div>
+                        <span class="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-amber-400 group-hover:text-white group-hover:translate-x-1.5 transition-all">
+                            <span>ENTER /music.html</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                </a>
+
+                <!-- Portal 4: Digital Codex & Manga (books.html) - Neon Emerald & Mint Teal -->
+                <a href="/books.html" class="p-8 rounded-3xl bg-gradient-to-br from-emerald-950/85 via-[#082917] to-black text-white border border-emerald-500/40 hover:border-emerald-300 transition-all duration-300 flex flex-col justify-between h-[370px] group shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl apple-card-sheen hover:-translate-y-2 hover:shadow-[0_0_60px_rgba(16,185,129,0.45)] relative overflow-hidden">
+                    <div class="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-emerald-500/15 blur-2xl pointer-events-none"></div>
+                    <div class="space-y-4 relative z-10">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>[ 04 // CODEX ]</span>
+                            </span>
+                            <div class="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-400 group-hover:text-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                                <i data-lucide="book-open" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-3xl font-display font-black uppercase tracking-tight text-white group-hover:text-emerald-300 transition-colors">
+                                DIGITAL CODEX & MANGA
+                            </h3>
+                            <p class="text-xs font-mono text-emerald-200/70 pt-2 leading-relaxed">
+                                Over 70,000 classic literature works and indexed manga.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 pt-4 border-t border-emerald-500/20 relative z-10">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold">70K+ BOOKS</span>
+                            <span class="px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold">OFFLINE</span>
+                        </div>
+                        <span class="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-emerald-400 group-hover:text-white group-hover:translate-x-1.5 transition-all">
+                            <span>ENTER /books.html</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                </a>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- Bottom Master Footer -->
+    <footer id="mainFooter" class="relative z-10 w-full bg-black px-6 sm:px-12 lg:px-16 py-10 border-t border-white/[0.08] flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-mono text-zinc-400">
+        <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>SYSTEM STATUS: <strong class="text-white">ONLINE</strong> (PORT 3000)</span>
+            <span class="text-zinc-600">•</span>
+            <span>GATEWAYS: <strong class="text-cyan-400">4 ACTIVE</strong></span>
+        </div>
+        <div class="flex items-center gap-8">
+            <a href="/consumet.html" class="hover:text-fuchsia-400 transition-colors">Cinema</a>
+            <a href="/index.php" class="hover:text-cyan-400 transition-colors">Live TV</a>
+            <a href="/music.html" class="hover:text-amber-400 transition-colors">Acoustics</a>
+            <a href="/books.html" class="hover:text-emerald-400 transition-colors">Library</a>
+            <span class="text-zinc-500">&copy; 2026 AETHERIS PRO 2.0</span>
+        </div>
+    </footer>
+
+    <!-- Application Script -->
     <script>
-        lucide.createIcons();
+        /* ==========================================================================
+           1. VIDEO INTERACTION & TOUCH HEAD ROTATION ENGINE
+           ========================================================================== */
+        const video = document.getElementById('charVideo');
+        const videoWrapper = document.getElementById('videoWrapper');
 
-        function scrollToContent() {
-            const el = document.getElementById('details-section');
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
+        if (videoWrapper && video) {
+            let mouseRafId = null;
+            window.addEventListener('mousemove', (e) => {
+                if (mouseRafId) return;
+                mouseRafId = requestAnimationFrame(() => {
+                    const normX = (e.clientX / window.innerWidth) - 0.5;
+                    const normY = (e.clientY / window.innerHeight) - 0.5;
+                    video.style.transform = `scale(1.04) translate3d(${normX * 12}px, ${normY * 10}px, 0)`;
+                    mouseRafId = null;
+                });
+            }, { passive: true });
+        }
+
+        /* ==========================================================================
+           2. HOLOGRAPHIC HOTSPOTS ON TOUCH / HOVER
+           ========================================================================== */
+        const HOTSPOTS = [
+            {
+                badge: 'LIVE SATELLITE ENGINE',
+                title: 'JioTV & ClearKey DASH Broadcasting',
+                desc: 'Over 1,409 live channels worldwide. Automatic Akamai SHA-256 renewal with real-time MPD manifest rewriting for native zero-buffer playback.',
+                spec: 'RES // 1080p 60FPS • ZERO COMPRESSION',
+                link: '/index.php'
+            },
+            {
+                badge: '4K CINEMA PIPELINE',
+                title: 'Ad-Free 4K Cinema & Anime Simulcast',
+                desc: 'Multi-server CDN streaming for Hollywood blockbusters, Asian cinema, and same-day anime simulcasts with auto-skip intro.',
+                spec: 'FORMAT // DOLBY VISION • DOLBY ATMOS',
+                link: '/consumet.html'
+            },
+            {
+                badge: 'LOSSLESS AUDIO DECK',
+                title: 'High-Fidelity Decentralized Soundscapes',
+                desc: 'Audius & JioSaavn lossless audio gateway. Stream millions of master FLAC tracks, global radio stations, and curated acoustic queues.',
+                spec: 'CODEC // FLAC MASTER • 320 KBPS',
+                link: '/music.html'
             }
-        }
-
-        // Carousel Core
-        const track = document.getElementById('track');
-        const cards = document.querySelectorAll('.card');
-        const dots = document.querySelectorAll('.progress-dot');
-        let currentIndex = 0;
-        const totalCards = cards.length;
-
-        function updateCarousel() {
-            cards.forEach((card, index) => {
-                if (index === currentIndex) {
-                    card.classList.add('active');
-                    card.style.transform = `scale(1.05) translateZ(50px) rotateY(0deg)`;
-                } else {
-                    card.classList.remove('active');
-                    const diff = index - currentIndex;
-                    if(diff > 0) {
-                        card.style.transform = `scale(0.85) translateZ(-150px) rotateY(-25deg)`;
-                    } else {
-                        card.style.transform = `scale(0.85) translateZ(-150px) rotateY(25deg)`;
-                    }
-                }
-            });
-            dots.forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentIndex);
-            });
-
-            // Center track
-            const activeCard = cards[currentIndex];
-            if (activeCard) {
-                const cardCenter = activeCard.offsetLeft + activeCard.offsetWidth / 2;
-                const offset = window.innerWidth / 2 - cardCenter;
-                track.style.transform = `translateX(${offset}px)`;
-            }
-        }
-
-        function move(direction) {
-            currentIndex = (currentIndex + direction + totalCards) % totalCards;
-            updateCarousel();
-        }
-
-        function goToSlide(index) {
-            currentIndex = index;
-            updateCarousel();
-        }
-
-        // Keyboard Navigation
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight') move(1);
-            if (e.key === 'ArrowLeft') move(-1);
-        });
-
-        // Touch Swipe
-        let touchStartX = 0;
-        let touchEndX = 0;
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-        }, { passive: true });
-
-        document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            if (touchStartX - touchEndX > 50) move(1);
-            if (touchEndX - touchStartX > 50) move(-1);
-        }, { passive: true });
-
-        // Wheel navigation with debounce
-        let wheelTimeout;
-        window.addEventListener('wheel', (e) => {
-            if (window.scrollY > 100) return;
-            if (wheelTimeout) return;
-            if (Math.abs(e.deltaX) > 25 || (Math.abs(e.deltaY) > 30 && window.scrollY < 20)) {
-                if (e.deltaX > 0 || e.deltaY > 0) move(1);
-                else move(-1);
-                wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 500);
-            }
-        }, { passive: true });
-
-        setTimeout(updateCarousel, 80);
-        window.addEventListener('resize', updateCarousel);
-
-        // --- Ultra-Smooth Organic Quantum Fluid Wave & Star Nebula (Three.js) ---
-        // --- Ultra-Interactive Quantum Fluid Wave, Gyro Rings & Particle Nebula (Three.js) ---
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x02040a, 0.003);
-
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1500);
-        camera.position.set(0, 15, 90);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(renderer.domElement);
-
-        // Slide Theme Colors (Dynamic Quantum Shifts)
-        const themeColors = [
-            { c1: new THREE.Color(0xff0055), c2: new THREE.Color(0x00f5d4) }, // Live TV: Crimson/Cyan
-            { c1: new THREE.Color(0xf59e0b), c2: new THREE.Color(0xff0055) }, // Cinema: Amber/Crimson
-            { c1: new THREE.Color(0x10b981), c2: new THREE.Color(0x06b6d4) }, // Torrents: Emerald/Cyan
-            { c1: new THREE.Color(0xa855f7), c2: new THREE.Color(0x3b82f6) }, // Audio: Violet/Indigo
-            { c1: new THREE.Color(0x00f0ff), c2: new THREE.Color(0x6366f1) }  // Library: Cyan/Sapphire
         ];
 
-        let targetColor1 = new THREE.Color(themeColors[0].c1);
-        let targetColor2 = new THREE.Color(themeColors[0].c2);
-        let currentColor1 = new THREE.Color(themeColors[0].c1);
-        let currentColor2 = new THREE.Color(themeColors[0].c2);
+        function openHotspot(index) {
+            const data = HOTSPOTS[index];
+            const hud = document.getElementById('hotspotHUD');
+            if (!data || !hud) return;
 
-        // Quantum Shockwave Uniform Tracking
-        const clickPos = new THREE.Vector2(0, 0);
-        let clickTime = -100.0;
+            document.getElementById('hudBadge').textContent = data.badge;
+            document.getElementById('hudTitle').textContent = data.title;
+            document.getElementById('hudDesc').textContent = data.desc;
+            document.getElementById('hudSpec').textContent = data.spec;
+            document.getElementById('hudLink').href = data.link;
 
-        // 1. Organic Silky Quantum Luminous Surface with Interactive Shockwaves & Mouse Ripple
-        const waveGeo = new THREE.PlaneGeometry(380, 260, 130, 95);
-        const waveMat = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: { value: 0 },
-                uColorA: { value: currentColor1 },
-                uColorB: { value: currentColor2 },
-                uMouse: { value: new THREE.Vector2(0, 0) },
-                uClickPos: { value: clickPos },
-                uClickTime: { value: -100.0 }
-            },
-            vertexShader: `
-                uniform float uTime;
-                uniform vec2 uMouse;
-                uniform vec2 uClickPos;
-                uniform float uClickTime;
-                varying vec2 vUv;
-                varying float vElevation;
+            hud.classList.remove('hidden');
 
-                void main() {
-                    vUv = uv;
-                    vec3 pos = position;
-
-                    // Base quantum harmonic undulations
-                    float wave1 = sin(pos.x * 0.025 + uTime * 0.9) * cos(pos.y * 0.02 + uTime * 0.7) * 9.0;
-                    float wave2 = sin(pos.x * 0.045 - uTime * 0.6 + pos.y * 0.025) * 5.5;
-                    float wave3 = cos(length(pos.xy * 0.018) - uTime * 1.1) * 4.0;
-
-                    // Interactive Continuous Cursor Wave Field
-                    float distMouse = distance(pos.xy * 0.007, uMouse * 0.45);
-                    float mouseWave = sin(distMouse * 14.0 - uTime * 3.5) * exp(-distMouse * 2.2) * 10.0;
-
-                    // Interactive Discrete Click Shockwave Physics
-                    float timeSinceClick = uTime - uClickTime;
-                    float shockwave = 0.0;
-                    if (timeSinceClick > 0.0 && timeSinceClick < 4.0) {
-                        float distClick = distance(pos.xy * 0.006, uClickPos * 0.45);
-                        float ringRadius = timeSinceClick * 0.8;
-                        float waveDist = abs(distClick - ringRadius);
-                        shockwave = sin(waveDist * 20.0 - timeSinceClick * 8.0) * exp(-waveDist * 4.0) * exp(-timeSinceClick * 0.8) * 18.0;
-                    }
-
-                    float elevation = wave1 + wave2 + wave3 + mouseWave + shockwave;
-                    pos.z += elevation;
-                    vElevation = elevation;
-
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform vec3 uColorA;
-                uniform vec3 uColorB;
-                varying vec2 vUv;
-                varying float vElevation;
-
-                void main() {
-                    float mixStrength = smoothstep(-14.0, 16.0, vElevation);
-                    vec3 color = mix(uColorB * 0.25, uColorA * 0.95, mixStrength);
-
-                    float ribbon = sin(vElevation * 0.45 + vUv.x * 7.0);
-                    color += uColorA * smoothstep(0.65, 1.0, ribbon) * 0.45;
-
-                    float alpha = smoothstep(0.0, 0.3, vUv.y) * smoothstep(1.0, 0.7, vUv.y);
-                    alpha *= smoothstep(0.0, 0.25, vUv.x) * smoothstep(1.0, 0.75, vUv.x);
-                    alpha *= 0.75 + mixStrength * 0.25;
-
-                    gl_FragColor = vec4(color, alpha * 0.7);
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-
-        const waveMesh = new THREE.Mesh(waveGeo, waveMat);
-        waveMesh.rotation.x = -Math.PI / 2.3;
-        waveMesh.position.set(0, -28, -25);
-        scene.add(waveMesh);
-
-        // 2. Interactive 3D Quantum Gyroscope Ring System
-        const gyroGroup = new THREE.Group();
-        gyroGroup.position.set(0, 0, -10);
-        scene.add(gyroGroup);
-
-        const ringGeo1 = new THREE.TorusGeometry(32, 0.3, 16, 120);
-        const ringGeo2 = new THREE.TorusGeometry(38, 0.25, 16, 120);
-        const ringGeo3 = new THREE.TorusGeometry(44, 0.2, 16, 120);
-
-        const ringMat1 = new THREE.MeshBasicMaterial({ color: currentColor1, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending });
-        const ringMat2 = new THREE.MeshBasicMaterial({ color: currentColor2, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
-        const ringMat3 = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending });
-
-        const ring1 = new THREE.Mesh(ringGeo1, ringMat1);
-        const ring2 = new THREE.Mesh(ringGeo2, ringMat2);
-        const ring3 = new THREE.Mesh(ringGeo3, ringMat3);
-
-        ring1.rotation.x = Math.PI / 3;
-        ring2.rotation.y = Math.PI / 4;
-        ring3.rotation.z = Math.PI / 6;
-
-        gyroGroup.add(ring1);
-        gyroGroup.add(ring2);
-        gyroGroup.add(ring3);
-
-        // 3. Interactive Quantum Star Particle Nebula with Mouse Forcefield
-        const pCount = 1000;
-        const pGeo = new THREE.BufferGeometry();
-        const pPositions = new Float32Array(pCount * 3);
-        const pScales = new Float32Array(pCount);
-        const pAlphas = new Float32Array(pCount);
-
-        for (let i = 0; i < pCount; i++) {
-            pPositions[i * 3] = (Math.random() - 0.5) * 380;
-            pPositions[i * 3 + 1] = (Math.random() - 0.5) * 200;
-            pPositions[i * 3 + 2] = (Math.random() - 0.5) * 320 - 20;
-            pScales[i] = Math.random() * 3.0 + 1.2;
-            pAlphas[i] = Math.random() * 0.85 + 0.25;
+            if (typeof gsap !== 'undefined') {
+                gsap.fromTo(hud, 
+                    { opacity: 0, scale: 0.9, y: 15 },
+                    { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: 'power2.out' }
+                );
+            }
         }
 
-        pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-        pGeo.setAttribute('aScale', new THREE.BufferAttribute(pScales, 1));
-        pGeo.setAttribute('aAlpha', new THREE.BufferAttribute(pAlphas, 1));
+        function closeHotspotHUD() {
+            const hud = document.getElementById('hotspotHUD');
+            if (hud) hud.classList.add('hidden');
+        }
 
-        const pMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: { value: 0 },
-                uColor: { value: currentColor1 },
-                uMouse: { value: new THREE.Vector2(0, 0) }
-            },
-            vertexShader: `
-                uniform float uTime;
-                uniform vec2 uMouse;
-                attribute float aScale;
-                attribute float aAlpha;
-                varying float vAlpha;
+        /* ==========================================================================
+           3. SMOOTH SLIDE-DOWN NAVIGATION
+           ========================================================================== */
+        function scrollToServerEngine() {
+            const target = document.getElementById('server-engine-stage');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
 
-                void main() {
-                    vAlpha = aAlpha;
-                    vec3 pos = position;
+        /* ==========================================================================
+           5. APPLE TV STYLE SCROLL CHOREOGRAPHY (ONE-BY-ONE CINEMATIC LOADING)
+           ========================================================================== */
+        window.addEventListener('DOMContentLoaded', () => {
+            // Ensure icons are created
+            if (window.lucide) window.lucide.createIcons();
 
-                    // Orbital drift
-                    pos.y += sin(uTime * 0.7 + pos.x * 0.025) * 2.5;
-                    pos.x += cos(uTime * 0.5 + pos.z * 0.025) * 2.5;
+            // Ensure background smoke video autoplays safely
+            const smokeVid = document.getElementById('serverSmokeVideo');
+            if (smokeVid) {
+                smokeVid.play().catch(() => {
+                    smokeVid.muted = true;
+                    smokeVid.play().catch(() => {});
+                });
+            }
 
-                    // Interactive cursor repulsion
-                    vec2 screenPos = pos.xy * 0.008;
-                    float dist = distance(screenPos, uMouse * 0.5);
-                    if (dist < 0.35) {
-                        float push = (0.35 - dist) * 25.0;
-                        pos.xy += normalize(screenPos - uMouse * 0.5) * push;
-                    }
-
-                    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
-                    gl_PointSize = aScale * (220.0 / -mvPos.z);
-                    gl_Position = projectionMatrix * mvPos;
-                }
-            `,
-            fragmentShader: `
-                uniform vec3 uColor;
-                varying float vAlpha;
-                void main() {
-                    float dist = distance(gl_PointCoord, vec2(0.5));
-                    if (dist > 0.5) discard;
-                    float glow = clamp(0.15 / dist - 0.25, 0.0, 1.0);
-                    gl_FragColor = vec4(mix(vec3(1.0), uColor, 0.4), vAlpha * glow);
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-
-        const particles = new THREE.Points(pGeo, pMaterial);
-        scene.add(particles);
-
-        // Mouse Tracking, Parallax & Shockwave Triggering
-        const mouse = new THREE.Vector2();
-        let targetRotX = 0;
-        let targetRotY = 0;
-        let currentRotX = 0;
-        let currentRotY = 0;
-
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            waveMat.uniforms.uMouse.value.set(mouse.x, mouse.y);
-            pMaterial.uniforms.uMouse.value.set(mouse.x, mouse.y);
-            targetRotX = mouse.y * 12;
-            targetRotY = mouse.x * 12;
-        });
-
-        // Trigger Quantum Energy Shockwave on click / tap
-        window.addEventListener('pointerdown', (e) => {
-            const clickNormX = (e.clientX / window.innerWidth) * 2 - 1;
-            const clickNormY = -(e.clientY / window.innerHeight) * 2 + 1;
-            clickPos.set(clickNormX, clickNormY);
-            clickTime = clock.getElapsedTime();
-            waveMat.uniforms.uClickPos.value.copy(clickPos);
-            waveMat.uniforms.uClickTime.value = clickTime;
-        });
-
-        // Interactive Spotlight on Bento Grid Cards
-        document.querySelectorAll('.group.relative').forEach(card => {
-            card.addEventListener('mousemove', e => {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                card.style.setProperty('--mouse-x', `${x}px`);
-                card.style.setProperty('--mouse-y', `${y}px`);
+            // Apple TV Interactive Card Spotlight Sheen
+            document.querySelectorAll('.apple-card-sheen, .industrial-card, .telemetry-card').forEach(card => {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    card.style.setProperty('--mouse-x', `${x}px`);
+                    card.style.setProperty('--mouse-y', `${y}px`);
+                });
             });
+
+            // GSAP ScrollTrigger Master Choreography
+            if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
+                console.warn('GSAP or ScrollTrigger not loaded; falling back to static display.');
+                return;
+            }
+
+            gsap.registerPlugin(ScrollTrigger);
+
+            /* --- SCENE 0: HEADER LOAD --- */
+            gsap.from('#mainHeader', {
+                y: -25,
+                opacity: 0,
+                duration: 1.0,
+                ease: 'power3.out'
+            });
+
+            /* --- SCENE 1: HERO STAGE INTRO CASCADE --- */
+            const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+            heroTl
+                .from('#heroBadge', { y: 20, opacity: 0, duration: 0.8 }, 0.15)
+                .from('#heroHeadline', { y: 45, opacity: 0, filter: 'blur(10px)', duration: 1.1, ease: 'power4.out' }, 0.3)
+                .from('#heroCta', { y: 30, opacity: 0, scale: 0.95, duration: 0.8, ease: 'back.out(1.3)' }, 0.5)
+                .from('#heroCopy', { y: 25, opacity: 0, filter: 'blur(6px)', duration: 0.8 }, 0.45)
+                .from('#heroStats > div', { y: 30, opacity: 0, scale: 0.9, stagger: 0.12, duration: 0.7, ease: 'back.out(1.2)' }, 0.6)
+                .from('.hologram-pin', { scale: 0, opacity: 0, stagger: 0.15, duration: 0.9, ease: 'elastic.out(1, 0.55)' }, 0.8);
+
+            // Hero Optical Scrub Parallax into Server Room
+            gsap.to('#charVideo', {
+                scrollTrigger: {
+                    trigger: '#hero-stage',
+                    start: 'top top',
+                    end: 'bottom top',
+                    scrub: 1.2
+                },
+                yPercent: 18,
+                scale: 0.94,
+                opacity: 0.35,
+                ease: 'none'
+            });
+
+            gsap.to('#heroDepthText', {
+                scrollTrigger: {
+                    trigger: '#hero-stage',
+                    start: 'top top',
+                    end: 'bottom top',
+                    scrub: 1.5
+                },
+                yPercent: 24,
+                opacity: 0,
+                ease: 'none'
+            });
+
+            /* --- SCENE 2: SERVER ROOM ENGINE & 4 INDUSTRIAL GATEWAY CARDS --- */
+            // Clean atmospheric smoke video parallax
+            gsap.to('#serverSmokeVideo', {
+                scrollTrigger: {
+                    trigger: '#server-engine-stage',
+                    start: 'top bottom',
+                    end: 'bottom top',
+                    scrub: 1.2
+                },
+                yPercent: 12,
+                scale: 1.05,
+                ease: 'none'
+            });
+
+            // Engine Typography & Controls Sequential Reveal (Sharp, Zero Blur)
+            const engineTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#server-engine-stage',
+                    start: 'top 75%',
+                    toggleActions: 'play none none none'
+                }
+            });
+
+            engineTl
+                .from('#engineBadges', { y: -20, opacity: 0, duration: 0.6, ease: 'power3.out', clearProps: 'all' })
+                .from('#engineHeadline', { y: 35, opacity: 0, scale: 0.98, duration: 0.8, ease: 'power3.out', clearProps: 'all' }, '-=0.3')
+                .from('#engineDesc', { x: 25, opacity: 0, duration: 0.6, ease: 'power3.out', clearProps: 'all' }, '-=0.3')
+                .from('#engineActions > *', { y: 15, opacity: 0, scale: 0.96, stagger: 0.08, duration: 0.5, ease: 'power2.out', clearProps: 'all' }, '-=0.2');
+
+            // The 4 Industrial Cards Loaded One-by-One - 100% Razor Sharp
+            const cardsTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#engineCardsGrid',
+                    start: 'top 85%',
+                    toggleActions: 'play none none none'
+                }
+            });
+
+            cardsTl.from('#engineCardsGrid .industrial-card', {
+                y: 40,
+                opacity: 0,
+                scale: 0.96,
+                stagger: 0.12,
+                duration: 0.7,
+                ease: 'power3.out',
+                clearProps: 'all'
+            })
+            .from('#engineCardsGrid .tag-chip', {
+                y: 10,
+                opacity: 0,
+                stagger: 0.04,
+                duration: 0.4,
+                ease: 'power2.out',
+                clearProps: 'all'
+            }, '-=0.4');
+
+            /* --- SCENE 3: 3D HOLOGRAPHIC TELEMETRY MATRIX --- */
+            // Left Vision Copy Sequence
+            const telemetryLeftTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#telemetry-stage',
+                    start: 'top 75%',
+                    toggleActions: 'play none none reverse'
+                }
+            });
+
+            telemetryLeftTl
+                .from('#telemetryBadge', { y: 20, opacity: 0, duration: 0.6, ease: 'power3.out' })
+                .from('#telemetryHeadline', { y: 40, opacity: 0, filter: 'blur(10px)', duration: 0.9, ease: 'power4.out' }, '-=0.3')
+                .from('#telemetryDesc', { y: 25, opacity: 0, filter: 'blur(6px)', duration: 0.7, ease: 'power3.out' }, '-=0.4')
+                .from('#telemetryPills > div', { x: -35, opacity: 0, filter: 'blur(4px)', stagger: 0.12, duration: 0.6, ease: 'power3.out' }, '-=0.3')
+                .from('#telemetryCta', { scale: 0.9, opacity: 0, duration: 0.6, ease: 'back.out(1.3)' }, '-=0.2');
+
+            // Right 3D Perspective Glass Deck
+            const telemetryRightTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#telemetryDeck',
+                    start: 'top 80%',
+                    toggleActions: 'play none none reverse'
+                }
+            });
+
+            telemetryRightTl
+                .from('#telemetryDeck', {
+                    y: 90,
+                    rotateX: 25,
+                    rotateY: -15,
+                    scale: 0.88,
+                    opacity: 0,
+                    filter: 'blur(12px)',
+                    duration: 1.2,
+                    ease: 'power3.out'
+                })
+                .from('#telemetryVideoBox', {
+                    scale: 0.92,
+                    opacity: 0,
+                    duration: 0.8,
+                    ease: 'power2.out'
+                }, '-=0.7')
+                .from('#telemetryVideoBox .absolute', {
+                    scale: 0.8,
+                    opacity: 0,
+                    stagger: 0.15,
+                    duration: 0.5,
+                    ease: 'back.out(1.2)'
+                }, '-=0.4')
+                .from('#telemetryPipelineStats > *', {
+                    y: 20,
+                    opacity: 0,
+                    stagger: 0.1,
+                    duration: 0.6,
+                    ease: 'power2.out'
+                }, '-=0.3')
+                .from('#telemetryGraphCard', {
+                    y: 25,
+                    opacity: 0,
+                    duration: 0.7,
+                    ease: 'power2.out'
+                }, '-=0.4')
+                // Real-time animated SVG throughput curve drawing
+                .fromTo('#telemetryGraphPath', 
+                    { strokeDashoffset: 600 }, 
+                    { strokeDashoffset: 0, duration: 1.8, ease: 'power2.out' }, 
+                    '-=0.5'
+                )
+                .from('#telemetryGraphPing', {
+                    scale: 0,
+                    opacity: 0,
+                    duration: 0.5,
+                    ease: 'elastic.out(1, 0.4)'
+                }, '-=0.8')
+                .from('#telemetryDiagnostics > div', {
+                    y: 20,
+                    opacity: 0,
+                    stagger: 0.14,
+                    duration: 0.6,
+                    ease: 'power2.out'
+                }, '-=0.6');
+
+            /* --- SCENE 4: AETHERIS ACOUSTICS & LOSSLESS MUSIC DECK --- */
+            // Watermark Parallax
+            gsap.to('#musicWatermark', {
+                scrollTrigger: {
+                    trigger: '#music-section',
+                    start: 'top bottom',
+                    end: 'bottom top',
+                    scrub: 1.5
+                },
+                yPercent: 20,
+                ease: 'none'
+            });
+
+            // Music Header Sequence
+            const musicHeaderTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#music-section',
+                    start: 'top 78%',
+                    toggleActions: 'play none none reverse'
+                }
+            });
+
+            musicHeaderTl
+                .from('#musicBadge', { y: -20, opacity: 0, duration: 0.6, ease: 'power3.out', clearProps: 'all' })
+                .from('#musicHeadline', { y: 40, opacity: 0, duration: 0.9, ease: 'power4.out', clearProps: 'all' }, '-=0.3')
+                .from('#musicDesc', { x: 30, opacity: 0, duration: 0.7, ease: 'power3.out', clearProps: 'all' }, '-=0.5')
+                .from('#musicActions > *', { y: 20, opacity: 0, scale: 0.95, stagger: 0.1, duration: 0.6, ease: 'back.out(1.2)', clearProps: 'all' }, '-=0.4');
+
+
+
+            /* --- SCENE 5: 10-FOOT BIG SCREEN TV & LIVING ROOM --- */
+            // Header
+            const tvHeaderTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#tv-ecosystem',
+                    start: 'top 80%',
+                    toggleActions: 'play none none reverse'
+                }
+            });
+
+            tvHeaderTl
+                .from('#tvBadge', { y: -20, opacity: 0, duration: 0.6, ease: 'power3.out', clearProps: 'all' })
+                .from('#tvHeadline', { y: 35, opacity: 0, duration: 0.8, ease: 'power3.out', clearProps: 'all' }, '-=0.3')
+                .from('#tvDesc', { x: 30, opacity: 0, duration: 0.7, ease: 'power3.out', clearProps: 'all' }, '-=0.4');
+
+            // Apple TV Hardware Showcase Frame Reveal
+            const tvFrameTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#tvFrameWrap',
+                    start: 'top 80%',
+                    toggleActions: 'play none none none'
+                }
+            });
+
+            tvFrameTl
+                .from('#tvFrameWrap', {
+                    scale: 0.92,
+                    y: 50,
+                    opacity: 0,
+                    duration: 1.1,
+                    ease: 'power3.out',
+                    clearProps: 'all'
+                })
+                .from('#tvRemoteOverlay', {
+                    x: 40,
+                    y: 20,
+                    opacity: 0,
+                    scale: 0.95,
+                    duration: 0.7,
+                    ease: 'back.out(1.4)',
+                    clearProps: 'all'
+                }, '-=0.4');
+
+
+
+            // The 4 Bento Boxes Loaded One-by-One Like a Video
+            const bentoTl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#tvBentoGrid',
+                    start: 'top 82%',
+                    toggleActions: 'play none none reverse'
+                }
+            });
+
+            bentoTl.from('#tvBentoGrid > div', {
+                y: 60,
+                opacity: 0,
+                scale: 0.93,
+                stagger: 0.14,
+                duration: 0.8,
+                ease: 'power3.out',
+                clearProps: 'all'
+            })
+            .from('#tvBentoGrid .w-12', {
+                scale: 0.7,
+                opacity: 0,
+                stagger: 0.14,
+                duration: 0.5,
+                ease: 'back.out(1.5)'
+            }, '-=0.6');
+
+            /* --- SCENE 5: FOOTER SYSTEM STATUS --- */
+            gsap.from('#mainFooter > div', {
+                scrollTrigger: {
+                    trigger: '#mainFooter',
+                    start: 'top 95%',
+                    toggleActions: 'play none none reverse'
+                },
+                y: 20,
+                opacity: 0,
+                stagger: 0.15,
+                duration: 0.7,
+                ease: 'power2.out'
+            });
+
+            /* --- SCENE 6: THREE.JS SPATIAL GRID CONTINUUM --- */
+            if (document.getElementById('spatialGatewaysGrid')) {
+                gsap.fromTo('#spatialGatewaysGrid > a', 
+                    { y: 30, scale: 0.96, filter: 'blur(4px)' },
+                    {
+                        scrollTrigger: {
+                            trigger: '#spatial-portal-stage',
+                            start: 'top 85%',
+                            once: true
+                        },
+                        y: 0,
+                        scale: 1,
+                        filter: 'blur(0px)',
+                        stagger: 0.12,
+                        duration: 0.8,
+                        ease: 'power2.out',
+                        clearProps: 'transform,filter'
+                    }
+                );
+            }
+
+            // Initialize Inside-Out Kinetic Headlines
+            initInsideOutHeadlines();
+
+            // Initialize Three.js Fullscreen 3D Undulating Cyber Grid (Pure Black & White)
+            initThreeJsGrid();
         });
 
-        const clock = new THREE.Clock();
+        /* ==========================================================================
+           6. INSIDE-OUT KINETIC TYPOGRAPHY SYSTEM
+           Words emerge dynamically from center outward with scale, blur & tracking
+           ========================================================================== */
+        function initInsideOutHeadlines() {
+            if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
 
-        function animate() {
-            requestAnimationFrame(animate);
-            const elapsedTime = clock.getElapsedTime();
+            document.querySelectorAll('.inside-out-headline').forEach((headline) => {
+                const words = headline.querySelectorAll('.inside-out-word');
+                if (!words.length) return;
 
-            if (themeColors[currentIndex]) {
-                targetColor1.copy(themeColors[currentIndex].c1);
-                targetColor2.copy(themeColors[currentIndex].c2);
-            }
-
-            currentColor1.lerp(targetColor1, 0.05);
-            currentColor2.lerp(targetColor2, 0.05);
-
-            waveMat.uniforms.uTime.value = elapsedTime;
-            waveMat.uniforms.uColorA.value = currentColor1;
-            waveMat.uniforms.uColorB.value = currentColor2;
-
-            pMaterial.uniforms.uTime.value = elapsedTime;
-            pMaterial.uniforms.uColor.value = currentColor1;
-
-            ringMat1.color.copy(currentColor1);
-            ringMat2.color.copy(currentColor2);
-
-            // Gyroscope dynamic rotation
-            ring1.rotation.x += 0.008;
-            ring1.rotation.y += 0.006;
-            ring2.rotation.y -= 0.009;
-            ring2.rotation.z += 0.007;
-            ring3.rotation.z += 0.005;
-            ring3.rotation.x -= 0.007;
-
-            gyroGroup.position.x += (mouse.x * 8 - gyroGroup.position.x) * 0.04;
-            gyroGroup.position.y += (mouse.y * 6 - gyroGroup.position.y) * 0.04;
-
-            waveMesh.rotation.z = Math.sin(elapsedTime * 0.035) * 0.05;
-            particles.rotation.y = elapsedTime * 0.015;
-
-            camera.position.x += (mouse.x * 14 - camera.position.x) * 0.04;
-            camera.position.y += ((mouse.y * 10 + 15) - camera.position.y) * 0.04;
-            camera.lookAt(0, 0, 0);
-
-            const activeCard = document.querySelector('.card.active');
-            if (activeCard) {
-                currentRotX += (targetRotX - currentRotX) * 0.08;
-                currentRotY += (targetRotY - currentRotY) * 0.08;
-                activeCard.style.transform = `scale(1.05) translateZ(50px) rotateX(${currentRotX}deg) rotateY(${currentRotY}deg)`;
-            }
-
-            renderer.render(scene, camera);
+                gsap.fromTo(words, 
+                    {
+                        opacity: 0,
+                        scale: 0.22,
+                        letterSpacing: '-0.1em',
+                        filter: 'blur(16px)',
+                        y: 20
+                    },
+                    {
+                        scrollTrigger: {
+                            trigger: headline,
+                            start: 'top 85%',
+                            toggleActions: 'play none none reverse'
+                        },
+                        opacity: 1,
+                        scale: 1,
+                        letterSpacing: '0em',
+                        filter: 'blur(0px)',
+                        y: 0,
+                        stagger: {
+                            from: 'center',
+                            amount: 0.55,
+                            ease: 'power2.out'
+                        },
+                        duration: 1.1,
+                        ease: 'power3.out'
+                    }
+                );
+            });
         }
 
-        animate();
+        /* ==========================================================================
+           7. THREE.JS HIGH-CONTRAST 3D PERSPECTIVE CYBER GRID (BLACK & WHITE HIGHLY DARK)
+           Infinite undulating digital terrain with mathematical waves & quantum stars
+           ========================================================================== */
+        function initThreeJsGrid() {
+            const canvas = document.getElementById('threeJsGridCanvas');
+            if (!canvas || typeof THREE === 'undefined') return;
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            updateCarousel();
+            let width = window.innerWidth;
+            let height = window.innerHeight;
+
+            // Stark Pitch-Black Scene with subtle infinite depth fog
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.00075);
+
+            // Wide Perspective Camera looking out across the deep horizon
+            const camera = new THREE.PerspectiveCamera(65, width / height, 1, 4000);
+            camera.position.set(0, 100, 560);
+            camera.lookAt(0, -100, -350);
+
+            const renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                alpha: true,
+                antialias: true,
+                powerPreference: 'high-performance'
+            });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // 1. High-Density Undulating Floor Grid (Deep Background Digital Terrain)
+            const gridWidth = 3800;
+            const gridDepth = 3400;
+            const segmentsX = 64;
+            const segmentsZ = 56;
+            const floorGeometry = new THREE.PlaneGeometry(gridWidth, gridDepth, segmentsX, segmentsZ);
+            floorGeometry.rotateX(-Math.PI / 2);
+            floorGeometry.translate(0, -220, -350);
+
+            // Store original coordinate buffers for wave displacement
+            const posAttr = floorGeometry.attributes.position;
+            const origY = new Float32Array(posAttr.count);
+            const origX = new Float32Array(posAttr.count);
+            const origZ = new Float32Array(posAttr.count);
+            for (let i = 0; i < posAttr.count; i++) {
+                origX[i] = posAttr.getX(i);
+                origY[i] = posAttr.getY(i);
+                origZ[i] = posAttr.getZ(i);
+            }
+
+            // High-Contrast Stark White Wireframe Material (Smooth Deep Perspective)
+            const floorMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.28,
+                blending: THREE.AdditiveBlending
+            });
+            const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+            scene.add(floorMesh);
+
+            // 2. High-Tech Ceiling Horizon Wireframe Grid (Subtle Ambient Cyber Canopy)
+            const ceilingGeometry = new THREE.PlaneGeometry(gridWidth, gridDepth, 48, 42);
+            ceilingGeometry.rotateX(Math.PI / 2);
+            ceilingGeometry.translate(0, 720, -200);
+
+            const ceilingMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.05,
+                blending: THREE.AdditiveBlending
+            });
+            const ceilingMesh = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+            scene.add(ceilingMesh);
+
+            // 3. 3D Floating Quantum Stardust (Monochrome Pure White Stars)
+            const starCount = 1100;
+            const starGeo = new THREE.BufferGeometry();
+            const starPositions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount * 3; i += 3) {
+                starPositions[i] = (Math.random() - 0.5) * 3400;
+                starPositions[i + 1] = (Math.random() - 0.5) * 900 + 50;
+                starPositions[i + 2] = (Math.random() - 0.5) * 3000;
+            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1.8,
+                transparent: true,
+                opacity: 0.55,
+                blending: THREE.AdditiveBlending
+            });
+            const starField = new THREE.Points(starGeo, starMaterial);
+            scene.add(starField);
+
+            // Interactive Parallax Mouse & Touch Tilt
+            let targetMouseX = 0;
+            let targetMouseY = 0;
+            let currentMouseX = 0;
+            let currentMouseY = 0;
+
+            window.addEventListener('mousemove', (e) => {
+                const normX = (e.clientX / window.innerWidth) * 2 - 1;
+                const normY = -(e.clientY / window.innerHeight) * 2 + 1;
+                targetMouseX = normX * 100;
+                targetMouseY = normY * 45;
+            }, { passive: true });
+
+            // Touch tilt for mobile/tablet
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    const touch = e.touches[0];
+                    const normX = (touch.clientX / window.innerWidth) * 2 - 1;
+                    const normY = -(touch.clientY / window.innerHeight) * 2 + 1;
+                    targetMouseX = normX * 80;
+                    targetMouseY = normY * 35;
+                }
+            }, { passive: true });
+
+            // Responsive Window Resize Handler
+            window.addEventListener('resize', () => {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+
+            // Animation Tick Loop
+            const clock = new THREE.Clock();
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const elapsedTime = clock.getElapsedTime();
+
+                // Smooth camera parallax easing
+                currentMouseX += (targetMouseX - currentMouseX) * 0.045;
+                currentMouseY += (targetMouseY - currentMouseY) * 0.045;
+
+                // Dynamic vertical scroll offset (smooth receding horizon)
+                const scrollFraction = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight || 1);
+                const scrollYOffset = -scrollFraction * 120;
+
+                camera.position.x = currentMouseX;
+                camera.position.y = 100 + currentMouseY * 0.5 + scrollYOffset * 0.6;
+                camera.lookAt(0, -100 + scrollYOffset * 0.3, -350);
+
+                // Silky Smooth Mathematical Cyber Wave Undulation (Zero Content Collisions)
+                const pos = floorGeometry.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const x = origX[i];
+                    const z = origZ[i];
+                    const wave1 = Math.sin(x * 0.003 + elapsedTime * 1.1) * 18;
+                    const wave2 = Math.cos(z * 0.004 + elapsedTime * 0.9) * 14;
+                    const wave3 = Math.sin((x + z) * 0.002 + elapsedTime * 0.7) * 8;
+                    pos.setY(i, origY[i] + wave1 + wave2 + wave3);
+                }
+                pos.needsUpdate = true;
+
+                // Subtle rotation & float of starfield
+                starField.rotation.y = elapsedTime * 0.02;
+                starField.rotation.x = Math.sin(elapsedTime * 0.015) * 0.02;
+
+                // Slowly scroll ceiling grid along Z for infinite forward corridor sensation
+                ceilingMesh.position.z = -200 + ((elapsedTime * 50) % 100);
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+        }
+
+        /* ==========================================================================
+           6. DYNAMIC HERO CONFIGURATION & AUDIO CONTROLLER (ADMIN SYNC)
+           ========================================================================== */
+        let dynamicAudioElement = null;
+
+        async function initDynamicHeroConfig() {
+            try {
+                const res = await fetch('/api/hero-config');
+                const data = await res.json();
+                if (data.status === 'success' && data.config) {
+                    const cfg = data.config;
+                    
+                    // 1. Stage 1 Hero Video
+                    if (cfg.heroVideo && cfg.heroVideo.url) {
+                        const charVid = document.getElementById('charVideo');
+                        if (charVid && !charVid.src.includes(cfg.heroVideo.url)) {
+                            charVid.src = cfg.heroVideo.url;
+                            charVid.load();
+                        }
+                    }
+
+                    // 2. Stage 5 TV Video
+                    if (cfg.tvVideo && cfg.tvVideo.url) {
+                        const tvVid = document.getElementById('tvBackgroundVideo');
+                        if (tvVid && !tvVid.src.includes(cfg.tvVideo.url)) {
+                            tvVid.src = cfg.tvVideo.url;
+                            tvVid.load();
+                        }
+                    }
+
+                    // 3. Stage 4 Music Media
+                    if (cfg.musicMedia) {
+                        const m = cfg.musicMedia;
+                        const musicVid = document.getElementById('musicBackgroundVideo');
+                        
+                        // Set background video
+                        if (m.videoBgUrl && musicVid) {
+                            if (!musicVid.src.includes(m.videoBgUrl)) {
+                                musicVid.src = m.videoBgUrl;
+                                musicVid.load();
+                            }
+                        }
+
+                        // Check if audio is separate (e.g. JioSaavn / MP3 / M3U stream)
+                        if (m.audioUrl && m.audioUrl !== m.videoBgUrl) {
+                            if (!dynamicAudioElement) {
+                                dynamicAudioElement = new Audio();
+                                dynamicAudioElement.loop = true;
+                                dynamicAudioElement.preload = 'auto';
+                            }
+                            dynamicAudioElement.src = m.audioUrl;
+                            dynamicAudioElement.volume = m.volume ?? 0.85;
+                        }
+
+                        // Update banner labels if custom title exists
+                        if (m.title && m.title !== 'Studio Fidelity Continuum') {
+                            const badgeSpan = document.querySelector('#musicBadge span:last-child');
+                            if (badgeSpan) badgeSpan.textContent = `[ 03 // ${m.sourceType ? m.sourceType.toUpperCase() : 'ACOUSTICS'} ]`;
+                            const desc = document.getElementById('musicDesc');
+                            if (desc) desc.textContent = `Now Playing: ${m.title} ${m.artist ? '— ' + m.artist : ''} • Bit-perfect streaming continuum.`;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('[HeroConfig] Dynamic config load fallback:', err);
+            }
+        }
+
+        /* ==========================================================================
+           HARDWARE-ACCELERATED VIDEO PERFORMANCE OBSERVER (ZERO LAG)
+           Pauses off-screen videos to guarantee only ONE 1080p stream decodes at a time.
+           ========================================================================== */
+        function initVideoPerformanceObserver() {
+            const allVideos = document.querySelectorAll('video');
+            if (!('IntersectionObserver' in window)) return;
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const v = entry.target;
+                    if (entry.isIntersecting) {
+                        const p = v.play();
+                        if (p && typeof p.catch === 'function') p.catch(() => {});
+                    } else {
+                        // Immediately pause off-screen video to release GPU decoder engine
+                        v.pause();
+                    }
+                });
+            }, {
+                root: null,
+                rootMargin: '120px 0px 120px 0px',
+                threshold: 0.05
+            });
+
+            allVideos.forEach(v => {
+                observer.observe(v);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initDynamicHeroConfig();
+            initVideoPerformanceObserver();
+        });
+
+        function toggleMusicAudio() {
+            const vid = document.getElementById('musicBackgroundVideo');
+            const lbl = document.getElementById('musicAudioLabel');
+            const toggleBtn = document.getElementById('musicAudioToggle');
+
+            const isPlaying = dynamicAudioElement ? !dynamicAudioElement.paused : (vid && !vid.muted);
+
+            if (!isPlaying) {
+                if (dynamicAudioElement && dynamicAudioElement.src) {
+                    dynamicAudioElement.play().catch(() => {});
+                } else if (vid) {
+                    vid.muted = false;
+                    vid.volume = 0.9;
+                    vid.play().catch(() => {});
+                }
+                if (lbl) lbl.textContent = 'SOUND: ACTIVE (CLICK TO MUTE)';
+                if (toggleBtn) {
+                    toggleBtn.classList.remove('text-amber-300', 'border-amber-500/40');
+                    toggleBtn.classList.add('bg-amber-400', 'text-black', 'border-amber-400');
+                }
+            } else {
+                if (dynamicAudioElement) dynamicAudioElement.pause();
+                if (vid) vid.muted = true;
+                if (lbl) lbl.textContent = 'SOUND: MUTED [CLICK TO PLAY AUDIO]';
+                if (toggleBtn) {
+                    toggleBtn.classList.remove('bg-amber-400', 'text-black', 'border-amber-400');
+                    toggleBtn.classList.add('text-amber-300', 'border-amber-500/40');
+                }
+            }
+        }
+
+        /* ==========================================================================
+           7. KEYBOARD & D-PAD NAVIGATION
+           ========================================================================== */
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case '1': window.location.href = '/index.php'; break;
+                case '2': window.location.href = '/consumet.html'; break;
+                case '3': window.location.href = '/music.html'; break;
+                case '4': window.location.href = '/books.html'; break;
+                case 'ArrowDown':
+                    if (window.scrollY < 200) scrollToServerEngine();
+                    break;
+                case 'Escape':
+                    closeHotspotHUD();
+                    break;
+            }
         });
     </script>
-    <link rel="stylesheet" href="/local-ai.css?v=gemini-3.5-v3">
-    <script src="/local-ai.js?v=gemini-3.5-v3"></script>
-    <script src="/watchdog.js" id="maintenance-watchdog"></script>
 </body>
 </html>

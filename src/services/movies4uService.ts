@@ -2,23 +2,17 @@ import axios from 'axios';
 import { URL } from 'url';
 
 // Dynamic Movies4u Mirror Registry & Auto-Discovery Engine
-export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new1.movies4u.garden/';
+export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new3.movies4u.garden/';
 export const MOVIES4U_COMPANION_INDEXES = [
-    'https://movies4u.garden',
-    'https://movies4u.review',
-    'https://movies4u.band',
-    'https://movies4u.forex',
-    'https://movies4u.tube',
-    'https://movies4u.ist'
-];
-
-export let movies4uActiveMirrors: string[] = [
-    'https://new1.movies4u.garden',
     'https://new2.movies4u.garden',
     'https://movies4u.garden',
     'https://movies4u.review',
     'https://movies4u.band',
     'https://new7.movies4u.clinic'
+];
+
+export let movies4uActiveMirrors: string[] = [
+    'https://new3.movies4u.garden'
 ];
 
 export let lastMirrorDiscoveryTime = 0;
@@ -37,145 +31,47 @@ export interface Movies4uLookupHit {
  */
 export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<{ primary: string; mirrors: string[]; fromCache: boolean }> {
     const now = Date.now();
-    // Cache discovery for 15 minutes unless forced
-    if (!force && movies4uActiveMirrors.length > 0 && (now - lastMirrorDiscoveryTime) < 15 * 60 * 1000) {
+    // Cache discovery for 30 minutes unless forced
+    if (!force && movies4uActiveMirrors.length > 0 && (now - lastMirrorDiscoveryTime) < 30 * 60 * 1000) {
         return { primary: movies4uActiveMirrors[0], mirrors: movies4uActiveMirrors, fromCache: true };
     }
 
     if (isDiscoveringMirrors) {
-        return { primary: movies4uActiveMirrors[0] || 'https://new1.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
+        return { primary: movies4uActiveMirrors[0] || 'https://new3.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
     }
 
     isDiscoveringMirrors = true;
-    const discoveredCandidates = new Set<string>();
-
     try {
-        console.log(`[Movies4u Mirror Engine] Checking primary index ${MOVIES4U_PRIMARY_INDEX_URL} for active mirrors...`);
-        
-        // 1. Primary check: https://new1.movies4u.garden/
-        try {
-            const tubeRes = await axios.get(MOVIES4U_PRIMARY_INDEX_URL, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-                },
-                timeout: 3500
-            });
-            const tubeHtml = String(tubeRes.data || '');
-            const tubeUrls = tubeHtml.match(/https?:\/\/[^\s"'<>,]+/gi) || [];
-            for (const u of tubeUrls) {
-                if (u.includes('movies4u') && !u.includes('facebook') && !u.includes('twitter') && !u.includes('reddit') && !u.includes('t.me') && !u.includes('schema.org')) {
-                    try {
-                        const origin = new URL(u).origin;
-                        discoveredCandidates.add(origin);
-                    } catch(err) {}
-                }
-            }
-        } catch (tubeErr: any) {
-            console.warn(`[Movies4u Mirror Engine] Primary check warning:`, tubeErr?.message);
-        }
+        const candidates = ['https://new3.movies4u.garden', 'https://new4.movies4u.garden', 'https://new2.movies4u.garden'];
+        const verified: string[] = [];
 
-        // 2. Companion indexes check
-        for (const indexUrl of MOVIES4U_COMPANION_INDEXES) {
+        await Promise.all(candidates.map(async (origin) => {
             try {
-                const companionRes = await axios.get(indexUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                    timeout: 2500
-                });
-                const companionHtml = String(companionRes.data || '');
-                const companionUrls = companionHtml.match(/https?:\/\/[^\s"'<>,]+/gi) || [];
-                for (const u of companionUrls) {
-                    if (u.includes('movies4u') && !u.includes('facebook') && !u.includes('twitter') && !u.includes('reddit') && !u.includes('t.me') && !u.includes('schema.org')) {
-                        try {
-                            const origin = new URL(u).origin;
-                            discoveredCandidates.add(origin);
-                        } catch(err) {}
-                    }
-                }
-            } catch (err) {}
-        }
-
-        // 3. Predictive candidate pool (covers new1..new10 .garden, .clinic, .vip, .run, .tube, .review, .band, .forex)
-        for (let i = 1; i <= 10; i++) {
-            discoveredCandidates.add(`https://new${i}.movies4u.garden`);
-            discoveredCandidates.add(`https://new${i}.movies4u.clinic`);
-        }
-        discoveredCandidates.add('https://movies4u.garden');
-        discoveredCandidates.add('https://movies4u.review');
-        discoveredCandidates.add('https://movies4u.band');
-        discoveredCandidates.add('https://movies4u.forex');
-        discoveredCandidates.add('https://movies4u.tube');
-        discoveredCandidates.add('https://movies4u.vip');
-        discoveredCandidates.add('https://movies4u.run');
-
-        // 4. Concurrent Health Check & Latency Benchmark using /lookup.php
-        const verifiedMirrors: { origin: string; latency: number; hasCatalog: boolean }[] = [];
-        const benchmarkQuery = 'Inception';
-
-        const probePromises = Array.from(discoveredCandidates).map(async (origin) => {
-            const startTime = Date.now();
-            try {
-                const probeUrl = `${origin}/lookup.php?q=${encodeURIComponent(benchmarkQuery)}&page=1&per_page=5`;
+                const probeUrl = `${origin}/lookup.php?q=Inception&page=1&per_page=1`;
                 const res = await axios.get(probeUrl, {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-                        'Referer': `${origin}/?s=${encodeURIComponent(benchmarkQuery)}`,
-                        'Accept': 'application/json, text/javascript, */*; q=0.01',
-                        'Sec-Fetch-Site': 'same-origin',
-                        'Sec-Fetch-Mode': 'cors'
+                        'Accept': 'application/json, text/javascript, */*; q=0.01'
                     },
-                    timeout: 2500,
-                    maxRedirects: 2
+                    timeout: 2000
                 });
-
-                const finalUrl = String((res as any)?.request?.res?.responseUrl || '');
-                if (finalUrl.includes('google.com')) {
-                    // Outdated mirror redirecting to google search
-                    return;
+                if (res.data?.hits && Array.isArray(res.data.hits) && res.data.hits.length > 0) {
+                    verified.push(origin);
                 }
+            } catch (_) {}
+        }));
 
-                const latency = Date.now() - startTime;
-                const hasHits = res.status === 200 && res.data && (Array.isArray(res.data.hits) || res.data.ok === true);
-
-                if (hasHits) {
-                    verifiedMirrors.push({ origin, latency, hasCatalog: true });
-                } else if (res.status === 200) {
-                    const html = String(res.data || '');
-                    if (html.length > 3000 && (html.includes('full-movie') || html.includes('m4uplay') || html.includes('wp-content/themes'))) {
-                        verifiedMirrors.push({ origin, latency, hasCatalog: true });
-                    }
-                }
-            } catch (probeErr) {
-                // Offline or unreachable mirror - skip silently
-            }
-        });
-
-        await Promise.allSettled(probePromises);
-
-        // Sort by fastest latency
-        verifiedMirrors.sort((a, b) => a.latency - b.latency);
-
-        if (verifiedMirrors.length > 0) {
-            movies4uActiveMirrors = verifiedMirrors.map(v => v.origin);
+        if (verified.length > 0) {
+            movies4uActiveMirrors = verified;
             lastMirrorDiscoveryTime = Date.now();
-            console.log(`[Movies4u Mirror Engine] ⭐ Auto-promoted PRIMARY mirror: ${movies4uActiveMirrors[0]} (Latency: ${verifiedMirrors[0].latency}ms, ${verifiedMirrors.length} healthy mirrors total)`);
-        } else {
-            console.warn('[Movies4u Mirror Engine] No responsive mirrors verified in benchmark, retaining fallback list.');
-            if (!movies4uActiveMirrors.includes('https://new1.movies4u.garden')) {
-                movies4uActiveMirrors.unshift('https://new1.movies4u.garden');
-            }
+            console.log(`[Movies4u Mirror Engine] ⭐ Verified active fast mirror: ${movies4uActiveMirrors[0]}`);
         }
-    } catch (err: any) {
-        console.error('[Movies4u Mirror Engine] Error during mirror discovery:', err?.message || err);
-    } finally {
+    } catch (_) {}
+    finally {
         isDiscoveringMirrors = false;
     }
 
-    return {
-        primary: movies4uActiveMirrors[0] || 'https://new1.movies4u.garden',
-        mirrors: movies4uActiveMirrors,
-        fromCache: false
-    };
+    return { primary: movies4uActiveMirrors[0] || 'https://new3.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: false };
 }
 
 // Initial background startup discovery
@@ -236,6 +132,7 @@ export async function getDirectM3u8FromMorenciusId(fileIdOrUrl: string, mirrorOr
                 let m3u8Url = null;
                 let links: any = {};
                 let subtitles: Array<{ lang: string; url: string; label?: string }> = [];
+                let unpacked = '';
 
                 const scripts = html.match(/<script[\s\S]*?<\/script>/gi) || [];
                 const evalScript = scripts.find(s => s.includes('eval(function(p,a,c,k,e,d)'));
@@ -243,7 +140,7 @@ export async function getDirectM3u8FromMorenciusId(fileIdOrUrl: string, mirrorOr
                     try {
                         const code = evalScript.replace(/<script.*?>/, '').replace(/<\/script>/, '');
                         // eslint-disable-next-line no-eval
-                        const unpacked = eval(code.replace(/eval\s*\(/, '('));
+                        unpacked = eval(code.replace(/eval\s*\(/, '('));
                         
                         const linksMatch = unpacked.match(/var links\s*=\s*(\{.*?\});/) || unpacked.match(/var n\s*=\s*(\{.*?\});/);
                         if (linksMatch) {
@@ -306,6 +203,16 @@ export async function getDirectM3u8FromMorenciusId(fileIdOrUrl: string, mirrorOr
                     }
                 }
 
+                let durationSec: number | undefined = undefined;
+                try {
+                    const durMatch = (unpacked && unpacked.match(/["']?duration["']?\s*:\s*([0-9]+(?:\.[0-9]+)?)/i)) ||
+                                     html.match(/["']?duration["']?\s*:\s*([0-9]+(?:\.[0-9]+)?)/i);
+                    if (durMatch) {
+                        const dVal = parseFloat(durMatch[1]);
+                        if (!isNaN(dVal) && dVal > 0) durationSec = dVal;
+                    }
+                } catch(_) {}
+
                 if (m3u8Url || res.status === 200) {
                     const workingEmbed = embedUrl.includes('m4uplay.quest') ? embedUrl.replace('/file/', '/embed/') : `https://m4uplay.quest/embed/${rawId}`;
                     return {
@@ -315,7 +222,8 @@ export async function getDirectM3u8FromMorenciusId(fileIdOrUrl: string, mirrorOr
                         embedUrl: workingEmbed,
                         morenciusUrl: workingEmbed,
                         links,
-                        subtitles
+                        subtitles,
+                        duration: durationSec
                     };
                 }
             } catch (_) {}
@@ -554,16 +462,14 @@ export async function resolveMovieHlsStream(params: {
     let imdbId = '';
     let originalTitle = '';
 
-    // 1. Always fetch TMDB metadata if ID is numeric or starts with tt, to get year and original title for accurate double-checking
-    if (/^\d+$/.test(rawId) || rawId.startsWith('tt')) {
+    // 1. Fetch TMDB metadata only if title is missing or short, preventing 3s latency penalty on known queries
+    if ((!targetTitle || targetTitle.length < 2) && (/^\d+$/.test(rawId) || rawId.startsWith('tt'))) {
         try {
             const apiKey = process.env.TMDB_API_KEY || 'a07e22bc18f5cb106bfe4cc1f83ad8ed';
             const tmdbIdToFetch = rawId.startsWith('tt') ? rawId : String(rawId);
-            const tmdbRes = await axios.get(`https://api.themoviedb.org/3/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbIdToFetch}?api_key=${apiKey}`, { timeout: 3000 });
+            const tmdbRes = await axios.get(`https://api.themoviedb.org/3/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbIdToFetch}?api_key=${apiKey}`, { timeout: 2000 });
             if (tmdbRes.data) {
-                if (!targetTitle || targetTitle.length < 2) {
-                    targetTitle = tmdbRes.data.title || tmdbRes.data.name || targetTitle;
-                }
+                targetTitle = tmdbRes.data.title || tmdbRes.data.name || targetTitle;
                 tmdbId = String(tmdbRes.data.id || rawId);
                 const releaseDate = tmdbRes.data.release_date || tmdbRes.data.first_air_date || '';
                 if (releaseDate) {
@@ -604,6 +510,7 @@ export async function resolveMovieHlsStream(params: {
                     embedUrl,
                     m3u8Url: m3u8Data.m3u8Url || null,
                     subtitles: m3u8Data.subtitles || [],
+                    duration: m3u8Data.duration,
                     playUrl,
                     source: 'movies4u_direct'
                 };
@@ -613,7 +520,7 @@ export async function resolveMovieHlsStream(params: {
 
     if (queryWithEp) {
         // Query active mirrors dynamically
-        async function attemptMirrorScrape(mirrors: string[]) {
+        async function attemptMirrorScrape(mirrors: string[]): Promise<any> {
             const mirrorPromises = mirrors.map(async (mirrorBase) => {
                 const cleanBase = mirrorBase.endsWith('/') ? mirrorBase.slice(0, -1) : mirrorBase;
                 const searchQuery = cleanBaseTitle || targetTitle || queryWithEp;
@@ -700,8 +607,11 @@ export async function resolveMovieHlsStream(params: {
                             const m3u8Data = await getDirectM3u8FromMorenciusId(rawEmbed, cleanBase);
                             const m4uId = m3u8Data.m4uId || rawEmbed.split('/').pop() || '';
                             const embedUrl = m3u8Data.embedUrl || `https://m4uplay.quest/embed/${m4uId}`;
+                            const proxiedStream = (m3u8Data.m3u8Url && m3u8Data.m3u8Url.startsWith('http'))
+                                ? `/stream_proxy.php?url=${encodeURIComponent(m3u8Data.m3u8Url)}`
+                                : m3u8Data.m3u8Url;
                             const playUrl = m3u8Data.m3u8Url
-                                ? `/play.php?url=${encodeURIComponent(m3u8Data.m3u8Url)}&name=${encodeURIComponent(queryWithEp)}&source=consumet.html`
+                                ? `/play.php?url=${encodeURIComponent(proxiedStream)}&name=${encodeURIComponent(queryWithEp)}&source=consumet.html`
                                 : `/play_media.html?url=${encodeURIComponent(embedUrl)}&title=${encodeURIComponent(queryWithEp)}`;
                             return {
                                 ok: true,
@@ -709,7 +619,9 @@ export async function resolveMovieHlsStream(params: {
                                 m4uId,
                                 embedUrl,
                                 m3u8Url: m3u8Data.m3u8Url || null,
+                                subM3u8Url: proxiedStream,
                                 subtitles: m3u8Data.subtitles || [],
+                                duration: m3u8Data.duration,
                                 playUrl,
                                 source: 'movies4u_search'
                             };
@@ -719,30 +631,44 @@ export async function resolveMovieHlsStream(params: {
                 return null;
             });
 
-            const results = await Promise.allSettled(mirrorPromises);
-            for (const r of results) {
-                if (r.status === 'fulfilled' && r.value && r.value.ok) {
-                    return r.value;
-                }
-            }
-            return null;
+            return new Promise((resolve) => {
+                let resolved = false;
+                let pending = mirrorPromises.length;
+                if (pending === 0) return resolve(null);
+
+                mirrorPromises.forEach(async (p) => {
+                    try {
+                        const val = await p;
+                        if (val && val.ok && !resolved) {
+                            resolved = true;
+                            return resolve(val);
+                        }
+                    } catch (_) {}
+                    pending--;
+                    if (pending === 0 && !resolved) {
+                        resolve(null);
+                    }
+                });
+            });
         }
 
         // 1st Attempt: with currently active mirror list
         try {
             const firstResult = await attemptMirrorScrape(movies4uActiveMirrors);
             if (firstResult && firstResult.ok) {
+                resolvedMovieCache.set(cacheKey, { data: firstResult, timestamp: Date.now() });
                 return firstResult;
             }
         } catch(e) {}
 
-        // Fallback / Auto-discovery trigger: Check movies4u.tube first to discover and promote new active mirrors
+        // Fallback / Auto-discovery trigger: Check mirrors if needed
         try {
             console.log(`[Movies4u Resolver] Current mirrors failed for "${queryWithEp}". Checking ${MOVIES4U_PRIMARY_INDEX_URL} for updated mirrors...`);
             const discovery = await discoverAndPromoteMovies4uMirrors(true);
             if (discovery.mirrors && discovery.mirrors.length > 0) {
                 const refreshedResult = await attemptMirrorScrape(discovery.mirrors);
                 if (refreshedResult && refreshedResult.ok) {
+                    resolvedMovieCache.set(cacheKey, { data: refreshedResult, timestamp: Date.now() });
                     return refreshedResult;
                 }
             }
@@ -803,6 +729,7 @@ export async function scrapeMovies4uCluster(params: {
     quality?: string;
     sources: Array<{ url: string; quality: string; type: string; label: string; name: string; rawUrl?: string; proxyUrl?: string; referrer?: string }>;
     subtitles: Array<{ lang: string; url: string; label?: string }>;
+    duration?: number;
     error?: string;
 }> {
     const rawId = params.id ? String(params.id) : '';
@@ -824,12 +751,13 @@ export async function scrapeMovies4uCluster(params: {
     if (res && res.ok) {
         const directM3u8 = res.m3u8Url || '';
         const proxiedM3u8 = directM3u8 && directM3u8.startsWith('http')
-            ? `/api/proxy/hls?url=${encodeURIComponent(directM3u8)}`
+            ? `/stream_proxy.php?url=${encodeURIComponent(directM3u8)}`
             : directM3u8;
 
-        const primaryStream = directM3u8 || proxiedM3u8;
+        const primaryStream = proxiedM3u8 || directM3u8;
 
-        const sources: Array<{ url: string; quality: string; type: string; label: string; name: string; rawUrl?: string; proxyUrl?: string; referrer?: string }> = [];
+        const sources: Array<{ url: string; quality: string; type: string; label: string; name: string; rawUrl?: string; proxyUrl?: string; referrer?: string; skipProxy?: boolean }> = [];
+        // Prioritize ultra-fast direct CDN with open CORS (AceK CDN)
         if (directM3u8) {
             sources.push({
                 url: directM3u8,
@@ -838,8 +766,9 @@ export async function scrapeMovies4uCluster(params: {
                 referrer: 'https://m4uplay.quest/',
                 quality: '1080p',
                 type: 'application/x-mpegurl',
-                label: 'Movie 4U (Direct M3U8 Master 1080p)',
-                name: 'Movie 4U Direct HLS'
+                label: 'Movie 4U (Direct High-Speed CDN)',
+                name: 'Movie 4U Direct CDN',
+                skipProxy: true
             });
         }
         if (proxiedM3u8 && proxiedM3u8 !== directM3u8) {
@@ -850,8 +779,8 @@ export async function scrapeMovies4uCluster(params: {
                 referrer: 'https://m4uplay.quest/',
                 quality: '1080p',
                 type: 'application/x-mpegurl',
-                label: 'Movie 4U (Proxied HLS)',
-                name: 'Movie 4U Proxied'
+                label: 'Movie 4U (Direct M3U8 Master 1080p)',
+                name: 'Movie 4U Direct HLS'
             });
         }
 
@@ -876,7 +805,8 @@ export async function scrapeMovies4uCluster(params: {
                 directM3u8: directM3u8 || undefined,
                 quality: '1080p',
                 sources,
-                subtitles: (res.subtitles && Array.isArray(res.subtitles)) ? res.subtitles : []
+                subtitles: (res.subtitles && Array.isArray(res.subtitles)) ? res.subtitles : [],
+                duration: res.duration
             };
         }
     }

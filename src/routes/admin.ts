@@ -1,4 +1,4 @@
-import { syncToFirestore, syncM3uToFirestore, deleteM3uFromFirestore } from "../services/firestoreSyncService";
+import { syncToFirestore, syncM3uToFirestore, deleteM3uFromFirestore, saveAndSyncAdminDB } from "../services/firestoreSyncService";
 import axios from "axios";
 import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
@@ -10,7 +10,7 @@ import bcrypt from 'bcryptjs';
 import { requireAdmin, JWT_SECRET, getClientIp, isAdminAuthenticated } from '../middleware/auth';
 import { SecurityGateKeeper } from '../services/securityGateKeeper';
 import { StalkerAPI } from '../stalkerAPI';
-import { activeSessions, refreshBlacklist, systemState, systemStatus as globalSystemStatus, notifyVideoBroadcastChanged } from '../../server';
+import { activeSessions, refreshBlacklist, systemState, systemStatus as globalSystemStatus, notifyVideoBroadcastChanged, clearUnlockedIps } from '../../server';
 import * as server from '../../server';
 import { killAllActiveStreams } from '../proxy';
 import { getOrUpdatePlaylist } from './sportsM3u';
@@ -326,11 +326,9 @@ function getDB(): AdminDB {
 }
 
 function saveDB(db: AdminDB) {
-    const tmpFile = DB_FILE + '.tmp';
-    fs.writeFileSync(tmpFile, JSON.stringify(db, null, 4), 'utf8');
-    fs.renameSync(tmpFile, DB_FILE);
-    syncToFirestore(db).catch((e: any) => console.error("Firestore sync error:", e));
+    saveAndSyncAdminDB(db);
 }
+
 
 /**
  * Helper to scan existing portal json files in doctor_strange.
@@ -722,9 +720,7 @@ router.post('/lock-mode', requireAdmin, (req: Request, res: Response) => {
     (systemState as any).siteLockHint = db.siteLockHint || '';
     (systemState as any).siteLockEpoch = db.siteLockEpoch;
 
-    if (server && typeof server.clearUnlockedIps === 'function') {
-        server.clearUnlockedIps();
-    }
+    clearUnlockedIps();
 
     console.warn(`[SYSTEM] SITE LOCK MODE UPDATED BY ADMIN: ${db.siteLockMode ? 'ACTIVE (SYSTEM LOCKED)' : 'INACTIVE (SYSTEM OPEN)'}`);
 
@@ -738,6 +734,44 @@ router.post('/lock-mode', requireAdmin, (req: Request, res: Response) => {
         siteLockHint: db.siteLockHint || '',
         siteLockEpoch: db.siteLockEpoch
     });
+});
+
+// GET /hero-config - Fetch Hero Media Configuration
+router.get('/hero-config', requireAdmin, (req: Request, res: Response) => {
+    const configPath = path.join(process.cwd(), 'assets', 'hero-config.json');
+    if (fs.existsSync(configPath)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            return res.json({ status: "success", config: data });
+        } catch (e: any) {
+            return res.status(500).json({ status: "error", message: e.message });
+        }
+    }
+    res.json({
+        status: "success",
+        config: {
+            heroVideo: { type: "local", url: "/assets/hero-video.mp4" },
+            musicMedia: { sourceType: "local", audioUrl: "/assets/x_video_music_bg.mp4", videoBgUrl: "/assets/x_video_music_bg.mp4" },
+            tvVideo: { type: "local", url: "/assets/floating_glass_hud.mp4" }
+        }
+    });
+});
+
+// POST /hero-config - Update Hero Media Configuration
+router.post('/hero-config', requireAdmin, (req: Request, res: Response) => {
+    const newConfig = req.body || {};
+    newConfig.lastUpdated = Date.now();
+    const configPath = path.join(process.cwd(), 'assets', 'hero-config.json');
+    try {
+        fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf8');
+        return res.json({
+            status: "success",
+            message: "Hero Page Media Configuration Saved Successfully!",
+            config: newConfig
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: "error", message: e.message || "Failed to save hero config" });
+    }
 });
 
 // GET /maintenance - Maintenance Mode

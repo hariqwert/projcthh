@@ -593,11 +593,23 @@ if (!file_exists($DARK_SIDE . "/login.stalker") && !$has_playlists) {
                     <button onclick="fetchSavedPortals()" class="p-3 bg-red-600/10 text-red-400 rounded-2xl border border-red-500/20 hover:bg-red-600 hover:text-white transition-all" title="Identity Vault (Shortcut: V)">
                         <i data-lucide="layers" class="w-5 h-5"></i>
                     </button>
+                    <button onclick="window.restoreAetherisAI ? window.restoreAetherisAI(true) : null" id="btn-header-ai-vault" class="ai-vault-btn px-3.5 py-2.5 bg-cyan-500/10 text-cyan-300 rounded-2xl border border-cyan-500/30 hover:bg-cyan-600 hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer" title="AI Vault (Restore Assistant)">
+                        <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>AI Vault</span>
+                        <span class="ai-vault-dot w-2 h-2 rounded-full bg-cyan-400"></span>
+                    </button>
                 </div>
-                <!-- Compact Sleep toggle always visible on top right for mobile -->
-                <button onclick="toggleAppSleep()" class="flex md:hidden p-2.5 bg-teal-600/10 text-teal-400 rounded-xl border border-teal-500/20 hover:bg-teal-600 hover:text-white transition-all" title="Sleep / Off Mode">
-                    <i data-lucide="power" class="w-4.5 h-4.5"></i>
-                </button>
+                <!-- Mobile Top-Right AI Vault + Sleep toggle -->
+                <div class="flex md:hidden items-center gap-1.5">
+                    <button onclick="window.restoreAetherisAI ? window.restoreAetherisAI(true) : null" class="ai-vault-btn px-2.5 py-2 bg-cyan-500/10 text-cyan-300 rounded-xl border border-cyan-500/30 hover:bg-cyan-600 hover:text-white transition-all flex items-center gap-1 text-[11px] font-bold" title="AI Vault (Restore Assistant)">
+                        <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>AI Vault</span>
+                        <span class="ai-vault-dot w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                    </button>
+                    <button onclick="toggleAppSleep()" class="flex p-2.5 bg-teal-600/10 text-teal-400 rounded-xl border border-teal-500/20 hover:bg-teal-600 hover:text-white transition-all" title="Sleep / Off Mode">
+                        <i data-lucide="power" class="w-4.5 h-4.5"></i>
+                    </button>
+                </div>
             </div>
         </div>
         <!-- Mobile Optimized Secondary Section (Search + Horizontally Scrollable Toolbelt) -->
@@ -610,6 +622,10 @@ if (!file_exists($DARK_SIDE . "/login.stalker") && !$has_playlists) {
             <!-- Scrollable quick actions belt (perfect for mobile touch targets) -->
             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-0.5 -mx-4 sm:mx-0">
                 <div class="flex items-center gap-2 px-4">
+                    <button onclick="window.restoreAetherisAI ? window.restoreAetherisAI(true) : null" class="ai-vault-btn flex items-center gap-1.5 shrink-0 px-3 py-2 bg-cyan-500/10 text-cyan-300 text-[11px] font-bold rounded-xl border border-cyan-500/25 hover:bg-cyan-600 hover:text-white transition-all">
+                        <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>AI Vault</span>
+                    </button>
                     <button onclick="toggleSubtitleModal(true)" class="flex items-center gap-1.5 shrink-0 px-3 py-2 bg-blue-600/10 text-blue-400 text-[11px] font-bold rounded-xl border border-blue-500/10 hover:bg-blue-600 hover:text-white transition-all">
                         <i data-lucide="subtitles" class="w-3.5 h-3.5"></i> Subtitles
                     </button>

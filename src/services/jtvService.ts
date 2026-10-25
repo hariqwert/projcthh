@@ -86,8 +86,9 @@ export function isLinearChannelName(titleOrItem: any): boolean {
     return channelPatterns.test(title);
 }
 
-const JTV_PRIMARY_CATALOG_URL = 'https://raw.githubusercontent.com/sixpg/zeyo-test/main/jtv.m3u';
+const JTV_PRIMARY_CATALOG_URL = 'https://raw.githubusercontent.com/sportlive18/jio-tv-auto-update-playlist/main/zio.m3u';
 const JTV_BACKUP_CATALOG_URL = 'https://raw.githubusercontent.com/sportlive18/sportlink-update/main/zio.m3u';
+const JTV_FALLBACK_CATALOG_URL = 'https://raw.githubusercontent.com/sixpg/zeyo-test/main/jtv.m3u';
 const JTV_CATALOG_URL = JTV_PRIMARY_CATALOG_URL;
 const LIVE_EVENTS_URL = 'https://raw.githubusercontent.com/sportlive18/jio-tv-auto-update-playlist/main/LiveEvent.m3u';
 const SPORTLIVE18_LIVE_M3U_URL = 'https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/Sports_data.m3u';
@@ -387,12 +388,30 @@ export class JtvService {
                     });
                 } catch (_) {}
 
-                if (!m3uRes || !m3uRes.data || !m3uRes.data.includes('#EXTINF')) {
-                    m3uRes = await axios.get(JTV_BACKUP_CATALOG_URL, {
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                        httpsAgent: agent,
-                        timeout: 10000
-                    });
+                const hasExpiredToken = (data: string) => {
+                    const m = data.match(/exp=(\d+)/);
+                    if (!m) return false;
+                    return (parseInt(m[1], 10) * 1000) <= (Date.now() + 60000);
+                };
+
+                if (!m3uRes || !m3uRes.data || !m3uRes.data.includes('#EXTINF') || hasExpiredToken(m3uRes.data)) {
+                    try {
+                        m3uRes = await axios.get(JTV_BACKUP_CATALOG_URL, {
+                            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                            httpsAgent: agent,
+                            timeout: 10000
+                        });
+                    } catch (_) {}
+                }
+
+                if (!m3uRes || !m3uRes.data || !m3uRes.data.includes('#EXTINF') || hasExpiredToken(m3uRes.data)) {
+                    try {
+                        m3uRes = await axios.get(JTV_FALLBACK_CATALOG_URL, {
+                            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                            httpsAgent: agent,
+                            timeout: 10000
+                        });
+                    } catch (_) {}
                 }
 
                 if (m3uRes && typeof m3uRes.data === 'string' && m3uRes.data.includes('#EXTINF')) {
@@ -1754,7 +1773,61 @@ export class JtvService {
             res = await fetchUpstream(ch);
         } catch (err: any) {
             const status = err?.response?.status || err?.status;
-            if (status === 403 || status === 450 || status === 401 || status === 451 || status === 400) {
+            const BTS_SLUG_FALLBACKS: Record<string, { slug: string; keyId?: string; key?: string }> = {
+                'SonySportsTen1HDSTB': { slug: 'Ten_HD_MOB', keyId: '3525c924e54154b39533d86b1c7a428a', key: '8548b566fc6608a7d3bd601ee5f3d889' },
+                'SonySportsTen2HDSTB': { slug: 'Ten2_HD_MOB', keyId: '91fce77f2f8056f084ed961c7ebe86ed', key: '8214bd5eb6c21444e8ea644824affd79' },
+                'SonySportsTen3HDSTB': { slug: 'Ten3_HD_MOB', keyId: '111e6908b965566e97139efddf7ef459', key: 'c87903abbc052e1f21e51ebd928d9cb1' },
+                'Sony_Ten_1_HD': { slug: 'Ten_HD_MOB', keyId: '3525c924e54154b39533d86b1c7a428a', key: '8548b566fc6608a7d3bd601ee5f3d889' },
+                'Sony_Ten_2_HD': { slug: 'Ten2_HD_MOB', keyId: '91fce77f2f8056f084ed961c7ebe86ed', key: '8214bd5eb6c21444e8ea644824affd79' },
+                'Sony_Ten_3_HD': { slug: 'Ten3_HD_MOB', keyId: '111e6908b965566e97139efddf7ef459', key: 'c87903abbc052e1f21e51ebd928d9cb1' },
+                'ColorsHD_BTS': { slug: 'ColorsHD_MOB', keyId: '5360e12d4bb2519a9148d1089a55908d', key: '7e8f500cef51595f3d43acafab1a8fb4' },
+                'Colors_HD_BTS': { slug: 'ColorsHD_MOB', keyId: '5360e12d4bb2519a9148d1089a55908d', key: '7e8f500cef51595f3d43acafab1a8fb4' }
+            };
+
+            const applyMobFallbackMetadata = (targetCh: JtvChannel, wildcardCookie: string) => {
+                let mobUrl = targetCh.stream_url.split('?')[0].split('|')[0].trim();
+                for (const [badSlug, fix] of Object.entries(BTS_SLUG_FALLBACKS)) {
+                    if (mobUrl.includes(badSlug)) {
+                        mobUrl = `https://jiotvmblive.cdn.jio.com/bpk-tv/${fix.slug}/WDVLive/index.mpd`;
+                        if (fix.keyId && fix.key) {
+                            targetCh.key_id = fix.keyId;
+                            targetCh.key = fix.key;
+                            const pair = `${fix.keyId}:${fix.key}`;
+                            if (!targetCh.clearkey.includes(fix.keyId)) {
+                                targetCh.clearkey = targetCh.clearkey ? `${pair},${targetCh.clearkey}` : pair;
+                            }
+                        }
+                        break;
+                    }
+                }
+                if (mobUrl.includes('_BTS') || mobUrl.includes('jiotvpllive')) {
+                    mobUrl = mobUrl
+                        .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
+                        .replace('_BTS', '_MOB');
+                }
+                const tokenPart = wildcardCookie ? (wildcardCookie.startsWith('__hdnea__=') ? wildcardCookie : `__hdnea__=${wildcardCookie}`) : '';
+                targetCh.stream_url = mobUrl;
+                if (tokenPart) {
+                    targetCh.cookie = tokenPart;
+                    targetCh.token = tokenPart;
+                    targetCh.full_stream_url = `${mobUrl}?${tokenPart}`;
+                } else {
+                    targetCh.full_stream_url = mobUrl;
+                }
+            };
+
+            // Status 451 indicates upstream JioTV CDN datacenter/geo block (e.g. Cloud Run IP blocked by Varnish)
+            // Re-fetching from this same cloud datacenter IP will never succeed; prepare direct client fallback immediately
+            if (status === 451) {
+                console.log(`[JtvService] Upstream geo/datacenter block (451) for ${idOrSlug}; preparing direct client fallback URL...`);
+                try {
+                    const wildcardCookie = await this.fetchWildcardCookie(false).catch(() => '');
+                    applyMobFallbackMetadata(ch, wildcardCookie);
+                } catch (e) {}
+                throw err;
+            }
+
+            if (status === 403 || status === 450 || status === 401 || status === 400) {
                 console.log(`[JtvService] Manifest ${status} on ${idOrSlug}, refreshing sports cookies and jtv.m3u catalog...`);
                 let retrySuccess = false;
                 // 1. Try sportcookie.json first
@@ -1801,49 +1874,9 @@ export class JtvService {
                 if (!retrySuccess) {
                     try {
                         const wildcardCookie = await this.fetchWildcardCookie(true);
-                        const BTS_SLUG_FALLBACKS: Record<string, { slug: string; keyId?: string; key?: string }> = {
-                            'SonySportsTen1HDSTB': { slug: 'Ten_HD_MOB', keyId: '3525c924e54154b39533d86b1c7a428a', key: '8548b566fc6608a7d3bd601ee5f3d889' },
-                            'SonySportsTen2HDSTB': { slug: 'Ten2_HD_MOB', keyId: '91fce77f2f8056f084ed961c7ebe86ed', key: '8214bd5eb6c21444e8ea644824affd79' },
-                            'SonySportsTen3HDSTB': { slug: 'Ten3_HD_MOB', keyId: '111e6908b965566e97139efddf7ef459', key: 'c87903abbc052e1f21e51ebd928d9cb1' },
-                            'Sony_Ten_1_HD': { slug: 'Ten_HD_MOB', keyId: '3525c924e54154b39533d86b1c7a428a', key: '8548b566fc6608a7d3bd601ee5f3d889' },
-                            'Sony_Ten_2_HD': { slug: 'Ten2_HD_MOB', keyId: '91fce77f2f8056f084ed961c7ebe86ed', key: '8214bd5eb6c21444e8ea644824affd79' },
-                            'Sony_Ten_3_HD': { slug: 'Ten3_HD_MOB', keyId: '111e6908b965566e97139efddf7ef459', key: 'c87903abbc052e1f21e51ebd928d9cb1' }
-                        };
-
-                        let mobUrl = ch.stream_url.split('?')[0].split('|')[0].trim();
-                        for (const [badSlug, fix] of Object.entries(BTS_SLUG_FALLBACKS)) {
-                            if (mobUrl.includes(badSlug)) {
-                                mobUrl = `https://jiotvmblive.cdn.jio.com/bpk-tv/${fix.slug}/WDVLive/index.mpd`;
-                                if (fix.keyId && fix.key) {
-                                    ch.key_id = fix.keyId;
-                                    ch.key = fix.key;
-                                    const pair = `${fix.keyId}:${fix.key}`;
-                                    if (!ch.clearkey.includes(fix.keyId)) {
-                                        ch.clearkey = ch.clearkey ? `${pair},${ch.clearkey}` : pair;
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                        if (mobUrl.includes('_BTS') || mobUrl.includes('jiotvpllive')) {
-                            mobUrl = mobUrl
-                                .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
-                                .replace('_BTS', '_MOB');
-                        }
-                        const tokenPart = wildcardCookie.startsWith('__hdnea__=') ? wildcardCookie : `__hdnea__=${wildcardCookie}`;
-                        const mobCh: JtvChannel = {
-                            ...ch,
-                            stream_url: mobUrl,
-                            cookie: tokenPart,
-                            token: tokenPart,
-                            full_stream_url: `${mobUrl}?${tokenPart}`
-                        };
-                        console.log(`[JtvService] Trying _MOB wildcard fallback for ${idOrSlug}: ${mobUrl}`);
-                        res = await fetchUpstream(mobCh);
-                        ch.stream_url = mobUrl;
-                        ch.cookie = tokenPart;
-                        ch.token = tokenPart;
-                        ch.full_stream_url = `${mobUrl}?${tokenPart}`;
+                        applyMobFallbackMetadata(ch, wildcardCookie);
+                        console.log(`[JtvService] Trying _MOB wildcard fallback for ${idOrSlug}: ${ch.stream_url}`);
+                        res = await fetchUpstream(ch);
                         retrySuccess = true;
                     } catch (mobErr: any) {
                         console.warn(`[JtvService] _MOB wildcard fallback failed for ${idOrSlug}:`, mobErr?.message || mobErr);
@@ -1877,6 +1910,18 @@ export class JtvService {
                 (match: string) => `${clearKeyProtection}\n      ${match}`
             );
         }
+
+        // Auto-discover any cenc:default_KID attributes in the MPD and associate with channel key
+        if (ch.key && data.includes('cenc:default_KID')) {
+            const manifestKids = [...data.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                .map((m: any) => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+            for (const singleKid of manifestKids) {
+                if (singleKid.length === 32 && (!ch.clearkey || !ch.clearkey.includes(singleKid))) {
+                    ch.clearkey = ch.clearkey ? `${ch.clearkey},${singleKid}:${ch.key}` : `${singleKid}:${ch.key}`;
+                }
+            }
+        }
+
 
         // Inject Akamai authentication token into segment templates so CDN chunk requests succeed
         const tokenQuery = ch.token ? (ch.token.startsWith('__hdnea__=') ? ch.token : `__hdnea__=${ch.token}`) : '';

@@ -405,7 +405,6 @@ function e($str)
         }
     </style>
     <link rel="icon" type="image/png" href="stalker_pro_infinity.svg">
-    <link rel="stylesheet" href="assets/local-ai.css?v=2.0">
 </head>
 <body>
     <div id="loading" class="loading">
@@ -2127,6 +2126,5 @@ function e($str)
         }
     </script>
     <script src="assets/tv-navigation.js"></script>
-    <script src="assets/local-ai.js?v=2.0"></script>
 </body>
 </html>

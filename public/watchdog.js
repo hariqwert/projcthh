@@ -13,7 +13,7 @@
                         localStorage.setItem('site_unlock_token', tokenFromUrl);
                     } catch(e) {}
                     var isHttps = window.location.protocol === 'https:';
-                    document.cookie = "site_unlock_token=" + encodeURIComponent(tokenFromUrl) + "; path=/; max-age=604800; SameSite=Lax" + (isHttps ? "; Secure" : "");
+                    document.cookie = "site_unlock_token=" + encodeURIComponent(tokenFromUrl) + "; path=/; max-age=604800; " + (isHttps ? "SameSite=None; Secure" : "SameSite=Lax");
                 }
                 urlObj.searchParams.delete('unlock_token');
                 window.history.replaceState({}, document.title, urlObj.pathname + (urlObj.search || '') + urlObj.hash);
@@ -91,8 +91,7 @@
             if (!data) return;
 
             // 1. Check Site Lock Mode State (Priority: Instant Lock Screen Gate)
-            var isAdminAuth = Boolean(data && data.isAdmin === true) || (document.cookie.indexOf('admin_auth=') !== -1);
-            if (typeof data.locked === 'boolean' && !isHariConsole && !isAdminAuth) {
+            if (typeof data.locked === 'boolean' && !isHariConsole) {
                 if (!isLockPage && data.locked === true) {
                     safeReload('Lock Mode activated');
                     return;
@@ -103,7 +102,7 @@
             }
 
             // 2. Check Maintenance Mode State
-            if (typeof data.maintenance === 'boolean' && !data.locked && !isHariConsole && !isAdminAuth) {
+            if (typeof data.maintenance === 'boolean' && !data.locked && !isHariConsole) {
                 if (!is503Page && data.maintenance === true) {
                     safeReload('Maintenance Mode activated');
                 } else if (is503Page && data.maintenance === false) {
@@ -126,9 +125,9 @@
         }
     }
 
-    // Adaptive, lightweight status polling: 10 seconds when tab is active (80% load reduction)
-    var pollTimer = setInterval(checkStatus, 10000);
-    setTimeout(checkStatus, 800);
+    // Adaptive, lightweight status polling: 2 seconds when tab is active for instant global state reflection
+    var pollTimer = setInterval(checkStatus, 2000);
+    setTimeout(checkStatus, 500);
 
     // Instant status check on tab visibility change or window focus
     document.addEventListener('visibilitychange', function() {

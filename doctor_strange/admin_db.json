@@ -1,7 +1,10 @@
 {
     "backgrounds": {
-        "musicUseSongVideo": false,
         "music": {
+            "url": "",
+            "type": "auto"
+        },
+        "consumet": {
             "url": "",
             "type": "auto"
         },
@@ -9,173 +12,48 @@
             "type": "auto",
             "url": ""
         },
+        "musicUseSongVideo": false,
         "index": {
-            "type": "auto",
-            "url": ""
-        },
-        "consumet": {
             "url": "",
             "type": "auto"
         }
     },
-    "maintenanceVideoSubtitle": "",
-    "maintenanceVideoLoop": true,
-    "maintenanceAdminBypass": false,
-    "turnstileSiteKey": "0x4AAAAAAFaGaW8aie8qWpaS",
+    "sports": [
+        {
+            "id": "sports_1792528040177",
+            "addedAt": "2026-10-20T20:27:20.177Z",
+            "containerId": "default_showcase",
+            "icon": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
+            "url": "https://sonymtmnew.akamaized.net/hls/live/2119931/cricodi_2010/ENG/master.m3u8?hdnea=exp=1792565437~acl=/*~id=91221187663073300722024230508474~hmac=4df5bcd5d2b31b53b3950af9d4c4b79124db52be91509313a12cc985d0ca0aa8",
+            "title": "psg vs barcelona"
+        }
+    ],
+    "activeTemplate": "Scheduled Downtime",
+    "maintenanceVideoTitle": "",
+    "maintenanceTitle": "യുഗാവസാനം",
     "turnstileSecretKey": "0x4AAAAAAFaGaQIlXD4HGIMq6vt44s95NsQ",
-    "siteLockMode": false,
-    "siteLockPassword": "202012",
-    "siteLockTitle": "RESTRICTED ACCESS PORTAL",
-    "siteLockMessage": "This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.",
-    "siteLockHint": "",
-    "playConsumetMaintenance": false,
-    "liveEvents": [],
+    "maintenanceVideoLoop": true,
+    "maintenanceMusicQuery": "lofi relax",
+    "consumetMaintenance": false,
+    "maintenanceVideoType": "webrtc",
+    "maintenanceVideoMuted": false,
     "sportsContainers": [
         {
-            "gridBgUrl": "",
-            "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast.",
-            "playerPng": "https://pngimg.com/d/cricket_PNG10.png",
             "id": "default_showcase",
+            "playerPng": "",
+            "bgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
             "createdAt": "2026-09-30T12:00:00.000Z",
-            "order": 0,
-            "enabled": true,
-            "bgUrl": "https://img10.hotstar.com/image/upload/f_auto,q_90,w_1920/sources/r1/cms/prod/2202/1790432572202-i",
             "cardBg": "",
+            "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast.",
+            "order": 0,
+            "badge": "football",
+            "gridBgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
+            "title": "ufea",
             "gridStyle": "grid",
-            "badge": "CRICKET LIVE",
-            "title": "INDIA VS WEST INDIES"
+            "enabled": true
         }
     ],
-    "sportsHubConfig": {
-        "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast.",
-        "badge": "CRICKET LIVE",
-        "title": "INDIA VS WEST INDIES",
-        "playerPng": "https://pngimg.com/d/cricket_PNG10.png",
-        "displayMode": "grid",
-        "bgUrl": "https://img10.hotstar.com/image/upload/f_auto,q_90,w_1920/sources/r1/cms/prod/2202/1790432572202-i",
-        "gridBgUrl": ""
-    },
-    "playMaintenance": false,
-    "maintenanceVideoUrl": "https://www.youtube.com/watch?v=5KihByp4IDs&list=RD5KihByp4IDs&start_radio=1",
-    "maintenanceVideoMuted": false,
-    "maintenanceTitle": "യുഗാവസാനം",
-    "maintenanceVideoUploadedFile": "WhatsApp Video 2023-12-14 at 6.14.07 PM.mp4",
-    "consumetMaintenance": false,
-    "developerMode": false,
-    "features": {
-        "publicPlaylistEnabled": true,
-        "m3uEnabled": true,
-        "firewallEnabled": true,
-        "stalkerEnabled": true
-    },
-    "activeTemplate": "Scheduled Downtime",
-    "maintenanceVideoEnabled": false,
-    "maintenanceMode": false,
-    "maintenanceVideoAutoplay": true,
-    "systemStatus": "active",
-    "sportsM3uFiles": [],
-    "portals": [
-        {
-            "isDefault": false,
-            "url": "http://hdiptv.club:80",
-            "type": "xtream",
-            "id": "xtream_hdiptv_club",
-            "name": "HDIPTV Club Portal",
-            "username": "0053e626fddf",
-            "password": "3030bf1583"
-        },
-        {
-            "name": "Krishkaz Xtream Portal",
-            "isDefault": false,
-            "username": "AdemSarikaya",
-            "type": "xtream",
-            "password": "16A525",
-            "id": "xtream_line_krishkaz_com",
-            "url": "http://line.krishkaz.com"
-        },
-        {
-            "id": "xtream_strong8k_art",
-            "password": "84111dead2",
-            "type": "xtream",
-            "username": "7b81bb3ace8c",
-            "name": "Strong8k Xtream Portal",
-            "url": "http://strong8k.art:80",
-            "isDefault": false
-        },
-        {
-            "url": "http://xupuybzt.lazdns.com",
-            "username": "fouaadkhadi",
-            "password": "E7JWd8N9",
-            "id": "xtream_xupuybzt_lazdns_com",
-            "type": "xtream",
-            "isDefault": false,
-            "name": "Lazdns Xtream Portal"
-        },
-        {
-            "D2": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
-            "model": "MAG250",
-            "id": "stalker_123_geoent_cc",
-            "D1": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
-            "hw_version_2": "ff82ef9cd910ba406f2fd062045b7f52",
-            "mac": "00:1A:79:00:00:01",
-            "url": "http://123.geoent.cc/stalker_portal",
-            "type": "stalker",
-            "name": "Geoent Stalker Portal",
-            "API": "263",
-            "hw_version": "1.7-BD-30",
-            "isDefault": false
-        },
-        {
-            "type": "stalker",
-            "id": "stalker_weaseltv_live",
-            "isDefault": true,
-            "name": "WeaselTV Portal",
-            "url": "http://weaseltv.live:80",
-            "mac": "A0:BB:3E:BC:25:43",
-            "model": "MAG250"
-        },
-        {
-            "name": "mrp",
-            "type": "stalker",
-            "model": "MAG250",
-            "id": "play.tatasky.xyz_867",
-            "mac": "00:1A:79:54:4F:7F",
-            "url": "http://play.tatasky.xyz/stalker_portal",
-            "isDefault": false
-        },
-        {
-            "SG": "",
-            "Share": "OFF",
-            "name": "B4U Live Portal",
-            "D1": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
-            "id": "stalker_play_b4u_live",
-            "type": "stalker",
-            "API": "263",
-            "url": "http://play.b4u.live/stalker_portal",
-            "mac": "00:1A:79:97:97:1E",
-            "hw_version_2": "69284ab85e1741116887f0b64e179d47",
-            "isDefault": false,
-            "hw_version": "1.7-BD-00",
-            "sn": "00EBCEF9291CC",
-            "D2": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
-            "Proxy": "AUTO",
-            "model": "MAG250"
-        },
-        {
-            "url": "https://solapuristreams.iptv18.space",
-            "type": "xtream",
-            "name": "Solapuri Streams",
-            "username": "app",
-            "password": "developer",
-            "isDefault": false,
-            "id": "xtream_solapuristreams"
-        }
-    ],
-    "sports": [],
-    "maintenanceVideoTitle": "",
-    "maintenanceText": "Thankyou for your support",
-    "m3uPlaylists": [],
-    "maintenanceVideoType": "webrtc",
+    "siteLockEpoch": 1792928287282,
     "incidents": [
         {
             "ip": "198.51.100.88",
@@ -184,27 +62,145 @@
             "reason": "Brute Force: 5 Failed Attempts on gate1_passcode (Locked out for 15 min)"
         },
         {
-            "ip": "127.0.0.1",
             "username": "gate1_passcode",
+            "ip": "127.0.0.1",
             "timestamp": 1792319897748,
             "reason": "Brute Force: 5 Failed Attempts on gate1_passcode (Locked out for 15 min)"
         },
         {
-            "timestamp": 1786780217069,
             "username": "hari",
-            "ip": "111.92.124.164",
-            "reason": "Brute Force: 5 Failed Login Attempts"
+            "timestamp": 1786780217069,
+            "reason": "Brute Force: 5 Failed Login Attempts",
+            "ip": "111.92.124.164"
         }
     ],
+    "siteLockPassword": "202012",
+    "siteLockMessage": "This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.",
+    "siteLockTitle": "RESTRICTED ACCESS PORTAL",
+    "siteLockHint": "",
+    "maintenanceVideoUrl": "https://www.youtube.com/watch?v=5KihByp4IDs&list=RD5KihByp4IDs&start_radio=1",
+    "sportsM3uFiles": [],
     "maintenanceMusicPlaylist": [],
-    "allowedDeveloperIps": [],
-    "maintenanceSchedule": {
-        "scheduledTime": "",
-        "noticeText": "",
-        "autoActivate": false,
-        "durationMinutes": 60,
-        "enabled": false
+    "liveEvents": [],
+    "maintenanceMode": false,
+    "portals": [
+        {
+            "id": "xtream_hdiptv_club",
+            "password": "3030bf1583",
+            "username": "0053e626fddf",
+            "url": "http://hdiptv.club:80",
+            "isDefault": false,
+            "name": "HDIPTV Club Portal",
+            "type": "xtream"
+        },
+        {
+            "url": "http://line.krishkaz.com",
+            "password": "16A525",
+            "username": "AdemSarikaya",
+            "isDefault": false,
+            "id": "xtream_line_krishkaz_com",
+            "name": "Krishkaz Xtream Portal",
+            "type": "xtream"
+        },
+        {
+            "type": "xtream",
+            "id": "xtream_strong8k_art",
+            "username": "7b81bb3ace8c",
+            "password": "84111dead2",
+            "name": "Strong8k Xtream Portal",
+            "isDefault": false,
+            "url": "http://strong8k.art:80"
+        },
+        {
+            "id": "xtream_xupuybzt_lazdns_com",
+            "url": "http://xupuybzt.lazdns.com",
+            "username": "fouaadkhadi",
+            "password": "E7JWd8N9",
+            "isDefault": false,
+            "name": "Lazdns Xtream Portal",
+            "type": "xtream"
+        },
+        {
+            "API": "263",
+            "mac": "00:1A:79:00:00:01",
+            "hw_version": "1.7-BD-30",
+            "D1": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
+            "isDefault": false,
+            "D2": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
+            "id": "stalker_123_geoent_cc",
+            "model": "MAG250",
+            "type": "stalker",
+            "name": "Geoent Stalker Portal",
+            "hw_version_2": "ff82ef9cd910ba406f2fd062045b7f52",
+            "url": "http://123.geoent.cc/stalker_portal"
+        },
+        {
+            "name": "WeaselTV Portal",
+            "isDefault": true,
+            "mac": "A0:BB:3E:BC:25:43",
+            "type": "stalker",
+            "id": "stalker_weaseltv_live",
+            "url": "http://weaseltv.live:80",
+            "model": "MAG250"
+        },
+        {
+            "type": "stalker",
+            "model": "MAG250",
+            "name": "mrp",
+            "url": "http://play.tatasky.xyz/stalker_portal",
+            "isDefault": false,
+            "mac": "00:1A:79:54:4F:7F",
+            "id": "play.tatasky.xyz_867"
+        },
+        {
+            "D1": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
+            "Share": "OFF",
+            "API": "263",
+            "hw_version": "1.7-BD-00",
+            "model": "MAG250",
+            "isDefault": false,
+            "url": "http://play.b4u.live/stalker_portal",
+            "D2": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
+            "id": "stalker_play_b4u_live",
+            "SG": "",
+            "type": "stalker",
+            "sn": "00EBCEF9291CC",
+            "mac": "00:1A:79:97:97:1E",
+            "name": "B4U Live Portal",
+            "hw_version_2": "69284ab85e1741116887f0b64e179d47",
+            "Proxy": "AUTO"
+        },
+        {
+            "password": "developer",
+            "username": "app",
+            "type": "xtream",
+            "name": "Solapuri Streams",
+            "url": "https://solapuristreams.iptv18.space",
+            "id": "xtream_solapuristreams",
+            "isDefault": false
+        }
+    ],
+    "sportsHubConfig": {
+        "bgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
+        "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast.",
+        "title": "ufea",
+        "badge": "football",
+        "gridBgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
+        "playerPng": "",
+        "displayMode": "grid"
     },
+    "m3uPlaylists": [],
+    "playConsumetMaintenance": false,
+    "systemStatus": "active",
+    "developerMode": false,
+    "features": {
+        "firewallEnabled": true,
+        "m3uEnabled": true,
+        "publicPlaylistEnabled": true,
+        "stalkerEnabled": true
+    },
+    "maintenanceVideoUploadedFile": "WhatsApp Video 2023-12-14 at 6.14.07 PM.mp4",
+    "blacklist": [],
     "maintenanceMusicMode": "query",
     "tmdb": {
         "api_keys": [
@@ -214,6 +210,20 @@
             "a07e22bc18f5cb106bfe4cc1f83ad8ed"
         ]
     },
-    "blacklist": [],
-    "siteLockEpoch": 1792267014421
+    "siteLockMode": false,
+    "playMaintenance": false,
+    "maintenanceVideoEnabled": false,
+    "maintenanceVideoAutoplay": true,
+    "maintenanceSchedule": {
+        "durationMinutes": 60,
+        "noticeText": "",
+        "enabled": false,
+        "scheduledTime": "",
+        "autoActivate": false
+    },
+    "maintenanceText": "Thankyou for your support",
+    "turnstileSiteKey": "0x4AAAAAAFaGaW8aie8qWpaS",
+    "maintenanceAdminBypass": false,
+    "maintenanceVideoSubtitle": "",
+    "allowedDeveloperIps": []
 }

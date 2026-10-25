@@ -201,7 +201,6 @@
             backdrop-filter: blur(8px);
         }
     </style>
-    <link rel="stylesheet" href="assets/local-ai.css?v=2.0">
 </head>
 <body>
 
@@ -785,6 +784,5 @@
     document.addEventListener('DOMContentLoaded', initPlayer);
 
 </script>
-    <script src="assets/local-ai.js?v=2.0"></script>
 </body>
 </html>

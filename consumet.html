@@ -77,6 +77,15 @@
     }, true);
 })();
 </script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#030712">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stalker Pro">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/pwa-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/pwa-512x512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/pwa-192x192.png">
 <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
 <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,6 +97,73 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<!-- 10-Foot Spatial TV Navigation & PWA Service Worker -->
+<script src="/assets/tv-navigation.js" defer></script>
+<script>
+// Stalker Pro 2.0 PWA & Standalone Controller
+window.deferredPwaPrompt = null;
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').then(function(reg) {
+            console.log('[PWA] Service Worker active:', reg.scope);
+        }).catch(function(err) {
+            console.debug('[PWA] Notice:', err);
+        });
+    });
+}
+
+// Capture PWA Install Prompt
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    window.deferredPwaPrompt = e;
+    const btn = document.getElementById('pwaInstallHeaderBtn');
+    if (btn) btn.classList.remove('hidden');
+});
+
+window.addEventListener('appinstalled', function() {
+    window.deferredPwaPrompt = null;
+    const btn = document.getElementById('pwaInstallHeaderBtn');
+    if (btn) btn.classList.add('hidden');
+    if (typeof showToast === 'function') {
+        showToast('🎉 Stalker Pro Installed as Native App!', 'info');
+    }
+});
+
+// Trigger One-Click Install Handler
+window.triggerPwaInstall = async function() {
+    if (window.deferredPwaPrompt) {
+        window.deferredPwaPrompt.prompt();
+        const choice = await window.deferredPwaPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+            const btn = document.getElementById('pwaInstallHeaderBtn');
+            if (btn) btn.classList.add('hidden');
+            if (typeof showToast === 'function') showToast('🚀 Installing Stalker Pro App...', 'info');
+        }
+        window.deferredPwaPrompt = null;
+    } else {
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIos) {
+            if (typeof showToast === 'function') {
+                showToast('📱 Tap the Share icon (⎋) in Safari and tap "Add to Home Screen" (+)', 'info');
+            } else {
+                alert('To install Stalker Pro on iOS:\n1. Tap the Share button in Safari.\n2. Select "Add to Home Screen".');
+            }
+        } else {
+            if (typeof showToast === 'function') {
+                showToast('📲 To install: Open browser menu (⋮) and tap "Install App" or "Add to Home Screen"', 'info');
+            } else {
+                alert('Install Stalker Pro from your browser menu (⋮) -> "Install App" or "Add to Home screen".');
+            }
+        }
+    }
+};
+
+// Check if running in standalone PWA mode
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    document.documentElement.classList.add('pwa-standalone');
+}
+</script>
 <!-- Native 120Hz GPU Scroll Enabled -->
 <script src="/search_launcher.js"></script>
 <link rel="stylesheet" href="/local-ai.css">
@@ -111,6 +187,12 @@ html { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 .scroller-container > div[id$="Shelf"],
 .scroller-container > div[id*="Shelf"],
 div[id$="Shelf"],
+div[id*="Shelf"] {
+    align-items: flex-start !important;
+}
+.scroller-container > div[id$="Shelf"],
+.scroller-container > div[id*="Shelf"],
+div[id$="Shelf"],
 div[id$="Grid"],
 .overflow-x-auto,
 .overflow-y-auto {
@@ -123,6 +205,14 @@ div[id$="Grid"],
 .shelf-card,
 .anime-ott-card,
 div[id$="Shelf"] > div,
+div[id*="Shelf"] > div {
+    align-self: flex-start !important;
+    height: auto !important;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
 #jtvChannelGrid > div,
 #sportsCatalogGrid > div,
 #searchResults > div,
@@ -132,7 +222,7 @@ div[id$="Shelf"] > div,
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     content-visibility: auto;
-    contain-intrinsic-size: 180px 270px;
+    contain-intrinsic-size: auto 240px;
 }
 .scroller-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(255, 255, 255, 0.2); color: white; display: flex; align-items: center; justify-content: center; z-index: 30; opacity: 0; transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); cursor: pointer; backdrop-filter: blur(12px); box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
 .scroller-container:hover .scroller-btn { opacity: 0.85; }
@@ -419,10 +509,8 @@ section[id^="view-"]:not(.hidden) {
     .scroller-btn {
         display: none !important;
     }
-    header .atv-navbar-shell {
-        border-radius: 16px !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
+    header {
+        display: none !important;
     }
     section[id^="view-"] h2 {
         font-size: 1.125rem !important;
@@ -542,6 +630,22 @@ html, body {
     background-color: transparent !important;
 }
 
+#view-livenow {
+    touch-action: pan-y !important;
+    overflow-y: visible !important;
+}
+#view-livenow .scroller-container {
+    touch-action: pan-x pan-y !important;
+}
+#view-livenow .scroller-container > div {
+    touch-action: pan-x pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain !important;
+}
+#view-livenow .netflix-card {
+    touch-action: pan-y !important;
+}
+
 /* Unified Frosted Black-Pink Cards */
 .shelf-card, .channel-card, .netflix-card, .oval-cw-card, .top10-ott-card, .livetv-ott-card, .anime-ott-card {
     background: linear-gradient(165deg, rgba(28, 8, 20, 0.82) 0%, rgba(14, 3, 10, 0.92) 100%) !important;
@@ -600,8 +704,17 @@ html, body {
 
 <!-- Subtle Ambient Blackish Pink Vignette -->
 <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden" style="transform: translate3d(0,0,0); background: radial-gradient(ellipse 90% 55% at 50% -10%, rgba(244,63,94,0.14), transparent 75%), radial-gradient(circle 650px at 90% 15%, rgba(236,72,153,0.08), transparent 70%), radial-gradient(circle 500px at 10% 80%, rgba(244,63,94,0.06), transparent 70%);"></div>
-<!-- Premium OTT Platform Floating Navigation Bar -->
-<header class="sticky top-0 z-50 pt-2.5 sm:pt-3.5 px-3 sm:px-6 lg:px-10 transition-all duration-300">
+
+<!-- Mobile Floating Quick Back Button (Shown on mobile UI when top header is hidden) -->
+<div class="md:hidden fixed top-3 left-3 z-50 flex items-center gap-2">
+    <button type="button" onclick="handleMobileGoBack()" class="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/85 hover:bg-slate-900 text-rose-300 hover:text-white border border-rose-500/30 backdrop-blur-xl shadow-2xl active:scale-90 transition-all cursor-pointer font-bold text-xs" title="Back to Hero Portal">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Back</span>
+    </button>
+</div>
+
+<!-- Premium OTT Platform Floating Navigation Bar (Hidden on Mobile) -->
+<header class="hidden md:block sticky top-0 z-50 pt-2.5 sm:pt-3.5 px-3 sm:px-6 lg:px-10 transition-all duration-300">
     <div class="atv-navbar-shell w-full max-w-[1880px] mx-auto px-3.5 sm:px-6 h-14 sm:h-15 rounded-2xl flex items-center justify-between gap-2.5 sm:gap-6">
         <!-- Clean Brand Wordmark -->
         <a href="/hero.html" class="flex items-center gap-2 group transition-opacity hover:opacity-90 shrink-0">
@@ -630,53 +743,76 @@ html, body {
 
         <!-- Right Utility Quick Actions (Optimized for Mobile & Desktop) -->
         <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- AI Vault Button in Top Header -->
+            <button onclick="window.restoreAetherisAI ? window.restoreAetherisAI(true) : null" id="btn-header-ai-vault" class="ai-vault-btn flex items-center justify-center gap-1.5 bg-cyan-500/10 hover:bg-cyan-500 text-cyan-300 hover:text-white border border-cyan-500/25 rounded-xl h-9 px-2.5 sm:px-3 text-xs font-semibold transition-all active:scale-95 shrink-0 shadow-sm" title="AI Vault (Restore Assistant)">
+                <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                <span class="hidden sm:inline">AI Vault</span>
+                <span class="ai-vault-dot w-2 h-2 rounded-full bg-cyan-400"></span>
+            </button>
+
             <button onclick="openSearchPalette()" class="flex items-center justify-center gap-2 bg-slate-800/70 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl h-9 px-3 sm:px-3.5 text-xs font-medium transition-all active:scale-95 shrink-0 shadow-sm" title="Search Catalog (Ctrl+K)">
                 <i data-lucide="search" class="w-3.5 h-3.5"></i>
                 <span class="hidden sm:inline">Search</span>
             </button>
-            <button onclick="window.togglePartyModal ? window.togglePartyModal(true) : null" id="btn-header-party" class="flex items-center justify-center gap-1.5 bg-slate-800/70 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl h-9 px-3 text-xs font-medium transition-all active:scale-95 shrink-0" title="Watch Party">
+            <button onclick="window.togglePartyModal ? window.togglePartyModal(true) : null" id="btn-header-party" class="hidden sm:flex items-center justify-center gap-1.5 bg-slate-800/70 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl h-9 px-3 text-xs font-medium transition-all active:scale-95 shrink-0" title="Watch Party">
                 <i data-lucide="users" class="w-3.5 h-3.5"></i>
                 <span class="hidden md:inline">Watch Party</span>
             </button>
-            <button onclick="window.toggleMobileSectionsDrawer ? window.toggleMobileSectionsDrawer(true) : null" id="btn-header-mob-menu" class="flex items-center justify-center gap-1.5 bg-slate-800/70 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl h-9 px-3 text-xs font-medium transition-all active:scale-95 shrink-0" title="All Sections">
+            <button id="pwaInstallHeaderBtn" onclick="window.triggerPwaInstall ? window.triggerPwaInstall() : null" class="hidden flex items-center justify-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-white border border-emerald-500/30 rounded-xl h-9 px-2.5 sm:px-3 text-xs font-bold transition-all active:scale-95 shrink-0 shadow-sm" title="Install Stalker Pro App">
+                <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span class="hidden xl:inline">Install App</span>
+            </button>
+            <button onclick="window.toggleMobileSectionsDrawer ? window.toggleMobileSectionsDrawer(true) : null" id="btn-header-mob-menu" class="hidden lg:flex items-center justify-center gap-1.5 bg-slate-800/70 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl h-9 px-3 text-xs font-medium transition-all active:scale-95 shrink-0" title="All Sections">
                 <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
                 <span class="hidden xl:inline">Browse All</span>
             </button>
-            <a href="/hero.html" class="hidden sm:flex items-center justify-center bg-slate-800/70 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl h-9 px-3 text-xs font-medium transition-all active:scale-95 shrink-0" title="Back to Hub">
-                <span>Hub</span>
+
+            <!-- Dedicated Mobile & Desktop Hero Back Button -->
+            <a href="/hero.html" id="btn-header-hero-back" class="flex items-center justify-center gap-1.5 bg-rose-600/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl h-9 px-2.5 sm:px-3 text-xs font-bold transition-all active:scale-95 shrink-0 shadow-sm" title="Back to Hero Portal">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                <span>Hero</span>
             </a>
         </div>
     </div>
 </header>
 
-<!-- Redesigned Touch-Optimized OTT Mobile Dock (Home, Anime, Live TV, Live Series, Live Now & All) -->
-<nav id="mobileBottomDock" class="md:hidden fixed bottom-2.5 inset-x-2.5 z-40 atv-mob-dock-shell rounded-2xl p-1.5 flex items-center justify-between gap-1 shadow-2xl">
-    <button onclick="switchTab('home')" class="flex-1 min-h-[44px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-white text-slate-950 shadow-md transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-home">
+<!-- Redesigned Touch-Optimized OTT Mobile Dock (Back, Home, Anime, Live TV, Live Now & All with AI tag) -->
+<nav id="mobileBottomDock" class="md:hidden fixed bottom-[max(0.65rem,calc(env(safe-area-inset-bottom,0px)+0.35rem))] inset-x-2 z-40 atv-mob-dock-shell rounded-2xl p-1 flex items-center justify-between gap-1 shadow-2xl">
+    <button onclick="handleMobileGoBack()" class="flex-1 min-h-[44px] py-1 px-0.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-rose-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-back" title="Go Back">
+        <i data-lucide="arrow-left" class="w-4 h-4 text-rose-400"></i>
+        <span class="text-[10px] font-bold tracking-tight text-rose-300">Back</span>
+    </button>
+    <button onclick="switchTab('home')" class="flex-1 min-h-[44px] py-1 px-0.5 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-white text-slate-950 shadow-md transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-home">
         <i data-lucide="home" class="w-4 h-4"></i>
         <span class="text-[10px] font-bold tracking-tight">Home</span>
     </button>
-    <button onclick="switchTab('anime')" class="flex-1 min-h-[44px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-anime">
+    <button onclick="switchTab('anime')" class="flex-1 min-h-[44px] py-1 px-0.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-anime">
         <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
         <span class="text-[10px] font-semibold tracking-tight">Anime</span>
     </button>
-    <button onclick="switchTab('livetv')" class="flex-1 min-h-[44px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-livetv">
+    <button onclick="switchTab('livetv')" class="flex-1 min-h-[44px] py-1 px-0.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-livetv">
         <i data-lucide="tv" class="w-4 h-4 text-sky-400"></i>
         <span class="text-[10px] font-semibold tracking-tight">Live TV</span>
     </button>
-    <button onclick="switchTab('tv')" class="flex-1 min-h-[44px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-tv">
-        <i data-lucide="clapperboard" class="w-4 h-4 text-purple-400"></i>
-        <span class="text-[10px] font-semibold tracking-tight">Live Series</span>
-    </button>
-    <button onclick="switchTab('livenow')" class="flex-1 min-h-[44px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-livenow">
+    <button onclick="switchTab('livenow')" class="flex-1 min-h-[44px] py-1 px-0.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer active:scale-95" id="mob-tab-livenow">
         <div class="relative">
             <i data-lucide="flame" class="w-4 h-4 text-rose-500"></i>
             <span class="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
         </div>
         <span class="text-[10px] font-semibold tracking-tight">Live Now</span>
     </button>
-    <button onclick="window.toggleMobileSectionsDrawer(true)" class="px-2.5 min-h-[44px] py-1 rounded-xl bg-sky-500/15 border border-sky-400/30 text-sky-200 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95" id="mob-tab-more">
-        <i data-lucide="grid" class="w-4 h-4 text-sky-300"></i>
-        <span class="text-[10px] font-bold tracking-tight">All</span>
+    <button onclick="window.toggleMobileSectionsDrawer(true)" class="relative flex-1 min-h-[44px] py-1 px-0.5 rounded-xl bg-sky-500/15 border border-sky-400/30 text-sky-200 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95" id="mob-tab-more" title="All Sections & AI Assistant">
+        <div class="relative flex items-center justify-center">
+            <i data-lucide="grid" class="w-4 h-4 text-sky-300"></i>
+            <span class="absolute -top-1 -right-2.5 text-[7px] font-black uppercase tracking-tighter px-0.5 py-0.2 rounded bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 shadow-sm leading-none border border-cyan-300/40">AI</span>
+        </div>
+        <div class="flex items-center gap-0.5">
+            <span class="text-[10px] font-bold tracking-tight">All</span>
+            <span class="text-[7.5px] font-black uppercase px-1 rounded bg-cyan-400/25 text-cyan-300 border border-cyan-400/40 leading-none">AI</span>
+        </div>
     </button>
 </nav>
 
@@ -687,14 +823,35 @@ html, body {
         <div class="w-12 h-1.5 rounded-full bg-white/20 mx-auto -mt-1 cursor-pointer" onclick="window.toggleMobileSectionsDrawer(false)"></div>
         <div class="flex items-center justify-between">
             <div>
-                <h3 class="text-base font-bold tracking-tight text-white">Browse All Sections</h3>
-                <p class="text-xs text-slate-400">Direct navigation across cinema, live sports & television</p>
+                <h3 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
+                    <span>Browse All Sections</span>
+                    <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-cyan-400 text-slate-950">AI</span>
+                </h3>
+                <p class="text-xs text-slate-400">Direct navigation across cinema, live sports, television & AI assistant</p>
             </div>
             <button onclick="window.toggleMobileSectionsDrawer(false)" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 flex items-center justify-center transition-all">
                 <i data-lucide="x" class="w-4 h-4"></i>
             </button>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <!-- Prominent AI Vault Section Card with AI Tag -->
+            <button onclick="window.restoreAetherisAI ? window.restoreAetherisAI(true) : null; window.toggleMobileSectionsDrawer(false);" class="col-span-2 sm:col-span-3 p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/60 via-slate-900/90 to-sky-950/60 hover:from-cyan-900/70 hover:to-sky-900/70 border border-cyan-400/40 text-left transition-all relative overflow-hidden group shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-cyan-400/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shrink-0">
+                            <i data-lucide="bot" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>Aetheris AI Vault</span>
+                                <span class="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-cyan-400 text-slate-950">AI</span>
+                            </p>
+                            <p class="text-[10px] text-cyan-300/80 mt-0.5">Instant AI Copilot, Smart Recommendations & Stream Doctor</p>
+                        </div>
+                    </div>
+                    <i data-lucide="sparkles" class="w-4 h-4 text-cyan-400 animate-pulse"></i>
+                </div>
+            </button>
             <button onclick="switchTab('home'); window.toggleMobileSectionsDrawer(false);" class="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-left transition-all"><p class="text-xs font-semibold text-white">Home</p><p class="text-[10px] text-slate-400 mt-0.5">Featured & Top 10</p></button>
             <button onclick="switchTab('movies'); window.toggleMobileSectionsDrawer(false);" class="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-left transition-all"><p class="text-xs font-semibold text-white">Movies</p><p class="text-[10px] text-slate-400 mt-0.5">4K HDR Films</p></button>
             <button onclick="switchTab('tv'); window.toggleMobileSectionsDrawer(false);" class="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-left transition-all"><p class="text-xs font-semibold text-white">TV Shows</p><p class="text-[10px] text-slate-400 mt-0.5">Series & Seasons</p></button>
@@ -704,6 +861,13 @@ html, body {
             <button onclick="switchTab('livetv'); window.toggleMobileSectionsDrawer(false);" class="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-left transition-all"><p class="text-xs font-semibold text-white">Live TV</p><p class="text-[10px] text-slate-400 mt-0.5">JioTV & Live.m3u</p></button>
             <button onclick="switchTab('epg'); window.toggleMobileSectionsDrawer(false);" class="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-left transition-all"><p class="text-xs font-semibold text-white">EPG Guide</p><p class="text-[10px] text-slate-400 mt-0.5">Program Schedule</p></button>
             <button onclick="switchTab('watchlist'); window.toggleMobileSectionsDrawer(false);" class="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-left transition-all"><p class="text-xs font-semibold text-white">Watchlist</p><p class="text-[10px] text-slate-400 mt-0.5">Saved Library</p></button>
+            <button onclick="window.triggerPwaInstall(); window.toggleMobileSectionsDrawer(false);" class="p-3.5 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-left transition-all col-span-2 sm:col-span-1">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+                    <p class="text-xs font-bold text-emerald-300">Install App</p>
+                </div>
+                <p class="text-[10px] text-emerald-400/80 mt-0.5">Add to Home Screen (Standalone PWA)</p>
+            </button>
         </div>
     </div>
 </div>
@@ -723,10 +887,10 @@ html, body {
 <!-- Watch History Shelf (Modern Oval-Rectangular-Square Hybrid Capsule Row) -->
 <div id="watchHistoryContainer" class="space-y-3.5 hidden mb-10">
     <div class="flex items-center justify-between px-1">
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2 sm:gap-2.5">
             <span class="w-2 h-2 rounded-full bg-sky-400"></span>
-            <h2 class="text-lg sm:text-xl font-bold tracking-tight text-white">Continue Watching</h2>
-            <span class="px-2.5 py-0.5 rounded-full bg-white/[0.07] border border-white/10 text-[10px] font-semibold text-neutral-300">Resume Queue</span>
+            <h2 class="text-base sm:text-xl font-bold tracking-tight text-white">Continue Watching</h2>
+            <span class="hidden xs:inline-block px-2.5 py-0.5 rounded-full bg-white/[0.07] border border-white/10 text-[10px] font-semibold text-neutral-300">Resume Queue</span>
         </div>
         <button onclick="clearWatchHistory()" class="px-3 py-1 rounded-full bg-white/[0.05] hover:bg-red-500/20 border border-white/10 text-[11px] font-medium text-neutral-400 hover:text-red-300 transition-all">Clear Queue</button>
     </div>
@@ -1228,10 +1392,10 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
 
 <!-- 2. MOVIES VIEW -->
 <section id="view-movies" class="hidden space-y-8 animate-fade-in">
-    <div class="flex items-center justify-between">
-        <h1 class="text-3xl font-black text-white">Movies</h1>
-        <div class="flex items-center gap-3">
-            <select id="movies-genre" onchange="applyFilters('movies')" class="bg-zinc-900 border border-white/10 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 class="text-2xl sm:text-3xl font-black text-white">Movies</h1>
+        <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <select id="movies-genre" onchange="applyFilters('movies')" class="flex-1 sm:flex-initial bg-zinc-900 border border-white/10 text-white rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-500">
                 <option value="">All Genres</option>
                 <option value="28">Action</option>
                 <option value="35">Comedy</option>
@@ -1239,7 +1403,7 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
                 <option value="878">Sci-Fi</option>
                 <option value="53">Thriller</option>
             </select>
-            <select id="movies-year" onchange="applyFilters('movies')" class="bg-zinc-900 border border-white/10 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+            <select id="movies-year" onchange="applyFilters('movies')" class="flex-1 sm:flex-initial bg-zinc-900 border border-white/10 text-white rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-500">
                 <option value="">All Years</option>
                 <option value="2024">2024</option>
                 <option value="2023">2023</option>
@@ -1407,10 +1571,10 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
 
 <!-- 3. TV SHOWS VIEW -->
 <section id="view-tv" class="hidden space-y-8 animate-fade-in">
-    <div class="flex items-center justify-between">
-        <h1 class="text-3xl font-black text-white">TV Shows</h1>
-        <div class="flex items-center gap-3">
-            <select id="tv-genre" onchange="applyFilters('tv')" class="bg-zinc-900 border border-white/10 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-purple-500">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 class="text-2xl sm:text-3xl font-black text-white">TV Shows</h1>
+        <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <select id="tv-genre" onchange="applyFilters('tv')" class="flex-1 sm:flex-initial bg-zinc-900 border border-white/10 text-white rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-purple-500">
                 <option value="">All Genres</option>
                 <option value="10759">Action & Adventure</option>
                 <option value="18">Drama</option>
@@ -1418,7 +1582,7 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
                 <option value="80">Crime</option>
                 <option value="10765">Sci-Fi & Fantasy</option>
             </select>
-            <select id="tv-year" onchange="applyFilters('tv')" class="bg-zinc-900 border border-white/10 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-purple-500">
+            <select id="tv-year" onchange="applyFilters('tv')" class="flex-1 sm:flex-initial bg-zinc-900 border border-white/10 text-white rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-purple-500">
                 <option value="">All Years</option>
                 <option value="2024">2024</option>
                 <option value="2023">2023</option>
@@ -1603,17 +1767,17 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
         <p class="text-xs text-slate-400 hidden md:inline">Official live sports broadcasts, stadium networks & match feeds</p>
     </div>
     <!-- Dedicated Sports Search & Expand All -->
-    <div class="flex items-center gap-2.5">
-        <button type="button" onclick="toggleAllSportsSubsections()" id="sportsExpandAllBtn" class="px-3.5 py-2 bg-slate-800/80 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 active:scale-95 cursor-pointer" title="Expand or Collapse All Sports Subsections">
+    <div class="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+        <button type="button" onclick="toggleAllSportsSubsections()" id="sportsExpandAllBtn" class="px-3 sm:px-3.5 py-2 bg-slate-800/80 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 active:scale-95 cursor-pointer" title="Expand or Collapse All Sports Subsections">
             <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
-            <span id="sportsExpandAllText">Expand All</span>
+            <span id="sportsExpandAllText" class="hidden xs:inline">Expand All</span>
         </button>
-        <div class="relative flex items-center">
+        <div class="relative flex-1 sm:flex-initial sm:w-80 flex items-center">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i data-lucide="search" class="w-4 h-4 text-zinc-500"></i>
             </div>
-            <input type="text" id="sportsSearch" oninput="debounceSportsSearch()" placeholder="Search sports channel, say 'Asian Games'..." class="bg-white/10 border border-white/15 focus:border-white/40 backdrop-blur-xl rounded-full py-2.5 pl-10 pr-10 text-xs font-semibold outline-none text-white placeholder:text-zinc-400 w-52 sm:w-80 transition-all shadow-xl">
-            <button type="button" id="sportsVoiceSearchBtn" onclick="toggleSportsVoiceSearch()" title="Voice search: Say 'Asian Games'..." class="absolute right-2.5 p-1.5 rounded-full hover:bg-white/15 text-zinc-400 hover:text-amber-400 transition-colors">
+            <input type="text" id="sportsSearch" oninput="debounceSportsSearch()" placeholder="Search sports channel, say 'Asian Games'..." class="bg-white/10 border border-white/15 focus:border-white/40 backdrop-blur-xl rounded-full py-2 pl-9 pr-9 text-xs font-semibold outline-none text-white placeholder:text-zinc-400 w-full transition-all shadow-xl">
+            <button type="button" id="sportsVoiceSearchBtn" onclick="toggleSportsVoiceSearch()" title="Voice search: Say 'Asian Games'..." class="absolute right-2 p-1.5 rounded-full hover:bg-white/15 text-zinc-400 hover:text-amber-400 transition-colors">
                 <i data-lucide="mic" class="w-3.5 h-3.5"></i>
             </button>
         </div>
@@ -1999,12 +2163,12 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
             </div>
         </div>
         <!-- Search & Actions -->
-        <div class="flex items-center gap-3">
-            <div class="relative flex items-center">
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+            <div class="relative flex-1 sm:flex-initial sm:w-72 flex items-center">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i data-lucide="search" class="w-4 h-4 text-zinc-400"></i>
                 </div>
-                <input type="text" id="jtvSearchInput" oninput="debounceLiveTvChannels()" placeholder="Search channels..." class="bg-white/10 border border-white/15 focus:border-emerald-500/60 backdrop-blur-xl rounded-full py-2 pl-9 pr-4 text-xs font-semibold outline-none text-white placeholder:text-zinc-400 w-48 sm:w-72 transition-all shadow-xl">
+                <input type="text" id="jtvSearchInput" oninput="debounceLiveTvChannels()" placeholder="Search channels..." class="bg-white/10 border border-white/15 focus:border-emerald-500/60 backdrop-blur-xl rounded-full py-2 pl-9 pr-4 text-xs font-semibold outline-none text-white placeholder:text-zinc-400 w-full transition-all shadow-xl">
             </div>
         </div>
     </div>
@@ -2020,13 +2184,6 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
                 <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
                 Live Events (GitHub)
             </button>
-        </div>
-        <div class="flex items-center gap-2">
-            <div id="livem3uM3uBadge" class="hidden items-center gap-2">
-                <a href="/live.m3u" target="_blank" class="text-xs font-semibold text-neutral-300 hover:text-white px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 flex items-center gap-1.5 transition-all">
-                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Live.m3u
-                </a>
-            </div>
         </div>
     </div>
 
@@ -2055,7 +2212,7 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
 </section>
 
 <!-- 4.5 LIVE NOW & SPORTS SCHEDULE VIEW - GLACIER SAPPHIRE OTT THEME (NO BLACK BACKGROUND) -->
-<section id="view-livenow" class="hidden space-y-6 animate-fade-in relative pb-20">
+<section id="view-livenow" class="hidden space-y-6 animate-fade-in relative pb-36" style="touch-action: pan-y; -webkit-overflow-scrolling: touch; min-height: 100vh;">
     <!-- Clean Frosted Slate Top Header & Filter Console -->
     <div class="p-5 sm:p-6 rounded-3xl bg-slate-900/70 border border-slate-400/15 shadow-2xl backdrop-blur-2xl space-y-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -2082,9 +2239,9 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
                     </button>
                 </div>
-                <button onclick="toggleAllLiveNowSubsections()" id="liveNowExpandAllBtn" class="px-4 py-2 bg-slate-800/80 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 active:scale-95" title="Expand or Collapse All Subsections">
+                <button onclick="toggleAllLiveNowSubsections()" id="liveNowExpandAllBtn" class="px-3 sm:px-4 py-2 bg-slate-800/80 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 active:scale-95" title="Expand or Collapse All Subsections">
                     <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
-                    <span id="liveNowExpandAllText">Expand All</span>
+                    <span id="liveNowExpandAllText" class="hidden xs:inline">Expand All</span>
                 </button>
                 <button onclick="loadLiveSportsSchedule(true)" class="p-2 bg-slate-800/80 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/10 rounded-xl transition-all active:scale-95 shrink-0" title="Refresh Schedule">
                     <i data-lucide="refresh-cw" class="w-4 h-4" id="liveNowRefreshIcon"></i>
@@ -2456,9 +2613,9 @@ No description is available for this broadcast program.
     <div class="w-full min-h-screen bg-gradient-to-b from-[#180414] via-[#090207] to-[#050104] relative flex flex-col overflow-x-hidden">
         <!-- Floating Top Navigation Bar inside Info Page -->
         <div class="fixed top-0 inset-x-0 z-50 px-4 sm:px-8 lg:px-12 py-3.5 flex items-center justify-between pointer-events-none bg-gradient-to-b from-[#060105]/95 via-[#060105]/50 to-transparent">
-            <button onclick="closeDetailsModal()" class="pointer-events-auto h-10 px-4 rounded-full bg-[#180416]/85 hover:bg-white text-pink-100 hover:text-black border border-pink-500/25 flex items-center gap-2 text-xs font-semibold transition-all shadow-2xl backdrop-blur-xl active:scale-95">
+            <button onclick="closeDetailsModal()" class="pointer-events-auto h-10 px-3.5 sm:px-4 rounded-full bg-[#180416]/85 hover:bg-white text-pink-100 hover:text-black border border-pink-500/25 flex items-center gap-2 text-xs font-semibold transition-all shadow-2xl backdrop-blur-xl active:scale-95">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                <span>Back to Browse</span>
+                <span>Back<span class="hidden sm:inline"> to Browse</span></span>
             </button>
             <div class="flex items-center gap-2 pointer-events-auto">
                 <button onclick="closeDetailsModal(); openSearchPalette();" class="h-10 px-3.5 rounded-full bg-black/75 hover:bg-white/15 text-neutral-200 hover:text-white border border-white/15 flex items-center gap-2 text-xs font-medium transition-all backdrop-blur-xl active:scale-95" title="Search Catalog">
@@ -2540,7 +2697,7 @@ No description is available for this broadcast program.
                     <div id="detailActionContainer" class="w-full pt-3 space-y-3">
                         <div id="detailActionButtons" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-2.5 w-full">
                             <!-- 1. Play Bing (Primary Apple TV+ White Button) -->
-                            <button id="btn-play-bingr" onclick="openBingrPlayer()" class="h-11 px-4 bg-white hover:bg-neutral-200 text-black text-xs font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95 w-full group">
+                            <button id="btn-play-bingr" onclick="openBingrPlayer()" class="col-span-2 sm:col-span-1 h-11 px-4 bg-white hover:bg-neutral-200 text-black text-xs font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95 w-full group">
                                 <i data-lucide="play" class="w-4 h-4 fill-black text-black shrink-0"></i>
                                 <span id="btn-play-bingr-text" class="truncate">Play Bing</span>
                                 <span class="px-1.5 py-0.5 rounded bg-black/15 text-[9px] font-bold text-black">4K</span>
@@ -2712,7 +2869,7 @@ No description is available for this broadcast program.
 <button onclick="closeFullscreenPlayer()" class="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-white/5 transition-all">
 <i data-lucide="arrow-left" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i> Back<span class="hidden sm:inline"> to Hub</span>
 </button>
-<button onclick="closeFullscreenPlayer(); openSearchModal();" class="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 hover:text-white transition-all">
+<button onclick="closeFullscreenPlayer(); openSearchModal();" class="hidden sm:flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 hover:text-white transition-all" title="Search">
 <i data-lucide="search" class="w-4 h-4"></i>
 </button>
 </div>
@@ -2752,15 +2909,6 @@ No description is available for this broadcast program.
 </div>
 <div class="flex-grow max-w-5xl mx-auto w-full p-2 sm:p-8 flex flex-col gap-4 sm:gap-6">
 <!-- Cinema Player Wrapper -->
-<div class="flex items-center gap-4 mb-2">
-    <button onclick="closeFullscreenPlayer()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white transition-all shadow-lg active:scale-95 shrink-0" title="Back to Details">
-        <i data-lucide="arrow-left" class="w-5 h-5"></i>
-    </button>
-    <div class="flex-1">
-        <h2 id="playerTitleLabel" class="text-sm sm:text-lg font-black text-white uppercase tracking-widest truncate">Stream</h2>
-        <div id="playerSubtitleLabel" class="mt-1"></div>
-    </div>
-</div>
 <div id="cinemaPlayerWrapper" class="relative aspect-video rounded-2xl sm:rounded-3xl bg-zinc-950 shadow-2xl border border-white/5 overflow-hidden group/player">
 <!-- Stream Iframe -->
 <iframe id="fullscreenVideoIframe" class="absolute inset-0 w-full h-full hidden" src="" allowfullscreen></iframe>
@@ -2976,17 +3124,18 @@ No description is available for this broadcast program.
 <div id="searchPalette" class="fixed inset-0 z-[80] bg-[#06080f]/95 backdrop-blur-3xl hidden flex flex-col animate-fade-in overflow-hidden">
     <!-- Top Fullscreen Search Header -->
     <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 pt-4 sm:pt-7 pb-4 border-b border-white/[0.08] shrink-0 space-y-4">
-        <div class="flex items-center gap-3 sm:gap-4">
-            <div class="relative flex-1 flex items-center bg-[#101625] border border-white/15 focus-within:border-sky-400/60 rounded-2xl px-4 sm:px-5 h-13 sm:h-15 shadow-2xl transition-all">
-                <i data-lucide="search" class="w-5 h-5 text-sky-400 shrink-0 mr-3"></i>
-                <input type="text" id="searchInput" placeholder="Search movies, series, anime, live sports or TV channels..." class="w-full bg-transparent text-sm sm:text-lg font-semibold outline-none text-white placeholder:text-neutral-500 pr-10" oninput="debounceSearch()" autocomplete="off">
-                <button type="button" id="searchClearBtn" onclick="clearSearchInput(event)" class="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all opacity-0 pointer-events-none cursor-pointer shrink-0" title="Clear search">
-                    <i data-lucide="x" class="w-4 h-4"></i>
+        <div class="flex items-center gap-2.5 sm:gap-4">
+            <div class="relative flex-1 flex items-center bg-[#101625] border border-white/15 focus-within:border-sky-400/60 rounded-2xl px-3.5 sm:px-5 h-12 sm:h-14 shadow-2xl transition-all">
+                <i data-lucide="search" class="w-4 h-4 sm:w-5 sm:h-5 text-sky-400 shrink-0 mr-2.5 sm:mr-3"></i>
+                <input type="text" id="searchInput" placeholder="Search movies, series, anime, live sports or TV..." class="w-full bg-transparent text-xs sm:text-base font-semibold outline-none text-white placeholder:text-neutral-500 pr-8 sm:pr-10" oninput="debounceSearch()" autocomplete="off">
+                <div id="searchSpinner" class="hidden w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin shrink-0 mr-1.5 sm:mr-2"></div>
+                <button type="button" id="searchClearBtn" onclick="clearSearchInput(event)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all opacity-0 pointer-events-none cursor-pointer shrink-0" title="Clear search">
+                    <i data-lucide="x" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                 </button>
             </div>
-            <button onclick="closeSearchPalette()" class="h-13 sm:h-15 px-4 sm:px-6 rounded-2xl bg-white/10 hover:bg-white text-white hover:text-black font-semibold text-xs sm:text-sm border border-white/15 flex items-center gap-2 transition-all active:scale-95 shrink-0 shadow-xl">
+            <button onclick="closeSearchPalette()" class="h-12 sm:h-14 px-3.5 sm:px-6 rounded-2xl bg-white/10 hover:bg-white text-white hover:text-black font-semibold text-xs sm:text-sm border border-white/15 flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 shrink-0 shadow-xl">
                 <i data-lucide="x" class="w-4 h-4"></i>
-                <span>Close</span>
+                <span class="text-xs sm:text-sm">Close</span>
                 <kbd class="hidden sm:inline-block text-[10px] bg-black/40 text-neutral-300 px-1.5 py-0.5 rounded font-mono border border-white/10">ESC</kbd>
             </button>
         </div>
@@ -3952,7 +4101,7 @@ function renderSpotlightSlider(index = 0) {
             <div class="spotlight-bg-image absolute inset-0 bg-cover bg-center transition-opacity duration-1000" style="background-image: url('${backdrop}'); animation: atvHeroReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent"></div>
             <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/35 to-transparent"></div>
-            <div class="absolute bottom-6 sm:bottom-10 right-5 sm:right-8 z-30 flex items-center gap-2">
+            <div class="spotlight-nav-container absolute top-4 sm:top-auto sm:bottom-10 right-4 sm:right-8 z-30 flex items-center gap-2">
                 <button type="button" onclick="renderSpotlightSlider((currentSlideIndex - 1 + spotlightSlides.length) % spotlightSlides.length)" class="spotlight-nav-arrow" title="Previous Slide" aria-label="Previous Slide">
                     <i data-lucide="chevron-left" class="w-4 h-4"></i>
                 </button>
@@ -3995,7 +4144,7 @@ function renderSpotlightSlider(index = 0) {
         <div class="spotlight-bg-image absolute inset-0 bg-cover bg-center transition-opacity duration-1000" style="background-image: url('${backdrop}'); animation: atvHeroReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent"></div>
         <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/35 to-transparent"></div>
-        <div class="absolute bottom-6 sm:bottom-10 right-5 sm:right-8 z-30 flex items-center gap-2">
+        <div class="spotlight-nav-container absolute top-4 sm:top-auto sm:bottom-10 right-4 sm:right-8 z-30 flex items-center gap-2">
             <button type="button" onclick="renderSpotlightSlider((currentSlideIndex - 1 + spotlightSlides.length) % spotlightSlides.length)" class="spotlight-nav-arrow" title="Previous Slide" aria-label="Previous Slide">
                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
             </button>
@@ -4074,7 +4223,7 @@ function renderAnimeSpotlightSlider(index = 0) {
         <div class="absolute inset-0 bg-gradient-to-r from-[#06080f]/95 via-[#06080f]/40 to-transparent"></div>
 
         <!-- Sliding Controls (Prev / Dots / Next) -->
-        <div class="absolute bottom-6 sm:bottom-10 right-5 sm:right-8 z-30 flex items-center gap-2">
+        <div class="spotlight-nav-container absolute top-4 sm:top-auto sm:bottom-10 right-4 sm:right-8 z-30 flex items-center gap-2">
             <button type="button" onclick="renderAnimeSpotlightSlider(currentAnimeSlideIndex - 1)" class="spotlight-nav-arrow" title="Previous Anime">
                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
             </button>
@@ -4440,6 +4589,15 @@ function resolveInitialRouting() {
     return { targetTab, targetMedia, searchQuery };
 }
 
+// Mobile Go Back Handler
+window.handleMobileGoBack = function() {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        window.location.href = '/hero.html';
+    }
+};
+
 // Mobile All Sections Drawer Controller
 window.toggleMobileSectionsDrawer = function(open) {
     const drawer = document.getElementById('mobSectionsDrawer');
@@ -4663,6 +4821,7 @@ function switchTab(tab, updateHistory = true) {
     if (typeof closeSearchPalette === 'function') closeSearchPalette();
     if (typeof closePersonDetailsModal === 'function') closePersonDetailsModal();
     if (typeof closeTrailerPopup === 'function') closeTrailerPopup();
+    openModalsCount = 0;
     document.body.style.overflow = '';
     if (window.lenis) window.lenis.start();
     activeTab = tab;
@@ -4775,7 +4934,9 @@ function switchTab(tab, updateHistory = true) {
         if (tab === 'player') targetView.classList.add('flex', 'flex-col');
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
-    triggerLucide();
+    if (tab !== 'livenow' && targetView) {
+        triggerLucide(targetView);
+    }
 }
 
 window.addEventListener('popstate', (e) => {
@@ -4832,28 +4993,26 @@ function renderShelfGrid(items, elementId, defaultType = 'movie') {
         };
 
         const card = document.createElement('div');
-        card.className = "w-32 sm:w-40 md:w-44 lg:w-52 shrink-0 overflow-hidden cursor-pointer relative flex flex-col group shelf-card";
+        card.className = "w-32 sm:w-40 md:w-44 lg:w-52 shrink-0 aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer relative group shelf-card select-none";
         card.onclick = () => openDetails(item.id, type, title);
         card.addEventListener('mouseenter', () => window.prefetchMediaDetails(item.id, type));
         card.addEventListener('touchstart', () => window.prefetchMediaDetails(item.id, type), { passive: true });
         card.innerHTML = `
-            <div class="relative aspect-[2/3] bg-neutral-950 overflow-hidden">
-                <img loading="lazy" decoding="async" src="${poster}" alt="${title}" class="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent opacity-85 group-hover:opacity-100 transition-opacity"></div>
-                <div class="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                    <div class="w-11 h-11 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl transform scale-90 md:group-hover:scale-100 transition-transform duration-300">
-                        <svg class="w-5 h-5 fill-black ml-0.5" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
-                    </div>
+            <img loading="lazy" decoding="async" src="${poster}" alt="${title}" class="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500 absolute inset-0 z-0">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent opacity-90 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
+            <div class="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-20 pointer-events-none">
+                <div class="w-11 h-11 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl transform scale-90 md:group-hover:scale-100 transition-transform duration-300">
+                    <svg class="w-5 h-5 fill-black ml-0.5" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
                 </div>
-                <div class="absolute top-2.5 right-2.5 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-neutral-200 border border-white/10 flex items-center gap-1">
-                    <span class="text-amber-400">★</span> ${rating}
-                </div>
-                <div class="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end">
-                    <h3 class="text-xs sm:text-[13px] font-semibold text-white truncate tracking-tight drop-shadow" title="${title}">${title}</h3>
-                    <div class="flex items-center justify-between text-[10px] font-medium text-neutral-400 mt-0.5">
-                        <span>${year}</span>
-                        <span class="text-neutral-300 uppercase text-[9px] tracking-wider">${type === 'tv' ? 'Series' : 'Film'}</span>
-                    </div>
+            </div>
+            <div class="absolute top-2.5 right-2.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-neutral-200 border border-white/10 flex items-center gap-1 z-20">
+                <span class="text-amber-400">★</span> ${rating}
+            </div>
+            <div class="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end z-20">
+                <h3 class="text-xs sm:text-[13px] font-semibold text-white truncate tracking-tight drop-shadow" title="${title}">${title}</h3>
+                <div class="flex items-center justify-between text-[10px] font-medium text-neutral-400 mt-0.5">
+                    <span>${year}</span>
+                    <span class="text-neutral-300 uppercase text-[9px] tracking-wider px-1.5 py-0.5 rounded bg-white/10">${type === 'tv' ? 'Series' : 'Film'}</span>
                 </div>
             </div>
         `;
@@ -5112,26 +5271,24 @@ function appendFilterGrid(items, gridId, defaultType) {
         const year = (item.release_date || item.first_air_date || '').split('-')[0] || '2024';
         const type = item.media_type || (item.name || item.first_air_date ? 'tv' : defaultType);
         const card = document.createElement('div');
-        card.className = "shelf-card rounded-2xl overflow-hidden cursor-pointer relative flex flex-col group";
+        card.className = "shelf-card rounded-2xl aspect-[2/3] overflow-hidden cursor-pointer relative group select-none";
         card.onclick = () => openDetails(item.id, type, title);
         card.innerHTML = `
-            <div class="relative aspect-[2/3] bg-slate-950 overflow-hidden">
-                <img loading="lazy" decoding="async" src="${poster}" alt="${title}" class="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500">
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/15 to-transparent opacity-90 group-hover:opacity-100 transition-opacity"></div>
-                <div class="absolute top-2.5 right-2.5 bg-slate-950/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-amber-300 border border-white/15">
-                    ★ ${rating}
+            <img loading="lazy" decoding="async" src="${poster}" alt="${title}" class="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500 absolute inset-0 z-0">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent opacity-90 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
+            <div class="absolute top-2.5 right-2.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-amber-300 border border-white/15 z-20">
+                ★ ${rating}
+            </div>
+            <div class="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-20 pointer-events-none">
+                <div class="w-11 h-11 rounded-full bg-white text-slate-950 flex items-center justify-center shadow-2xl transform scale-90 md:group-hover:scale-100 transition-transform duration-300">
+                    <i data-lucide="play" class="w-5 h-5 fill-slate-950 ml-0.5"></i>
                 </div>
-                <div class="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                    <div class="w-11 h-11 rounded-full bg-white text-slate-950 flex items-center justify-center shadow-2xl transform scale-90 md:group-hover:scale-100 transition-transform duration-300">
-                        <i data-lucide="play" class="w-5 h-5 fill-slate-950 ml-0.5"></i>
-                    </div>
-                </div>
-                <div class="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end">
-                    <h3 class="text-xs sm:text-[13px] font-bold text-white group-hover:text-sky-200 transition-colors truncate tracking-tight" title="${title}">${title}</h3>
-                    <div class="flex items-center justify-between text-[10px] font-medium text-slate-400 mt-0.5">
-                        <span>${year}</span>
-                        <span class="text-slate-300 uppercase text-[9px] tracking-wider">${type === 'tv' ? 'Series' : 'Film'}</span>
-                    </div>
+            </div>
+            <div class="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end z-20">
+                <h3 class="text-xs sm:text-[13px] font-bold text-white group-hover:text-sky-200 transition-colors truncate tracking-tight" title="${title}">${title}</h3>
+                <div class="flex items-center justify-between text-[10px] font-medium text-slate-400 mt-0.5">
+                    <span>${year}</span>
+                    <span class="text-slate-300 uppercase text-[9px] tracking-wider px-1.5 py-0.5 rounded bg-white/10">${type === 'tv' ? 'Series' : 'Film'}</span>
                 </div>
             </div>
         `;
@@ -5248,18 +5405,22 @@ function renderSearchTrendingChips() {
     const resultsContainer = document.getElementById('searchResults');
     if (!resultsContainer) return;
     const trending = [
+        { label: 'M80 Moosa', iconSvg: _searchSvg.film, q: 'M80 Moosa' },
+        { label: 'Aavesham', iconSvg: _searchSvg.film, q: 'Aavesham' },
+        { label: 'Manjummel Boys', iconSvg: _searchSvg.film, q: 'Manjummel Boys' },
+        { label: 'Deadpool & Wolverine', iconSvg: _searchSvg.film, q: 'Deadpool & Wolverine' },
+        { label: 'Kalki 2898 AD', iconSvg: _searchSvg.film, q: 'Kalki 2898 AD' },
+        { label: 'Pushpa 2', iconSvg: _searchSvg.film, q: 'Pushpa 2' },
         { label: 'Star Sports 1 HD', iconSvg: _searchSvg.tv, q: 'Star Sports 1' },
         { label: 'Sony Sports Ten 1', iconSvg: _searchSvg.tv, q: 'Sony Sports Ten 1' },
         { label: 'IPL 2026', iconSvg: _searchSvg.trophy, q: 'IPL' },
-        { label: 'Premier League', iconSvg: _searchSvg.activity, q: 'Premier League' },
-        { label: 'Deadpool & Wolverine', iconSvg: _searchSvg.film, q: 'Deadpool & Wolverine' },
-        { label: 'Inside Out 2', iconSvg: _searchSvg.film, q: 'Inside Out 2' },
+        { label: 'One Piece', iconSvg: _searchSvg.sparkles, q: 'One Piece' },
         { label: 'Demon Slayer', iconSvg: _searchSvg.sparkles, q: 'Demon Slayer' }
     ];
     resultsContainer.innerHTML = `
         <div class="space-y-4 py-2">
             <div class="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-zinc-400">
-                <span>Trending Searches & Quick Links</span>
+                <span>Trending Movies, Regional Hits & Live Channels</span>
             </div>
             <div class="flex flex-wrap gap-2">
                 ${trending.map(t => `
@@ -5274,11 +5435,19 @@ function renderSearchTrendingChips() {
 
 const _searchMemoryCache = new Map();
 
+function toggleSearchSpinner(show) {
+    const sp = document.getElementById('searchSpinner');
+    if (!sp) return;
+    if (show) sp.classList.remove('hidden');
+    else sp.classList.add('hidden');
+}
+
 function debounceSearch() {
     updateSearchClearBtn();
     clearTimeout(searchTimeout);
     const input = document.getElementById('searchInput');
     if (!input || !input.value.trim()) {
+        toggleSearchSpinner(false);
         if (searchAbortController) {
             searchAbortController.abort();
             searchAbortController = null;
@@ -5291,11 +5460,14 @@ function debounceSearch() {
     const source = sourceSelect ? sourceSelect.value : 'all';
     const cacheKey = `${source}:${query.toLowerCase()}`;
     if (_searchMemoryCache.has(cacheKey)) {
+        toggleSearchSpinner(false);
         executeSearch();
         return;
     }
-    // High-speed 50ms debounce for lightning instantaneous responsiveness
-    searchTimeout = setTimeout(() => { requestAnimationFrame(() => executeSearch()); }, 50);
+    // Show spinner immediately to confirm keystroke
+    toggleSearchSpinner(true);
+    // Ultra snappy 160ms debounce for responsive typing
+    searchTimeout = setTimeout(() => { requestAnimationFrame(() => executeSearch()); }, 160);
 }
 
 async function executeSearch() {
@@ -5306,6 +5478,7 @@ async function executeSearch() {
     const query = input.value.trim();
     const source = sourceSelect ? sourceSelect.value : 'all';
     if (!query) {
+        toggleSearchSpinner(false);
         renderSearchTrendingChips();
         return;
     }
@@ -5315,6 +5488,7 @@ async function executeSearch() {
 
     // 0ms INSTANT MEMORY CACHE HIT
     if (_searchMemoryCache.has(cacheKey)) {
+        toggleSearchSpinner(false);
         const cached = _searchMemoryCache.get(cacheKey);
         if (source === 'anilist') {
             renderAnimeSearchResults(cached.list || cached.anime || [], resultsContainer);
@@ -5342,51 +5516,65 @@ async function executeSearch() {
     searchAbortController = new AbortController();
     const currentSignal = searchAbortController.signal;
 
-    // Instant local preview for channels/events/movies/anime while backend fetches (Zero-lag 0ms UX)
-    const previewChannels = (source === 'all' || source === 'channels') ? (window.allSportsChannels || window.channelsData || []).filter(c => {
-        const n = (c.name || c.title || '').toLowerCase();
-        return n.includes(qLower);
-    }).slice(0, 6) : [];
+    // Fast O(1) allocation local preview without spreading arrays
+    const previewChannels = [];
+    if (source === 'all' || source === 'channels') {
+        const pool = window.allSportsChannels || window.channelsData || [];
+        for (let i = 0; i < pool.length; i++) {
+            const c = pool[i];
+            const n = (c.name || c.title || '').toLowerCase();
+            if (n.includes(qLower)) {
+                previewChannels.push(c);
+                if (previewChannels.length >= 6) break;
+            }
+        }
+    }
 
-    const previewEvents = (source === 'all' || source === 'events') ? (window.allEvents || window.liveNowEvents || []).filter(e => {
-        const t = (e.title || e.name || '').toLowerCase();
-        return t.includes(qLower);
-    }).slice(0, 4) : [];
+    const previewEvents = [];
+    if (source === 'all' || source === 'events') {
+        const pool = window.allEvents || window.liveNowEvents || [];
+        for (let i = 0; i < pool.length; i++) {
+            const e = pool[i];
+            const t = (e.title || e.name || '').toLowerCase();
+            if (t.includes(qLower)) {
+                previewEvents.push(e);
+                if (previewEvents.length >= 4) break;
+            }
+        }
+    }
 
     const previewMovies = [];
     if (source === 'all' || source === 'tmdb') {
-        const poolMovies = [
-            ...(Array.isArray(window.moviesList) ? window.moviesList : []),
-            ...(Array.isArray(window.tvList) ? window.tvList : []),
-            ...(Array.isArray(window.spotlightSlides) ? window.spotlightSlides : []),
-            ...(window._mediaQuickCache ? Object.values(window._mediaQuickCache) : []),
-            ...(window._searchCache ? Object.values(window._searchCache) : [])
-        ];
         const seenMovieIds = new Set();
-        for (const m of poolMovies) {
-            if (!m || !m.id || seenMovieIds.has(m.id)) continue;
-            const t = (m.title || m.name || '').toLowerCase();
-            if (t.includes(qLower)) {
-                seenMovieIds.add(m.id);
-                previewMovies.push(m);
-                if (previewMovies.length >= 6) break;
+        const sources = [window.moviesList, window.tvList, window.spotlightSlides];
+        outerLoop: for (const list of sources) {
+            if (!Array.isArray(list)) continue;
+            for (let i = 0; i < list.length; i++) {
+                const m = list[i];
+                if (!m || !m.id || seenMovieIds.has(m.id)) continue;
+                const t = (m.title || m.name || '').toLowerCase();
+                if (t.includes(qLower)) {
+                    seenMovieIds.add(m.id);
+                    previewMovies.push(m);
+                    if (previewMovies.length >= 6) break outerLoop;
+                }
             }
         }
     }
 
     const previewAnime = [];
     if (source === 'all' || source === 'anilist') {
-        const poolAnime = [
-            ...(window._animeCache ? Object.values(window._animeCache) : [])
-        ];
-        const seenAnimeIds = new Set();
-        for (const a of poolAnime) {
-            if (!a || !a.id || seenAnimeIds.has(a.id)) continue;
-            const t = (a.title?.english || a.title?.romaji || a.title || a.name || '').toLowerCase();
-            if (t.includes(qLower)) {
-                seenAnimeIds.add(a.id);
-                previewAnime.push(a);
-                if (previewAnime.length >= 6) break;
+        if (window._animeCache && typeof window._animeCache === 'object') {
+            const seenAnime = new Set();
+            for (const k in window._animeCache) {
+                const a = window._animeCache[k];
+                if (!a || !a.id || seenAnime.has(a.id)) continue;
+                const t = (a.title?.english || a.title?.romaji || a.title || a.name || '').toLowerCase();
+                if (t.includes(qLower)) {
+                    seenAnime.add(a.id);
+                    previewAnime.push(a);
+                    if (previewAnime.length >= 6) break;
+                }
             }
         }
     }
@@ -5404,20 +5592,25 @@ async function executeSearch() {
             renderAnimeSearchResults(previewAnime, resultsContainer);
         }
     } else {
-        resultsContainer.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-10">
-                <div class="w-7 h-7 border-2 border-red-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                <p class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Searching ${source.toUpperCase()}...</p>
-            </div>
-        `;
+        // Only show skeleton if resultsContainer does NOT already have cards visible (preserves screen stability while typing)
+        const hasExistingResults = resultsContainer.querySelector('.movie-card, .channel-card, .event-card, [data-media-id], button[onclick*="play"]');
+        if (!hasExistingResults) {
+            resultsContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-10 opacity-70">
+                    <div class="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <p class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Searching catalog...</p>
+                </div>
+            `;
+        }
     }
 
     try {
+        toggleSearchSpinner(true);
         // CALL DEDICATED LIGHTNING BACKEND SEARCH SYSTEM
-        const apiUrl = `/api/consumet/search?q=${encodeURIComponent(query)}&source=${encodeURIComponent(source)}&limit=30`;
+        const apiUrl = `/api/consumet/search?q=${encodeURIComponent(query)}&source=${encodeURIComponent(source)}&limit=48`;
         const res = await fetch(apiUrl, { signal: currentSignal });
         
-        if (currentSignal.aborted || input.value.trim() !== query) return;
+        if (currentSignal.aborted || input.value.trim().toLowerCase() !== qLower) return;
 
         if (res.ok) {
             const data = await res.json();
@@ -5439,6 +5632,8 @@ async function executeSearch() {
                 const firstKey = _searchMemoryCache.keys().next().value;
                 if (firstKey) _searchMemoryCache.delete(firstKey);
             }
+
+            if (input.value.trim().toLowerCase() !== qLower) return;
 
             if (source === 'anilist') {
                 renderAnimeSearchResults(anime, resultsContainer);
@@ -5473,7 +5668,7 @@ async function executeSearch() {
         // Fallback to local fetchTMDB if backend is unreachable
         if (source === 'tmdb' || source === 'all') {
             const data = await fetchTMDB('search/multi', { query }, { signal: currentSignal });
-            if (currentSignal.aborted || input.value.trim() !== query) return;
+            if (currentSignal.aborted || input.value.trim().toLowerCase() !== qLower) return;
             const matchedMovies = (data?.results || []).filter(item => item && item.media_type !== 'person');
             if (source === 'tmdb') {
                 renderTMDBSearchResults(matchedMovies, resultsContainer);
@@ -5484,6 +5679,8 @@ async function executeSearch() {
     } catch (err) {
         if (err.name === 'AbortError') return;
         resultsContainer.innerHTML = `<div class="text-center py-8 text-red-400 text-xs font-bold uppercase">Search error: ${safeEscapeHtml(err.message)}</div>`;
+    } finally {
+        toggleSearchSpinner(false);
     }
 }
 
@@ -6242,21 +6439,35 @@ async function openDetails(id, type = 'movie', expectedTitle = '') {
     if (currentReqId !== _detailsRequestCounter) return;
 
     // Fallback: search TMDB if needed
-    if (!data && (expectedTitle || (id && isNaN(Number(id))))) {
-        const query = (expectedTitle || String(id)).trim();
+    if (!data && (expectedTitle || cachedItem?.title || cachedItem?.name || id)) {
+        const query = (expectedTitle || cachedItem?.title || cachedItem?.name || String(id)).trim();
+        const imdbId = (id && String(id).startsWith('tt')) ? String(id) : (cachedItem?.imdb_id || '');
         try {
-            let searchRes = await fetchWithTimeout(fetchTMDB('search/multi', { query }));
-            if (!searchRes?.results?.length) {
-                const cleanQuery = query.replace(/[_\.\-\:]/g, ' ').replace(/\s+/g, ' ').trim();
-                searchRes = await fetchWithTimeout(fetchTMDB('search/movie', { query: cleanQuery }));
-                if (!searchRes?.results?.length) {
-                    searchRes = await fetchWithTimeout(fetchTMDB('search/tv', { query: cleanQuery }));
+            if (imdbId && /^tt\d{7,10}$/i.test(imdbId)) {
+                const findRes = await fetchWithTimeout(fetchTMDB(`find/${imdbId}`, { external_source: 'imdb_id' }));
+                const hit = findRes?.movie_results?.[0] || findRes?.tv_results?.[0];
+                if (hit && hit.id) {
+                    actualType = findRes?.movie_results?.[0] ? 'movie' : 'tv';
+                    data = await fetchWithTimeout(fetchTMDB(`${actualType}/${hit.id}`, { append_to_response: "credits,videos,external_ids,images" }));
+                    if (data) window._detailsDataCache[cacheKey] = data;
                 }
             }
-            if (searchRes && searchRes.results && searchRes.results.length > 0) {
-                const match = searchRes.results[0];
-                data = await fetchWithTimeout(fetchTMDB(`${actualType}/${match.id}`, { append_to_response: "credits,videos,external_ids,images" }));
-                if (data) window._detailsDataCache[cacheKey] = data;
+            if (!data && query) {
+                let searchRes = await fetchWithTimeout(fetchTMDB('search/multi', { query }));
+                if (!searchRes?.results?.length) {
+                    const cleanQuery = query.replace(/[_\.\-\:]/g, ' ').replace(/\s+/g, ' ').trim();
+                    searchRes = await fetchWithTimeout(fetchTMDB('search/movie', { query: cleanQuery }));
+                    if (!searchRes?.results?.length) {
+                        searchRes = await fetchWithTimeout(fetchTMDB('search/tv', { query: cleanQuery }));
+                    }
+                }
+                if (searchRes && searchRes.results && searchRes.results.length > 0) {
+                    const match = searchRes.results[0];
+                    const matchedType = match.media_type || (match.first_air_date && !match.release_date ? 'tv' : actualType);
+                    actualType = matchedType;
+                    data = await fetchWithTimeout(fetchTMDB(`${actualType}/${match.id}`, { append_to_response: "credits,videos,external_ids,images" }));
+                    if (data) window._detailsDataCache[cacheKey] = data;
+                }
             }
         } catch(e3) {}
     }
@@ -6264,7 +6475,12 @@ async function openDetails(id, type = 'movie', expectedTitle = '') {
     if (currentReqId !== _detailsRequestCounter) return;
 
     if (!data && cachedItem) {
-        data = cachedItem;
+        data = Object.assign({}, cachedItem);
+        if (cachedItem.cast && Array.isArray(cachedItem.cast) && (!data.credits || !data.credits.cast)) {
+            data.credits = {
+                cast: cachedItem.cast.map((c, idx) => ({ id: 99000 + idx, name: c, character: 'Starring', profile_path: null }))
+            };
+        }
     }
 
     if (!data) {
@@ -6856,7 +7072,7 @@ async function openBingrPlayer(item = null, epNum = null, triggerBtn = null) {
     const s = selectedSeason || 1;
     const e = selectedEpisode || 1;
     const queryTitle = (type === 'tv' || type === 'anime') ? `${rawTitle} S${s} E${e}` : rawTitle;
-    const defaultSrv = isAnime ? 'bing_anime' : 'vidlink';
+    const defaultSrv = isAnime ? 'bing_anime' : 'm4u';
     const imdbId = targetItem.imdb_id || targetItem.imdbId || (targetItem.external_ids && targetItem.external_ids.imdb_id) || (window._currentDetailsData && window._currentDetailsData.external_ids && window._currentDetailsData.external_ids.imdb_id) || '';
     const imdbParam = imdbId ? `&imdb=${encodeURIComponent(imdbId)}&imdbId=${encodeURIComponent(imdbId)}` : '';
     const malParam = malId ? `&malId=${encodeURIComponent(malId)}&mal_id=${encodeURIComponent(malId)}` : '';
@@ -6878,7 +7094,7 @@ async function openBingrPlayer(item = null, epNum = null, triggerBtn = null) {
     }
 
     // Direct Instant Launch to play_bingr.php (0ms latency, handles live resolution with full UI & controls)
-    const targetUrl = `/play_bingr.php?type=${type}&media_type=${type}&id=${mediaId}&tmdbId=${mediaId}${imdbParam}${malParam}${anilistParam}&srv=${defaultSrv}&title=${encodeURIComponent(rawTitle)}&name=${encodeURIComponent(queryTitle)}&season=${s}&episode=${e}&s=${s}&e=${e}&source=consumet.html&_v=2.8`;
+    const targetUrl = `/play_bingr.php?type=${type}&media_type=${type}&id=${mediaId}&tmdbId=${mediaId}${imdbParam}${malParam}${anilistParam}&srv=${defaultSrv}&title=${encodeURIComponent(rawTitle)}&name=${encodeURIComponent(queryTitle)}&season=${s}&episode=${e}&s=${s}&e=${e}&source=consumet.html&_v=2.2`;
     window.location.href = targetUrl;
     return;
 }
@@ -7321,20 +7537,20 @@ async function startActualFullscreenPlayback() {
             const m4uData = await m4uRes.json();
             if (m4uData && m4uData.ok && (m4uData.m3u8Url || m4uData.playUrl)) {
                 let directUrl = m4uData.m3u8Url || '';
-                if (directUrl && (directUrl.includes('callistanise') || directUrl.includes('m4uplay') || directUrl.includes('vidhide') || directUrl.includes('morencius'))) {
+                if (directUrl && !directUrl.startsWith('/stream_proxy.php') && !directUrl.startsWith('/api/proxy/')) {
                     directUrl = `/stream_proxy.php?url=${encodeURIComponent(directUrl)}`;
                 }
                 streamUrl = `/play.php?url=${encodeURIComponent(directUrl)}&name=${encodeURIComponent(queryTitle)}&source=consumet.html`;
             } else {
                 showToast('Direct M3U8 mirror busy, routing through VidLink PRO...');
-                streamUrl = type === 'tv' ? `https://vidlink.pro/tv/${tmdbId}/${s}/${e}?autoplay=true` : `https://vidlink.pro/movie/${tmdbId}?autoplay=true`;
+                streamUrl = type === 'tv' ? `https://vidlink.pro/tv/${tmdbId}/${s}/${e}?autoplay=true&multiLang=true&sub=true` : `https://vidlink.pro/movie/${tmdbId}?autoplay=true&multiLang=true&sub=true`;
             }
         } catch(err) {
             showToast('M3U8 request error, routing through VidLink PRO...');
-            streamUrl = type === 'tv' ? `https://vidlink.pro/tv/${tmdbId}/${s}/${e}?autoplay=true` : `https://vidlink.pro/movie/${tmdbId}?autoplay=true`;
+            streamUrl = type === 'tv' ? `https://vidlink.pro/tv/${tmdbId}/${s}/${e}?autoplay=true&multiLang=true&sub=true` : `https://vidlink.pro/movie/${tmdbId}?autoplay=true&multiLang=true&sub=true`;
         }
     } else if (server === 'vidlink') {
-        streamUrl = type === 'tv' ? `https://vidlink.pro/tv/${tmdbId}/${s}/${e}?autoplay=true` : `https://vidlink.pro/movie/${tmdbId}?autoplay=true`;
+        streamUrl = type === 'tv' ? `https://vidlink.pro/tv/${tmdbId}/${s}/${e}?autoplay=true&multiLang=true&sub=true` : `https://vidlink.pro/movie/${tmdbId}?autoplay=true&multiLang=true&sub=true`;
     } else if (server === 'vidrift') {
         if (selectedMedia.anilistId) {
             streamUrl = `https://embed.vidrift.in/embed/anime/${selectedMedia.anilistId}/${e}`;
@@ -7649,6 +7865,8 @@ function setLiveNowViewMode(mode) {
 function isSportEventEnded(e) {
     if (!e) return true;
     if (e.isEnded || e.status === 'ENDED') return true;
+    if (e.countdown && /\b(concluded|ended|finished)\b/i.test(e.countdown)) return true;
+    if (e.timeIST && /\b(concluded|ended|finished)\b/i.test(e.timeIST)) return true;
     if (e.isTimStreams || e.source === 'timstreams' || (e.id && String(e.id).startsWith('tim_'))) return false;
     const nowEpoch = Math.floor(Date.now() / 1000);
     if (e.endTime && Number(e.endTime) <= nowEpoch) return true;
@@ -7656,6 +7874,33 @@ function isSportEventEnded(e) {
     if (!e.isLive && e.source !== 'SONY_OFFICIAL_EPG') {
         const t = (e.title || '').toLowerCase();
         if (/\b(highlights?|replay|repeat|rewind|classic|vault|magazine|recap|review|encore|delayed|tape)\b/i.test(t)) return true;
+    }
+    return false;
+}
+
+function isEventFutureDate(e) {
+    if (!e) return false;
+    if (e.isLive || e.status === 'LIVE') return false;
+    const t = ((e.time || '') + ' ' + (e.timeIST || '') + ' ' + (e.rawTime || '') + ' ' + (e.countdown || '') + ' ' + (e.dateIST || '') + ' ' + (e.day || '')).toLowerCase();
+    if (t.includes('tomorrow') || /in\s+\d+\s+day/i.test(t)) return true;
+    const dateMatch = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*(\d{1,2})\b/i);
+    if (dateMatch) {
+        const now = new Date();
+        const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+        const todayMonth = months[now.getMonth()];
+        const todayDate = now.getDate();
+        const evMonth = dateMatch[1].toLowerCase().slice(0, 3);
+        const evDate = parseInt(dateMatch[2], 10);
+        if (evMonth !== todayMonth || evDate !== todayDate) {
+            return true;
+        }
+    }
+    const daysOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const todayDay = daysOfWeek[new Date().getDay()];
+    for (const d of daysOfWeek) {
+        if (t.includes(d) && d !== todayDay) {
+            return true;
+        }
     }
     return false;
 }
@@ -7828,6 +8073,19 @@ async function loadLiveSportsSchedule(force = false) {
     }
     window._liveNowLoadingStart = Date.now();
     const now = Date.now();
+
+    // Instant zero-blank hydration from sessionStorage if in-memory list is empty
+    if (!window.liveNowEvents || !window.liveNowEvents.length) {
+        try {
+            const cached = sessionStorage.getItem('consumet_livenow_cache');
+            if (cached) {
+                window.liveNowEvents = JSON.parse(cached);
+                renderLiveNowGrid();
+                renderLiveNowShelf();
+            }
+        } catch(e) {}
+    }
+
     if (!force && window.liveNowEvents && window.liveNowEvents.length > 0 && (now - _lastSportsScheduleFetch < 90000)) {
         renderLiveNowGrid();
         renderLiveNowShelf();
@@ -7842,10 +8100,17 @@ async function loadLiveSportsSchedule(force = false) {
     if (icon) icon.classList.add('animate-spin');
 
     try {
-        const safeFetchJson = (url, ms = 6000) => Promise.race([
+        const safeFetchJson = (url, ms = 3500) => Promise.race([
             fetch(url).then(r => r.json()),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
         ]);
+
+        const addedChannelsPromise = (!force && window.allSportsChannels && window.allSportsChannels.length > 0)
+            ? Promise.resolve(window.allSportsChannels)
+            : safeFetchJson(`/api/sports/channels`, 3500);
+        const timChannelsPromise = (!force && window.timStreamsList && window.timStreamsList.length > 0)
+            ? Promise.resolve({ status: 'success', channels: window.timStreamsList })
+            : safeFetchJson(`/api/sports/timstreams/channels`, 3500);
 
         const [streamicRes, timEventsRes, timDirectRes, liveM3uEventsRes, jtvEventsRes, addedChannelsRes, adminSportsRes, highlightsRes, zeeRes, fancodeLiveRes, sonylivLiveRes, timChannelsRes, willowLiveRes, primeLiveRes, googleResultsRes] = await Promise.allSettled([
             safeFetchJson(`/api/streamic/schedule${force ? '?force=1' : ''}`),
@@ -7853,13 +8118,13 @@ async function loadLiveSportsSchedule(force = false) {
             safeFetchJson(`/api/tim/events${force ? '?refresh=1' : ''}`),
             safeFetchJson(`/api/livem3u/events${force ? '?refresh=1' : ''}`),
             safeFetchJson(`/api/live/events`),
-            safeFetchJson(`/api/sports/channels`),
+            addedChannelsPromise,
             safeFetchJson(`/api/sports`),
             safeFetchJson(`/api/sports/highlights`),
             safeFetchJson(`/api/zee/channels`),
             safeFetchJson(`/api/fancode/live`),
             safeFetchJson(`/api/sonyliv/live`),
-            safeFetchJson(`/api/sports/timstreams/channels`),
+            timChannelsPromise,
             safeFetchJson(`/api/willow/events`),
             safeFetchJson(`/api/prime/events${force ? '?refresh=1' : ''}`),
             Promise.resolve(null)
@@ -8833,8 +9098,12 @@ function setLiveNowSportCategory(sport) {
     renderLiveNowGrid();
 }
 
+let _liveNowFilterTimeout = null;
 function filterLiveNowGrid() {
-    renderLiveNowGrid();
+    clearTimeout(_liveNowFilterTimeout);
+    _liveNowFilterTimeout = setTimeout(() => {
+        renderLiveNowGrid();
+    }, 150);
 }
 
 function getFilteredLiveNowEvents() {
@@ -9404,7 +9673,7 @@ function createNetflixSportCard(e, isShelf = false) {
     const cardClickAction = hasLiveBroadcast ? `openLiveNowEventDirect('${safePlayUrl}', 'livenow')` : `openSportMatchOvalModal(decodeURIComponent('${safeEId}'), 'score')`;
 
     return `
-        <div class="netflix-card group cursor-pointer ${widthClass} flex flex-col rounded-2xl overflow-hidden transition-all duration-300" onclick="${cardClickAction}">
+        <div class="netflix-card group cursor-pointer ${widthClass} flex flex-col rounded-2xl overflow-hidden transition-all duration-300" style="touch-action: pan-y;" onclick="${cardClickAction}">
             <!-- Full-Bleed Poster Frame (Zero Black Letterbox Bars) -->
             <div class="relative aspect-[16/10] w-full overflow-hidden bg-slate-900">
                 ${thumbnailContent}
@@ -9418,7 +9687,7 @@ function createNetflixSportCard(e, isShelf = false) {
                 <!-- Top-Right Info Button -->
                 <div class="absolute top-2.5 right-2.5 z-20">
                     <button type="button" onclick="event.stopPropagation(); openSportMatchOvalModal(decodeURIComponent('${safeEId}'), 'info')" title="Match Feeds & Details" class="w-7 h-7 rounded-lg bg-slate-950/75 hover:bg-white text-slate-200 hover:text-slate-950 flex items-center justify-center backdrop-blur-md border border-white/15 transition-all active:scale-90">
-                        <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                        <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                     </button>
                 </div>
 
@@ -9437,7 +9706,9 @@ function createNetflixSportCard(e, isShelf = false) {
                 <!-- Hover Play Indicator -->
                 <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 pointer-events-none">
                     <div class="w-11 h-11 rounded-full bg-white text-slate-950 flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform">
-                        <i data-lucide="${hasLiveBroadcast ? 'play' : 'bar-chart-2'}" class="w-5 h-5 ${hasLiveBroadcast ? 'fill-slate-950 ml-0.5' : ''}"></i>
+                        ${hasLiveBroadcast
+                            ? '<svg class="w-5 h-5 fill-slate-950 ml-0.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>'
+                            : '<svg class="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>'}
                     </div>
                 </div>
             </div>
@@ -9463,63 +9734,91 @@ function getSpotlightEventImportance(e) {
     if (/(cricbuzz\s*-\s*aq|stream\.kliv\.in|placeholder|testtapmad|crichd|1st\s*test\s*australia|caribbean\s*premier\s*league|the\s*hundred\s*2026|5th\s*odi\s*afghanistan|sports\s*live\s*vs\s*sports\s*live|playerado|crichdsee|player0003|cricgo|demo|dummy|sample|offline|expired)/i.test(dummyCheck)) {
         return -999999;
     }
-    let score = 0;
-    // 1. Live status (actively streaming now gets massive priority)
-    if (e.isLive) score += 2000;
-    else if (e.isStartingSoon) score += 800;
-    else score += 200;
-
-    // 2. Playability & Stream readiness
-    if (e.canWatch && e.primaryPlayUrl && e.primaryPlayUrl !== '#') score += 1200;
-    if (e.primaryM3u8Url || e.streamUrl) score += 600;
-
-    // 3. User Flagship Source Hierarchy: Sony (450) > Willow (400) > FanCode (350) > Prime (300)
-    const src = (e.source || '').toLowerCase();
-    const bdg = (e.badge || '').toLowerCase();
-    const timeText = ((e.time || '') + ' ' + (e.timeIST || '') + ' ' + (e.rawTime || '') + ' ' + (e.countdown || '') + ' ' + (e.day || '')).toLowerCase();
-    const isTomorrowEvent = timeText.includes('tomorrow') || /in\s+\d+\s+day/i.test(timeText);
-    const isIndiaMatch = /india|ind\s*(vs|\/|-)|india\s*champions/i.test((e.title || '') + ' ' + (e.rawTitle || ''));
-
-    // Critical: Tomorrow events must NEVER outrank active live events in Live Now Hero Spotlight!
-    if (isTomorrowEvent) {
-        score -= 9000;
+    if (isSportEventEnded(e) || (e.countdown && /\b(concluded|ended|finished)\b/i.test(e.countdown))) {
+        return -999999;
     }
 
+    let score = 0;
+    const isLive = Boolean(e.isLive || e.status === 'LIVE');
+    const isFutureOrTomorrow = isEventFutureDate(e);
+
+    // 1. LIVE STATUS IS SUPREME (Insurmountable gap so future/scheduled matches NEVER steal active live spotlight)
+    if (isLive) {
+        score += 25000;
+    } else if (e.isStartingSoon) {
+        score += 6000;
+    } else {
+        score += 1500;
+    }
+
+    // 2. Future / Tomorrow penalty: never outrank today/live matches
+    if (isFutureOrTomorrow) {
+        score -= 30000;
+    }
+
+    // 3. Playability & Stream readiness
+    if (e.canWatch && e.primaryPlayUrl && e.primaryPlayUrl !== '#') score += 1500;
+    if (e.primaryM3u8Url || e.streamUrl) score += 800;
+
+    const title = ((e.rawTitle || e.title || '') + ' ' + (e.league || '') + ' ' + (e.sportName || '')).toLowerCase();
+
+    // 4. TEST MATCH PRIORITY (Highest prestige cricket format)
+    const isTestMatch = /\b(test\s*match|test\s*series|\d+(?:st|nd|rd|th)\s*test|day\s*test|the\s*ashes|ashes|border[\s\-]gavaskar|bgt|world\s*test\s*championship|wtc)\b/i.test(title);
+    if (isTestMatch) {
+        score += (isLive ? 4500 : 1500); // Massive boost for Test matches!
+    }
+
+    // 5. MAJOR TEAMS PRIORITY
+    // International Cricket Marquee Teams
+    const isIndiaMatch = /\b(india|ind\s*(?:vs|\/|\-)|vs\s*ind\b|bcci|india\s*champions)\b/i.test(title);
+    if (isIndiaMatch) {
+        if (isLive) {
+            score += 5000; // Peak priority when LIVE!
+        } else if (!isFutureOrTomorrow) {
+            score += 1200; // Respectable priority among today's scheduled matches, but will NEVER beat active live
+        } else {
+            score += 200;
+        }
+    } else if (/\b(australia|aus\s*(?:vs|\/|\-)|england|eng\s*(?:vs|\/|\-)|south\s*africa|sa\s*(?:vs|\/|\-)|pakistan|pak\s*(?:vs|\/|\-)|new\s*zealand|nz\s*(?:vs|\/|\-)|west\s*indies|wi\s*(?:vs|\/|\-))\b/i.test(title)) {
+        score += (isLive ? 3500 : 1000); // Tier 1 international cricket teams
+    } else if (/\b(sri\s*lanka|sl\s*(?:vs|\/|\-)|bangladesh|ban\s*(?:vs|\/|\-)|afghanistan|afg\s*(?:vs|\/|\-))\b/i.test(title)) {
+        score += (isLive ? 2200 : 600);
+    }
+
+    // Major Football Clubs
+    if (/\b(real\s*madrid|barcelona|manchester\s*city|arsenal|liverpool|bayern(?:\s*munich)?|psg|paris\s*saint|chelsea|manchester\s*united|inter\s*milan|juventus|ac\s*milan|atletico\s*madrid|dortmund|tottenham)\b/i.test(title)) {
+        score += (isLive ? 3000 : 800);
+    }
+
+    // 6. MAJOR LEAGUES & TOURNAMENTS
+    if (/\b(ipl|indian\s*premier\s*league|icc|world\s*cup|champions\s*trophy|t20\s*world\s*cup|asia\s*cup|psl|bbl|big\s*bash|cpl|sa20|the\s*hundred|mlc|ilt20)\b/i.test(title)) {
+        score += 3000;
+    }
+    if (/\b(uefa|champions\s*league|premier\s*league|epl|la\s*liga|serie\s*a|bundesliga|ligue\s*1|europa\s*league|fifa|copa\s*del\s*rey|fa\s*cup)\b/i.test(title)) {
+        score += 2500;
+    }
+    if (/\b(formula\s*1|f1|grand\s*prix|nba|ufc|wimbledon|us\s*open|roland\s*garros|australian\s*open)\b/i.test(title)) {
+        score += 2200;
+    }
+
+    // 7. Flagship provider hierarchy
+    const src = (e.source || '').toLowerCase();
+    const bdg = (e.badge || '').toLowerCase();
     if (e.isSonyLiv || src.includes('sonyliv') || bdg === 'sony') score += 450;
     else if (e.isWillow || src.includes('willow') || bdg === 'willow') {
         score += 400;
-        if (isIndiaMatch && !isTomorrowEvent) {
-            score += 3500; // HIGHLIGHT LIVE/TODAY INDIA WILLOW EVENT FIRST!
-        } else if (isIndiaMatch && isTomorrowEvent) {
-            score += 200; // Moderate boost for tomorrow India match, but never beating live events
-        } else if (e.isLatestWillow || e.isLatestLiveEvent) {
-            score += 300;
-        } else {
-            score -= 1200; // Older Willow events must not outrank the latest started event
-        }
+        if (e.isLatestWillow || e.isLatestLiveEvent) score += 300;
     }
     else if (e.isFanCode || src.includes('fancode') || bdg === 'fancode') score += 350;
     else if (e.isPrime || src.includes('prime') || bdg === 'prime') score += 300;
     else score += 100;
 
-    // 4. Marquee & Global Impact Keywords (International matches, T20 leagues, UEFA)
-    const title = ((e.rawTitle || e.title || '') + ' ' + (e.league || '') + ' ' + (e.sportName || '')).toLowerCase();
-    
-    // SPECIAL TOP PRIORITY: Matches ending with "MAL" or "(MAL)" in title
+    // Special MAL match priority
     const matchTitleTrim = (e.title || e.rawTitle || '').trim();
     if (/(?:[\s\-_\|\(\[]mal[\s\-_\]\)]*|\bmal)$/i.test(matchTitleTrim) || /\bmal\b\s*$/i.test(matchTitleTrim)) {
-        score += 10000; // Direct top priority boost for MAL matches
+        score += 10000;
     }
 
-    if (/india|ind vs|pakistan|pak vs|australia|aus vs|england|eng vs|west indies|wi vs|south africa|sa vs|new zealand/i.test(title)) {
-        score += 900;
-    }
-    if (/champions league|uefa|premier league|laliga|world cup|t20i|t20|ipl|bcci|icc|legends/i.test(title)) {
-        score += 700;
-    }
-    if (/real madrid|barcelona|arsenal|chelsea|liverpool|manchester|bayern|psg|formula 1|f1|wimbledon|us open|ufc/i.test(title)) {
-        score += 500;
-    }
     return score;
 }
 
@@ -9553,42 +9852,23 @@ function renderLiveNowHeroSpotlight(events) {
     const topSony = sonyCandidates.sort((a, b) => getSpotlightEventImportance(b) - getSpotlightEventImportance(a))[0];
     
     // CRITICAL WILLOW SPOTLIGHT LOGIC:
-    // 1. Never allow a tomorrow match to steal the spotlight over active live / today events!
-    // 2. If ANY India event is listed in Willow that is LIVE or TODAY, highlight that first!
-    // 3. Otherwise, pick the latest started event from active/today willow streams.
+    // 1. If any live Willow matches exist, ONLY choose from live matches!
+    // 2. If a live India match exists, pick it first; otherwise pick highest importance live event (e.g. Test match).
+    // 3. Never allow a tomorrow or future match (e.g. Oct 22) to steal spotlight over active live events!
     let topWillow = null;
     if (willowCandidates.length > 0) {
-        const isEventTomorrow = (ev) => {
-            const t = ((ev.time || '') + ' ' + (ev.timeIST || '') + ' ' + (ev.rawTime || '') + ' ' + (ev.countdown || '') + ' ' + (ev.day || '')).toLowerCase();
-            return t.includes('tomorrow') || /in\s+\d+\s+day/i.test(t);
-        };
+        const activeWillow = willowCandidates.filter(e => !isSportEventEnded(e) && !(e.countdown && /concluded|ended/i.test(e.countdown)));
+        const liveWillow = activeWillow.filter(e => (e.isLive || e.status === 'LIVE') && !isEventFutureDate(e));
+        const todayWillow = activeWillow.filter(e => !isEventFutureDate(e));
 
-        const liveWillow = willowCandidates.filter(e => (e.isLive || e.status === 'LIVE') && !isEventTomorrow(e));
-        const todayWillow = willowCandidates.filter(e => !isEventTomorrow(e));
-        // Only consider tomorrow matches if absolutely NO today or live matches exist
-        const poolToPick = liveWillow.length ? liveWillow : (todayWillow.length ? todayWillow : willowCandidates);
-
-        // Check for any India match (e.g. India vs West Indies, India Champions, etc.)
-        const indiaWillowMatches = poolToPick.filter(e => /india|ind\s*(vs|\/|-)|india\s*champions/i.test(e.title || e.rawTitle || ''));
-        const targetWillowPool = indiaWillowMatches.length > 0 ? indiaWillowMatches : poolToPick;
-
-        topWillow = [...targetWillowPool].sort((a, b) => {
-            // Live status takes highest precedence
-            const liveA = (a.isLive || a.status === 'LIVE') ? 1 : 0;
-            const liveB = (b.isLive || b.status === 'LIVE') ? 1 : 0;
-            if (liveB !== liveA) return liveB - liveA;
-
-            // Today beats tomorrow strictly
-            const tomA = isEventTomorrow(a) ? 1 : 0;
-            const tomB = isEventTomorrow(b) ? 1 : 0;
-            if (tomA !== tomB) return tomA - tomB;
-
-            // Pick latest started event
-            const timeB = getEventStartTimeValue(b.time || b.timeIST || b.countdown || b.startTime);
-            const timeA = getEventStartTimeValue(a.time || a.timeIST || a.countdown || a.startTime);
-            if (timeB !== timeA) return timeB - timeA;
-            return (b.startTime || 0) - (a.startTime || 0);
-        })[0];
+        if (liveWillow.length > 0) {
+            const liveIndia = liveWillow.find(e => /india|ind\s*(?:vs|\/|\-)|india\s*champions/i.test(e.title || e.rawTitle || ''));
+            topWillow = liveIndia || [...liveWillow].sort((a, b) => getSpotlightEventImportance(b) - getSpotlightEventImportance(a))[0];
+        } else if (todayWillow.length > 0) {
+            topWillow = [...todayWillow].sort((a, b) => getSpotlightEventImportance(b) - getSpotlightEventImportance(a))[0];
+        } else {
+            topWillow = [...activeWillow].sort((a, b) => getSpotlightEventImportance(b) - getSpotlightEventImportance(a))[0];
+        }
     }
 
     const topFanCode = fancodeCandidates.sort((a, b) => getSpotlightEventImportance(b) - getSpotlightEventImportance(a))[0];
@@ -9599,7 +9879,7 @@ function renderLiveNowHeroSpotlight(events) {
     flagshipList.sort((a, b) => getSpotlightEventImportance(b) - getSpotlightEventImportance(a));
 
     // Fill remaining spots from highest-importance events in validEvents.
-    // CRITICAL: Exclude ANY other Willow events so ONLY the single latest started Willow event is ever in Spotlight!
+    // Exclude other Willow events so only the top Willow event is represented
     const seenIds = new Set(flagshipList.map(e => String(e.id || e.title)));
     const remainingTop = validEvents
         .filter(e => !seenIds.has(String(e.id || e.title)))
@@ -9619,10 +9899,44 @@ function renderLiveNowHeroSpotlight(events) {
         return;
     }
 
-    const hero = pool[window.liveNowSpotlightIndex] || pool[0];
+    window.liveNowSpotlightPoolLength = pool.length;
+    let heroIdx = window.liveNowSpotlightIndex || 0;
+    if (heroIdx >= pool.length) {
+        heroIdx = 0;
+        window.liveNowSpotlightIndex = 0;
+    }
+    const hero = pool[heroIdx] || pool[0];
     if (!hero) {
         container.innerHTML = '';
         return;
+    }
+
+    // Touch swipe gesture listener for mobile spotlight carousel
+    if (!container._swipeBound) {
+        container._swipeBound = true;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        container.addEventListener('touchstart', (e) => {
+            if (e.touches && e.touches[0]) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+        container.addEventListener('touchend', (e) => {
+            if (e.changedTouches && e.changedTouches[0] && (window.liveNowSpotlightPoolLength || 1) > 1) {
+                const diffX = e.changedTouches[0].clientX - touchStartX;
+                const diffY = e.changedTouches[0].clientY - touchStartY;
+                if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+                    const total = window.liveNowSpotlightPoolLength || 1;
+                    const cur = window.liveNowSpotlightIndex || 0;
+                    if (diffX < 0) {
+                        window.setLiveNowSpotlightIndex((cur + 1) % total);
+                    } else {
+                        window.setLiveNowSpotlightIndex((cur - 1 + total) % total);
+                    }
+                }
+            }
+        }, { passive: true });
     }
 
     const hasLiveBroadcast = Boolean(hero.canWatch && hero.primaryPlayUrl);
@@ -9633,7 +9947,7 @@ function renderLiveNowHeroSpotlight(events) {
     const hasScoreBtn = isCricket || isFootball;
 
     const safeHeroId = encodeURIComponent(hero.id || '');
-    const otherSpotlights = pool.filter((item) => (item.id || item.title) !== (hero.id || hero.title)).slice(0, 2);
+    const otherSpotlights = pool.filter((_, idx) => idx !== heroIdx);
     const heroThumbHtml = buildVsMatchThumbnailHtml(hero, true);
 
     const getProviderBadge = (item) => {
@@ -9643,6 +9957,9 @@ function renderLiveNowHeroSpotlight(events) {
         if (item.isPrime) return '<span class="bg-white/15 text-white border border-white/20 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded backdrop-blur-md">Prime Video</span>';
         return `<span class="bg-white/10 text-neutral-200 border border-white/15 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded">${item.badge || 'Broadcast'}</span>`;
     };
+
+    const prevIdx = (heroIdx - 1 + pool.length) % pool.length;
+    const nextIdx = (heroIdx + 1) % pool.length;
 
     container.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -9656,53 +9973,78 @@ function renderLiveNowHeroSpotlight(events) {
                         ${hero.isLive ? `<span class="bg-[#e50914] text-white font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>LIVE</span>` : `<span class="bg-black/80 text-neutral-200 font-mono text-[10px] px-2 py-0.5 rounded border border-white/15">${hero.countdown || hero.timeIST}</span>`}
                         ${getProviderBadge(hero)}
                     </div>
+
+                    ${pool.length > 1 ? `
+                        <!-- Carousel Prev/Next Buttons on Mobile/Desktop Media -->
+                        <div class="absolute inset-y-0 inset-x-2 z-20 flex items-center justify-between pointer-events-none">
+                            <button type="button" onclick="event.stopPropagation(); setLiveNowSpotlightIndex(${prevIdx})" class="pointer-events-auto w-8 h-8 rounded-full bg-black/65 hover:bg-white text-white hover:text-black flex items-center justify-center backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg active:scale-95" title="Previous Spotlight">
+                                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            </button>
+                            <button type="button" onclick="event.stopPropagation(); setLiveNowSpotlightIndex(${nextIdx})" class="pointer-events-auto w-8 h-8 rounded-full bg-black/65 hover:bg-white text-white hover:text-black flex items-center justify-center backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg active:scale-95" title="Next Spotlight">
+                                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
 
                 <!-- Broadcast Details & Controls -->
                 <div class="flex flex-col justify-between flex-1 min-w-0 py-0.5 space-y-3 z-10">
-                    ${flagshipList.length > 1 ? `
-                        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                            <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 mr-1 shrink-0">Featured Feeds</span>
-                            ${flagshipList.map((item, idx) => {
-                                const isSel = (item.id === hero.id);
-                                const pillClass = isSel
-                                    ? 'bg-white text-black font-semibold shadow-sm'
-                                    : 'bg-[#15151c] text-neutral-300 hover:text-white border border-white/10';
-                                const pillName = item.isSonyLiv ? 'SonyLIV' : (item.isWillow ? 'Willow' : (item.isFanCode ? 'FanCode' : (item.isPrime ? 'Prime Video' : (item.badge || 'Feed'))));
-                                return `
-                                    <button onclick="setLiveNowSpotlightIndex(${idx})" class="px-2.5 py-1 rounded-lg text-[11px] transition-all flex items-center gap-1.5 shrink-0 ${pillClass}">
-                                        ${item.isLive ? '<span class="w-1.5 h-1.5 rounded-full bg-[#e50914]"></span>' : ''}
-                                        <span>${pillName}</span>
-                                    </button>
-                                `;
-                            }).join('')}
-                        </div>
-                    ` : ''}
+                    <div class="space-y-2">
+                        <!-- Top Carousel Header with Progress Indicators -->
+                        <div class="flex items-center justify-between gap-2">
+                            ${flagshipList.length > 1 ? `
+                                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                                    <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 mr-1 shrink-0">Featured</span>
+                                    ${flagshipList.map((item, idx) => {
+                                        const isSel = (item.id === hero.id);
+                                        const pillClass = isSel
+                                            ? 'bg-white text-black font-semibold shadow-sm'
+                                            : 'bg-[#15151c] text-neutral-300 hover:text-white border border-white/10';
+                                        const pillName = item.isSonyLiv ? 'SonyLIV' : (item.isWillow ? 'Willow' : (item.isFanCode ? 'FanCode' : (item.isPrime ? 'Prime' : (item.badge || 'Feed'))));
+                                        return `
+                                            <button onclick="setLiveNowSpotlightIndex(${idx})" class="px-2.5 py-1 rounded-lg text-[11px] transition-all flex items-center gap-1.5 shrink-0 ${pillClass} cursor-pointer">
+                                                ${item.isLive ? '<span class="w-1.5 h-1.5 rounded-full bg-[#e50914]"></span>' : ''}
+                                                <span>${pillName}</span>
+                                            </button>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : '<div></div>'}
 
-                    <div class="space-y-1.5">
-                        <div class="flex items-center gap-2 flex-wrap text-xs text-neutral-400 font-medium">
-                            <span class="text-neutral-200 font-semibold">${hero.league || hero.sportName}</span>
-                            <span>&bull;</span>
-                            <span class="font-mono text-[11px]">${hero.timeIST} IST</span>
+                            ${pool.length > 1 ? `
+                                <div class="flex items-center gap-1.5 shrink-0 bg-black/40 px-2 py-1 rounded-full border border-white/10">
+                                    ${pool.map((_, i) => `
+                                        <button onclick="setLiveNowSpotlightIndex(${i})" class="h-1.5 rounded-full transition-all cursor-pointer ${i === heroIdx ? 'w-5 bg-rose-500' : 'w-1.5 bg-white/30 hover:bg-white/60'}" title="Spotlight ${i + 1}"></button>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
                         </div>
-                        <h2 class="text-lg sm:text-2xl font-bold text-white tracking-tight leading-snug line-clamp-2">
-                            ${hero.title}
-                        </h2>
-                        ${hero.liveScore?.summary ? `
-                            <p class="text-xs font-semibold text-white bg-white/[0.07] border border-white/10 px-3 py-1 rounded-lg inline-block">
-                                ${hero.liveScore.summary}
+
+                        <div class="space-y-1.5">
+                            <div class="flex items-center gap-2 flex-wrap text-xs text-neutral-400 font-medium">
+                                <span class="text-neutral-200 font-semibold">${hero.league || hero.sportName}</span>
+                                <span>&bull;</span>
+                                <span class="font-mono text-[11px]">${hero.timeIST} IST</span>
+                            </div>
+                            <h2 class="text-lg sm:text-2xl font-bold text-white tracking-tight leading-snug line-clamp-2">
+                                ${hero.title}
+                            </h2>
+                            ${hero.liveScore?.summary ? `
+                                <p class="text-xs font-semibold text-white bg-white/[0.07] border border-white/10 px-3 py-1 rounded-lg inline-block">
+                                    ${hero.liveScore.summary}
+                                </p>
+                            ` : ''}
+                            <p class="text-xs text-neutral-400 truncate">
+                                ${hasLiveBroadcast ? `Direct broadcast feed • ${hero.primaryChannelName}` : 'Real-time match telemetry & scorecard'}
                             </p>
-                        ` : ''}
-                        <p class="text-xs text-neutral-400 truncate">
-                            ${hasLiveBroadcast ? `Direct broadcast feed • ${hero.primaryChannelName}` : 'Real-time match telemetry & scorecard'}
-                        </p>
+                        </div>
                     </div>
 
                     <!-- Broadcast Actions -->
                     <div class="flex flex-wrap items-center gap-2 pt-1">
                         ${hasLiveBroadcast ? `
                             <button type="button" onclick="openLiveNowEventDirect('${playUrl}', 'livenow')" class="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold text-xs transition-all flex items-center gap-2 shadow cursor-pointer">
-                                <i data-lucide="play" class="w-3.5 h-3.5 fill-black"></i>
+                                <svg class="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                 <span>Watch Live</span>
                             </button>
                         ` : `
@@ -9712,7 +10054,7 @@ function renderLiveNowHeroSpotlight(events) {
                         `}
 
                         <button type="button" onclick="openSportMatchOvalModal(decodeURIComponent('${safeHeroId}'), 'info')" class="px-4 py-2 rounded-xl bg-[#15151c] hover:bg-white/15 text-neutral-200 hover:text-white text-xs font-semibold transition-all border border-white/10 flex items-center gap-1.5 cursor-pointer">
-                            <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                            <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                             <span>Streams & Info</span>
                         </button>
 
@@ -9735,10 +10077,10 @@ function renderLiveNowHeroSpotlight(events) {
                 </div>
             </div>
 
-            <!-- Side Broadcast Queue Cards -->
+            <!-- Side Broadcast Queue Cards (Desktop view) -->
             ${otherSpotlights.length > 0 ? `
                 <div class="hidden lg:grid grid-cols-1 gap-4">
-                    ${otherSpotlights.map(s => {
+                    ${otherSpotlights.slice(0, 2).map((s, idx) => {
                         const sHasBroadcast = Boolean(s.canWatch && s.primaryPlayUrl);
                         const sPlayUrl = sHasBroadcast ? s.primaryPlayUrl : '#';
                         const sSafeId = encodeURIComponent(s.id || '');
@@ -9746,6 +10088,7 @@ function renderLiveNowHeroSpotlight(events) {
                         const sClick = sHasBroadcast ? `openLiveNowEventDirect('${sSafePlayUrl}', 'livenow')` : `openSportMatchOvalModal(decodeURIComponent('${sSafeId}'), 'score')`;
                         const sIsCricket = (s.category || '').toLowerCase().includes('cricket') || s.category === 'krykiet';
                         const sIsFootball = (s.category || '').toLowerCase().includes('football');
+                        const targetPoolIdx = pool.findIndex(p => (p.id || p.title) === (s.id || s.title));
                         return `
                             <div class="p-3.5 rounded-3xl bg-slate-900/75 backdrop-blur-2xl border border-slate-400/15 hover:border-white/25 transition-all flex items-center gap-3.5 cursor-pointer group" onclick="${sClick}">
                                 <div class="relative w-32 aspect-[16/10] rounded-xl overflow-hidden bg-slate-900 shrink-0 border border-white/15">
@@ -9762,6 +10105,9 @@ function renderLiveNowHeroSpotlight(events) {
                                     </div>
                                     <h4 class="text-xs font-semibold text-white group-hover:text-neutral-200 transition-colors line-clamp-2">${s.title}</h4>
                                     <div class="flex items-center gap-2 pt-0.5">
+                                        <button type="button" onclick="event.stopPropagation(); setLiveNowSpotlightIndex(${targetPoolIdx >= 0 ? targetPoolIdx : 0})" class="text-[10px] font-semibold text-white bg-rose-600/30 hover:bg-rose-600 px-2 py-0.5 rounded border border-rose-500/40">
+                                            Highlight
+                                        </button>
                                         <button type="button" onclick="event.stopPropagation(); openSportMatchOvalModal(decodeURIComponent('${sSafeId}'), 'info')" class="text-[10px] font-semibold text-neutral-300 hover:text-white bg-[#15151c] px-2.5 py-0.5 rounded border border-white/10">
                                             Info
                                         </button>
@@ -9778,8 +10124,58 @@ function renderLiveNowHeroSpotlight(events) {
                 </div>
             ` : ''}
         </div>
+
+        <!-- Dedicated Multi-Event Mobile Spotlight Strip (Visible only on mobile/tablet) -->
+        ${pool.length > 1 ? `
+            <div class="lg:hidden mt-3">
+                <div class="flex items-center justify-between text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2 px-1">
+                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>Top Spotlight Matches (${pool.length})</span>
+                    <span class="text-[10px] text-neutral-400 font-normal">Swipe &bull; Tap to switch</span>
+                </div>
+                <div class="flex gap-3 overflow-x-auto no-scrollbar py-1 -mx-1 px-1">
+                    ${pool.map((s, idx) => {
+                        const sIsActive = (idx === heroIdx);
+                        const sHasB = Boolean(s.canWatch && s.primaryPlayUrl);
+                        const sSafePlayUrl = (s.primaryPlayUrl || '').replace(/'/g, "\\'");
+                        const sSafeId = encodeURIComponent(s.id || '');
+                        return `
+                            <div onclick="setLiveNowSpotlightIndex(${idx})" class="w-64 shrink-0 p-3 rounded-2xl ${sIsActive ? 'bg-rose-950/40 border-rose-500/50 shadow-lg shadow-rose-950/40' : 'bg-slate-900/80 border-white/10 hover:border-white/25'} border transition-all cursor-pointer flex flex-col justify-between gap-2.5 select-none">
+                                <div class="flex items-center justify-between gap-1.5">
+                                    <div class="flex items-center gap-1.5">
+                                        ${s.isLive ? `<span class="bg-rose-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>LIVE</span>` : `<span class="bg-black/75 text-neutral-300 text-[9px] px-2 py-0.5 rounded border border-white/15">${s.countdown || s.timeIST}</span>`}
+                                        ${getProviderBadge(s)}
+                                    </div>
+                                    ${sIsActive ? `<span class="text-[9px] font-bold uppercase tracking-wider text-rose-400 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">Active</span>` : ''}
+                                </div>
+                                <div class="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-slate-950 border border-white/10">
+                                    ${buildVsMatchThumbnailHtml(s, false)}
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="text-[10px] font-medium text-neutral-400 truncate">${s.league || s.sportName}</div>
+                                    <h4 class="text-xs font-bold text-white line-clamp-1">${s.title}</h4>
+                                </div>
+                                <div class="flex items-center gap-2 pt-1" onclick="event.stopPropagation()">
+                                    ${sHasB ? `
+                                        <button type="button" onclick="openLiveNowEventDirect('${sSafePlayUrl}', 'livenow')" class="flex-1 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-black font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                                            <svg class="w-3 h-3 fill-black" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                            <span>Watch</span>
+                                        </button>
+                                    ` : `
+                                        <button type="button" onclick="openSportMatchOvalModal(decodeURIComponent('${sSafeId}'), 'score')" class="flex-1 py-1.5 rounded-lg bg-white/15 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all">
+                                            <span>Score</span>
+                                        </button>
+                                    `}
+                                    <button type="button" onclick="setLiveNowSpotlightIndex(${idx})" class="px-2.5 py-1.5 rounded-lg ${sIsActive ? 'bg-rose-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-neutral-200'} text-[11px] font-semibold border border-white/10 transition-colors">
+                                        ${sIsActive ? 'Current' : 'Select'}
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        ` : ''}
     `;
-    if (typeof triggerLucide === 'function') triggerLucide();
 }
 
 function renderLiveNowGrid() {
@@ -9794,14 +10190,13 @@ function renderLiveNowGrid() {
     if (!events.length) {
         container.innerHTML = `
             <div class="py-16 text-center text-zinc-500 flex flex-col items-center justify-center gap-2 p-6">
-                <i data-lucide="tv-2" class="w-8 h-8 text-zinc-600"></i>
+                <svg class="w-8 h-8 stroke-zinc-600 fill-none stroke-2" viewBox="0 0 24 24"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
                 <h3 class="text-sm font-semibold text-white">No matches found</h3>
                 <button onclick="document.getElementById('liveNowSearch').value=''; setLiveNowSportCategory('all');" class="mt-2 px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full text-xs font-semibold transition-colors">
                     Reset Filters
                 </button>
             </div>
         `;
-        if (typeof triggerLucide === 'function') triggerLucide();
         return;
     }
 
@@ -10054,7 +10449,6 @@ function renderLiveNowGrid() {
                     if (!gridWrap.dataset.rendered) {
                         gridWrap.innerHTML = items.map(item => createNetflixSportCard(item, false)).join('');
                         gridWrap.dataset.rendered = 'true';
-                        triggerLucide(gridWrap);
                     }
                     if (btnLabel) btnLabel.textContent = 'Collapse';
                 } else {
@@ -10087,7 +10481,7 @@ function renderLiveNowGrid() {
             const secKey = 'sec_' + secIdx;
             window._liveNowSubsectionItems[secKey] = items;
             const isExp = window._liveNowExpandedSet && window._liveNowExpandedSet.has(secKey);
-            const displayItems = items.slice(0, 40);
+            const displayItems = items.slice(0, 16);
             const shelfDomId = `liveNowDynShelf_${secIdx}`;
             return `
                 <div class="space-y-3 pb-2 border-b border-white/[0.05]">
@@ -10099,15 +10493,15 @@ function renderLiveNowGrid() {
                         </div>
                         <button type="button" onclick="toggleLiveNowSubsection('${secKey}')" class="px-3 py-1.5 rounded-lg bg-white/[0.07] hover:bg-white hover:text-black text-neutral-200 border border-white/10 text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 active:scale-95">
                             <span id="livenow-exp-label-${secKey}">${isExp ? 'Collapse' : `Expand (${items.length})`}</span>
-                            <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                            <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                     </div>
                     <div id="livenow-row-wrap-${secKey}" class="scroller-container ${isExp ? 'hidden' : ''}">
-                        <button type="button" class="scroller-btn scroller-left" onclick="scrollShelf('${shelfDomId}', 'left')"><i data-lucide="chevron-left"></i></button>
-                        <div id="${shelfDomId}" class="flex items-center gap-3.5 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1">
+                        <button type="button" class="scroller-btn scroller-left" onclick="scrollShelf('${shelfDomId}', 'left')"><svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                        <div id="${shelfDomId}" class="flex items-center gap-3.5 sm:gap-4 overflow-x-auto no-scrollbar pb-2 pt-1" style="touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
                             ${displayItems.map(item => createNetflixSportCard(item, true)).join('')}
                         </div>
-                        <button type="button" class="scroller-btn scroller-right" onclick="scrollShelf('${shelfDomId}', 'right')"><i data-lucide="chevron-right"></i></button>
+                        <button type="button" class="scroller-btn scroller-right" onclick="scrollShelf('${shelfDomId}', 'right')"><svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
                     </div>
                     <div id="livenow-grid-wrap-${secKey}" data-rendered="${isExp ? 'true' : ''}" class="${isExp ? '' : 'hidden'} grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5 pt-2 animate-grid-expand">
                         ${isExp ? items.map(item => createNetflixSportCard(item, false)).join('') : ''}
@@ -10452,8 +10846,6 @@ function renderLiveNowGrid() {
         container.innerHTML = shelvesHtml;
 
     }
-
-    if (typeof triggerLucide === 'function') triggerLucide();
 }
 
 function renderLiveNowShelf() {
@@ -10468,8 +10860,6 @@ function renderLiveNowShelf() {
     }
 
     shelf.innerHTML = events.map(e => createNetflixSportCard(e, true)).join('');
-
-    if (typeof triggerLucide === 'function') triggerLucide();
 }
 
 // 3. SPORTS CHANNELS ENGINE (Instant 0ms cached display, zero mobile stuck)
@@ -11810,7 +12200,7 @@ container.innerHTML = `
 <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10"></div>
 <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent z-10"></div>
 ${playerPngHtml}
-<div class="absolute bottom-6 sm:bottom-10 right-5 sm:right-8 flex items-center gap-2 z-30">
+<div class="spotlight-nav-container absolute top-4 sm:top-auto sm:bottom-10 right-4 sm:right-8 flex items-center gap-2 z-30">
     <button type="button" onclick="selectSportsSpotlightSlide((currentSportsSlideIndex - 1 + sportsSpotlightSlides.length) % sportsSpotlightSlides.length)" class="spotlight-nav-arrow" title="Previous Highlight">
         <i data-lucide="chevron-left" class="w-4 h-4"></i>
     </button>
@@ -13883,29 +14273,27 @@ function renderAnimeShelf(list, shelfId) {
         };
         window._animeCache[id] = animeObj;
         const card = document.createElement('div');
-        card.className = "anime-ott-card w-36 sm:w-44 md:w-48 lg:w-52 shrink-0 rounded-2xl overflow-hidden cursor-pointer relative flex flex-col group";
+        card.className = "anime-ott-card w-36 sm:w-44 md:w-48 lg:w-52 shrink-0 aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer relative group select-none";
         card.onclick = () => openAnimeInfo(animeObj);
         card.innerHTML = `
-            <div class="relative aspect-[2/3] bg-slate-950 overflow-hidden">
-                <img loading="lazy" decoding="async" src="${poster}" alt="${title}" class="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500">
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity"></div>
-                <div class="absolute top-2.5 left-2.5 bg-slate-950/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-sky-300 border border-white/15">
-                    ${epCount} EPS
+            <img loading="lazy" decoding="async" src="${poster}" alt="${title}" class="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500 absolute inset-0 z-0">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent opacity-90 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
+            <div class="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-sky-300 border border-white/15 z-20">
+                ${epCount} EPS
+            </div>
+            <div class="absolute top-2.5 right-2.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-amber-300 border border-white/15 z-20">
+                ★ ${score}
+            </div>
+            <div class="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-20 pointer-events-none">
+                <div class="w-11 h-11 rounded-full bg-white text-slate-950 flex items-center justify-center shadow-2xl transform scale-90 md:group-hover:scale-100 transition-transform duration-300">
+                    <i data-lucide="play" class="w-5 h-5 fill-slate-950 ml-0.5"></i>
                 </div>
-                <div class="absolute top-2.5 right-2.5 bg-slate-950/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-semibold text-amber-300 border border-white/15">
-                    ★ ${score}
-                </div>
-                <div class="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                    <div class="w-11 h-11 rounded-full bg-white text-slate-950 flex items-center justify-center shadow-2xl transform scale-90 md:group-hover:scale-100 transition-transform duration-300">
-                        <i data-lucide="play" class="w-5 h-5 fill-slate-950 ml-0.5"></i>
-                    </div>
-                </div>
-                <div class="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end">
-                    <h3 class="text-xs sm:text-[13px] font-bold text-white group-hover:text-sky-200 transition-colors truncate tracking-tight" title="${title}">${title}</h3>
-                    <div class="flex items-center justify-between text-[10px] font-medium text-slate-400 mt-0.5">
-                        <span>Simulcast</span>
-                        <span class="text-slate-300 uppercase text-[9px] tracking-wider">SUB / DUB</span>
-                    </div>
+            </div>
+            <div class="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end z-20">
+                <h3 class="text-xs sm:text-[13px] font-bold text-white group-hover:text-sky-200 transition-colors truncate tracking-tight" title="${title}">${title}</h3>
+                <div class="flex items-center justify-between text-[10px] font-medium text-slate-400 mt-0.5">
+                    <span>Simulcast</span>
+                    <span class="text-slate-300 uppercase text-[9px] tracking-wider px-1.5 py-0.5 rounded bg-white/10">SUB / DUB</span>
                 </div>
             </div>
         `;
@@ -15015,11 +15403,16 @@ function renderWatchHistory() {
         let progress = 50;
         let remainingText = '';
 
-        if (durTime > 0 && curTime > 0) {
+        const hasValidTiming = durTime > 0 && durTime < 36000 && isFinite(durTime) && curTime > 0 && isFinite(curTime);
+
+        if (hasValidTiming) {
             progress = Math.min(98, Math.max(2, Math.round((curTime / durTime) * 100)));
             const remSec = Math.max(0, durTime - curTime);
             const remMin = Math.ceil(remSec / 60);
             remainingText = remMin >= 60 ? `${Math.floor(remMin / 60)}h ${remMin % 60}m left` : `${remMin}m left`;
+        } else if (durTime >= 36000 || !isFinite(durTime)) {
+            progress = 100;
+            remainingText = 'Live Stream';
         } else if (item.progressPercent) {
             progress = Math.min(98, Math.max(5, Number(item.progressPercent)));
             remainingText = `${Math.max(5, Math.round((100 - progress) * 1.15))}m left`;
@@ -15029,12 +15422,12 @@ function renderWatchHistory() {
         }
 
         const formatMinSec = (s) => {
-            if (!s || isNaN(s)) return '0:00';
+            if (!s || isNaN(s) || !isFinite(s)) return '0:00';
             const m = Math.floor(s / 60);
             const sec = Math.floor(s % 60);
             return `${m}:${sec < 10 ? '0' : ''}${sec}`;
         };
-        const timingBadge = (durTime > 0 && curTime > 0) ? `${formatMinSec(curTime)} / ${formatMinSec(durTime)}` : remainingText;
+        const timingBadge = hasValidTiming ? `${formatMinSec(curTime)} / ${formatMinSec(durTime)}` : remainingText;
 
         let imgUrl = item.poster || (item.poster_path ? (item.poster_path.startsWith('http') ? item.poster_path : `https://image.tmdb.org/t/p/w500${item.poster_path}`) : '');
         if (!imgUrl) {
@@ -15042,7 +15435,7 @@ function renderWatchHistory() {
         }
 
         html += `
-            <div class="oval-cw-card group relative flex items-center gap-3.5 w-[285px] sm:w-[330px] p-2.5 pr-4 rounded-[28px] cursor-pointer shrink-0 select-none" onclick="window._resumeTargetTime=${curTime}; openDetailsModal('${item.id}', '${actualType}', decodeURIComponent('${safeTitle}'), ${curTime})">
+            <div class="oval-cw-card group relative flex items-center gap-3.5 w-[285px] sm:w-[330px] p-2.5 pr-4 rounded-[28px] cursor-pointer shrink-0 select-none" onclick="window._resumeTargetTime=${hasValidTiming ? curTime : 0}; openDetailsModal('${item.id}', '${actualType}', decodeURIComponent('${safeTitle}'), ${hasValidTiming ? curTime : 0})">
                 <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-[20px] overflow-hidden bg-neutral-950 shrink-0 border border-white/15 shadow-lg">
                     <img src="${imgUrl}" alt="${title}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                     <div class="absolute inset-0 bg-black/35 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -15060,7 +15453,7 @@ function renderWatchHistory() {
                     <div class="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
                         <div class="h-full rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 transition-all duration-500" style="width: ${progress}%"></div>
                     </div>
-                    ${durTime > 0 && curTime > 0 ? `<div class="text-[9px] font-mono text-neutral-400 flex justify-between"><span>${formatMinSec(curTime)}</span><span>${formatMinSec(durTime)}</span></div>` : ''}
+                    ${hasValidTiming ? `<div class="text-[9px] font-mono text-neutral-400 flex justify-between"><span>${formatMinSec(curTime)}</span><span>${formatMinSec(durTime)}</span></div>` : ''}
                 </div>
                 <div class="flex flex-col items-center gap-1.5 shrink-0">
                     <div class="w-9 h-9 rounded-full bg-white/10 group-hover:bg-white text-white group-hover:text-black border border-white/15 flex items-center justify-center transition-all shadow">
@@ -15193,4 +15586,3 @@ if (document.readyState === 'loading') {
 <script src="/local-ai.js"></script>
 </body>
 </html>
-

@@ -1,22 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow system config, analytics, and application documents
-    match /system_config/{document=**} {
-      allow read, write: if true;
-    }
-    match /analytics/{document=**} {
-      allow read, write: if true;
-    }
-    match /m3u_playlists/{document=**} {
-      allow read, write: if true;
-    }
-    match /security_logs/{document=**} {
-      allow read, write: if true;
-    }
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidSystemConfig(data) {
+      return data.keys().hasAll(['status', 'maintenanceMode', 'siteLockMode']) &&
+             data.keys().hasOnly(['status', 'maintenanceMode', 'siteLockMode', 'updatedAt']) &&
+             data.status in ['active', 'offline', 'killed'] &&
+             data.maintenanceMode is bool &&
+             data.siteLockMode is bool;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'sindhukaruna55@gmail.com';
+    }
+
+    match /system/config {
+      allow read: if true;
+      allow write: if true; // Allow server sync. In production, restrict to Admin SDK or specific service account.
+    }
+
+    match /system_config/admin_db {
+      allow read: if true;
+      allow write: if true; // Allow server sync.
     }
   }
 }
-

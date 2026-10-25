@@ -1,10 +1,10 @@
-import nacl from 'tweetnacl';
 import https from 'https';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import axios from 'axios';
+import nacl from 'tweetnacl';
 import { scrapeAnimeEpisode, resolveMalIdFromTitle, fetchAniSkipTimes } from './animeScraperService';
 import { resolveRareAnimeStream } from './rareAnimesService';
 import { scrapeMegaPlayAnime, getMegaPlayToken } from './megaPlayService';
@@ -48,12 +48,36 @@ export function getCdnHeaders(url?: string): CdnHeaders {
     const lower = url.toLowerCase();
 
     if (
+        lower.includes('vidrift.in') ||
+        lower.includes('embed.vidrift.in') ||
+        lower.includes('vidrift.net') ||
+        lower.includes('mb.vidrift.net') ||
+        lower.includes('reelvault.click')
+    ) {
+        return {
+            referer: 'https://embed.vidrift.in/',
+            origin: 'https://embed.vidrift.in',
+            userAgent: defaultUa
+        };
+    }
+
+    if (
+        lower.includes('hakunamatata') ||
+        lower.includes('hakunaymatata') ||
+        lower.includes('vidlink')
+    ) {
+        return {
+            referer: 'https://vidlink.pro/',
+            origin: 'https://vidlink.pro',
+            userAgent: defaultUa
+        };
+    }
+
+    if (
         lower.includes('animecurx.tech') ||
         lower.includes('rousav.tech') ||
         lower.includes('streamrip.fun') ||
-        lower.includes('bingr.one') ||
-        lower.includes('hakunamatata') ||
-        lower.includes('hakunaymatata')
+        lower.includes('bingr.one')
     ) {
         return {
             referer: 'https://bingr.one/',
@@ -151,6 +175,8 @@ export function requiresReferer(url?: string): boolean {
     if (!url) return false;
     const lower = url.toLowerCase();
     return (
+        lower.includes('vidrift') ||
+        lower.includes('reelvault') ||
         lower.includes('animecurx.tech') ||
         lower.includes('rousav.tech') ||
         lower.includes('streamrip.fun') ||
@@ -230,14 +256,16 @@ export function normalizeServerId(rawSrv?: string): string | undefined {
         'vidbolt': 'vidbolt',
         'vidy': 'vidy',
         'cinezo': 'cinezo',
-        'vidrift': 'vidrift'
+        'vidrift': 'vidrift',
+        'vidlink': 'vidlink',
+        'vidlinkpro': 'vidlink',
+        'vidsrc': 'vidsrc'
     };
     return map[lower] || lower;
 }
 
-
 // ==========================================
-// 🚀 VIDLINK PRO NATIVE DECRYPTOR
+// 🚀 VIDLINK PRO NATIVE DECRYPTOR & SCRAPER
 // ==========================================
 const VIDLINK_KEY_HEX = 'c75136c5668bbfe65a7ecad431a745db68b5f381555b38d8f6c699449cf11fcd';
 const VIDLINK_KEY = Buffer.from(VIDLINK_KEY_HEX, 'hex');
@@ -256,15 +284,26 @@ export function encryptVidlinkToken(mediaId: string | number): string {
 
 export async function scrapeVidlinkStream(params: {
     tmdbId: string | number;
-    type: 'movie' | 'tv';
+    type: 'movie' | 'tv' | 'anime';
     season?: number;
     episode?: number;
+    malId?: string | number;
+    subOrDub?: 'sub' | 'dub';
 }): Promise<any> {
     try {
-        const token = encryptVidlinkToken(params.tmdbId);
-        const url = params.type === 'tv'
-            ? `https://vidlink.pro/api/b/tv/${token}/${params.season || 1}/${params.episode || 1}?multiLang=1`
-            : `https://vidlink.pro/api/b/movie/${token}?multiLang=1`;
+        const isAnime = (params.type === 'anime' || Boolean(params.malId)) && params.type !== 'movie';
+        const subOrDub = params.subOrDub || 'sub';
+        let url = '';
+        
+        if (isAnime && params.malId) {
+            url = `https://vidlink.pro/api/b/anime/${params.malId}/${params.episode || 1}?subOrDub=${subOrDub}&fallback=true`;
+        } else {
+            const token = encryptVidlinkToken(params.tmdbId);
+            const isSeries = (params.type === 'tv' || isAnime) && params.type !== 'movie';
+            url = isSeries
+                ? `https://vidlink.pro/api/b/tv/${token}/${params.season || 1}/${params.episode || 1}?multiLang=1`
+                : `https://vidlink.pro/api/b/movie/${token}?multiLang=1`;
+        }
 
         const res = await axios.get(url, {
             headers: {
@@ -272,7 +311,7 @@ export async function scrapeVidlinkStream(params: {
                 'Origin': 'https://vidlink.pro',
                 'Referer': 'https://vidlink.pro/'
             },
-            timeout: 8000
+            timeout: 7000
         });
 
         if (res.data && res.data.stream) {
@@ -316,20 +355,19 @@ export async function scrapeVidlinkStream(params: {
     return { success: false, sources: [], subtitles: [] };
 }
 
-/**
- * 🚀 VIDRIFT NATIVE SCRAPER
- * Resolves direct HLS manifests from embed.vidrift.in
- */
+// ==========================================
+// 🚀 VIDRIFT NATIVE SCRAPER
+// ==========================================
 export async function scrapeVidriftStream(params: {
     tmdbId: string | number;
-    type: 'movie' | 'tv';
+    type: 'movie' | 'tv' | 'anime';
     season?: number;
     episode?: number;
 }): Promise<any> {
     try {
         const s = params.season || 1;
         const e = params.episode || 1;
-        const embedUrl = params.type === 'tv'
+        const embedUrl = (params.type === 'tv' || params.type === 'anime')
             ? `https://embed.vidrift.in/embed/tv/${params.tmdbId}/${s}/${e}`
             : `https://embed.vidrift.in/embed/movie/${params.tmdbId}`;
 
@@ -344,60 +382,80 @@ export async function scrapeVidriftStream(params: {
         if (!match) return { success: false, sources: [], subtitles: [] };
 
         const meta = JSON.parse(match[1]);
-        const token = meta.playbackToken;
-        if (!token) return { success: false, sources: [], subtitles: [] };
+        const sources: any[] = [];
 
-        const path = params.type === 'tv'
-            ? `tv/${params.tmdbId}/${s}/${e}`
-            : `movie/${params.tmdbId}`;
-
-        const apiUrl = `https://embed.vidrift.in/api/source/${path}?token=${encodeURIComponent(token)}`;
-        const apiRes = await axios.get(apiUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': embedUrl
-            },
-            timeout: 7000
-        });
-
-        if (apiRes.data && apiRes.data.success && Array.isArray(apiRes.data.streams)) {
-            const sources: any[] = [];
-            for (const st of apiRes.data.streams) {
-                const streamUrl = st.proxyUrl || st.url;
-                if (streamUrl) {
+        // 1. Orion Multi-Dub Direct Streams (Original, Hindi, Tamil, Telugu, etc.)
+        if (Array.isArray(meta.orionStreams)) {
+            for (const ost of meta.orionStreams) {
+                let sUrl = ost.proxyUrl || ost.url;
+                if (sUrl) {
+                    if (sUrl.startsWith('/')) {
+                        sUrl = `https://embed.vidrift.in${sUrl}`;
+                    }
                     sources.push({
-                        url: `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`,
-                        rawUrl: streamUrl,
-                        quality: st.maxRes ? `${st.maxRes}p` : '1080p',
-                        type: 'application/x-mpegurl',
-                        label: `Vidrift ${st.provider || 'HLS'} (${st.quality || 'HD'})`,
-                        provider: st.provider,
+                        url: `/stream_proxy.php?url=${encodeURIComponent(sUrl)}`,
+                        rawUrl: sUrl,
+                        quality: '1080p',
+                        type: ost.type === 'mp4' ? 'video/mp4' : 'application/x-mpegurl',
+                        label: `Vidrift ${ost.name || 'Orion HD'}`,
+                        provider: 'vidrift',
+                        audio: ost.name || 'Default',
                         skipProxy: false
                     });
                 }
             }
-            const subtitles = (apiRes.data.subtitles || []).map((c: any) => ({
-                lang: c.lang || c.label || 'en',
-                url: c.url?.startsWith('http') ? c.url : `https://embed.vidrift.in${c.url}`,
-                label: c.label || 'English'
-            }));
-            return {
-                success: sources.length > 0,
-                sources,
-                subtitles,
-                primaryM3u8: sources[0]?.url
-            };
         }
+
+        const token = meta.playbackToken;
+        if (token) {
+            const path = (params.type === 'tv' || params.type === 'anime')
+                ? `tv/${params.tmdbId}/${s}/${e}`
+                : `movie/${params.tmdbId}`;
+
+            const apiUrl = `https://embed.vidrift.in/api/source/${path}?token=${encodeURIComponent(token)}`;
+            try {
+                const apiRes = await axios.get(apiUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Referer': embedUrl
+                    },
+                    timeout: 7000
+                });
+
+                if (apiRes.data && apiRes.data.success && Array.isArray(apiRes.data.streams)) {
+                    for (const st of apiRes.data.streams) {
+                        const streamUrl = st.proxyUrl || st.url;
+                        if (streamUrl) {
+                            sources.push({
+                                url: `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`,
+                                rawUrl: streamUrl,
+                                quality: st.maxRes ? `${st.maxRes}p` : '1080p',
+                                type: 'application/x-mpegurl',
+                                label: `Vidrift ${st.provider || 'Vela'} (${st.quality || 'HD'})`,
+                                provider: st.provider || 'vidrift',
+                                skipProxy: false
+                            });
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        return {
+            success: sources.length > 0,
+            sources,
+            subtitles: [],
+            primaryM3u8: sources[0]?.url
+        };
     } catch (e: any) {
         console.warn('[Vidrift Scraper Error]:', e?.message || e);
     }
     return { success: false, sources: [], subtitles: [] };
 }
 
-/**
- * 🚀 FILMU / VIDLY NATIVE CIPHER SCRAPER
- * Decrypts Next.js sealed streams from embed.filmu.in / vidly.pro
- */
+// ==========================================
+// 🚀 FILMU / VIDLY NATIVE CIPHER SCRAPER
+// ==========================================
 const FILMU_KEY = "vY7#qL2!mZ9@wK4$";
 
 export function decryptFilmuPayload(payload: string): any {
@@ -437,26 +495,46 @@ export function decryptFilmuPayload(payload: string): any {
 
 export async function scrapeFilmuStream(params: {
     tmdbId: string | number;
-    type: 'movie' | 'tv';
+    type: 'movie' | 'tv' | 'anime';
     season?: number;
     episode?: number;
 }): Promise<any> {
     try {
         const s = params.season || 1;
         const e = params.episode || 1;
-        const targetUrl = params.type === 'tv'
-            ? `https://vidly.pro/tv/${params.tmdbId}/${s}/${e}`
-            : `https://vidly.pro/movie/${params.tmdbId}`;
+        const targetUrl = (params.type === 'tv' || params.type === 'anime')
+            ? `https://embed.filmu.in/tv/${params.tmdbId}/${s}/${e}`
+            : `https://embed.filmu.in/movie/${params.tmdbId}`;
 
-        const res = await axios.get(targetUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
-                'Referer': 'https://embed.filmu.in/'
-            },
-            timeout: 8000
-        });
+        let htmlData = '';
+        try {
+            const res = await axios.get(targetUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+                    'Referer': 'https://embed.filmu.in/'
+                },
+                timeout: 7500
+            });
+            htmlData = String(res.data || '');
+        } catch (_) {}
 
-        const match = res.data.match(/sealed\\?":\\?"(v1\.[^\\"]+)/);
+        if (!htmlData || !htmlData.includes('v1.')) {
+            const fallbackUrl = (params.type === 'tv' || params.type === 'anime')
+                ? `https://vidly.pro/embed/tv/${params.tmdbId}/${s}/${e}`
+                : `https://vidly.pro/embed/movie/${params.tmdbId}`;
+            try {
+                const resFallback = await axios.get(fallbackUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+                        'Referer': 'https://embed.filmu.in/'
+                    },
+                    timeout: 7500
+                });
+                htmlData = String(resFallback.data || '');
+            } catch (_) {}
+        }
+
+        const match = htmlData.match(/\"(v1\.[a-zA-Z0-9_\-]{80,})\"/) || htmlData.match(/sealed\\?":\\?"(v1\.[^\\"]+)/);
         if (!match) return { success: false, sources: [], subtitles: [] };
 
         const decrypted = decryptFilmuPayload(match[1]);
@@ -497,43 +575,175 @@ export async function scrapeFilmuStream(params: {
     return { success: false, sources: [], subtitles: [] };
 }
 
+// ==========================================
+// 🚀 VIDSRC NATIVE WASM DIRECT M3U SCRAPER (PURE STREAMS - NO EMBEDS)
+// ==========================================
+export async function scrapeVidsrcStream(params: {
+    id: string | number;
+    type: 'movie' | 'tv' | 'anime';
+    season?: number;
+    episode?: number;
+}): Promise<any> {
+    try {
+        const s = params.season || 1;
+        const e = params.episode || 1;
+        const isTv = params.type === 'tv' || params.type === 'anime';
+
+        // Base domain cascade (vidsrc.sh -> vidsrc.to -> vidsrc.me)
+        const vsDomains = ['https://vidsrc.sh', 'https://vidsrc.to', 'https://vidsrc.net', 'https://vidsrc.me'];
+        let rawUrls: string[] = [];
+        let subtitlesList: any[] = [];
+
+        for (const baseDomain of vsDomains) {
+            try {
+                const vsUrl = isTv
+                    ? `${baseDomain}/vs_src.php?type=tv&id=${params.id}&season=${s}&episode=${e}`
+                    : `${baseDomain}/vs_src.php?type=movie&id=${params.id}`;
+
+                const r1 = await axios.get(vsUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer': isTv ? `${baseDomain}/embed/tv/${params.id}/${s}/${e}` : `${baseDomain}/embed/movie/${params.id}`,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    timeout: 3300
+                });
+
+                const intermediateUrl = r1.data?.src;
+                if (!intermediateUrl) continue;
+
+                const r2 = await axios.get(intermediateUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Referer': `${baseDomain}/`
+                    },
+                    timeout: 3300
+                });
+
+                const matchCfg = r2.data.match(/window\.CFG\s*=\s*({[^<]+});/);
+                if (!matchCfg) continue;
+                const cfg = JSON.parse(matchCfg[1]);
+                const playerUrl = new URL(cfg.playerUrl, intermediateUrl).href;
+
+                const r3 = await axios.get(playerUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Referer': intermediateUrl
+                    },
+                    timeout: 3300
+                });
+
+                const matchPlayerCfg = r3.data.match(/window\.CONFIG\s*=\s*({[^<]+});/);
+                if (!matchPlayerCfg) continue;
+                const pCfg = JSON.parse(matchPlayerCfg[1]);
+
+                const baseApi = pCfg.api || `${pCfg.streamBase}&season=${pCfg.season || s}&episode=${pCfg.episode || e}&stream_urls`;
+                const targetApiUrl = `${baseApi}&api_token=${encodeURIComponent(pCfg.apiToken || '')}`;
+
+                const r4 = await axios.get(targetApiUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Referer': playerUrl
+                    },
+                    timeout: 3300
+                });
+
+                const j = r4.data;
+                if (j.vs && j.data && typeof j.data.stream_urls === 'string') {
+                    const wasmBytes = (await axios.get(j.vs.wasm_url, { responseType: 'arraybuffer', timeout: 8000 })).data;
+                    const mod = await WebAssembly.compile(wasmBytes);
+                    const inst: any = await WebAssembly.instantiate(mod, {});
+                    const ex = inst.exports;
+                    const enc = Buffer.from(j.data.stream_urls, 'base64');
+                    const ptr = ex.alloc(enc.length);
+                    new Uint8Array(ex.memory.buffer, ptr, enc.length).set(enc);
+                    const outLen = ex.decrypt(ptr, enc.length);
+                    const decrypted = new TextDecoder().decode(new Uint8Array(ex.memory.buffer, ptr + 12, outLen));
+                    rawUrls = decrypted.split('\n').map((u: string) => u.trim()).filter(Boolean);
+                } else if (Array.isArray(j.data?.stream_urls)) {
+                    rawUrls = j.data.stream_urls;
+                }
+
+                if (Array.isArray(j.data?.subtitles) || Array.isArray(j.default_subs)) {
+                    subtitlesList = (j.data?.subtitles || j.default_subs || []).map((sub: any) => ({
+                        lang: sub.lang || sub.label || 'en',
+                        url: sub.url,
+                        label: sub.label || sub.lang || 'English'
+                    }));
+                }
+
+                if (rawUrls.length > 0) break;
+            } catch (_) {}
+        }
+
+        const sources: any[] = [];
+        for (let i = 0; i < rawUrls.length; i++) {
+            const raw = rawUrls[i];
+            if (raw.startsWith('http')) {
+                sources.push({
+                    url: `/stream_proxy.php?url=${encodeURIComponent(raw)}`,
+                    rawUrl: raw,
+                    quality: '1080p',
+                    type: 'application/x-mpegurl',
+                    label: `VidSrc Multi-Source 1080p #${i + 1}`,
+                    provider: 'vidsrc',
+                    isEmbed: false,
+                    isDirectM3u: true,
+                    skipProxy: false
+                });
+            }
+        }
+
+        return {
+            success: sources.length > 0,
+            sources,
+            subtitles: subtitlesList,
+            primaryM3u8: sources[0]?.url
+        };
+    } catch (e: any) {
+        console.warn('[VidSrc Scraper Error]:', e?.message || e);
+    }
+    return { success: false, sources: [], subtitles: [] };
+}
+
 export const BINGR_SERVERS: BingrServerCluster[] = [
     { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 1 },
-    { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 1 },
     { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN', priority: 2 },
-    { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted Stream)', cc: 'IN', priority: 2 },
-    { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN', priority: 3 },
-    { id: 's70', name: 'Polaris (Multi-Language Dubs / HLS)', cc: 'US', priority: 4 },
-    { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US', priority: 5 },
+    { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 3 },
+    { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted Stream)', cc: 'IN', priority: 4 },
+    { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN', priority: 5 },
     { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US', priority: 6 },
-    { id: 's31', name: 'Orion (Worker CDN Direct)', cc: 'US', priority: 7 },
-    { id: 'sm_hub', name: 'SM Movie Hub Pro (Direct VOD/MKV/Dual Audio)', cc: 'BD', priority: 8 },
-    { id: 'framex', name: 'FrameX TV (Multi-Source 4K/1080p Movies, TV & Anime)', cc: 'US', priority: 9 },
-    { id: 's81', name: 'Novo (Direct StreamRip / High-Speed HLS)', cc: 'US', priority: 10 },
-    { id: 's40', name: 'Aphelion (DarkMatter / Dedicated TV Series HLS)', cc: 'GL', priority: 11 },
-    { id: 's3', name: 'Edmunds (High Reliability Proxy / 1080p)', cc: 'US', priority: 12 },
-    { id: 's60', name: 'Vertex (Direct CDN)', cc: 'US', priority: 13 },
-    { id: 's63', name: 'Hallyu (Asian & International HLS)', cc: 'KR', priority: 14 },
-    { id: 's61', name: 'Corvus (Multi-Source Hub / 1080p)', cc: 'US', priority: 15 },
-    { id: 'cinepro', name: 'CinePro Core (OMSS Multi-Provider 4K/1080p)', cc: 'US', priority: 16 },
-    { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP', priority: 16 },
-    { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP', priority: 17 },
-    { id: 'animesalt', name: 'AnimeSalt (Special Anime Scraper)', cc: 'JP', priority: 18 },
-    { id: 'asiaflix', name: 'Asiaflix (Vidmoly Multi-Bitrate HLS)', cc: 'KR', priority: 19 },
-    { id: 'kisskh', name: 'KissKH (Asian Drama & Anime)', cc: 'JP', priority: 20 },
-    { id: 'cinezo', name: 'Cinezo (Player Cinezo Multi-Audio)', cc: 'FR', priority: 22 },
-    { id: 'vidbolt', name: 'Vidbolt (Vidbolt Embed Streamer)', cc: 'US', priority: 23 },
-    { id: 'vidy', name: 'Vidy (Vidy.st Direct Embed)', cc: 'US', priority: 24 },
-    { id: 's71', name: 'Phoenix (US Cluster)', cc: 'US', priority: 26 },
-    { id: 's72', name: 'Paris (IT Cluster)', cc: 'IT', priority: 27 },
-    { id: 's50', name: 'Delta (US Cluster)', cc: 'US', priority: 28 },
-    { id: 's51', name: 'Delta+ (IN Cluster)', cc: 'IN', priority: 29 },
-    { id: 's12', name: 'Quasar (GL Cluster)', cc: 'GL', priority: 30 },
-    { id: 's11', name: 'Sirius (GL Cluster)', cc: 'GL', priority: 31 },
-    { id: 's1', name: 'Miller (US Cluster)', cc: 'US', priority: 32 },
-    { id: 's2', name: 'Mann (US Cluster)', cc: 'US', priority: 33 },
-    { id: 's4', name: 'Luna (US Cluster)', cc: 'US', priority: 34 },
-    { id: 's5', name: 'Aditya (IN Cluster)', cc: 'IN', priority: 35 }
+    { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US', priority: 7 },
+    { id: 's31', name: 'Orion (Worker CDN Direct)', cc: 'US', priority: 8 },
+    { id: 'sm_hub', name: 'SM Movie Hub Pro (Direct VOD/MKV/Dual Audio)', cc: 'BD', priority: 9 },
+    { id: 's70', name: 'Polaris (Multi-Language Dubs / HLS)', cc: 'US', priority: 10 },
+    { id: 'framex', name: 'FrameX TV (Multi-Source 4K/1080p Movies, TV & Anime)', cc: 'US', priority: 11 },
+    { id: 's81', name: 'Novo (Direct StreamRip / High-Speed HLS)', cc: 'US', priority: 12 },
+    { id: 's40', name: 'Aphelion (DarkMatter / Dedicated TV Series HLS)', cc: 'GL', priority: 13 },
+    { id: 's3', name: 'Edmunds (High Reliability Proxy / 1080p)', cc: 'US', priority: 14 },
+    { id: 'vidsrc', name: 'VidSrc (Universal Multi-Source Streamer)', cc: 'US', priority: 15 },
+    { id: 's60', name: 'Vertex (Direct CDN)', cc: 'US', priority: 16 },
+    { id: 's63', name: 'Hallyu (Asian & International HLS)', cc: 'KR', priority: 17 },
+    { id: 's61', name: 'Corvus (Multi-Source Hub / 1080p)', cc: 'US', priority: 18 },
+    { id: 'cinepro', name: 'CinePro Core (OMSS Multi-Provider 4K/1080p)', cc: 'US', priority: 19 },
+    { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP', priority: 20 },
+    { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP', priority: 21 },
+    { id: 'animesalt', name: 'AnimeSalt (Special Anime Scraper)', cc: 'JP', priority: 22 },
+    { id: 'asiaflix', name: 'Asiaflix (Vidmoly Multi-Bitrate HLS)', cc: 'KR', priority: 23 },
+    { id: 'kisskh', name: 'KissKH (Asian Drama & Anime)', cc: 'JP', priority: 24 },
+    { id: 'cinezo', name: 'Cinezo (Player Cinezo Multi-Audio)', cc: 'FR', priority: 25 },
+    { id: 'vidbolt', name: 'Vidbolt (Vidbolt Embed Streamer)', cc: 'US', priority: 26 },
+    { id: 'vidy', name: 'Vidy (Vidy.st Direct Embed)', cc: 'US', priority: 27 },
+    { id: 's71', name: 'Phoenix (US Cluster)', cc: 'US', priority: 28 },
+    { id: 's72', name: 'Paris (IT Cluster)', cc: 'IT', priority: 29 },
+    { id: 's50', name: 'Delta (US Cluster)', cc: 'US', priority: 30 },
+    { id: 's51', name: 'Delta+ (IN Cluster)', cc: 'IN', priority: 31 },
+    { id: 's12', name: 'Quasar (GL Cluster)', cc: 'GL', priority: 32 },
+    { id: 's11', name: 'Sirius (GL Cluster)', cc: 'GL', priority: 33 },
+    { id: 's1', name: 'Miller (US Cluster)', cc: 'US', priority: 34 },
+    { id: 's2', name: 'Mann (US Cluster)', cc: 'US', priority: 35 },
+    { id: 's4', name: 'Luna (US Cluster)', cc: 'US', priority: 36 },
+    { id: 's5', name: 'Aditya (IN Cluster)', cc: 'IN', priority: 37 }
 ];
 
 // In-memory stream and details cache
@@ -577,17 +787,6 @@ export async function verifyStreamReachable(url: string, timeoutMs: number = 250
         }
     }
     if (!target.startsWith('http')) return false;
-
-    if (
-        target.includes('reelvault') || 
-        target.includes('vidrift') || 
-        target.includes('hakunaymatata') || 
-        target.includes('hakunamatata') || 
-        target.includes('rousav') || 
-        target.includes('animecurx')
-    ) {
-        return true;
-    }
 
     const headers = getCdnHeaders(target);
     let extraApiKey: string | undefined;
@@ -773,7 +972,6 @@ export function bingrRequest<T = any>(pathname: string, options: {
 }
 
 export const TMDB_KEYS: string[] = [
-    '844dba0bfd8f3a231a957b6e07a10be8',
     '9d83476d2e27f56748167514c69cd2b4',
     '15d2ea6d0dc1d476efbca3eba2b9bbfb',
     'a07e22bc18f5cb106bfe4cc1f83ad8ed'
@@ -1332,17 +1530,19 @@ export async function verifyStreamDuration(
             };
         }
 
-        // If user strictly requested this specific server, allow it (provided it's not a dummy clip)
+        // If user strictly requested this specific server, allow it
         if (isStrict) {
             return { isValid: true, expected: expectedRuntime, actual: actualRuntime };
         }
 
         const diff = Math.abs(actualRuntime - expectedRuntime);
+        // Generous tolerance (handles director cuts, extended editions, sliding window HLS)
+        const tolerance = Math.max(45, Math.round(expectedRuntime * 0.45));
 
-        // Feature Film / Movie Scraping (Strict +/- 15 minutes tolerance or 15%)
+        // Feature Film / Movie Scraping
         if (type === 'movie') {
-            // Reject fake 1-12 minute trailer clips pretending to be a full feature
-            if (actualRuntime < 12 && expectedRuntime >= 20) {
+            // Reject fake 1-5 minute trailer clips pretending to be a full feature
+            if (actualRuntime < 5 && expectedRuntime >= 30) {
                 return {
                     isValid: false,
                     expected: expectedRuntime,
@@ -1350,19 +1550,9 @@ export async function verifyStreamDuration(
                     reason: `Trailer or sample clip rejected: stream is only ${Math.round(actualRuntime)}m, expected feature film of ~${expectedRuntime}m`
                 };
             }
-            // Movie tolerance: +/- 35 minutes or 35% (handles theatrical vs director cuts)
-            const tolerance = Math.max(35, Math.round(expectedRuntime * 0.35));
-            if (diff > tolerance) {
-                return {
-                    isValid: false,
-                    expected: expectedRuntime,
-                    actual: actualRuntime,
-                    reason: `Duration mismatch: expected ~${expectedRuntime}m, stream is ${Math.round(actualRuntime)}m (Movie tolerance: +/-${tolerance}m, diff was ${Math.round(diff)}m)`
-                };
-            }
         } else {
             // TV episode / Anime / Sitcom
-            if (actualRuntime < 4) {
+            if (actualRuntime < 3 && expectedRuntime >= 15) {
                 return {
                     isValid: false,
                     expected: expectedRuntime,
@@ -1370,28 +1560,9 @@ export async function verifyStreamDuration(
                     reason: `Teaser clip rejected: stream is only ${Math.round(actualRuntime)}m, expected episode of ~${expectedRuntime}m`
                 };
             }
-            // Prevent serving a 2-hour full movie when a short episode was requested
-            if (expectedRuntime < 40 && actualRuntime > 115) {
-                return {
-                    isValid: false,
-                    expected: expectedRuntime,
-                    actual: actualRuntime,
-                    reason: `Wrong media: stream is ${Math.round(actualRuntime)}m, expected short episode of ~${expectedRuntime}m`
-                };
-            }
-            // TV tolerance: +/- 25 minutes or 50% (handles specials, double episodes, Korean drama pacing)
-            const tolerance = Math.max(25, Math.round(expectedRuntime * 0.50));
-            if (diff > tolerance) {
-                return {
-                    isValid: false,
-                    expected: expectedRuntime,
-                    actual: actualRuntime,
-                    reason: `Duration mismatch: expected ~${expectedRuntime}m, stream is ${Math.round(actualRuntime)}m (TV tolerance: +/-${Math.round(tolerance)}m, diff was ${Math.round(diff)}m)`
-                };
-            }
         }
 
-        return { isValid: true, expected: expectedRuntime, actual: actualRuntime };
+        return { isValid: true, expected: expectedRuntime, actual: (actualRuntime !== null ? actualRuntime : undefined) };
     } catch (e: any) {
         return { isValid: true };
     }
@@ -1509,8 +1680,6 @@ export async function scrapeBingrStream(params: {
     strictSrv?: boolean;
     anilistId?: number | string;
     malId?: number | string;
-    nocache?: boolean;
-    force?: boolean;
 }): Promise<BingrScrapeResult> {
     const isTv = params.type === 'tv' || params.type === 'anime' || (params.type !== 'movie' && (params.season !== undefined || params.episode !== undefined));
     const type: 'movie' | 'tv' | 'anime' = params.type ? params.type : (isTv ? 'tv' : 'movie');
@@ -1575,7 +1744,7 @@ export async function scrapeBingrStream(params: {
     const e = isTv ? (params.episode !== undefined ? Number(params.episode) : 1) : 1;
     const cacheKey = `${type}:${tmdbId}:${s}:${e}:${params.srv || 'default'}`;
     const cachedStream = STREAM_CACHE.get(cacheKey);
-    if (!params.nocache && !params.force && cachedStream && cachedStream.result && cachedStream.result.success && (Date.now() - cachedStream.timestamp < CACHE_TTL_STREAM)) {
+    if (cachedStream && cachedStream.result && cachedStream.result.success && (Date.now() - cachedStream.timestamp < CACHE_TTL_STREAM)) {
         return { ...cachedStream.result };
     }
 
@@ -1589,14 +1758,14 @@ export async function scrapeBingrStream(params: {
         query.episode = String(e);
     }
 
-    let malId: number | null = params.malId ? Number(params.malId) : null;
-    let isAnimeConfirmed = Boolean(type === 'anime' || params.anilistId);
+    let malId: number | null = (type !== 'movie' && params.malId) ? Number(params.malId) : null;
+    let isAnimeConfirmed = Boolean(type === 'anime' || (type !== 'movie' && params.anilistId));
     let hasSkipTimes = false;
     let isAnimeLikely = Boolean(
         type === 'anime' ||
-        params.anilistId ||
-        (params as any).isAnime ||
-        (mediaTitle && mediaTitle.match(/naruto|titan|dragon ball|one piece|jujutsu|bleach|hero academia|slayer|hunter|clover|alchemist|evangelion|death note|sword art|ghoul|tokyo|chainsaw|frieren|dandadan|solo leveling|kaiju|boruto|inuyasha|haikyu|basket|detective conan|gintama|steins|dr\.?\s*stone|code geass|fairy tail|vinland|berserk|monster|cowboy bebop|mob psycho|rezero|re:zero|overlord|slime|danmachi|fate|konosuba|blue lock|spy x family|baki/i))
+        (type !== 'movie' && params.anilistId) ||
+        (type !== 'movie' && (params as any).isAnime) ||
+        (type !== 'movie' && mediaTitle && mediaTitle.match(/\b(naruto|dragon ball|one piece|jujutsu kaisen|bleach|hero academia|demon slayer|hunter x hunter|evangelion|death note|sword art online|frieren|dandadan|solo leveling|kaiju no\.?\s*8|boruto|inuyasha|haikyuu|detective conan|gintama|steins;gate|dr\.?\s*stone|code geass|fairy tail|vinland saga|berserk|cowboy bebop|mob psycho|re:?zero|overlord|danmachi|konosuba|blue lock|spy x family|baki)\b/i))
     );
 
     // Fast check for MAL ID and anime detection for series before scraping (with strict 1200ms timeout)
@@ -1693,7 +1862,7 @@ export async function scrapeBingrStream(params: {
                             'Origin': 'https://bingr.one',
                             ...(token ? { 'x-api-key': token } : {})
                         },
-                        timeout: 7000
+                        timeout: 3300
                     });
 
                     if (saltRes.data?.streams && saltRes.data.streams.length > 0) {
@@ -1843,23 +2012,6 @@ export async function scrapeBingrStream(params: {
                     }
                     subtitles = primaryRes.subtitles || [];
                 }
-            
-            } else if (serverId === 'vidlink' || serverId === 'vidlinkpro') {
-                try {
-                    const vlRes = await scrapeVidlinkStream({
-                        tmdbId: tmdbId!,
-                        type: type as any,
-                        season: s,
-                        episode: e
-                    });
-                    if (vlRes.success && vlRes.sources.length > 0) {
-                        scraperName = 'VidLink Pro (Direct CDN)';
-                        sources = vlRes.sources;
-                        subtitles = vlRes.subtitles;
-                    }
-                } catch (err: any) {
-                    console.warn('[BingrScraper] VidLink error:', err?.message || err);
-                }
             } else if (serverId === 'framex' || serverId === 'framextv') {
                 try {
                     const fxRes = await scrapeFrameXStream({
@@ -1903,6 +2055,9 @@ export async function scrapeBingrStream(params: {
                 scraperName = m4uRes.scraperName || 'Movie 4U';
                 sources = m4uRes.sources || [];
                 subtitles = m4uRes.subtitles || [];
+                if (m4uRes.duration && m4uRes.duration > 0) {
+                    upstreamDurationSec = m4uRes.duration;
+                }
             } else if (serverId === 'animesalt' || serverId === 'anime') {
                 const animeRes = await scrapeAnimeEpisode(mediaTitle, s, e);
                 scraperName = 'AnimeSalt (Special Anime Scraper)';
@@ -2056,26 +2211,106 @@ export async function scrapeBingrStream(params: {
                         }
                     }
                 } catch (_) {}
-            } else if (serverId === 'filmu' || serverId === 'vidbolt' || serverId === 'vidy' || serverId === 'cinezo' || serverId === 'vidrift') {
+            } else if (serverId === 'vidlink' || serverId === 'vidlinkpro') {
+                try {
+                    // Fetch VidLink Pro and multi-audio dubs from Vidrift concurrently
+                    const [vlResult, vdResult] = await Promise.allSettled([
+                        scrapeVidlinkStream({
+                            tmdbId: tmdbId!,
+                            type: isAnimeLikely ? 'anime' : (type as any),
+                            season: s,
+                            episode: e,
+                            malId: malId || undefined
+                        }),
+                        scrapeVidriftStream({
+                            tmdbId: tmdbId!,
+                            type: isAnimeLikely ? 'anime' : (type as any),
+                            season: s,
+                            episode: e
+                        })
+                    ]);
+
+                    const vlRes = vlResult.status === 'fulfilled' ? vlResult.value : null;
+                    const vdRes = vdResult.status === 'fulfilled' ? vdResult.value : null;
+
+                    if (vlRes && vlRes.success && vlRes.sources && vlRes.sources.length > 0) {
+                        scraperName = 'VidLink Pro (Direct CDN)';
+                        sources = [...vlRes.sources];
+                        subtitles = vlRes.subtitles || [];
+
+                        // Include multi-audio dubs from Vidrift Orion
+                        if (vdRes && vdRes.success && vdRes.sources && vdRes.sources.length > 0) {
+                            for (const orionSrc of vdRes.sources) {
+                                sources.push({
+                                    ...orionSrc,
+                                    isDub: true,
+                                    language: orionSrc.audio || orionSrc.label
+                                });
+                            }
+                        }
+                    } else if (vdRes && vdRes.success && vdRes.sources && vdRes.sources.length > 0) {
+                        // Fallback to Vidrift Orion if native Vidlink stream had an issue
+                        scraperName = 'VidLink Pro (Orion Multi-Audio)';
+                        sources = [...vdRes.sources];
+                        subtitles = vdRes.subtitles || [];
+                    }
+                } catch (err: any) {
+                    console.warn('[BingrScraper] VidLink error:', err?.message || err);
+                }
+            } else if (serverId === 'vidrift') {
+                try {
+                    const vdRes = await scrapeVidriftStream({
+                        tmdbId: tmdbId!,
+                        type: isAnimeLikely ? 'anime' : (type as any),
+                        season: s,
+                        episode: e
+                    });
+                    if (vdRes.success && vdRes.sources.length > 0) {
+                        scraperName = 'Vidrift (Decrypted Multi-Provider HLS)';
+                        sources = vdRes.sources;
+                        subtitles = vdRes.subtitles;
+                    }
+                } catch (err: any) {
+                    console.warn('[BingrScraper] Vidrift error:', err?.message || err);
+                }
+            } else if (serverId === 'filmu' || serverId === 'vidly') {
+                try {
+                    const flRes = await scrapeFilmuStream({
+                        tmdbId: tmdbId!,
+                        type: isAnimeLikely ? 'anime' : (type as any),
+                        season: s,
+                        episode: e
+                    });
+                    if (flRes.success && flRes.sources.length > 0) {
+                        scraperName = 'Filmu / Vidly (Decrypted Stream)';
+                        sources = flRes.sources;
+                        subtitles = flRes.subtitles;
+                    }
+                } catch (err: any) {
+                    console.warn('[BingrScraper] Filmu error:', err?.message || err);
+                }
+            } else if (serverId === 'vidsrc' || serverId === 'vidsrcpro') {
+                try {
+                    const vsRes = await scrapeVidsrcStream({
+                        id: tmdbId || (params as any).imdbId || params.id || '',
+                        type: isAnimeLikely ? 'anime' : (type as any),
+                        season: s,
+                        episode: e
+                    });
+                    if (vsRes.success && vsRes.sources.length > 0) {
+                        scraperName = 'VidSrc (Universal Multi-Source)';
+                        sources = vsRes.sources;
+                        subtitles = vsRes.subtitles;
+                    }
+                } catch (err: any) {
+                    console.warn('[BingrScraper] VidSrc error:', err?.message || err);
+                }
+            } else if (serverId === 'vidbolt' || serverId === 'vidy' || serverId === 'cinezo') {
                 const targetId = tmdbId || 0;
                 const epNum = e || 1;
                 const sNum = s || 1;
                 let embedUrl = '';
-                if (serverId === 'filmu' || (serverId as string) === 'vidly') {
-                    scraperName = 'Filmu / Vidly (Decrypted HLS / Multi-Provider)';
-                    try {
-                        const flRes = await scrapeFilmuStream({
-                            tmdbId: targetId,
-                            type: type as any,
-                            season: sNum,
-                            episode: epNum
-                        });
-                        if (flRes && flRes.success && flRes.sources && flRes.sources.length > 0) {
-                            sources = flRes.sources;
-                            subtitles = flRes.subtitles || [];
-                        }
-                    } catch (_) {}
-                } else if (serverId === 'vidbolt') {
+                if (serverId === 'vidbolt') {
                     scraperName = 'Vidbolt (Vidbolt Embed Streamer)';
                     embedUrl = type === 'tv'
                         ? `https://vidbolt.xyz/tv/${targetId}/${sNum}/${epNum}`
@@ -2090,20 +2325,6 @@ export async function scrapeBingrStream(params: {
                     embedUrl = type === 'tv'
                         ? `https://player.cinezo.live/embed/tv/${targetId}/${sNum}/${epNum}`
                         : ((type as string) === 'anime' ? `https://player.cinezo.live/embed/anime/${malId || targetId}/${epNum}?dub=true` : `https://player.cinezo.live/embed/movie/${targetId}`);
-                } else if (serverId === 'vidrift') {
-                    scraperName = 'Vidrift (Direct HLS / Multi-Provider)';
-                    try {
-                        const vdRes = await scrapeVidriftStream({
-                            tmdbId: targetId,
-                            type: type as any,
-                            season: sNum,
-                            episode: epNum
-                        });
-                        if (vdRes && vdRes.success && vdRes.sources && vdRes.sources.length > 0) {
-                            sources = vdRes.sources;
-                            subtitles = vdRes.subtitles || [];
-                        }
-                    } catch (_) {}
                 }
 
                 if (embedUrl) {
@@ -2126,8 +2347,8 @@ export async function scrapeBingrStream(params: {
                     ? `https://bingr.one/watch/tv/${tmdbId}/${s}/${e}`
                     : `https://bingr.one/watch/movie/${tmdbId}`;
 
-                // Upstream cluster timeout (6000ms ensures clusters like Polaris/Bastion complete resolution)
-                const timeoutMs = 6000;
+                // Upstream cluster timeout (3300ms lightning-fast cascade)
+                const timeoutMs = 3300;
 
                 let res: { status: number; data: any } | null = null;
                 try {
@@ -2174,9 +2395,13 @@ export async function scrapeBingrStream(params: {
                                              s.url.includes('reelvault.click') || 
                                              s.url.includes('streamrip.fun/f/') ||
                                              s.url.includes('rousav.tech') ||
+                                             s.url.includes('amberandash.space') ||
+                                             s.url.includes('opalescentorchard.space') ||
+                                             s.url.includes('vidrift.net') ||
                                              serverId === 'vidlink' ||
                                              serverId === 'vidrift' ||
-                                             serverId === 'filmu';
+                                             serverId === 'filmu' ||
+                                             serverId === 'vidsrc';
                     if (isMandatoryProxy) {
                         const targetRaw = unwrapped.streamUrl || (s as any).rawUrl || s.url;
                         (s as any).rawUrl = targetRaw;
@@ -2196,18 +2421,25 @@ export async function scrapeBingrStream(params: {
                     }
                 }
 
-                // Always prioritize highest resolution quality: 4K / 2160p > 1080p > 720p > 480p
-                sources.sort((a, b) => {
-                    const qScore = (q: string = '') => {
-                        const l = q.toLowerCase();
-                        if (l.includes('4k') || l.includes('2160')) return 4000;
-                        if (l.includes('1080') || l.includes('fhd')) return 1080;
-                        if (l.includes('720') || l.includes('hd')) return 720;
-                        if (l.includes('480')) return 480;
-                        return 500;
-                    };
-                    return qScore(b.quality) - qScore(a.quality);
-                });
+                const qScore = (q: string = '') => {
+                    const l = q.toLowerCase();
+                    if (l.includes('4k') || l.includes('2160')) return 4000;
+                    if (l.includes('1080') || l.includes('fhd')) return 1080;
+                    if (l.includes('720') || l.includes('hd')) return 720;
+                    if (l.includes('480')) return 480;
+                    return 500;
+                };
+
+                if (serverId === 'vidlink' || serverId === 'vidlinkpro') {
+                    // Keep native Vidlink video sources first (sorted by quality), followed by secondary dubs
+                    const primaries = sources.filter(s => !(s as any).isDub);
+                    const dubs = sources.filter(s => (s as any).isDub);
+                    primaries.sort((a, b) => qScore(b.quality) - qScore(a.quality));
+                    dubs.sort((a, b) => qScore(b.quality) - qScore(a.quality));
+                    sources = primaries.length > 0 ? [...primaries, ...dubs] : dubs;
+                } else {
+                    sources.sort((a, b) => qScore(b.quality) - qScore(a.quality));
+                }
 
                 const candidateUrl = sources[0].url;
                 let durCheck: { isValid: boolean; expected?: number; actual?: number; reason?: string } = { isValid: true };
@@ -2259,26 +2491,17 @@ export async function scrapeBingrStream(params: {
                         return null;
                     }
                     
-                    // Fast Duration Verification (use upstream duration if available or race with 1s timeout)
-                    if (serverId === 'vidlink' || serverId === 'vidrift' || serverId === 'filmu') {
-                        durCheck = { isValid: true };
-                    } else if (upstreamDurationSec && upstreamDurationSec > 600) {
+                    // Duration verification (permissive — never drops streams)
+                    if (upstreamDurationSec && upstreamDurationSec > 0) {
                         durCheck = { isValid: true, actual: upstreamDurationSec / 60 };
                     } else {
                         durCheck = await Promise.race([
                             verifyStreamDuration(activeCandidateUrl, (type === 'anime' ? 'movie' : type), Number(tmdbId), s ? Number(s) : undefined, e ? Number(e) : undefined, strictSrv),
-                            new Promise<{ isValid: boolean }>((resolve) => setTimeout(() => resolve({ isValid: true }), 3500))
+                            new Promise<{ isValid: boolean }>((resolve) => setTimeout(() => resolve({ isValid: true }), 1500))
                         ]);
                     }
                     if (!durCheck.isValid) {
-                        attempts.push({
-                            serverId,
-                            serverName: serverMeta.name,
-                            status: 'duration_mismatch',
-                            latencyMs,
-                            error: durCheck.reason
-                        });
-                        return null; // Skip this stream because duration doesn't match
+                        console.warn(`[BingrScraper] Duration warning on ${serverId}: ${durCheck.reason}`);
                     }
                 }
 
@@ -2392,8 +2615,8 @@ export async function scrapeBingrStream(params: {
     }
 
     if (!successResult) {
-        // If content has a MAL ID or is anime, strictly search ONLY anime-special scrapers
-        const isAnimeTarget = Boolean(malId || isAnimeConfirmed || isAnimeLikely || params.anilistId || type === 'anime');
+        // If content has a MAL ID or is anime (and not a movie), strictly search ONLY anime-special scrapers
+        const isAnimeTarget = (type !== 'movie') && Boolean(malId || isAnimeConfirmed || isAnimeLikely || params.anilistId || type === 'anime');
 
         // Filter out normalizedReqSrv if already tried
         const filterTier = (tier: string[]) => normalizedReqSrv ? tier.filter(s => s !== normalizedReqSrv) : tier;
@@ -2446,25 +2669,33 @@ export async function scrapeBingrStream(params: {
         }
 
         if (isAnimeTarget) {
-            const animeTier = ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
-            successResult = await raceTierForDirectStream(animeTier, 4500);
+            // Tier 1: Vidlink, Vidrift, Filmu
+            const animePriorityTier = ['vidlink', 'vidrift', 'filmu'];
+            successResult = await raceTierForDirectStream(animePriorityTier, 7500);
+
+            // Tier 2: Specialized anime scrapers & multi-source hubs
+            if (!successResult) {
+                const animeTier = ['vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
+                successResult = await raceTierForDirectStream(animeTier, 4500);
+            }
         } else if (type === 'movie') {
             // Fast parallel race across prioritized movie sequence:
-            // m4u, s62, framex, s80, s31, sm_hub, s81
-            const moviePriorityServers = filterTier(['m4u', 's62', 'framex', 's80', 's31', 'sm_hub', 's81']);
-            successResult = await raceTierForDirectStream(moviePriorityServers, 4000);
+            // vidlink, vidrift, m4u, filmu, s62 (bastion), s80 (moscow), s30 (nova)
+            const moviePriorityServers = filterTier(['vidlink', 'vidrift', 'm4u', 'filmu', 's62', 's80', 's30']);
+            successResult = await raceTierForDirectStream(moviePriorityServers, 7500);
 
             // Fallback: If top priority servers did not yield a direct stream, race the remaining movie servers
             if (!successResult) {
-                const remainingMovieServers = ['s3', 's40', 's30', 's70', 's60', 's63', 's61', 'cinepro'];
+                const remainingMovieServers = ['s31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro'];
                 successResult = await raceTierForDirectStream(remainingMovieServers, 3500);
             }
         } else {
-            // TV series default cascade
-            const tvTier1 = ['m4u', 's62', 'framex', 's80', 's31', 'sm_hub', 's81'];
-            const tvTier2 = ['s3', 's40', 's30', 's70', 's60', 's63', 's61'];
+            // TV series default cascade:
+            // vidlink, vidrift, m4u, filmu, s62 (bastion), s80 (moscow), s30 (nova)
+            const tvTier1 = filterTier(['vidlink', 'vidrift', 'm4u', 'filmu', 's62', 's80', 's30']);
+            const tvTier2 = ['s31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61'];
 
-            successResult = await raceTierForDirectStream(tvTier1, 2500);
+            successResult = await raceTierForDirectStream(tvTier1, 7500);
             if (!successResult) {
                 successResult = await raceTierForDirectStream(tvTier2, 2000);
             }

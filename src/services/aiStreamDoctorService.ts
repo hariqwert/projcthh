@@ -301,24 +301,7 @@ export class AiStreamDoctorService {
             }
 
             // Case B: Live Sports / IPTV Stream issue
-            // 1. Token Expired or 403 Forbidden
-            if (diagnosis.issueCategory === 'TOKEN_EXPIRED_OR_403' || params.url.includes('jio') || params.url.includes('mdtv')) {
-                const refreshed = await this.healAkamaiOrJioStream(params);
-                if (refreshed) {
-                    const healingTimeMs = Date.now() - startTime;
-                    this.recordHealSuccess(params.channelName || params.channelId || 'Jio Channel', diagnosis.issueCategory, healingTimeMs);
-                    return {
-                        success: true,
-                        healed: true,
-                        diagnosis,
-                        healedStream: refreshed,
-                        actionTaken: 'Regenerated fresh Akamai CDN token and re-anchored live DASH manifest',
-                        healingTimeMs
-                    };
-                }
-            }
-
-            // 2. ClearKey DRM Restriction (Error 4038 / Missing ClearKey UUID)
+            // 1. ClearKey DRM Restriction (Error 4038 / Missing ClearKey UUID / Error 111 / DRM issues)
             if (diagnosis.issueCategory === 'DRM_CLEARKEY_RESTRICTION') {
                 const drmHealed = await this.healClearKeyStream(params);
                 if (drmHealed) {
@@ -330,6 +313,23 @@ export class AiStreamDoctorService {
                         diagnosis,
                         healedStream: drmHealed,
                         actionTaken: 'Injected W3C ClearKey UUID (1077efec...) into AdaptationSet and supplied derived keys',
+                        healingTimeMs
+                    };
+                }
+            }
+
+            // 2. Token Expired or 403 Forbidden
+            if (diagnosis.issueCategory === 'TOKEN_EXPIRED_OR_403' || params.url.includes('jio') || params.url.includes('mdtv')) {
+                const refreshed = await this.healAkamaiOrJioStream(params);
+                if (refreshed) {
+                    const healingTimeMs = Date.now() - startTime;
+                    this.recordHealSuccess(params.channelName || params.channelId || 'Jio Channel', diagnosis.issueCategory, healingTimeMs);
+                    return {
+                        success: true,
+                        healed: true,
+                        diagnosis,
+                        healedStream: refreshed,
+                        actionTaken: 'Regenerated fresh Akamai CDN token and re-anchored live DASH manifest',
                         healingTimeMs
                     };
                 }
@@ -476,13 +476,25 @@ export class AiStreamDoctorService {
                 const resolved = await JtvService.resolveChannel(rawId);
                 if (resolved && resolved.stream_url) {
                     const proxyUrl = `/live.php?token=STALKER_PRO&id=jtv-${rawId}&m3u=1`;
+                    const clearKeys: Record<string, string> = {};
+                    if (resolved.clearkey) {
+                        resolved.clearkey.split(',').forEach((p: string) => {
+                            const [kId, kVal] = p.split(':');
+                            if (kId && kVal) {
+                                clearKeys[kId.trim().toLowerCase().replace(/[^0-9a-f]/g, '')] = kVal.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
+                            }
+                        });
+                    }
+                    if (resolved.key_id && resolved.key) {
+                        clearKeys[resolved.key_id.toLowerCase().replace(/[^0-9a-f]/g, '')] = resolved.key.toLowerCase().replace(/[^0-9a-f]/g, '');
+                    }
                     return {
                         url: proxyUrl,
                         type: 'application/dash+xml',
-                        engine: 'shaka',
+                        engine: (params.engine === 'dash' ? 'dash' : 'shaka'),
                         key_id: resolved.key_id,
                         key: resolved.key,
-                        clearKeys: resolved.key_id && resolved.key ? { [resolved.key_id]: resolved.key } : undefined,
+                        clearKeys: Object.keys(clearKeys).length > 0 ? clearKeys : undefined,
                         channelId: resolved.id,
                         channelName: resolved.name,
                         wasProxied: true,
@@ -501,28 +513,38 @@ export class AiStreamDoctorService {
         const rawId = params.channelId?.replace('mdtv-', '').replace('jtv-', '');
         let keyId = params.key_id || '';
         let key = params.key || '';
+        const clearKeys: Record<string, string> = {};
 
-        // Look up key in JtvService catalog if missing
-        if (!keyId || !key) {
-            try {
-                const ch = await JtvService.resolveChannel(rawId || params.channelName || '');
-                if (ch && ch.key_id && ch.key) {
-                    keyId = ch.key_id;
-                    key = ch.key;
+        // Look up key in JtvService catalog if missing or incomplete
+        try {
+            const ch = await JtvService.resolveChannel(rawId || params.channelName || '');
+            if (ch) {
+                if (!keyId && ch.key_id) keyId = ch.key_id;
+                if (!key && ch.key) key = ch.key;
+                if (ch.clearkey) {
+                    ch.clearkey.split(',').forEach((p: string) => {
+                        const [kId, kVal] = p.split(':');
+                        if (kId && kVal) {
+                            clearKeys[kId.trim().toLowerCase().replace(/[^0-9a-f]/g, '')] = kVal.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
+                        }
+                    });
                 }
-            } catch (_) {}
+            }
+        } catch (_) {}
+
+        if (keyId && key) {
+            clearKeys[keyId.toLowerCase().replace(/[^0-9a-f]/g, '')] = key.toLowerCase().replace(/[^0-9a-f]/g, '');
         }
 
         const manifestUrl = rawId ? `/api/mdtv/manifest/${rawId}.mpd` : params.url;
-        const clearKeys = (keyId && key) ? { [keyId.toLowerCase().replace(/[^0-9a-f]/g, '')]: key.toLowerCase().replace(/[^0-9a-f]/g, '') } : undefined;
 
         return {
             url: manifestUrl,
             type: 'application/dash+xml',
-            engine: 'shaka',
+            engine: (params.engine === 'dash' ? 'dash' : 'shaka'),
             key_id: keyId,
             key: key,
-            clearKeys,
+            clearKeys: Object.keys(clearKeys).length > 0 ? clearKeys : undefined,
             wasProxied: true,
             isSilentRecovery: true
         };

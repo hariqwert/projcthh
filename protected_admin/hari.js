@@ -1,4 +1,5 @@
 let analyticsPollingTimer = null;
+let isLockUpdating = false;
 // Utility Functions
 function getCookie(name) {
     if (!document.cookie) return '';
@@ -110,7 +111,8 @@ const tabContents = {
     liveevents: document.getElementById('tabContent-liveevents'),
     builder: document.getElementById('tabContent-builder'),
     analytics: document.getElementById('tabContent-analytics'),
-    scrapers: document.getElementById('tabContent-scrapers')
+    scrapers: document.getElementById('tabContent-scrapers'),
+    herocontrol: document.getElementById('tabContent-herocontrol')
 };
 
 // Dashboard Elements
@@ -155,9 +157,41 @@ const dropZoneText = document.getElementById('dropZoneText');
 const uploadStatus = document.getElementById('uploadStatus');
 const m3uTableBody = document.getElementById('m3uTableBody');
 
-// Maintenance Elements
 const maintenanceForm = document.getElementById('maintenanceForm');
 const maintenanceToggle = document.getElementById('maintenanceToggle');
+if (maintenanceToggle) {
+    maintenanceToggle.addEventListener('change', async (e) => {
+        const isChecked = e.target.checked;
+        const payload = {
+            maintenanceMode: isChecked,
+            maintenanceAdminBypass: document.getElementById("maintenanceAdminBypassToggle") ? document.getElementById("maintenanceAdminBypassToggle").checked : false,
+            consumetMaintenance: document.getElementById('consumetMaintenanceToggle') ? document.getElementById('consumetMaintenanceToggle').checked : false,
+            playMaintenance: document.getElementById('playMaintenanceToggle') ? document.getElementById('playMaintenanceToggle').checked : false,
+            playConsumetMaintenance: document.getElementById('playConsumetMaintenanceToggle') ? document.getElementById('playConsumetMaintenanceToggle').checked : false,
+            activeTemplate: maintenanceTemplate ? maintenanceTemplate.value : 'Scheduled Downtime',
+            maintenanceTitle: document.getElementById('maintenanceTitle') ? document.getElementById('maintenanceTitle').value.trim() : '',
+            maintenanceText: document.getElementById('maintenanceText') ? document.getElementById('maintenanceText').value.trim() : ''
+        };
+
+        try {
+            const res = await secureFetch('/api/admin/maintenance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok && data.status === 'success') {
+                showToast('Maintenance Mode Updated', isChecked ? 'System Maintenance Mode is now ACTIVE.' : 'System Maintenance Mode is now INACTIVE.', 'success');
+            } else {
+                maintenanceToggle.checked = !isChecked;
+                showToast('Error', data.message || 'Failed to update maintenance mode.', 'error');
+            }
+        } catch (err) {
+            maintenanceToggle.checked = !isChecked;
+            showToast('Error', 'API connection failed while toggling maintenance mode.', 'error');
+        }
+    });
+}
 const maintenanceTemplate = document.getElementById('maintenanceTemplate');
 if (maintenanceTemplate) {
     maintenanceTemplate.addEventListener('change', () => {
@@ -380,7 +414,8 @@ async function clearSystemCache() {
 }
 
 // --- SECURE AUTHENTICATION ---
-loginForm.addEventListener('submit', async (e) => {
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     loginError.classList.add('hidden');
     const username = usernameInput.value.trim();
@@ -413,10 +448,10 @@ loginForm.addEventListener('submit', async (e) => {
             if (typeof turnstile !== 'undefined') turnstile.reset();
         }
     } catch (err) {
-        showLoginError('Network connection failed. Please try again.');
         if (typeof turnstile !== 'undefined') turnstile.reset();
     }
-});
+    });
+}
 
 // Stage 2 PIN & Hardware Binding Form Listener
 document.addEventListener('DOMContentLoaded', () => {
@@ -560,7 +595,7 @@ window.switchTab = switchTab;
     if (mainViewport) mainViewport.scrollTop = 0;
     
     // Update active tab styles
-    ['harichat', 'overview', 'portals', 'm3u', 'channelsjson', 'quarantine', 'reorganize', 'monitor', 'system', 'sports', 'embedscraper', 'liveevents', 'builder', 'analytics', 'scrapers'].forEach(id => {
+    ['harichat', 'overview', 'portals', 'm3u', 'channelsjson', 'quarantine', 'reorganize', 'monitor', 'system', 'sports', 'embedscraper', 'liveevents', 'builder', 'analytics', 'scrapers', 'herocontrol'].forEach(id => {
         const btn = document.getElementById(`tabBtn-${id}`);
         if (!btn) return;
         if (id === tabId) {
@@ -634,6 +669,9 @@ window.switchTab = switchTab;
     if (tabId === 'sports') {
         loadSportsStreams();
         loadSportsM3uFiles();
+    }
+    if (tabId === 'herocontrol') {
+        loadHeroConfig();
     }
 
     lucide.createIcons();
@@ -932,7 +970,9 @@ let maintenanceScheduleInterval = null;
 // --- API HELPER FOR SECURE REQUESTS ---
 async function secureFetch(url, options = {}) {
     options.headers = options.headers || {};
-    options.headers['Authorization'] = `Bearer ${token}`;
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+    }
     if (options.body && typeof options.body === 'string' && !options.headers['Content-Type'] && !options.headers['content-type']) {
         options.headers['Content-Type'] = 'application/json';
     }
@@ -969,14 +1009,22 @@ async function fetchSystemStatus() {
 async function toggleSystemPower() {
     const btn = document.getElementById('powerBtn');
     const btnText = document.getElementById('powerBtnText');
-    const originalText = btnText.innerText;
     
-    if (!confirm("CRITICAL ACTION: Are you sure you want to change the Global System Power State? This affects all users immediately.")) return;
+    const confirmOk = await showAppConfirmModal({
+        title: 'Change Global System Power State',
+        message: 'CRITICAL ACTION: Are you sure you want to change the Global System Power State? This affects all live users and stream proxies immediately.',
+        confirmText: 'Change Power State',
+        icon: 'power',
+        isDanger: true
+    });
+    if (!confirmOk) return;
     
     try {
-        btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
-        btnText.innerText = 'PROCESSING...';
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        if (btnText) btnText.innerText = 'PROCESSING...';
         
         const res = await secureFetch('/api/admin/system/toggle', { method: 'POST' });
         const data = await res.json();
@@ -992,8 +1040,10 @@ async function toggleSystemPower() {
     } catch (e) {
         showToast('System Error', e.message || 'Failed to toggle power state.', 'error');
     } finally {
-        btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
     }
 }
 
@@ -1964,7 +2014,6 @@ async function deletePlaylist(id) {
 
 
 // --- SITE LOCK MODE LOGIC ---
-let isLockUpdating = false;
 
 window.handleSiteLockToggleInstant = async function(isChecked) {
     if (isLockUpdating) return;
@@ -4597,12 +4646,59 @@ function getAdminAudio() {
     return audio;
 }
 
-window.playAdminSavedTrack = function(idx, target = 'maintenance') {
-    const track = window.adminSavedPlaylist[idx];
-    if (!track) return;
+window.initAdminYtPlayer = function() {
+    if (adminYtPlayer) return;
+    try {
+        adminYtPlayer = new YT.Player('adminYtPlayer', {
+            height: '1',
+            width: '1',
+            videoId: '',
+            playerVars: {
+                autoplay: 0,
+                controls: 0,
+                disablekb: 1,
+                fs: 0,
+                modestbranding: 1,
+                playsinline: 1,
+                enablejsapi: 1
+            },
+            events: {
+                onReady: () => { console.log('[Admin YT Player] Ready'); },
+                onStateChange: (e) => {
+                    if (e.data === YT.PlayerState.ENDED) {
+                        if (typeof window.playNextAdminTrack === 'function') window.playNextAdminTrack();
+                    }
+                }
+            }
+        });
+    } catch(e) { console.warn("YT Player init warn:", e); }
+};
 
+// Auto-init if shim already detected API was ready
+if (window._ytApiReady) {
+    window.initAdminYtPlayer();
+}
+
+window.onYouTubeIframeAPIReady = window.initAdminYtPlayer;
+
+function extractYoutubeVideoId(urlOrId) {
+    if (!urlOrId) return '';
+    let str = String(urlOrId).trim();
+    if (str.length === 11 && !str.includes('/') && !str.includes('?')) return str;
+    if (str.startsWith('youtube_') || str.startsWith('yt_') || str.startsWith('yt-')) {
+        const raw = str.replace(/^(youtube_|yt_|yt-)/, '');
+        if (raw.length === 11) return raw;
+    }
+    if (str.includes('v=')) return str.split('v=')[1].split('&')[0];
+    if (str.includes('youtu.be/')) return str.split('youtu.be/')[1].split('?')[0].split('&')[0];
+    if (str.includes('embed/')) return str.split('embed/')[1].split('?')[0].split('&')[0];
+    if (str.includes('shorts/')) return str.split('shorts/')[1].split('?')[0].split('&')[0];
+    return '';
+}
+
+function playAdminTrackObject(track, target = 'maintenance') {
+    if (!track) return;
     const audio = getAdminAudio();
-    const isPower = target === 'power';
     
     ['admin', 'power'].forEach(t => {
         const titleEl = document.getElementById(t === 'power' ? 'powerMusicTitle' : 'adminMusicTitle');
@@ -4611,12 +4707,39 @@ window.playAdminSavedTrack = function(idx, target = 'maintenance') {
         if (artistEl) artistEl.textContent = track.artist || 'Artist';
     });
 
-    if (audio) {
-        audio.crossOrigin = 'anonymous';
+    const ytVid = extractYoutubeVideoId(track.videoId || track.id || track.url);
+    const isYoutube = !!ytVid || (track.url && (track.url.includes('youtube.com') || track.url.includes('youtu.be')));
+
+    if (isYoutube && ytVid) {
+        if (audio) {
+            try { audio.pause(); audio.src = ''; } catch(e) {}
+        }
+        if (adminYtPlayer && typeof adminYtPlayer.loadVideoById === 'function') {
+            adminYtPlayer.loadVideoById(ytVid);
+            adminYtPlayer.unMute();
+            adminYtPlayer.setVolume(100);
+            adminYtPlayer.playVideo();
+            ['admin', 'power'].forEach(t => {
+                const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
+                const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
+                if (playIcon) playIcon.classList.add('hidden');
+                if (pauseIcon) pauseIcon.classList.remove('hidden');
+            });
+            console.log('[Admin YT Player] Playing via IFrame API:', ytVid);
+        } else {
+            console.warn('[Admin YT Player] IFrame API not ready, attempting playback via stream proxy');
+            if (audio) {
+                audio.src = `/api/v1/youtube/stream?v=${encodeURIComponent(ytVid)}&type=audio`;
+                audio.play().catch(e => console.error("Fallback play failed:", e));
+            }
+        }
+    } else if (audio) {
+        if (adminYtPlayer && typeof adminYtPlayer.stopVideo === 'function') {
+            try { adminYtPlayer.stopVideo(); } catch(e) {}
+        }
         const finalUrl = track.url && track.url.startsWith('http') ? '/api/music/proxy?url=' + encodeURIComponent(track.url) : track.url;
         audio.src = finalUrl;
         audio.load();
-        
         audio.play().then(() => {
             ['admin', 'power'].forEach(t => {
                 const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
@@ -4634,9 +4757,38 @@ window.playAdminSavedTrack = function(idx, target = 'maintenance') {
             });
         });
     }
+}
+
+window.playAdminSavedTrack = function(idx, target = 'maintenance') {
+    const track = window.adminSavedPlaylist[idx];
+    if (!track) return;
+    playAdminTrackObject(track, target);
 };
 
 window.toggleAdminMusic = function(target = 'maintenance') {
+    if (adminYtPlayer && typeof adminYtPlayer.getPlayerState === 'function') {
+        const state = adminYtPlayer.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) {
+            adminYtPlayer.pauseVideo();
+            ['admin', 'power'].forEach(t => {
+                const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
+                const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
+                if (playIcon) playIcon.classList.remove('hidden');
+                if (pauseIcon) pauseIcon.classList.add('hidden');
+            });
+            return;
+        } else if (state === YT.PlayerState.PAUSED) {
+            adminYtPlayer.playVideo();
+            ['admin', 'power'].forEach(t => {
+                const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
+                const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
+                if (playIcon) playIcon.classList.add('hidden');
+                if (pauseIcon) pauseIcon.classList.remove('hidden');
+            });
+            return;
+        }
+    }
+
     const audio = getAdminAudio();
     if (!audio) return;
 
@@ -5255,15 +5407,6 @@ window.selectAdminTrack = function(idx, target = 'maintenance') {
     const track = adminTracksQueue[idx];
     if (!track) return;
 
-    const audio = getAdminAudio();
-    
-    ['admin', 'power'].forEach(t => {
-        const titleEl = document.getElementById(t === 'power' ? 'powerMusicTitle' : 'adminMusicTitle');
-        const artistEl = document.getElementById(t === 'power' ? 'powerMusicArtist' : 'adminMusicArtist');
-        if (titleEl) titleEl.textContent = track.title;
-        if (artistEl) artistEl.textContent = track.artist;
-    });
-
     if (document.getElementById('maintenanceMusicQuery')) {
         document.getElementById('maintenanceMusicQuery').value = track.url;
     }
@@ -5271,29 +5414,7 @@ window.selectAdminTrack = function(idx, target = 'maintenance') {
         document.getElementById('powerMusicQuery').value = track.url;
     }
 
-    if (audio) {
-        audio.crossOrigin = 'anonymous';
-        const finalUrl = track.url && track.url.startsWith('http') ? '/api/music/proxy?url=' + encodeURIComponent(track.url) : track.url;
-        audio.src = finalUrl;
-        audio.load();
-        
-        audio.play().then(() => {
-            ['admin', 'power'].forEach(t => {
-                const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
-                const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
-                if (playIcon) playIcon.classList.add('hidden');
-                if (pauseIcon) pauseIcon.classList.remove('hidden');
-            });
-        }).catch(err => {
-            console.warn("Auto preview play blocked:", err);
-            ['admin', 'power'].forEach(t => {
-                const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
-                const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
-                if (playIcon) playIcon.classList.remove('hidden');
-                if (pauseIcon) pauseIcon.classList.add('hidden');
-            });
-        });
-    }
+    playAdminTrackObject(track, target);
 
     const resultsDiv = document.getElementById(target === 'power' ? 'powerMusicResults' : 'adminMusicResults');
     if (resultsDiv) resultsDiv.classList.add('hidden');
@@ -12199,3 +12320,253 @@ function renderMarkdownSafely(text) {
 
     return escaped;
 }
+
+/* ==========================================================================
+   HERO & ACOUSTICS MASTER CONTROLLER FUNCTIONS
+   ========================================================================== */
+let activeHeroConfig = null;
+let currentHeroMusicSourceType = 'jiosaavn';
+
+async function loadHeroConfig() {
+    try {
+        const res = await secureFetch('/api/admin/hero-config');
+        const data = await res.json();
+        if (data.status === 'success' && data.config) {
+            activeHeroConfig = data.config;
+            renderHeroConfigUI(activeHeroConfig);
+        }
+    } catch (e) {
+        console.error('[HeroControl] Failed to load config:', e);
+        showToast('Failed to load Hero configuration', 'error');
+    }
+}
+
+function renderHeroConfigUI(cfg) {
+    if (!cfg) return;
+    
+    // Stage 1
+    const s1Input = document.getElementById('heroStage1Url');
+    if (s1Input && cfg.heroVideo?.url) {
+        s1Input.value = cfg.heroVideo.url;
+        const prev = document.getElementById('heroAdminStage1Preview');
+        if (prev) prev.src = cfg.heroVideo.url;
+    }
+
+    // Stage 5 TV
+    const s5Input = document.getElementById('heroStage5Url');
+    if (s5Input && cfg.tvVideo?.url) {
+        s5Input.value = cfg.tvVideo.url;
+        const prev = document.getElementById('heroAdminStage5Preview');
+        if (prev) prev.src = cfg.tvVideo.url;
+    }
+
+    // Stage 4 Music
+    const m = cfg.musicMedia || {};
+    currentHeroMusicSourceType = m.sourceType || 'jiosaavn';
+    setHeroMusicSourceType(currentHeroMusicSourceType, false);
+
+    const titleEl = document.getElementById('heroMusicTitle');
+    const artistEl = document.getElementById('heroMusicArtist');
+    const audioUrlEl = document.getElementById('heroMusicAudioUrl');
+    const videoBgUrlEl = document.getElementById('heroMusicVideoBgUrl');
+    const autoplayEl = document.getElementById('heroMusicAutoplay');
+    const mutedEl = document.getElementById('heroMusicMuted');
+    const volumeEl = document.getElementById('heroMusicVolume');
+
+    if (titleEl) titleEl.value = m.title || '';
+    if (artistEl) artistEl.value = m.artist || '';
+    if (audioUrlEl) audioUrlEl.value = m.audioUrl || '';
+    if (videoBgUrlEl) videoBgUrlEl.value = m.videoBgUrl || '';
+    if (autoplayEl) autoplayEl.checked = m.autoplay !== false;
+    if (mutedEl) mutedEl.checked = m.mutedByDefault !== false;
+    if (volumeEl) {
+        volumeEl.value = Math.round((m.volume ?? 0.85) * 100);
+        const valDisp = document.getElementById('heroMusicVolumeVal');
+        if (valDisp) valDisp.textContent = volumeEl.value + '%';
+    }
+
+    testHeroMediaPreview();
+    if (window.lucide) lucide.createIcons();
+}
+
+function setHeroMusicSourceType(type, updateInput = true) {
+    currentHeroMusicSourceType = type;
+    ['jiosaavn', 'youtube', 'local', 'm3u', 'direct'].forEach(t => {
+        const btn = document.getElementById(`srcTypeBtn-${t}`);
+        if (!btn) return;
+        if (t === type) {
+            btn.className = 'px-3 py-1.5 rounded-lg transition-all bg-amber-400 text-black font-black shadow-lg shadow-amber-400/20';
+        } else {
+            btn.className = 'px-3 py-1.5 rounded-lg transition-all text-zinc-400 hover:text-white';
+        }
+    });
+
+    if (updateInput) {
+        const audioUrlEl = document.getElementById('heroMusicAudioUrl');
+        if (audioUrlEl) {
+            if (type === 'local' && (!audioUrlEl.value || audioUrlEl.value.includes('saavn') || audioUrlEl.value.includes('youtube'))) {
+                audioUrlEl.value = '/assets/x_video_music_bg.mp4';
+            }
+        }
+    }
+}
+
+async function searchHeroMusic(engine) {
+    const qInput = document.getElementById('heroMusicSearchQuery');
+    const q = (qInput?.value || '').trim();
+    if (!q) {
+        showToast('Please enter a song name or artist to search', 'warning');
+        return;
+    }
+
+    const resultsContainer = document.getElementById('heroMusicSearchResults');
+    if (!resultsContainer) return;
+    resultsContainer.classList.remove('hidden');
+    resultsContainer.innerHTML = '<div class="p-6 text-center text-xs font-mono text-amber-400 animate-pulse"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>Searching ' + (engine === 'jiosaavn' ? 'JioSaavn 320kbps' : 'YouTube') + ' catalogue...</div>';
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        let items = [];
+        if (engine === 'jiosaavn') {
+            const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            items = Array.isArray(data) ? data : (data.results || data.songs || []);
+        } else {
+            const res = await fetch(`/api/music/yt-search-full?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            items = Array.isArray(data) ? data : (data.results || data.items || []);
+        }
+
+        if (!items || items.length === 0) {
+            resultsContainer.innerHTML = '<div class="p-4 text-center text-xs font-mono text-zinc-500">No matching tracks found. Try a different query.</div>';
+            return;
+        }
+
+        let html = '';
+        items.slice(0, 8).forEach(item => {
+            const title = item.title || item.name || 'Unknown Track';
+            const artist = item.artist || item.channel || item.author || 'Artist';
+            const artwork = item.artwork || item.image || item.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';
+            const streamUrl = item.streamUrl || item.url || (item.id ? `/api/music/yt-stream?id=${item.id}` : '');
+            const encoded = encodeURIComponent(JSON.stringify({ title, artist, artwork, streamUrl, engine, id: item.id || '' }));
+
+            html += `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/40 transition-all">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <img src="${artwork}" class="w-10 h-10 rounded-lg object-cover bg-zinc-800 shrink-0" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'">
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold font-mono text-white truncate">${title}</div>
+                            <div class="text-[10px] font-mono text-zinc-400 truncate">${artist}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${engine === 'jiosaavn' ? 'bg-amber-400/15 text-amber-300 border border-amber-400/30' : 'bg-red-500/15 text-red-300 border border-red-500/30'}">${engine === 'jiosaavn' ? '320 KBPS' : 'YOUTUBE'}</span>
+                        <button type="button" onclick="setHeroMusicTrack(decodeURIComponent('${encoded}'))" class="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black text-xs font-mono font-bold transition-all flex items-center gap-1 shadow">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            <span>Select Track</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        resultsContainer.innerHTML = html;
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        resultsContainer.innerHTML = `<div class="p-4 text-center text-xs font-mono text-red-400">Search error: ${e.message}</div>`;
+    }
+}
+
+function setHeroMusicTrack(rawJson) {
+    try {
+        const item = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+        const titleEl = document.getElementById('heroMusicTitle');
+        const artistEl = document.getElementById('heroMusicArtist');
+        const audioUrlEl = document.getElementById('heroMusicAudioUrl');
+        
+        if (titleEl) titleEl.value = item.title || '';
+        if (artistEl) artistEl.value = item.artist || '';
+        if (audioUrlEl) audioUrlEl.value = item.streamUrl || '';
+
+        setHeroMusicSourceType(item.engine || 'jiosaavn');
+        testHeroMediaPreview();
+        showToast(`Selected "${item.title}" as Hero Music! Click "Save & Apply Live" to publish.`);
+    } catch (e) {
+        console.error('Failed to set track:', e);
+    }
+}
+
+function testHeroMediaPreview() {
+    const audioUrl = document.getElementById('heroMusicAudioUrl')?.value?.trim();
+    const videoBgUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim();
+    const vidPreview = document.getElementById('heroAdminPreviewVideo');
+    const audPreview = document.getElementById('heroAdminPreviewAudio');
+
+    if (!vidPreview || !audPreview) return;
+
+    if (videoBgUrl && (videoBgUrl.endsWith('.mp4') || videoBgUrl.includes('video') || videoBgUrl.startsWith('/assets/'))) {
+        vidPreview.classList.remove('hidden');
+        vidPreview.src = videoBgUrl;
+        vidPreview.muted = true;
+        vidPreview.play().catch(() => {});
+    }
+
+    if (audioUrl && audioUrl !== videoBgUrl) {
+        audPreview.classList.remove('hidden');
+        audPreview.src = audioUrl;
+    } else {
+        audPreview.classList.add('hidden');
+    }
+}
+
+async function saveHeroConfig() {
+    const s1Url = document.getElementById('heroStage1Url')?.value?.trim() || '/assets/hero-video.mp4';
+    const s5Url = document.getElementById('heroStage5Url')?.value?.trim() || '/assets/floating_glass_hud.mp4';
+    
+    const mTitle = document.getElementById('heroMusicTitle')?.value?.trim() || 'Studio Fidelity Continuum';
+    const mArtist = document.getElementById('heroMusicArtist')?.value?.trim() || 'Aetheris Acoustics';
+    const mAudioUrl = document.getElementById('heroMusicAudioUrl')?.value?.trim() || '/assets/x_video_music_bg.mp4';
+    const mVideoBgUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim() || '/assets/x_video_music_bg.mp4';
+    const mAutoplay = document.getElementById('heroMusicAutoplay')?.checked ?? true;
+    const mMuted = document.getElementById('heroMusicMuted')?.checked ?? true;
+    const mVolume = (parseInt(document.getElementById('heroMusicVolume')?.value || '85', 10)) / 100;
+
+    const payload = {
+        heroVideo: {
+            type: "local",
+            url: s1Url
+        },
+        musicMedia: {
+            sourceType: currentHeroMusicSourceType,
+            title: mTitle,
+            artist: mArtist,
+            audioUrl: mAudioUrl,
+            videoBgUrl: mVideoBgUrl,
+            autoplay: mAutoplay,
+            mutedByDefault: mMuted,
+            volume: mVolume
+        },
+        tvVideo: {
+            type: "local",
+            url: s5Url
+        }
+    };
+
+    try {
+        const res = await secureFetch('/api/admin/hero-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            activeHeroConfig = payload;
+            showToast('Hero page & music configuration updated successfully live!', 'success');
+        } else {
+            showToast(data.message || 'Error saving configuration', 'error');
+        }
+    } catch (e) {
+        showToast(`Save error: ${e.message}`, 'error');
+    }
+}
+

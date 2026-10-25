@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, disableNetwork, enableNetwork } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, disableNetwork, enableNetwork, onSnapshot } from 'firebase/firestore';
 
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
 let db: any = null;
@@ -32,7 +32,15 @@ export async function syncFromFirestore() {
     if (!db) return;
     try {
         const docRef = doc(db, 'system_config', 'admin_db');
-        const docSnap = await getDoc(docRef);
+        const coreConfigRef = doc(db, 'system', 'config');
+        
+        const [docSnap, coreSnap] = await Promise.all([
+            getDoc(docRef),
+            getDoc(coreConfigRef)
+        ]);
+        
+        let finalData: any = null;
+
         if (docSnap.exists()) {
             const data = docSnap.data();
             // Automatically clean any mass-imported 1736 non-sports channels from sports and liveEvents
@@ -42,12 +50,28 @@ export async function syncFromFirestore() {
             if (Array.isArray(data.liveEvents)) {
                 data.liveEvents = data.liveEvents.filter((s: any) => !s.id?.startsWith('sports_1736_') && !(s.url || '').includes('exmxbxe.cfd'));
             }
+            finalData = data;
+        }
+
+        // Apply core config overrides if present (High priority flags)
+        if (coreSnap.exists()) {
+            const coreData = coreSnap.data();
+            if (!finalData) finalData = {};
+            finalData.systemStatus = coreData.status || finalData.systemStatus;
+            finalData.maintenanceMode = coreData.maintenanceMode !== undefined ? coreData.maintenanceMode : finalData.maintenanceMode;
+            finalData.siteLockMode = coreData.siteLockMode !== undefined ? coreData.siteLockMode : finalData.siteLockMode;
+        }
+
+        if (finalData) {
             const tmpFile = ADMIN_DB_PATH + '.tmp';
-            fs.writeFileSync(tmpFile, JSON.stringify(data, null, 4), 'utf8');
+            fs.writeFileSync(tmpFile, JSON.stringify(finalData, null, 4), 'utf8');
             fs.renameSync(tmpFile, ADMIN_DB_PATH);
             console.log('[Firestore] Successfully downloaded, sanitized and applied config to admin_db.json');
-            // Persist the clean config back to Firestore
-            setDoc(docRef, data).catch(() => {});
+            
+            // Persist the clean config back to Firestore if we changed something (sanitization)
+            if (docSnap.exists()) {
+                setDoc(docRef, finalData).catch(() => {});
+            }
         } else {
             console.log('[Firestore] No existing config found in Firestore. Awaiting first local save.');
         }
@@ -63,13 +87,70 @@ export async function syncFromFirestore() {
     }
 }
 
+/**
+ * Start a real-time listener for system configuration changes in Firestore.
+ * This ensures that if settings are changed in Firestore (e.g. by another instance),
+ * this instance stays in sync immediately.
+ */
+export function startFirestoreListener(onUpdate?: (data: any) => void) {
+    if (!db) return;
+    try {
+        const docRef = doc(db, 'system_config', 'admin_db');
+        const coreConfigRef = doc(db, 'system', 'config');
+        
+        // Listen to core config for instant reflection
+        onSnapshot(coreConfigRef, (docSnap: any) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                console.log('[Firestore] Core config update detected:', data);
+                if (onUpdate) onUpdate(data);
+            }
+        });
+        
+        return onSnapshot(docRef, (docSnap: any) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const currentLocal = fs.existsSync(ADMIN_DB_PATH) ? JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8')) : {};
+                
+                // Only write if there's a meaningful change to avoid infinite loops or unnecessary I/O
+                // Focus on core system state flags
+                const stateChanged = data.siteLockMode !== currentLocal.siteLockMode || 
+                                   data.maintenanceMode !== currentLocal.maintenanceMode ||
+                                   data.systemStatus !== currentLocal.systemStatus;
+
+                if (stateChanged) {
+                    console.log('[Firestore] Real-time update detected for system state. Syncing...');
+                    const tmpFile = ADMIN_DB_PATH + '.tmp';
+                    fs.writeFileSync(tmpFile, JSON.stringify(data, null, 4), 'utf8');
+                    fs.renameSync(tmpFile, ADMIN_DB_PATH);
+                    if (onUpdate) onUpdate(data);
+                }
+            }
+        }, (err: any) => {
+            console.error('[Firestore Listener] Error:', err);
+        });
+    } catch (e: any) {
+        console.error('[Firestore Listener] Setup failed:', e);
+    }
+}
+
 export async function syncToFirestore(dbData: any) {
     if (!db) return;
     try {
         const docRef = doc(db, 'system_config', 'admin_db');
         // Filter out any huge or unnecessary fields if needed, but for now we sync it entirely.
         await setDoc(docRef, dbData);
-        console.log('[Firestore] Successfully uploaded admin_db.json to Firestore.');
+        
+        // HIGH PRIORITY SYNC: Also sync core state flags to a smaller, faster document
+        const coreConfigRef = doc(db, 'system', 'config');
+        await setDoc(coreConfigRef, {
+            status: dbData.systemStatus || dbData.status || 'active',
+            maintenanceMode: !!dbData.maintenanceMode,
+            siteLockMode: !!dbData.siteLockMode,
+            updatedAt: new Date().toISOString()
+        });
+        
+        console.log('[Firestore] Successfully uploaded admin_db.json and core config to Firestore.');
     } catch (e: any) {
         if (e && e.message && e.message.includes && e.message.includes('RESOURCE_EXHAUSTED')) {
             console.log('[Firestore] Quota exceeded in another operation. Disabling network.');
@@ -81,6 +162,22 @@ export async function syncToFirestore(dbData: any) {
         console.error('[Firestore] Error syncing to Firestore:', e);
     }
 }
+
+/**
+ * Unified function to save admin database both locally and to Firestore.
+ * Ensures consistent state across the entire application.
+ */
+export function saveAndSyncAdminDB(dbData: any) {
+    try {
+        const tmpFile = ADMIN_DB_PATH + '.tmp';
+        fs.writeFileSync(tmpFile, JSON.stringify(dbData, null, 4), 'utf8');
+        fs.renameSync(tmpFile, ADMIN_DB_PATH);
+        syncToFirestore(dbData).catch(() => {});
+    } catch (err) {
+        console.error('[AdminDB] Save failed:', err);
+    }
+}
+
 
 const MAX_CHUNK_SIZE = 900000;
 

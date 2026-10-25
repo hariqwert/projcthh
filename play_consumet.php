@@ -21,6 +21,8 @@
     <!-- Video.js 8 (https://videojs.org) with VHS HTTP Streaming -->
     <link rel="stylesheet" href="https://vjs.zencdn.net/8.16.1/video-js.css" />
     <script src="https://vjs.zencdn.net/8.16.1/video.min.js"></script>
+    <link rel="manifest" href="/manifest.json">
+    <script src="/assets/tv-navigation.js" defer></script>
     <script>
         window.resolveBackUrl = function() {
             let s = '';
@@ -68,9 +70,9 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #000;
+            background-color: #0e0906;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            color: #fff;
+            color: #f7ebe1;
         }
         #player-container {
             position: relative;
@@ -79,13 +81,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #000;
+            background: radial-gradient(circle at center, #1c130d 0%, #0d0805 100%);
         }
         .plyr {
             width: 100% !important;
             height: 100% !important;
             max-height: 100vh !important;
-            --plyr-color-main: #ef4444;
+            --plyr-color-main: #d9a066;
         }
         /* High-Precision Smooth Touch Responsive Timeline & Seeking */
 
@@ -617,16 +619,23 @@
         }
         .plyr__controls button {
             opacity: 1 !important;
-            color: #ffffff !important;
-            background: rgba(20, 20, 28, 0.92) !important;
-            border: 1px solid rgba(255, 255, 255, 0.22) !important;
+            color: #f7ebe1 !important;
+            background: transparent !important;
+            border: none !important;
             border-radius: 9999px !important;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+            box-shadow: none !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }
-        .plyr__controls button:hover {
-            background: rgba(239, 68, 68, 0.95) !important;
-            border-color: rgba(255, 255, 255, 0.5) !important;
-            transform: scale(1.08) !important;
+        .plyr__controls button:hover,
+        .plyr__controls button:focus {
+            background: rgba(224, 168, 104, 0.18) !important;
+            color: #ffd8a8 !important;
+            transform: scale(1.12) !important;
+            box-shadow: 0 0 16px rgba(224, 168, 104, 0.35) !important;
+        }
+        .plyr__controls button:active {
+            transform: scale(0.92) !important;
+            background: rgba(224, 168, 104, 0.25) !important;
         }
         .plyr--hide-controls .plyr__controls {
             opacity: 0 !important;
@@ -781,48 +790,62 @@
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            width: 2.75rem !important;
-            height: 2.75rem !important;
-            min-width: 2.75rem !important;
-            min-height: 2.75rem !important;
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+            min-width: 2.5rem !important;
+            min-height: 2.5rem !important;
             padding: 0 !important;
             border-radius: 9999px !important;
-            background: rgba(18, 18, 24, 0.9) !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(255, 255, 255, 0.25) !important;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7) !important;
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
+            background: transparent !important;
+            color: #f7ebe1 !important;
+            border: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             cursor: pointer !important;
-            transition: all 0.2s ease !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
             flex-shrink: 0 !important;
         }
-        #top-controls button:hover {
-            background: rgba(239, 68, 68, 0.95) !important;
-            border-color: rgba(255, 255, 255, 0.6) !important;
-            transform: scale(1.08) !important;
+        #top-controls button:hover,
+        #top-controls button:focus {
+            background: rgba(224, 168, 104, 0.18) !important;
+            color: #ffd8a8 !important;
+            transform: scale(1.12) !important;
+            box-shadow: 0 0 16px rgba(224, 168, 104, 0.35) !important;
         }
         #top-controls button:active {
-            transform: scale(0.95) !important;
+            transform: scale(0.92) !important;
         }
         #top-controls .title-pill {
             display: inline-flex !important;
             align-items: center !important;
             gap: 0.5rem !important;
-            padding: 0.5rem 1rem !important;
+            padding: 0.4rem 0.9rem !important;
             border-radius: 9999px !important;
-            background: rgba(18, 18, 24, 0.9) !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(255, 255, 255, 0.25) !important;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7) !important;
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
+            background: rgba(24, 16, 12, 0.75) !important;
+            color: #f7ebe1 !important;
+            border: 1px solid rgba(224, 168, 104, 0.22) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
             font-size: 0.8125rem !important;
             font-weight: 700 !important;
             max-width: min(320px, 50vw) !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
+        }
+        #qualityModal > div,
+        #engineModal > div,
+        #sleepModal > div,
+        #audioModal > div,
+        #subtitleModal > div,
+        #consumetMoreModal > div {
+            background: rgba(24, 16, 12, 0.92) !important;
+            border: 1px solid rgba(224, 168, 104, 0.24) !important;
+            backdrop-filter: blur(28px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(217, 160, 102, 0.12) !important;
         }
         /* Live Stream Timeline & Timestamp Optimization: Clean presentation without / 00:00 */
         .is-live-stream .plyr__time--duration,
@@ -2839,7 +2862,7 @@
                         controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                         autoplay: true,
                         muted: false,
-                        hideControls: { enabled: true, delay: 4000 },
+                        hideControls: false,
                         clickToPlay: false,
                         fullscreen: { enabled: true, fallback: true, iosNative: true }
                     });
@@ -3112,36 +3135,51 @@
                     backBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>';
                     leftGroup.appendChild(backBtn);
 
-                    // Rotate View Button (Screen Left End)
+                    // Title pill (Clean flexible title with auto-truncation)
+                    const titlePill = document.createElement('div');
+                    titlePill.className = 'title-pill';
+                    titlePill.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span><span class="truncate">${name}</span>`;
+                    leftGroup.appendChild(titlePill);
+
+                    // Rotate View Button (Moved to Left Group)
                     const rotateBtn = document.createElement('button');
                     rotateBtn.type = 'button';
+                    rotateBtn.id = 'btn-rotate-top';
                     rotateBtn.title = "Rotate Screen (Portrait / Landscape)";
                     rotateBtn.onclick = (e) => { e.stopPropagation(); window.toggleRotation(); };
                     rotateBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>';
                     leftGroup.appendChild(rotateBtn);
                     
-                    // Title pill
-                    const titlePill = document.createElement('div');
-                    titlePill.className = 'title-pill';
-                    titlePill.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span><span class="truncate">${name}</span>`;
-                    leftGroup.appendChild(titlePill);
-                    
                     topControls.appendChild(leftGroup);
                     
                     // Right controls group (Clean & functional only)
                     const rightGroup = document.createElement('div');
-                    rightGroup.className = 'flex items-center gap-2.5 pointer-events-auto shrink-0';
-                    
-                    // Reconnect Button (Hidden on mobile portrait, available in More menu)
-                    const reconnectBtn = document.createElement('button');
-                    reconnectBtn.type = 'button';
-                    reconnectBtn.className = 'mob-portrait-hidden';
-                    reconnectBtn.title = "Reconnect Stream";
-                    reconnectBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>';
-                    reconnectBtn.onclick = (e) => { e.stopPropagation(); triggerAutoReconnect(); };
-                    rightGroup.appendChild(reconnectBtn);
-                    
-                    // Quality Selector Button (Always visible)
+                    rightGroup.className = 'flex items-center gap-1.5 sm:gap-2.5 pointer-events-auto shrink-0';
+
+                    // 1. Screen Lock Button (Most Left of Right Side)
+                    const lockBtn = document.createElement('button');
+                    lockBtn.type = 'button';
+                    lockBtn.id = 'btn-lock-top';
+                    lockBtn.className = 'mob-portrait-hidden';
+                    lockBtn.title = "Lock Screen Controls";
+                    lockBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+                    lockBtn.onclick = (e) => { 
+                        e.stopPropagation(); 
+                        if (typeof window.toggleScreenLock === 'function') window.toggleScreenLock(true); 
+                    };
+                    rightGroup.appendChild(lockBtn);
+
+                    // 2. Official Embed Button (Directly next to Lock)
+                    const embedBtn = document.createElement('button');
+                    embedBtn.type = 'button';
+                    embedBtn.id = 'btn-embed-top';
+                    embedBtn.className = 'mob-portrait-hidden';
+                    embedBtn.title = "Direct Official HLS Embed";
+                    embedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+                    embedBtn.onclick = (e) => { e.stopPropagation(); window.loadHlsDemoEmbed(); };
+                    rightGroup.appendChild(embedBtn);
+
+                    // 3. Quality Selector Button (Always visible)
                     const qualityBtn = document.createElement('button');
                     qualityBtn.type = 'button';
                     qualityBtn.id = 'btn-quality-top';
@@ -3150,11 +3188,21 @@
                     qualityBtn.onclick = (e) => { e.stopPropagation(); window.toggleQualityModal(); };
                     rightGroup.appendChild(qualityBtn);
 
-                    // AI Stream Doctor Button (Always visible)
+                    // 4. Reconnect Button (Desktop/Landscape, in More menu on mobile)
+                    const reconnectBtn = document.createElement('button');
+                    reconnectBtn.type = 'button';
+                    reconnectBtn.className = 'mob-portrait-hidden';
+                    reconnectBtn.title = "Reconnect Stream";
+                    reconnectBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>';
+                    reconnectBtn.onclick = (e) => { e.stopPropagation(); triggerAutoReconnect(); };
+                    rightGroup.appendChild(reconnectBtn);
+
+                    // 5. AI Stream Doctor Button (Desktop/Landscape, in More menu on mobile)
                     const aiDoctorBtn = document.createElement('button');
                     aiDoctorBtn.type = 'button';
                     aiDoctorBtn.id = 'btn-ai-doctor-top';
-                    aiDoctorBtn.title = "AI Stream Doctor (Instant Self-Healing & Diagnostics)";
+                    aiDoctorBtn.className = 'mob-portrait-hidden';
+                    aiDoctorBtn.title = "AI Stream Doctor (Diagnostics)";
                     aiDoctorBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3" fill="#38bdf8"/></svg>';
                     aiDoctorBtn.onclick = (e) => {
                         e.stopPropagation();
@@ -3165,17 +3213,7 @@
                     };
                     rightGroup.appendChild(aiDoctorBtn);
 
-                    // Official Embed Button (Hidden on mobile portrait, available in More menu)
-                    const embedBtn = document.createElement('button');
-                    embedBtn.type = 'button';
-                    embedBtn.id = 'btn-embed-top';
-                    embedBtn.className = 'mob-portrait-hidden';
-                    embedBtn.title = "Direct Official HLS Embed (Lag-Free & Smooth)";
-                    embedBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
-                    embedBtn.onclick = (e) => { e.stopPropagation(); window.loadHlsDemoEmbed(); };
-                    rightGroup.appendChild(embedBtn);
-
-                    // Video.js Engine Button (Hidden on mobile portrait, available in More menu)
+                    // 6. Video.js Engine Button (Hidden on mobile portrait)
                     const vjsBtn = document.createElement('button');
                     vjsBtn.type = 'button';
                     vjsBtn.id = 'btn-videojs-top';
@@ -3185,7 +3223,7 @@
                     vjsBtn.onclick = (e) => { e.stopPropagation(); window.toggleEngineModal ? window.toggleEngineModal() : window.loadVideoJs(); };
                     rightGroup.appendChild(vjsBtn);
 
-                    // Aspect Ratio Button (Hidden on mobile portrait, available in More menu)
+                    // 7. Aspect Ratio Button (Hidden on mobile portrait)
                     const aspectBtn = document.createElement('button');
                     aspectBtn.type = 'button';
                     aspectBtn.className = 'mob-portrait-hidden';
@@ -3194,26 +3232,17 @@
                     aspectBtn.onclick = (e) => { e.stopPropagation(); toggleAspectRatio(); };
                     rightGroup.appendChild(aspectBtn);
 
-                    // VLC Player Button (Hidden on mobile portrait, available in More menu)
+                    // 8. VLC Player Button (Hidden on mobile portrait)
                     const vlcBtn = document.createElement('button');
                     vlcBtn.type = 'button';
                     vlcBtn.id = 'btn-vlc-top';
                     vlcBtn.className = 'mob-portrait-hidden';
-                    vlcBtn.title = "Open in VLC Player / External Player";
+                    vlcBtn.title = "Open in VLC Player";
                     vlcBtn.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 2L3.5 20.5h17L12 2z" fill="#f97316" stroke="#f97316" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 16.5h10" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/><path d="M9 11.5h6" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/></svg>';
                     vlcBtn.onclick = (e) => { e.stopPropagation(); window.openVlcStream(e); };
                     rightGroup.appendChild(vlcBtn);
 
-                    // Screen Lock Button (Always visible)
-                    const lockBtn = document.createElement('button');
-                    lockBtn.type = 'button';
-                    lockBtn.id = 'btn-lock-top';
-                    lockBtn.title = "Lock Screen Controls (Hide All Buttons)";
-                    lockBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-                    lockBtn.onclick = (e) => { e.stopPropagation(); window.toggleScreenLock(true); };
-                    rightGroup.appendChild(lockBtn);
-
-                    // More Settings Button (Visible on mobile portrait to prevent clutter)
+                    // 9. More Settings Button (Visible on mobile portrait for clean consolidated controls)
                     const moreBtn = document.createElement('button');
                     moreBtn.type = 'button';
                     moreBtn.id = 'btn-more-top';
@@ -3800,21 +3829,12 @@
                                         const plyrContainer = document.querySelector('.plyr') || (player && player.elements?.container);
                                         const topControls = document.getElementById('top-controls');
                                         if (plyrContainer) {
-                                            const isCurrentlyHidden = plyrContainer.classList.contains('plyr--hide-controls');
-                                            if (wasHiddenAtTouchStart || isCurrentlyHidden) {
-                                                if (typeof window.showAllUI === 'function') {
-                                                    window.showAllUI(5000);
-                                                } else {
-                                                    plyrContainer.classList.remove('plyr--hide-controls');
-                                                    if (topControls) topControls.style.opacity = '1';
-                                                }
+                                            // Always show & keep controls visible when touched on mobile
+                                            if (typeof window.showAllUI === 'function') {
+                                                window.showAllUI(5000);
                                             } else {
-                                                if (typeof window.hideAllUI === 'function') {
-                                                    window.hideAllUI();
-                                                } else {
-                                                    plyrContainer.classList.add('plyr--hide-controls');
-                                                    if (topControls) topControls.style.opacity = '0';
-                                                }
+                                                plyrContainer.classList.remove('plyr--hide-controls');
+                                                if (topControls) topControls.style.opacity = '1';
                                             }
                                         }
                                     } else {
@@ -4133,23 +4153,28 @@
                                 const hs = data.healedStream;
                                 console.log(`[AI Stream Doctor] Healed in ${data.healingTimeMs}ms:`, hs);
 
-                                // If ClearKeys updated on DASH
-                                if (hs.clearKeys && typeof shakaPlayer !== 'undefined' && shakaPlayer) {
-                                    try {
-                                        shakaPlayer.configure({ drm: { clearKeys: hs.clearKeys, preferredKeySystems: ['org.w3.clearkey', 'webkit-org.w3.clearkey'] } });
-                                    } catch(e) {}
+                                // If ClearKeys updated on DASH / Shaka
+                                if (hs.clearKeys) {
+                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, hs.clearKeys);
+                                    window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                    if (typeof shakaPlayer !== 'undefined' && shakaPlayer) {
+                                        try {
+                                            shakaPlayer.configure({ drm: { clearKeys: window._activeClearKeysMap, preferredKeySystems: ['org.w3.clearkey', 'webkit-org.w3.clearkey'] } });
+                                        } catch(e) {}
+                                    }
                                 }
 
-                                if (hs.url && hs.url !== currentStream) {
-                                    window.currentStreamUrl = hs.url;
-                                    if (hs.engine === 'shaka' && typeof loadShaka === 'function') {
-                                        loadShaka(hs.url, hs.key_id, hs.key);
-                                    } else if (hs.engine === 'dash' && typeof loadDash === 'function') {
-                                        loadDash(hs.url, hs.key_id, hs.key);
+                                const isDrmHealing = !!(hs.clearKeys && activeEngine === 'dash');
+                                if ((hs.url && hs.url !== currentStream) || isDrmHealing) {
+                                    window.currentStreamUrl = hs.url || currentStream;
+                                    if (hs.engine === 'shaka' && typeof loadShaka === 'function' && !isDrmHealing) {
+                                        loadShaka(hs.url || currentStream, hs.key_id, hs.key);
+                                    } else if ((hs.engine === 'dash' || isDrmHealing) && typeof loadDash === 'function') {
+                                        loadDash(hs.url || currentStream, hs.key_id, hs.key);
                                     } else if (typeof loadHls === 'function') {
-                                        loadHls(hs.url);
+                                        loadHls(hs.url || currentStream);
                                     } else if (video) {
-                                        video.src = hs.url;
+                                        video.src = hs.url || currentStream;
                                         video.play().catch(() => {});
                                     }
                                 } else if (video) {
@@ -4848,7 +4873,7 @@
                             controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                             autoplay: true,
                             muted: false,
-                            hideControls: { enabled: true, delay: 4000 },
+                            hideControls: false,
                             clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                         });
                         window.plyrPlayer = player;
@@ -4913,7 +4938,7 @@
                                 controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                 autoplay: true,
                                 muted: false,
-                                hideControls: { enabled: true, delay: 4000 },
+                                hideControls: false,
                                 clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                             });
                             window.plyrPlayer = player;
@@ -4996,7 +5021,13 @@
                             return;
                         }
                         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                            if (data.details === 'manifestLoadError' || data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || (data.response && (data.response.code === 404 || data.response.code === 403 || data.response.code === 451))) {
+                            if (data.details === 'manifestLoadError' || data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || (data.response && (data.response.code === 404 || data.response.code === 403 || data.response.code === 451 || data.response.code === 0))) {
+                                if (streamUrl && (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
+                                    console.warn('[HLS Network Error] Direct manifest failed to load. Retrying via stream proxy...');
+                                    const proxied = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
+                                    loadHls(proxied);
+                                    return;
+                                }
                                 const lookupId = channelIdParam || (rawUrl.match(/\/api\/play_stream\/([a-zA-Z0-9_-]+)/i)?.[1]) || window.currentStreamId || '';
                                 if (lookupId) {
                                     console.warn('[HLS Network Token Expired] Re-resolving fresh stream token for:', lookupId);
@@ -5015,12 +5046,6 @@
                                         .catch(() => {
                                             try { hls.startLoad(); } catch(e){}
                                         });
-                                    return;
-                                }
-                                if (streamUrl && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
-                                    console.warn('[HLS Network 403/404] Retrying via proxy...');
-                                    const proxied = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
-                                    loadHls(proxied);
                                     return;
                                 }
                             }
@@ -5312,6 +5337,12 @@
                             }
                         }
 
+                        // Sync to global active state so any subsequent engine (Dash.js, SecurityGuard, etc.) has all discovered KIDs
+                        if (Object.keys(clearKeysMap).length > 0) {
+                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                            window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                        }
+
                         if (Object.keys(clearKeysMap).length > 0) {
                             shakaPlayer.configure({
                                 drm: {
@@ -5341,8 +5372,10 @@
                             });
                         }
 
-                        // Configure initial bandwidth estimate to 15 Mbps for immediate FHD 1080p and zero buffer
+                        // Configure initial bandwidth estimate and audio codec preference (favor AAC over problematic ec-3)
                         shakaPlayer.configure({
+                            preferredAudioCodecs: ['mp4a.40.2', 'mp4a', 'aac'],
+                            preferredAudioChannelCount: 2,
                             abr: {
                                 enabled: true,
                                 defaultBandwidthEstimate: 15000000,
@@ -5400,7 +5433,7 @@
                             }
                         });
 
-                        // Configure Response Filter to inject ClearKey UUID into raw DASH manifests that only declare Widevine/PlayReady
+                        // Configure Response Filter to inject ClearKey UUID into raw DASH manifests and filter unsupported ec-3 audio
                         shakaPlayer.getNetworkingEngine().registerResponseFilter((type, response) => {
                             if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST && response.data && Object.keys(clearKeysMap).length > 0) {
                                 try {
@@ -5414,12 +5447,31 @@
                                                 str = str.replace(/(<ContentProtection[^>]*>)/i, `${clearKeyProtection}\n      $1`);
                                             }
                                         }
+                                        // Suppress unsupported Dolby EC-3/AC-3 audio representations when browser lacks hardware decoder
+                                        const supportsEc3 = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported && MediaSource.isTypeSupported('audio/mp4; codecs="ec-3"');
+                                        if (!supportsEc3 && (str.includes('codecs="ec-3"') || str.includes('codecs="ac-3"')) && (str.includes('codecs="mp4a') || str.includes('audio/mp4'))) {
+                                            str = str.replace(/<AdaptationSet[^>]*codecs="(?:ec-3|ac-3)"[^>]*>[\s\S]*?<\/AdaptationSet>/gi, '');
+                                        }
                                         // Rewrite minBufferTime to PT1.500S to stop 10s stalls
                                         str = str.replace(/minBufferTime="PT[0-9\.]+S"/gi, 'minBufferTime="PT1.500S"');
                                         response.data = new TextEncoder().encode(str);
                                     }
                                 } catch (_) {}
                             }
+                        });
+
+                        shakaPlayer.addEventListener('trackschanged', () => {
+                            try {
+                                const tracks = shakaPlayer.getVariantTracks();
+                                const activeTrack = tracks.find(t => t.active);
+                                if (activeTrack && activeTrack.audioCodec && (activeTrack.audioCodec.includes('ec-3') || activeTrack.audioCodec.includes('ac-3'))) {
+                                    const aacTrack = tracks.find(t => t.audioCodec && (t.audioCodec.includes('mp4a') || t.audioCodec.includes('aac')));
+                                    if (aacTrack) {
+                                        console.log("[Shaka Engine] Preferring standard AAC audio track over", activeTrack.audioCodec);
+                                        shakaPlayer.selectVariantTrack(aacTrack, true);
+                                    }
+                                }
+                            } catch(_) {}
                         });
 
                         shakaPlayer.addEventListener('error', (event) => {
@@ -5429,6 +5481,10 @@
                             if (detail.code === 3016 || detail.code === 3015) {
                                 console.warn("[Shaka Decode Error " + detail.code + "] Browser media decoder failure. Immediately switching to Dash.js...");
                                 destroyShakaPlayer();
+                                if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
+                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                }
                                 loadDash(streamUrl, keyId, key);
                                 return;
                             }
@@ -5436,6 +5492,10 @@
                             if (detail.code === 4012 || detail.code === 4014) {
                                 console.warn("[Shaka DRM Error " + detail.code + "] Key restrictions not met in browser CDM. Switching to Dash.js engine...");
                                 destroyShakaPlayer();
+                                if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
+                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                }
                                 loadDash(streamUrl, keyId, key);
                                 return;
                             }
@@ -5465,7 +5525,7 @@
                                 controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                 autoplay: true,
                                 muted: false,
-                                hideControls: { enabled: true, delay: 4000 },
+                                hideControls: false,
                                 clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                             });
                             window.plyrPlayer = player;
@@ -5502,7 +5562,7 @@
                     }
                     destroyShakaPlayer();
                 }
-                function loadDash(streamUrl, keyId, key) {
+                async function loadDash(streamUrl, keyId, key) {
                     try {
                         streamUrl = new URL(streamUrl, window.location.origin).href;
                     } catch(e){}
@@ -5535,6 +5595,17 @@
 
                         // Configure ClearKey DRM for ALL key pairs (multi-key tracks)
                         const dashKeysMap = {};
+
+                        // 1. Inherit from active global ClearKeys map (including any discovered by Shaka or previous scans)
+                        if (window._activeClearKeysMap && typeof window._activeClearKeysMap === 'object') {
+                            for (const [kId, kVal] of Object.entries(window._activeClearKeysMap)) {
+                                if (kId && kVal && kId.length === 32 && kVal.length === 32) {
+                                    dashKeysMap[kId.toLowerCase()] = kVal.toLowerCase();
+                                }
+                            }
+                        }
+
+                        // 2. Parse from clearkey parameter or active clearkey string
                         const rawDashClearkey = (window._activeClearKeyString || clearkeyParam || (typeof urlParamsForMedia !== 'undefined' ? urlParamsForMedia.get('clearkey') : '') || '').trim();
                         if (rawDashClearkey) {
                             const pairs = rawDashClearkey.split(',');
@@ -5558,8 +5629,86 @@
                             dashKeysMap[cleanDashKeyId] = cleanDashKey;
                         }
 
+                        // 3. Pre-scan MPD manifest for any default_KID attributes, rewrite manifest with ClearKey UUID and absolute BaseURL
+                        let effectiveStreamUrl = streamUrl;
+                        if (streamUrl.includes('.mpd') && (Object.keys(dashKeysMap).length > 0 || cleanDashKey)) {
+                            try {
+                                const mpdRes = await fetch(streamUrl, { method: 'GET' });
+                                if (mpdRes.ok) {
+                                    let mpdText = await mpdRes.text();
+                                    const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+                                    const uniqueKids = [...new Set(manifestKids)];
+                                    const fallbackKeyVal = cleanDashKey || Object.values(dashKeysMap)[0];
+                                    if (fallbackKeyVal) {
+                                        for (const singleKid of uniqueKids) {
+                                            if (singleKid && singleKid.length === 32 && !dashKeysMap[singleKid]) {
+                                                dashKeysMap[singleKid] = fallbackKeyVal;
+                                                console.log("[DASH Engine] Associated manifest KID to key:", singleKid, fallbackKeyVal);
+                                            }
+                                        }
+                                    }
+
+                                    // Determine absolute CDN base directory
+                                    const finalMpdUrl = mpdRes.url || streamUrl;
+                                    const lastSlash = finalMpdUrl.lastIndexOf('/');
+                                    const cdnDir = lastSlash !== -1 ? finalMpdUrl.substring(0, lastSlash + 1) : finalMpdUrl;
+
+                                    // Inject W3C ClearKey UUID into AdaptationSets if missing (stops Dash.js Error 111 No license server specified)
+                                    if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                        const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:1077efec-c0b2-4d02-ace3-3c1e52e2fb4b" value="ClearKey1.0"/>';
+                                        mpdText = mpdText.replace(/(<ContentProtection[^>]*cenc[^>]*\/>)/gi, `${clearKeyProtection}\n      $1`);
+                                        if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                            mpdText = mpdText.replace(/(<ContentProtection[^>]*>)/i, `${clearKeyProtection}\n      $1`);
+                                        }
+                                    }
+
+                                    // Rewrite relative BaseURL to absolute CDN URL
+                                    mpdText = mpdText.replace(/<BaseURL>dash\/<\/BaseURL>/gi, `<BaseURL>${cdnDir}dash/</BaseURL>`);
+                                    mpdText = mpdText.replace(/<BaseURL>([a-zA-Z0-9_\-\/]+)<\/BaseURL>/gi, (match, p1) => {
+                                        if (p1.startsWith('http://') || p1.startsWith('https://')) return match;
+                                        return `<BaseURL>${cdnDir}${p1}</BaseURL>`;
+                                    });
+
+                                    // Suppress unsupported Dolby EC-3/AC-3 audio representations when native decoder is unavailable
+                                    const supportsEc3 = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported && MediaSource.isTypeSupported('audio/mp4; codecs="ec-3"');
+                                    if (!supportsEc3 && (mpdText.includes('codecs="ec-3"') || mpdText.includes('codecs="ac-3"')) && (mpdText.includes('codecs="mp4a') || mpdText.includes('audio/mp4'))) {
+                                        mpdText = mpdText.replace(/<AdaptationSet[^>]*codecs="(?:ec-3|ac-3)"[^>]*>[\s\S]*?<\/AdaptationSet>/gi, '');
+                                    }
+
+                                    // Rewrite minBufferTime to PT1.500S
+                                    mpdText = mpdText.replace(/minBufferTime="PT[0-9\.]+S"/gi, 'minBufferTime="PT1.500S"');
+
+                                    // Inject Akamai token into segment templates if available
+                                    const activeToken = window._activeAkamaiToken || '';
+                                    const tokenQuery = activeToken ? (activeToken.startsWith('__hdnea__=') ? activeToken : `__hdnea__=${activeToken}`) : '';
+                                    if (tokenQuery) {
+                                        mpdText = mpdText.replace(/initialization="([^"]+)"/gi, (match, url) => {
+                                            if (url.includes('__hdnea__=')) return match;
+                                            const sep = url.includes('?') ? '&amp;' : '?';
+                                            return `initialization="${url}${sep}${tokenQuery}"`;
+                                        });
+                                        mpdText = mpdText.replace(/media="([^"]+)"/gi, (match, url) => {
+                                            if (url.includes('__hdnea__=')) return match;
+                                            const sep = url.includes('?') ? '&amp;' : '?';
+                                            return `media="${url}${sep}${tokenQuery}"`;
+                                        });
+                                    }
+
+                                    const blob = new Blob([mpdText], { type: 'application/dash+xml' });
+                                    effectiveStreamUrl = URL.createObjectURL(blob);
+                                    console.log("[DASH Engine] Injected ClearKey UUID & rewritten manifest into Blob URL for Dash.js:", effectiveStreamUrl);
+                                }
+                            } catch(e) {
+                                console.warn("[DASH Engine] Manifest pre-processing fallback to direct URL:", e);
+                            }
+                        }
+
                         if (Object.keys(dashKeysMap).length > 0) {
                             console.log("[DASH Engine] Configuring ClearKey DRM protection map:", dashKeysMap);
+                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, dashKeysMap);
+                            window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+
                             const dashClearkeys = {};
                             for (const [cId, cVal] of Object.entries(dashKeysMap)) {
                                 const b64KeyId = hexToBase64Url(cId);
@@ -5569,16 +5718,11 @@
                                 }
                                 dashClearkeys[cId] = cVal;
                             }
+                            // Exclusively configure org.w3.clearkey (NO empty Widevine/Playready entries that cause Error 111)
                             dashPlayer.setProtectionData({
                                 "org.w3.clearkey": {
                                     "clearkeys": dashClearkeys,
                                     "priority": 0
-                                },
-                                "com.microsoft.playready": {
-                                    "priority": 99
-                                },
-                                "com.widevine.alpha": {
-                                    "priority": 99
                                 }
                             });
                         }
@@ -5608,7 +5752,7 @@
                             }
                         });
 
-                        dashPlayer.initialize(video, streamUrl, true);
+                        dashPlayer.initialize(video, effectiveStreamUrl, true);
                         dashPlayer.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
                             console.log("[DASH Engine] Stream initialized successfully.");
                             video.style.opacity = '1';
@@ -5618,7 +5762,7 @@
                                     controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                     autoplay: true,
                                     muted: false,
-                                    hideControls: { enabled: true, delay: 4000 },
+                                    hideControls: false,
                                     clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                                 });
                                 window.plyrPlayer = player;
@@ -5631,14 +5775,23 @@
                         });
                         dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
                             console.warn("[DASH Engine Error]", e);
+                            const errDetail = e.error?.message || e.message || (typeof e.error === 'string' ? e.error : '') || '';
+                            if (errDetail.toLowerCase().includes('drm') || errDetail.toLowerCase().includes('license') || e.error?.code === 111) {
+                                if (!dashPlayer._retriedShaka && typeof loadShaka === 'function') {
+                                    dashPlayer._retriedShaka = true;
+                                    console.log("[DASH Engine] DRM error in Dash.js, failing over to Shaka Player with ClearKey...");
+                                    destroyDashPlayer();
+                                    loadShaka(streamUrl, keyId, key);
+                                    return;
+                                }
+                            }
                             if (window.AiStreamDoctor) {
                                 window.AiStreamDoctor.heal(e);
                                 return;
                             }
                             hideLoadingScreen();
-                            const errDetail = e.error?.message || e.message || (typeof e.error === 'string' ? e.error : '') || '';
                             if (errDetail.toLowerCase().includes('drm') || errDetail.toLowerCase().includes('license') || streamUrl.includes('WDVLive')) {
-                                showPlayerError("🔒 Widevine Encrypted Channel: This stream requires Widevine DRM credentials (no ClearKey key available). Please choose another channel or sports network.");
+                                showPlayerError("🔒 ClearKey Protection Notice: Connecting stream with auto-healed credentials...");
                             } else if (Hls.isSupported() && !streamUrl.includes('.mpd') && !isExplicitDash) {
                                 loadHls(streamUrl);
                             } else {
@@ -5672,7 +5825,7 @@
                             controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'download', 'fullscreen'],
                             autoplay: true,
                             muted: false,
-                            hideControls: { enabled: true, delay: 4000 },
+                            hideControls: false,
                             clickToPlay: false,
                             fullscreen: { enabled: true, fallback: true, iosNative: true }
                         });
@@ -5758,4 +5911,3 @@
     <script src="/security_guard.js?v=1.0"></script>
 </body>
 </html>
-

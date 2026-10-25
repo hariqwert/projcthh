@@ -6,14 +6,25 @@
 (function () {
   "use strict";
 
+  const isVideoPlayerOrHero = () => {
+    try {
+      const p = (window.location.pathname || '').toLowerCase();
+      if (p.includes('hero.html') || p.endsWith('/hero')) return true;
+      if (p.includes('play_consumet') || p.includes('play_media') || p.includes('play_hls') || p.includes('iptvplay') || p.includes('play.') || p.includes('play_')) return true;
+      if (document.body && (document.body.classList.contains('video-player-page') || document.getElementById('player-container') || document.querySelector('video#player'))) return true;
+    } catch(e) {}
+    return false;
+  };
+
+  if (isVideoPlayerOrHero()) {
+    return;
+  }
+
   if (window.__AETHERIS_LOCAL_AI_LOADED__) return;
   window.__AETHERIS_LOCAL_AI_LOADED__ = true;
 
   const TMDB_KEY = "9d83476d2e27f56748167514c69cd2b4";
   let isAiModalOpen = false;
-    const l = document.getElementById("aetheris-ai-launcher");
-    if (l) l.classList.remove("ai-idle-hidden");
-    setTimeout(() => { if (typeof resetIdleTimer === 'function') resetIdleTimer(); }, 500);
   let isSpeechSynthesisActive = false;
   let activeGeminiModel = localStorage.getItem('aetheris_gemini_model') || 'gemini-3.5-flash';
   let activeChatbotRole = localStorage.getItem('aetheris_chatbot_role') || 'copilot';
@@ -143,13 +154,14 @@ User request: "${userText}"`;
     root.id = "aetheris-ai-root";
     root.innerHTML = `
       <!-- AI Floating Quantum Launcher -->
-      <div id="ai-launcher-wrapper" style="position: fixed; bottom: 22px; right: 22px; z-index: 2147483647;">
-        <button id="aetheris-ai-launcher" aria-label="AI" class="ai-launcher-btn relative group overflow-hidden" title="AI Assistant (Ctrl+Space)" onclick="window.__AETHERIS_AI__ && window.__AETHERIS_AI__.open ? window.__AETHERIS_AI__.open() : null">
+      <div id="ai-launcher-wrapper" style="position: fixed; bottom: 22px; right: 22px; width: 52px; height: 52px; z-index: 2147483647; touch-action: none; user-select: none;">
+        <button type="button" id="aetheris-ai-launcher" aria-label="AI Assistant" class="ai-launcher-btn relative group" title="AI Assistant (Drag anywhere / Tap to Open)">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
-          <span onclick="event.stopPropagation(); document.getElementById('aetheris-ai-root').style.display='none';" class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-zinc-900/90 border border-white/20 text-zinc-300 hover:text-white hover:bg-rose-600 hover:border-rose-500 flex items-center justify-center text-[8px] font-bold shadow-md transition-all cursor-pointer z-10" title="Hide AI Widget">✕</span>
+          <span class="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-black shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></span>
         </button>
+        <button type="button" id="ai-dismiss-vault-btn" onclick="window.dismissAetherisAIToVault(event)" class="ai-dismiss-vault-btn" title="Dismiss to AI Vault">✕</button>
       </div>
 
       <!-- AI Glassmorphic Command Center Modal -->
@@ -420,22 +432,128 @@ User request: "${userText}"`;
     updateSearchUI(activeSearchGrounding);
 
     // ----------------------------------------------------
-    // Draggable AI Launcher Icon (Touch + Mouse, Any Screen Part)
+    // Draggable AI Launcher Icon & Persistent AI Vault Controller
     // ----------------------------------------------------
     const launcherWrapper = document.getElementById("ai-launcher-wrapper");
     const launcherBtn = document.getElementById("aetheris-ai-launcher");
+
+    window.updateAiVaultButtons = function(isVaulted) {
+      const isLocked = (typeof isVaulted === 'boolean') ? isVaulted : (localStorage.getItem('hl_ai_dismissed_to_vault') === 'true');
+      document.querySelectorAll('.ai-vault-btn, #btn-header-ai-vault, [data-ai-vault]').forEach(btn => {
+        if (isLocked) {
+          btn.classList.add('ai-vault-has-item');
+          btn.setAttribute('title', 'AI Vault (Assistant Stored - Tap to Restore)');
+          const dot = btn.querySelector('.ai-vault-dot');
+          if (dot) dot.classList.add('animate-ping', 'bg-cyan-400');
+        } else {
+          btn.classList.remove('ai-vault-has-item');
+          btn.setAttribute('title', 'AI Vault (Active)');
+          const dot = btn.querySelector('.ai-vault-dot');
+          if (dot) dot.classList.remove('animate-ping');
+        }
+      });
+    };
+
+    window.dismissAetherisAIToVault = function(e) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      try {
+        localStorage.setItem('hl_ai_dismissed_to_vault', 'true');
+      } catch(err) {}
+      const launcher = document.getElementById("ai-launcher-wrapper");
+      if (launcher) launcher.style.display = "none";
+      const modal = document.getElementById("aetheris-ai-modal");
+      if (modal) modal.classList.add("hidden");
+      isAiModalOpen = false;
+      window.updateAiVaultButtons(true);
+    };
+
+    window.restoreAetherisAI = function(openImmediately = false) {
+      try {
+        localStorage.removeItem('hl_ai_dismissed_to_vault');
+        localStorage.setItem('hl_ai_dismissed_to_vault', 'false');
+      } catch(err) {}
+      const launcher = document.getElementById("ai-launcher-wrapper");
+      if (launcher) {
+        launcher.style.display = "block";
+        launcher.classList.remove("ai-idle-hidden");
+        launcher.style.opacity = "1";
+        launcher.style.transform = "scale(1)";
+      }
+      window.updateAiVaultButtons(false);
+      if (openImmediately) {
+        openAIModal();
+      }
+    };
+
+    window.toggleAiVault = function() {
+      const isVaulted = localStorage.getItem('hl_ai_dismissed_to_vault') === 'true';
+      if (isVaulted) {
+        window.restoreAetherisAI(true);
+      } else {
+        if (isAiModalOpen) {
+          closeAIModal();
+        } else {
+          openAIModal();
+        }
+      }
+    };
+
+    window.initAiVaultHeaderButtons = function() {
+      let existingBtns = document.querySelectorAll('.ai-vault-btn, #btn-header-ai-vault, [data-ai-vault]');
+      if (existingBtns.length === 0 && !isVideoPlayerOrHero()) {
+        const headerEl = document.querySelector('header, nav');
+        if (headerEl) {
+          const targetContainer = headerEl.querySelector('.flex.items-center.gap-2, .flex.items-center.gap-3, .flex.items-center.gap-4') || headerEl.lastElementChild || headerEl;
+          const autoBtn = document.createElement('button');
+          autoBtn.id = 'btn-header-ai-vault';
+          autoBtn.className = 'ai-vault-btn px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer shrink-0';
+          autoBtn.title = 'AI Vault (Restore Assistant)';
+          autoBtn.innerHTML = '<svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>AI Vault</span><span class="ai-vault-dot w-2 h-2 rounded-full bg-cyan-400"></span>';
+          targetContainer.appendChild(autoBtn);
+          existingBtns = document.querySelectorAll('.ai-vault-btn, #btn-header-ai-vault, [data-ai-vault]');
+        }
+      }
+      existingBtns.forEach(btn => {
+        if (btn.__aiVaultBound) return;
+        btn.__aiVaultBound = true;
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.restoreAetherisAI(true);
+        });
+      });
+      window.updateAiVaultButtons();
+    };
+
+    // Auto-bind vault buttons in header
+    window.initAiVaultHeaderButtons();
+
     if (launcherWrapper && launcherBtn) {
       let isDragging = false;
       let hasMoved = false;
       let startX = 0, startY = 0;
       let initialLeft = 0, initialTop = 0;
 
+      // Check persistent AI Vault dismissal - if locked, never appear on refresh
+      const isVaultLocked = localStorage.getItem('hl_ai_dismissed_to_vault') === 'true';
+      if (isVaultLocked) {
+        launcherWrapper.style.display = 'none';
+        window.updateAiVaultButtons(true);
+      } else {
+        window.updateAiVaultButtons(false);
+      }
+
       // Restore saved coordinates if any
       try {
-        const savedPos = JSON.parse(localStorage.getItem('aetheris_ai_pos') || 'null');
-        if (savedPos && typeof savedPos.x === 'number' && typeof savedPos.y === 'number') {
-          const clampedX = Math.max(8, Math.min(window.innerWidth - 60, savedPos.x));
-          const clampedY = Math.max(8, Math.min(window.innerHeight - 60, savedPos.y));
+        const savedPos = JSON.parse(localStorage.getItem('hl_ai_fab_pos') || localStorage.getItem('aetheris_ai_pos') || 'null');
+        if (savedPos && (typeof savedPos.x === 'number' || typeof savedPos.left === 'number')) {
+          const posX = (typeof savedPos.x === 'number') ? savedPos.x : savedPos.left;
+          const posY = (typeof savedPos.y === 'number') ? savedPos.y : savedPos.top;
+          const clampedX = Math.max(8, Math.min(window.innerWidth - 64, posX));
+          const clampedY = Math.max(8, Math.min(window.innerHeight - 64, posY));
           launcherWrapper.style.left = clampedX + 'px';
           launcherWrapper.style.top = clampedY + 'px';
           launcherWrapper.style.right = 'auto';
@@ -458,11 +576,13 @@ User request: "${userText}"`;
         if (!isDragging) return;
         const dx = clientX - startX;
         const dy = clientY - startY;
-        if (Math.hypot(dx, dy) > 4) {
+        if (Math.hypot(dx, dy) > 5) {
           hasMoved = true;
         }
-        const newLeft = Math.max(4, Math.min(window.innerWidth - 56, initialLeft + dx));
-        const newTop = Math.max(4, Math.min(window.innerHeight - 56, initialTop + dy));
+        const w = launcherWrapper.offsetWidth || 56;
+        const h = launcherWrapper.offsetHeight || 56;
+        const newLeft = Math.max(8, Math.min(window.innerWidth - w - 8, initialLeft + dx));
+        const newTop = Math.max(8, Math.min(window.innerHeight - h - 8, initialTop + dy));
         launcherWrapper.style.left = newLeft + 'px';
         launcherWrapper.style.top = newTop + 'px';
         launcherWrapper.style.right = 'auto';
@@ -476,14 +596,16 @@ User request: "${userText}"`;
         if (hasMoved) {
           try {
             const rect = launcherWrapper.getBoundingClientRect();
-            localStorage.setItem('aetheris_ai_pos', JSON.stringify({ x: rect.left, y: rect.top }));
+            const posData = { x: Math.round(rect.left), y: Math.round(rect.top), left: Math.round(rect.left), top: Math.round(rect.top) };
+            localStorage.setItem('hl_ai_fab_pos', JSON.stringify(posData));
+            localStorage.setItem('aetheris_ai_pos', JSON.stringify(posData));
           } catch(e) {}
         }
       };
 
       // Mouse events
       launcherWrapper.addEventListener('mousedown', (e) => {
-        if (e.button !== 0 || e.target.closest('[title="Hide AI Widget"]')) return;
+        if (e.button !== 0 || e.target.closest('#ai-dismiss-vault-btn') || e.target.closest('[title="Dismiss to AI Vault"]')) return;
         onDragStart(e.clientX, e.clientY);
         const onMouseMove = (ev) => onDragMove(ev.clientX, ev.clientY);
         const onMouseUp = () => {
@@ -497,7 +619,7 @@ User request: "${userText}"`;
 
       // Touch events (mobile)
       launcherWrapper.addEventListener('touchstart', (e) => {
-        if (e.target.closest('[title="Hide AI Widget"]')) return;
+        if (e.target.closest('#ai-dismiss-vault-btn') || e.target.closest('[title="Dismiss to AI Vault"]')) return;
         const touch = e.touches[0];
         if (!touch) return;
         onDragStart(touch.clientX, touch.clientY);
@@ -510,14 +632,20 @@ User request: "${userText}"`;
       }, { passive: true });
 
       launcherWrapper.addEventListener('touchend', onDragEnd, { passive: true });
+      launcherWrapper.addEventListener('touchcancel', onDragEnd, { passive: true });
 
-      // Prevent opening modal if drag was performed
+      // Click: Open AI assistant only if not dragged and not dismissing
       launcherBtn.addEventListener('click', (e) => {
+        if (e.target.closest('#ai-dismiss-vault-btn') || e.target.closest('[title="Dismiss to AI Vault"]')) {
+          return;
+        }
         if (hasMoved) {
           e.stopImmediatePropagation();
           e.preventDefault();
           hasMoved = false;
+          return;
         }
+        openAIModal();
       }, true);
     }
 
@@ -717,8 +845,9 @@ User request: "${userText}"`;
   }
 
   function closeAIModal() {
+    const isVaultLocked = localStorage.getItem('hl_ai_dismissed_to_vault') === 'true';
     const launcher = document.getElementById("ai-launcher-wrapper");
-    if (launcher) launcher.style.display = "block";
+    if (launcher && !isVaultLocked) launcher.style.display = "block";
     const waveHud = document.getElementById('ai-voice-wave-hud');
     if (waveHud) waveHud.classList.add('hidden');
     const modal = document.getElementById("aetheris-ai-modal");
@@ -2235,8 +2364,12 @@ User request: "${userText}"`;
     
     if (document.body) {
       createAIChatWidget();
+      if (typeof window.initAiVaultHeaderButtons === 'function') window.initAiVaultHeaderButtons();
     } else {
-      window.addEventListener('DOMContentLoaded', createAIChatWidget);
+      window.addEventListener('DOMContentLoaded', () => {
+        createAIChatWidget();
+        if (typeof window.initAiVaultHeaderButtons === 'function') window.initAiVaultHeaderButtons();
+      });
     }
   }
 

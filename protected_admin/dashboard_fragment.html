@@ -167,6 +167,15 @@
                             <span>Consumet UI Builder</span>
                         </div>
                     </button>
+                    <!-- HERO CONTROL TAB -->
+                    <button onclick="switchTab('herocontrol')" id="tabBtn-herocontrol"
+                        class="w-full flex items-center justify-between p-3.5 rounded-xl font-bold text-sm transition-all text-gray-400 hover:text-white hover:bg-gray-900/50">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="clapperboard" class="w-4.5 h-4.5 text-amber-400"></i>
+                            <span>Hero Control</span>
+                        </div>
+                        <span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold uppercase font-mono">HERO</span>
+                    </button>
                     <button onclick="window.location.href='index.php'"
                         class="w-full flex items-center justify-between p-3.5 rounded-xl font-bold text-sm transition-all text-gray-400 hover:text-white hover:bg-gray-900/50 mt-4 border-t border-gray-800/40 pt-6">
                         <div class="flex items-center gap-3">
@@ -315,6 +324,206 @@
                     </div>
                 </div>
             </div>
+
+            <!-- TAB: HERO & ACOUSTICS MASTER CONTROL -->
+            <div id="tabContent-herocontrol" class="space-y-8 hidden">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800/60 pb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-mono font-bold mb-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                            <span>HERO PAGE & MUSIC ENGINE ORCHESTRATION</span>
+                        </div>
+                        <h1 class="text-3xl font-black text-white tracking-tight">Hero Page & Acoustics Controller</h1>
+                        <p class="text-sm text-gray-400 mt-1">Configure Stage 1 Hero visuals, Stage 4 lossless music & streaming audio, and Stage 5 big screen video.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="loadHeroConfig()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2.5 rounded-xl border border-gray-700 font-bold text-xs flex items-center gap-2 transition-all">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4 text-cyan-400"></i>
+                            <span>Reload Config</span>
+                        </button>
+                        <button type="button" onclick="saveHeroConfig()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black px-6 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all">
+                            <i data-lucide="save" class="w-4 h-4 text-black"></i>
+                            <span>SAVE & APPLY LIVE</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. STAGE 4: MUSIC & ACOUSTICS ENGINE -->
+                <div class="glass-card p-6 sm:p-8 rounded-3xl border border-amber-500/30 bg-black/60 shadow-2xl space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-500/20 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                                <i data-lucide="music" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-black text-white uppercase tracking-wider">Stage 4: Music & Acoustics Deck</h2>
+                                <p class="text-xs text-zinc-400 font-mono">Supports JioSaavn (320kbps), YouTube Audio/Embed, Local Video, and M3U Feeds</p>
+                            </div>
+                        </div>
+                        <!-- Source Type Selector Tabs -->
+                        <div class="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono font-bold" id="heroMusicTypeTabs">
+                            <button type="button" onclick="setHeroMusicSourceType('jiosaavn')" id="srcTypeBtn-jiosaavn" class="px-3 py-1.5 rounded-lg transition-all text-zinc-400 hover:text-white">JioSaavn 320k</button>
+                            <button type="button" onclick="setHeroMusicSourceType('youtube')" id="srcTypeBtn-youtube" class="px-3 py-1.5 rounded-lg transition-all text-zinc-400 hover:text-white">YouTube</button>
+                            <button type="button" onclick="setHeroMusicSourceType('local')" id="srcTypeBtn-local" class="px-3 py-1.5 rounded-lg transition-all text-zinc-400 hover:text-white">Local Video</button>
+                            <button type="button" onclick="setHeroMusicSourceType('m3u')" id="srcTypeBtn-m3u" class="px-3 py-1.5 rounded-lg transition-all text-zinc-400 hover:text-white">M3U Stream</button>
+                            <button type="button" onclick="setHeroMusicSourceType('direct')" id="srcTypeBtn-direct" class="px-3 py-1.5 rounded-lg transition-all text-zinc-400 hover:text-white">Direct URL</button>
+                        </div>
+                    </div>
+
+                    <!-- Search Tool for JioSaavn & YouTube -->
+                    <div class="p-5 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                                <i data-lucide="search" class="w-4 h-4"></i>
+                                Instant Cloud Music Search (JioSaavn & YouTube)
+                            </span>
+                            <span class="text-[10px] font-mono text-zinc-500">Pick any track to auto-populate Audio URL</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-center gap-3">
+                            <input type="text" id="heroMusicSearchQuery" placeholder="Search track, artist, album (e.g. Kesariya, Arijit Singh, Believer, Alan Walker)..." class="flex-1 w-full h-11 px-4 rounded-xl bg-black border border-zinc-700 text-sm font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400">
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <button type="button" onclick="searchHeroMusic('jiosaavn')" class="flex-1 sm:flex-initial px-4 h-11 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all">
+                                    <i data-lucide="music-2" class="w-4 h-4"></i>
+                                    <span>JioSaavn Search</span>
+                                </button>
+                                <button type="button" onclick="searchHeroMusic('youtube')" class="flex-1 sm:flex-initial px-4 h-11 rounded-xl bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all">
+                                    <i data-lucide="youtube" class="w-4 h-4"></i>
+                                    <span>YouTube Search</span>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Search Results Grid -->
+                        <div id="heroMusicSearchResults" class="hidden space-y-2 max-h-72 overflow-y-auto custom-scrollbar pt-2 border-t border-zinc-800/80"></div>
+                    </div>
+
+                    <!-- Configured Media Details Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">Track Title</label>
+                                <input type="text" id="heroMusicTitle" class="w-full h-10 px-3.5 rounded-xl bg-black/80 border border-zinc-700 text-xs font-mono text-white focus:outline-none focus:border-amber-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">Artist / Subtitle</label>
+                                <input type="text" id="heroMusicArtist" class="w-full h-10 px-3.5 rounded-xl bg-black/80 border border-zinc-700 text-xs font-mono text-white focus:outline-none focus:border-amber-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">Audio Stream URL (JioSaavn / MP3 / M3U Stream)</label>
+                                <input type="text" id="heroMusicAudioUrl" class="w-full h-10 px-3.5 rounded-xl bg-black/80 border border-zinc-700 text-xs font-mono text-amber-300 focus:outline-none focus:border-amber-400" placeholder="/assets/x_video_music_bg.mp4 or /api/music/proxy?url=...">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">Background Video URL (Displayed Behind Audio)</label>
+                                <input type="text" id="heroMusicVideoBgUrl" class="w-full h-10 px-3.5 rounded-xl bg-black/80 border border-zinc-700 text-xs font-mono text-white focus:outline-none focus:border-amber-400" placeholder="/assets/x_video_music_bg.mp4">
+                            </div>
+                        </div>
+
+                        <!-- Preview & Playback Options -->
+                        <div class="space-y-4 flex flex-col justify-between">
+                            <div class="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-3">
+                                <span class="text-xs font-mono font-bold text-white uppercase tracking-wider block">Playback Parameters</span>
+                                <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+                                    <label class="flex items-center gap-2 text-zinc-300 cursor-pointer">
+                                        <input type="checkbox" id="heroMusicAutoplay" class="w-4 h-4 rounded text-amber-400 bg-black border-zinc-700">
+                                        <span>Autoplay Media</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-zinc-300 cursor-pointer">
+                                        <input type="checkbox" id="heroMusicMuted" class="w-4 h-4 rounded text-amber-400 bg-black border-zinc-700">
+                                        <span>Mute by Default (Click Unmute)</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between text-xs font-mono text-zinc-400 mb-1">
+                                        <span>Master Volume</span>
+                                        <span id="heroMusicVolumeVal">85%</span>
+                                    </div>
+                                    <input type="range" id="heroMusicVolume" min="0" max="100" value="85" oninput="document.getElementById('heroMusicVolumeVal').textContent = this.value + '%'" class="w-full accent-amber-400 cursor-pointer">
+                                </div>
+                            </div>
+
+                            <!-- In-Admin Live Audio/Video Test Preview -->
+                            <div class="p-4 rounded-2xl bg-black border border-amber-500/20 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-mono font-bold text-amber-400 uppercase">Live In-Admin Media Preview</span>
+                                    <button type="button" onclick="testHeroMediaPreview()" class="px-2.5 py-1 rounded bg-amber-400/20 hover:bg-amber-400 hover:text-black border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold uppercase transition-all">Test Play</button>
+                                </div>
+                                <div class="w-full h-36 rounded-xl bg-zinc-900 overflow-hidden relative flex items-center justify-center">
+                                    <video id="heroAdminPreviewVideo" controls class="w-full h-full object-cover"></video>
+                                    <audio id="heroAdminPreviewAudio" controls class="hidden w-full absolute bottom-2 px-2"></audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. STAGE 1: HERO SHOWCASE VIDEO -->
+                <div class="glass-card p-6 sm:p-8 rounded-3xl border border-gray-800 bg-black/60 shadow-xl space-y-4">
+                    <div class="flex items-center gap-3 border-b border-gray-800 pb-3">
+                        <div class="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                            <i data-lucide="video" class="w-4.5 h-4.5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-black text-white uppercase tracking-wider">Stage 1: Hero Video (Character / Cinematic)</h2>
+                            <p class="text-xs text-zinc-400 font-mono">Primary interactive head / character video</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">Hero Video URL</label>
+                            <input type="text" id="heroStage1Url" class="w-full h-10 px-3.5 rounded-xl bg-black/80 border border-zinc-700 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400" placeholder="/assets/hero-video.mp4">
+                        </div>
+                        <div>
+                            <button type="button" onclick="document.getElementById('heroAdminStage1Preview').src = document.getElementById('heroStage1Url').value; document.getElementById('heroAdminStage1Preview').play();" class="w-full h-10 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 hover:text-black border border-cyan-500/30 text-cyan-300 font-mono font-bold text-xs uppercase transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                                <span>Preview Stage 1</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="w-full h-32 rounded-xl bg-zinc-950 overflow-hidden">
+                        <video id="heroAdminStage1Preview" muted playsinline loop class="w-full h-full object-cover"></video>
+                    </div>
+                </div>
+
+                <!-- 3. STAGE 5: 10-FOOT BIG SCREEN TV VIDEO -->
+                <div class="glass-card p-6 sm:p-8 rounded-3xl border border-gray-800 bg-black/60 shadow-xl space-y-4">
+                    <div class="flex items-center gap-3 border-b border-gray-800 pb-3">
+                        <div class="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                            <i data-lucide="tv" class="w-4.5 h-4.5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-black text-white uppercase tracking-wider">Stage 5: 10-Foot Living Room TV Video</h2>
+                            <p class="text-xs text-zinc-400 font-mono">Continuous video playing behind spatial leanback interface</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">TV Video URL</label>
+                            <input type="text" id="heroStage5Url" class="w-full h-10 px-3.5 rounded-xl bg-black/80 border border-zinc-700 text-xs font-mono text-purple-300 focus:outline-none focus:border-purple-400" placeholder="/assets/floating_glass_hud.mp4">
+                        </div>
+                        <div>
+                            <button type="button" onclick="document.getElementById('heroAdminStage5Preview').src = document.getElementById('heroStage5Url').value; document.getElementById('heroAdminStage5Preview').play();" class="w-full h-10 rounded-xl bg-purple-500/20 hover:bg-purple-500 hover:text-black border border-purple-500/30 text-purple-300 font-mono font-bold text-xs uppercase transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                                <span>Preview Stage 5</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="w-full h-32 rounded-xl bg-zinc-950 overflow-hidden">
+                        <video id="heroAdminStage5Preview" muted playsinline loop class="w-full h-full object-cover"></video>
+                    </div>
+                </div>
+
+                <!-- Floating Bottom Save Bar -->
+                <div class="sticky bottom-4 z-20 flex items-center justify-between p-4 rounded-2xl bg-zinc-950/90 border border-amber-500/40 backdrop-blur-md shadow-2xl">
+                    <div class="flex items-center gap-2 text-xs font-mono text-zinc-400">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Changes sync immediately across all connected clients on save.</span>
+                    </div>
+                    <button type="button" onclick="saveHeroConfig()" class="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black px-8 py-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-amber-500/30 transition-all">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>SAVE & APPLY TO HERO PAGE</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- TAB 4: LIVE ACTIVITY MONITOR -->
             <div id="tabContent-monitor" class="space-y-8 hidden">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800/60 pb-6">

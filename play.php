@@ -1790,22 +1790,28 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                 const hs = data.healedStream;
                                 console.log(`[AI Stream Doctor] Healed in ${data.healingTimeMs}ms:`, hs);
 
-                                if (hs.clearKeys && typeof shakaPlayer !== 'undefined' && shakaPlayer) {
-                                    try {
-                                        shakaPlayer.configure({ drm: { clearKeys: hs.clearKeys, preferredKeySystems: ['org.w3.clearkey', 'webkit-org.w3.clearkey'] } });
-                                    } catch(e) {}
+                                // If ClearKeys updated on DASH / Shaka
+                                if (hs.clearKeys) {
+                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, hs.clearKeys);
+                                    window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                    if (typeof shakaPlayer !== 'undefined' && shakaPlayer) {
+                                        try {
+                                            shakaPlayer.configure({ drm: { clearKeys: window._activeClearKeysMap, preferredKeySystems: ['org.w3.clearkey', 'webkit-org.w3.clearkey'] } });
+                                        } catch(e) {}
+                                    }
                                 }
 
-                                if (hs.url && hs.url !== currentStream) {
-                                    window.currentStreamUrl = hs.url;
-                                    if (hs.engine === 'shaka' && typeof loadShaka === 'function') {
-                                        loadShaka(hs.url, hs.key_id, hs.key);
-                                    } else if (hs.engine === 'dash' && typeof loadDash === 'function') {
-                                        loadDash(hs.url, hs.key_id, hs.key);
+                                const isDrmHealing = !!(hs.clearKeys && activeEngine === 'dash');
+                                if ((hs.url && hs.url !== currentStream) || isDrmHealing) {
+                                    window.currentStreamUrl = hs.url || currentStream;
+                                    if (hs.engine === 'shaka' && typeof loadShaka === 'function' && !isDrmHealing) {
+                                        loadShaka(hs.url || currentStream, hs.key_id, hs.key);
+                                    } else if ((hs.engine === 'dash' || isDrmHealing) && typeof loadDash === 'function') {
+                                        loadDash(hs.url || currentStream, hs.key_id, hs.key);
                                     } else if (typeof loadHls === 'function') {
-                                        loadHls(hs.url);
+                                        loadHls(hs.url || currentStream);
                                     } else if (video) {
-                                        video.src = hs.url;
+                                        video.src = hs.url || currentStream;
                                         video.play().catch(() => {});
                                     }
                                 } else if (video) {
@@ -2435,6 +2441,12 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             }
                             switch (data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
+                                    if ((data.details === 'manifestLoadError' || data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || (data.response && (data.response.code === 404 || data.response.code === 403 || data.response.code === 0))) && streamUrl && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
+                                        console.warn('[HLS Network Error] Manifest failed on direct stream. Retrying through stream proxy...');
+                                        const proxied = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
+                                        loadHls(proxied);
+                                        return;
+                                    }
                                     console.warn('[HLS Network Error] Retrying stream load...');
                                     try {
                                         hls.startLoad();
@@ -2542,17 +2554,26 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                     const mpdText = await mpdRes.text();
                                     const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
                                         .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+                                    const uniqueKids = [...new Set(manifestKids)];
                                     const fallbackKeyVal = cleanKey || Object.values(clearKeysMap)[0];
-                                    if (fallbackKeyVal && manifestKids.length === 1) {
-                                        const singleKid = manifestKids[0];
-                                        if (singleKid && singleKid.length === 32 && !clearKeysMap[singleKid]) {
-                                            clearKeysMap[singleKid] = fallbackKeyVal;
+                                    if (fallbackKeyVal) {
+                                        for (const singleKid of uniqueKids) {
+                                            if (singleKid && singleKid.length === 32 && !clearKeysMap[singleKid]) {
+                                                clearKeysMap[singleKid] = fallbackKeyVal;
+                                                console.log("[Shaka Engine] Associated manifest KID to key:", singleKid, fallbackKeyVal);
+                                            }
                                         }
                                     }
                                 }
                             } catch(e) {
                                 console.warn("[Shaka Engine] Could not pre-scan manifest KIDs:", e);
                             }
+                        }
+
+                        // Sync to global active state so any subsequent engine (Dash.js, SecurityGuard, etc.) has all discovered KIDs
+                        if (Object.keys(clearKeysMap).length > 0) {
+                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                            window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                         }
 
                         if (Object.keys(clearKeysMap).length > 0) {
@@ -2584,8 +2605,10 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             });
                         }
 
-                        // Configure initial bandwidth estimate to 15 Mbps for immediate FHD 1080p and zero buffer
+                        // Configure initial bandwidth estimate and audio codec preference (favor AAC over problematic ec-3)
                         shakaPlayer.configure({
+                            preferredAudioCodecs: ['mp4a.40.2', 'mp4a', 'aac'],
+                            preferredAudioChannelCount: 2,
                             abr: {
                                 enabled: true,
                                 defaultBandwidthEstimate: 15000000,
@@ -2640,7 +2663,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             }
                         });
 
-                        // Configure Response Filter to inject ClearKey UUID into raw DASH manifests that only declare Widevine/PlayReady
+                        // Configure Response Filter to inject ClearKey UUID into raw DASH manifests and filter unsupported ec-3 audio
                         shakaPlayer.getNetworkingEngine().registerResponseFilter((type, response) => {
                             if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST && response.data && Object.keys(clearKeysMap).length > 0) {
                                 try {
@@ -2654,12 +2677,31 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                                 str = str.replace(/(<ContentProtection[^>]*>)/i, `${clearKeyProtection}\n      $1`);
                                             }
                                         }
+                                        // Suppress unsupported Dolby EC-3/AC-3 audio representations when browser lacks hardware decoder
+                                        const supportsEc3 = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported && MediaSource.isTypeSupported('audio/mp4; codecs="ec-3"');
+                                        if (!supportsEc3 && (str.includes('codecs="ec-3"') || str.includes('codecs="ac-3"')) && (str.includes('codecs="mp4a') || str.includes('audio/mp4'))) {
+                                            str = str.replace(/<AdaptationSet[^>]*codecs="(?:ec-3|ac-3)"[^>]*>[\s\S]*?<\/AdaptationSet>/gi, '');
+                                        }
                                         // Rewrite minBufferTime to PT1.500S to stop 10s stalls
                                         str = str.replace(/minBufferTime="PT[0-9\.]+S"/gi, 'minBufferTime="PT1.500S"');
                                         response.data = new TextEncoder().encode(str);
                                     }
                                 } catch (_) {}
                             }
+                        });
+
+                        shakaPlayer.addEventListener('trackschanged', () => {
+                            try {
+                                const tracks = shakaPlayer.getVariantTracks();
+                                const activeTrack = tracks.find(t => t.active);
+                                if (activeTrack && activeTrack.audioCodec && (activeTrack.audioCodec.includes('ec-3') || activeTrack.audioCodec.includes('ac-3'))) {
+                                    const aacTrack = tracks.find(t => t.audioCodec && (t.audioCodec.includes('mp4a') || t.audioCodec.includes('aac')));
+                                    if (aacTrack) {
+                                        console.log("[Shaka Engine] Preferring standard AAC audio track over", activeTrack.audioCodec);
+                                        shakaPlayer.selectVariantTrack(aacTrack, true);
+                                    }
+                                }
+                            } catch(_) {}
                         });
 
                         shakaPlayer.addEventListener('error', (event) => {
@@ -2669,6 +2711,21 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             if (detail.code === 3016 || detail.code === 3015) {
                                 console.warn("[Shaka Decode Error " + detail.code + "] Browser media decoder failure. Immediately switching to Dash.js...");
                                 destroyShakaPlayer();
+                                if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
+                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                }
+                                loadDash(streamUrl, keyId, key);
+                                return;
+                            }
+                            // DRM Key Restrictions cannot be met (4012/4014): Immediately switch to Dash.js
+                            if (detail.code === 4012 || detail.code === 4014) {
+                                console.warn("[Shaka DRM Error " + detail.code + "] Key restrictions not met in browser CDM. Switching to Dash.js engine...");
+                                destroyShakaPlayer();
+                                if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
+                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                }
                                 loadDash(streamUrl, keyId, key);
                                 return;
                             }
@@ -2679,6 +2736,10 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             if (detail.code === 4038 || detail.code === 4000 || detail.code === 4012 || detail.code === 6006 || detail.code === 6007 || detail.severity === 2) {
                                 console.warn("[Shaka Error " + detail.code + "] Restrictions or playback error. Retrying via Dash.js / fallback...");
                                 destroyShakaPlayer();
+                                if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
+                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                }
                                 if (streamUrl.includes('.mpd')) {
                                     loadDash(streamUrl, keyId, key);
                                 } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
@@ -2723,7 +2784,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                     }
                     destroyShakaPlayer();
                 }
-                function loadDash(streamUrl, keyId, key) {
+                async function loadDash(streamUrl, keyId, key) {
                     try {
                         streamUrl = new URL(streamUrl, window.location.origin).href;
                     } catch(e){}
@@ -2756,6 +2817,17 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
 
                         // Configure ClearKey DRM for ALL key pairs (multi-key tracks)
                         const dashKeysMap = {};
+
+                        // 1. Inherit from active global ClearKeys map (including any discovered by Shaka or previous scans)
+                        if (window._activeClearKeysMap && typeof window._activeClearKeysMap === 'object') {
+                            for (const [kId, kVal] of Object.entries(window._activeClearKeysMap)) {
+                                if (kId && kVal && kId.length === 32 && kVal.length === 32) {
+                                    dashKeysMap[kId.toLowerCase()] = kVal.toLowerCase();
+                                }
+                            }
+                        }
+
+                        // 2. Parse from clearkey parameter or active clearkey string
                         const rawDashClearkey = (window._activeClearKeyString || (typeof urlParamsForMedia !== 'undefined' ? urlParamsForMedia.get('clearkey') : '') || '').trim();
                         if (rawDashClearkey) {
                             const pairs = rawDashClearkey.split(',');
@@ -2779,8 +2851,86 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             dashKeysMap[cleanDashKeyId] = cleanDashKey;
                         }
 
+                        // 3. Pre-scan MPD manifest for any default_KID attributes, rewrite manifest with ClearKey UUID and absolute BaseURL
+                        let effectiveStreamUrl = streamUrl;
+                        if (streamUrl.includes('.mpd') && (Object.keys(dashKeysMap).length > 0 || cleanDashKey)) {
+                            try {
+                                const mpdRes = await fetch(streamUrl, { method: 'GET' });
+                                if (mpdRes.ok) {
+                                    let mpdText = await mpdRes.text();
+                                    const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+                                    const uniqueKids = [...new Set(manifestKids)];
+                                    const fallbackKeyVal = cleanDashKey || Object.values(dashKeysMap)[0];
+                                    if (fallbackKeyVal) {
+                                        for (const singleKid of uniqueKids) {
+                                            if (singleKid && singleKid.length === 32 && !dashKeysMap[singleKid]) {
+                                                dashKeysMap[singleKid] = fallbackKeyVal;
+                                                console.log("[DASH Engine] Associated manifest KID to key:", singleKid, fallbackKeyVal);
+                                            }
+                                        }
+                                    }
+
+                                    // Determine absolute CDN base directory
+                                    const finalMpdUrl = mpdRes.url || streamUrl;
+                                    const lastSlash = finalMpdUrl.lastIndexOf('/');
+                                    const cdnDir = lastSlash !== -1 ? finalMpdUrl.substring(0, lastSlash + 1) : finalMpdUrl;
+
+                                    // Inject W3C ClearKey UUID into AdaptationSets if missing (stops Dash.js Error 111 No license server specified)
+                                    if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                        const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:1077efec-c0b2-4d02-ace3-3c1e52e2fb4b" value="ClearKey1.0"/>';
+                                        mpdText = mpdText.replace(/(<ContentProtection[^>]*cenc[^>]*\/>)/gi, `${clearKeyProtection}\n      $1`);
+                                        if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                            mpdText = mpdText.replace(/(<ContentProtection[^>]*>)/i, `${clearKeyProtection}\n      $1`);
+                                        }
+                                    }
+
+                                    // Rewrite relative BaseURL to absolute CDN URL
+                                    mpdText = mpdText.replace(/<BaseURL>dash\/<\/BaseURL>/gi, `<BaseURL>${cdnDir}dash/</BaseURL>`);
+                                    mpdText = mpdText.replace(/<BaseURL>([a-zA-Z0-9_\-\/]+)<\/BaseURL>/gi, (match, p1) => {
+                                        if (p1.startsWith('http://') || p1.startsWith('https://')) return match;
+                                        return `<BaseURL>${cdnDir}${p1}</BaseURL>`;
+                                    });
+
+                                    // Suppress unsupported Dolby EC-3/AC-3 audio representations when native decoder is unavailable
+                                    const supportsEc3 = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported && MediaSource.isTypeSupported('audio/mp4; codecs="ec-3"');
+                                    if (!supportsEc3 && (mpdText.includes('codecs="ec-3"') || mpdText.includes('codecs="ac-3"')) && (mpdText.includes('codecs="mp4a') || mpdText.includes('audio/mp4'))) {
+                                        mpdText = mpdText.replace(/<AdaptationSet[^>]*codecs="(?:ec-3|ac-3)"[^>]*>[\s\S]*?<\/AdaptationSet>/gi, '');
+                                    }
+
+                                    // Rewrite minBufferTime to PT1.500S
+                                    mpdText = mpdText.replace(/minBufferTime="PT[0-9\.]+S"/gi, 'minBufferTime="PT1.500S"');
+
+                                    // Inject Akamai token into segment templates if available
+                                    const activeToken = window._activeAkamaiToken || '';
+                                    const tokenQuery = activeToken ? (activeToken.startsWith('__hdnea__=') ? activeToken : `__hdnea__=${activeToken}`) : '';
+                                    if (tokenQuery) {
+                                        mpdText = mpdText.replace(/initialization="([^"]+)"/gi, (match, url) => {
+                                            if (url.includes('__hdnea__=')) return match;
+                                            const sep = url.includes('?') ? '&amp;' : '?';
+                                            return `initialization="${url}${sep}${tokenQuery}"`;
+                                        });
+                                        mpdText = mpdText.replace(/media="([^"]+)"/gi, (match, url) => {
+                                            if (url.includes('__hdnea__=')) return match;
+                                            const sep = url.includes('?') ? '&amp;' : '?';
+                                            return `media="${url}${sep}${tokenQuery}"`;
+                                        });
+                                    }
+
+                                    const blob = new Blob([mpdText], { type: 'application/dash+xml' });
+                                    effectiveStreamUrl = URL.createObjectURL(blob);
+                                    console.log("[DASH Engine] Injected ClearKey UUID & rewritten manifest into Blob URL for Dash.js:", effectiveStreamUrl);
+                                }
+                            } catch(e) {
+                                console.warn("[DASH Engine] Manifest pre-processing fallback to direct URL:", e);
+                            }
+                        }
+
                         if (Object.keys(dashKeysMap).length > 0) {
                             console.log("[DASH Engine] Configuring ClearKey DRM protection map:", dashKeysMap);
+                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, dashKeysMap);
+                            window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+
                             const dashClearkeys = {};
                             for (const [cId, cVal] of Object.entries(dashKeysMap)) {
                                 const b64KeyId = hexToBase64Url(cId);
@@ -2790,16 +2940,11 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                 }
                                 dashClearkeys[cId] = cVal;
                             }
+                            // Exclusively configure org.w3.clearkey (NO empty Widevine/Playready entries that cause Error 111)
                             dashPlayer.setProtectionData({
                                 "org.w3.clearkey": {
                                     "clearkeys": dashClearkeys,
                                     "priority": 0
-                                },
-                                "com.microsoft.playready": {
-                                    "priority": 99
-                                },
-                                "com.widevine.alpha": {
-                                    "priority": 99
                                 }
                             });
                         }
@@ -2829,7 +2974,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             }
                         });
 
-                        dashPlayer.initialize(video, streamUrl, true);
+                        dashPlayer.initialize(video, effectiveStreamUrl, true);
                         dashPlayer.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
                             console.log("[DASH Engine] Stream initialized successfully.");
                             video.style.opacity = '1';
@@ -2852,6 +2997,16 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         });
                         dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
                             console.warn("[DASH Engine Error]", e);
+                            const errDetail = e.error?.message || e.message || (typeof e.error === 'string' ? e.error : '') || '';
+                            if (errDetail.toLowerCase().includes('drm') || errDetail.toLowerCase().includes('license') || e.error?.code === 111) {
+                                if (!dashPlayer._retriedShaka && typeof loadShaka === 'function') {
+                                    dashPlayer._retriedShaka = true;
+                                    console.log("[DASH Engine] DRM error in Dash.js, failing over to Shaka Player with ClearKey...");
+                                    destroyDashPlayer();
+                                    loadShaka(streamUrl, keyId, key);
+                                    return;
+                                }
+                            }
                             if (window.AiStreamDoctor) {
                                 window.AiStreamDoctor.heal(e);
                                 return;
@@ -2860,7 +3015,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             if (Hls.isSupported() && !streamUrl.includes('.mpd') && !isExplicitDash) {
                                 loadHls(streamUrl);
                             } else {
-                                showPlayerError("⚠️ Stream Notice: " + (e.error?.message || e.message || "Failed to decode live stream. Please try reconnecting or select another stream."));
+                                showPlayerError("⚠️ Stream Notice: " + (errDetail || "Failed to decode live stream. Please try reconnecting or select another stream."));
                             }
                         });
                         window.dashPlayer = dashPlayer;

@@ -606,47 +606,60 @@ export class GoogleSportsResultsEngine {
         const filtered = all.filter(e => e.isSpotlight);
         spotlightResults.push(...filtered);
 
-        // 3. Priority scoring algorithm: Give highest priority to India, Test cricket, Willow, IPL & Major Leagues
+        // 3. Priority scoring algorithm: Live matches first, Test matches, India, Major Teams & Major Leagues
         const getPriorityScore = (event: GoogleSportsResult): number => {
             let score = 0;
             const title = (event.title || '').toLowerCase();
             const sport = (event.sport || '').toLowerCase();
             const league = (event.league || '').toLowerCase();
+            const timeStr = (event.eventTime || '').toLowerCase();
             const isLive = event.status === 'LIVE';
 
-            // Base Live bonus
-            if (isLive) score += 500;
+            // Check if future date or tomorrow
+            const isFuture = timeStr.includes('tomorrow') || /in\s+\d+\s+day/i.test(timeStr) || /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*\d{1,2}\b/i.test(timeStr);
+
+            // 1. SUPREME LIVE PRIORITY (Active live match always beats upcoming/scheduled)
+            if (isLive) {
+                score += 15000;
+            } else if (isFuture) {
+                score -= 10000;
+            } else {
+                score += 1000;
+            }
 
             // Direct Willow Cricket broadcast bonus
             if (event.broadcasterChannel && event.broadcasterChannel.toLowerCase().includes('willow')) {
                 score += 400;
             }
 
-            // India Match / Test Cricket / ICC
-            if (title.includes('india') || title.includes('ind vs') || title.includes('vs ind') || title.includes('bcci')) {
-                score += 1000; // Peak priority
-            }
-            if (title.includes('test') || league.includes('test') || title.includes('ashes') || title.includes('border-gavaskar') || title.includes('bgt')) {
-                score += 800; // Test matches get huge priority
-            }
-            if (title.includes('ipl') || league.includes('ipl') || title.includes('premier league') && sport.includes('cricket')) {
-                score += 700;
-            }
-            if (sport.includes('cricket') || league.includes('icc') || league.includes('world cup')) {
-                score += 600;
+            // 2. TEST MATCH PRIORITY (Highest prestige cricket format)
+            if (/\b(test\s*match|test\s*series|\d+(?:st|nd|rd|th)\s*test|day\s*test|the\s*ashes|ashes|border[\s\-]gavaskar|bgt|world\s*test\s*championship|wtc)\b/i.test(title + ' ' + league)) {
+                score += (isLive ? 3500 : 1200);
             }
 
-            // Major Football Leagues
-            if (title.includes('real madrid') || title.includes('barcelona') || title.includes('manchester') || title.includes('arsenal') || title.includes('liverpool') || title.includes('champions league') || title.includes('ucl')) {
-                score += 350;
-            }
-            if (league.includes('premier league') || league.includes('la liga') || league.includes('serie a')) {
-                score += 250;
+            // 3. MAJOR TEAMS PRIORITY
+            if (/\b(india|ind\s*(?:vs|\/|\-)|vs\s*ind\b|bcci|india\s*champions)\b/i.test(title)) {
+                score += (isLive ? 4000 : 1000); // Live India gets peak score
+            } else if (/\b(australia|aus\s*(?:vs|\/|\-)|england|eng\s*(?:vs|\/|\-)|south\s*africa|sa\s*(?:vs|\/|\-)|pakistan|pak\s*(?:vs|\/|\-)|new\s*zealand|nz\s*(?:vs|\/|\-)|west\s*indies|wi\s*(?:vs|\/|\-))\b/i.test(title)) {
+                score += (isLive ? 2500 : 800); // Top international cricket teams
+            } else if (/\b(sri\s*lanka|bangladesh|afghanistan)\b/i.test(title)) {
+                score += (isLive ? 1500 : 500);
             }
 
-            // F1 & Major sports
-            if (sport.includes('f1') || sport.includes('formula') || title.includes('grand prix')) {
-                score += 200;
+            // Major Football Clubs
+            if (/\b(real\s*madrid|barcelona|manchester\s*city|arsenal|liverpool|bayern|psg|chelsea|manchester\s*united|inter\s*milan|juventus|ac\s*milan|atletico\s*madrid|dortmund|tottenham)\b/i.test(title)) {
+                score += (isLive ? 2500 : 700);
+            }
+
+            // 4. MAJOR LEAGUES & TOURNAMENTS
+            if (/\b(ipl|indian\s*premier\s*league|icc|world\s*cup|champions\s*trophy|t20\s*world\s*cup|asia\s*cup|psl|bbl|big\s*bash|cpl|sa20|the\s*hundred|mlc|ilt20)\b/i.test(title + ' ' + league)) {
+                score += 2500;
+            }
+            if (/\b(uefa|champions\s*league|ucl|premier\s*league|epl|la\s*liga|serie\s*a|bundesliga|ligue\s*1|europa\s*league|fifa|copa\s*del\s*rey|fa\s*cup)\b/i.test(title + ' ' + league)) {
+                score += 2200;
+            }
+            if (sport.includes('f1') || sport.includes('formula') || title.includes('grand prix') || league.includes('nba') || league.includes('ufc') || title.includes('wimbledon') || title.includes('us open')) {
+                score += 2000;
             }
 
             return score;

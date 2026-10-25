@@ -50,16 +50,17 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
     
     let token = '';
     
-    // Extract token from Bearer Auth Header
     if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.split(' ')[1];
     } 
+    
     // Fallback: Extract from query parameter (for direct file exports/downloads)
-    else if (req.query && req.query.token) {
+    if (!token && req.query && req.query.token) {
         token = req.query.token as string;
     }
+    
     // Fallback: Extract from cookie
-    else if (cookieHeader) {
+    if (!token && cookieHeader) {
         const cookies = cookieHeader.split(';').reduce((acc, c) => {
             const [name, val] = c.trim().split('=');
             if (name && val) acc[name] = val;

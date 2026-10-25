@@ -9,6 +9,7 @@
 <!-- Tailwind CSS & Lucide Icons -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
+<script src="/search_launcher.js"></script>
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <!-- JSZip and FileSaver for Playlist Download -->
@@ -196,11 +197,6 @@ transform: scale(1.04) !important;
 <span id="deckBitrateBadge" class="text-[9px] bg-indigo-500/10 border border-white/10 text-indigo-400 px-1.5 py-0.5 rounded-md font-mono">320kbps AAC</span>
 </div>
 <div class="flex items-center gap-1.5 sm:gap-2">
-<button onclick="openSongHistoryView()" class="p-2 sm:p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer" title="Song History & Recently Played">
-<i data-lucide="history" class="w-4 h-4"></i>
-<span class="hidden lg:inline text-[10px] font-extrabold uppercase tracking-wider">History</span>
-<span id="headerHistoryCountBadge" class="text-[9px] font-mono font-bold bg-white/10 text-slate-300 px-1.5 py-0.5 rounded-full">0</span>
-</button>
 <button onclick="downloadQueueAsZip()" class="hidden xs:flex p-2 sm:p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all hover:border-white/10" title="Download Entire Queue as ZIP">
 <i data-lucide="archive" class="w-4 h-4"></i>
 </button>
@@ -213,6 +209,12 @@ transform: scale(1.04) !important;
 <button onclick="toggleHelpModal(true)" class="p-2 sm:p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all hover:border-white/10" title="Control Shortcuts">
 <i data-lucide="help-circle" class="w-4 h-4"></i>
 </button>
+<!-- AI Vault Button in Top Header -->
+<button onclick="window.restoreAetherisAI ? window.restoreAetherisAI(true) : null" id="btn-header-ai-vault" class="ai-vault-btn p-2 sm:p-2.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm" title="AI Vault (Restore Assistant)">
+<svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+<span class="hidden sm:inline text-xs font-bold">AI Vault</span>
+<span class="ai-vault-dot w-2 h-2 rounded-full bg-cyan-400"></span>
+</button>
 <button id="iframeCloseButton" onclick="window.parent.postMessage({ type: 'CLOSE_MUSIC_OVERLAY' }, '*');" class="hidden p-2 sm:p-2.5 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 hover:text-white transition-all ml-1 cursor-pointer" title="Close Overlay Deck">
 <i data-lucide="x" class="w-4 h-4"></i>
 </button>
@@ -220,24 +222,24 @@ transform: scale(1.04) !important;
 </div>
 </header>
 <!-- Mobile Segmented View Controller (Visible on Mobile Screens < md) -->
-<div class="md:hidden sticky top-[53px] z-30 bg-[#090d16]/95 backdrop-blur-2xl border-b border-white/10 px-2.5 py-2 flex items-center justify-between">
+<div class="md:hidden sticky top-[53px] z-30 bg-[#090d16]/95 backdrop-blur-2xl border-b border-white/10 px-3 py-2 flex items-center justify-between">
 <div class="flex p-1 bg-black/70 rounded-2xl border border-white/10 w-full gap-1 shadow-inner">
-<button onclick="switchMobileMusicView('nowplaying')" id="mobViewBtn_nowplaying" class="flex-1 py-2 rounded-xl text-[11px] font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer">
+<button onclick="switchMobileMusicView('nowplaying')" id="mobViewBtn_nowplaying" class="flex-1 py-2 rounded-xl text-xs font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer">
 <i data-lucide="disc" class="w-3.5 h-3.5"></i>
 <span>Player</span>
 </button>
-<button onclick="switchMobileMusicView('search')" id="mobViewBtn_search" class="flex-1 py-2 rounded-xl text-[11px] font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer">
+<button onclick="switchMobileMusicView('search')" id="mobViewBtn_search" class="flex-1 py-2 rounded-xl text-xs font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer">
 <i data-lucide="search" class="w-3.5 h-3.5"></i>
 <span>Search</span>
 </button>
-<button onclick="switchMobileMusicView('history')" id="mobViewBtn_history" class="flex-1 py-2 rounded-xl text-[11px] font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer">
-<i data-lucide="history" class="w-3.5 h-3.5"></i>
-<span>History</span>
-<span id="mobHistoryCountBadge" class="text-[9px] font-mono font-bold bg-white/10 text-slate-300 px-1.5 py-0.2 rounded-full">0</span>
-</button>
-<button onclick="switchMobileMusicView('library')" id="mobViewBtn_library" class="flex-1 py-2 rounded-xl text-[11px] font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer">
+<button onclick="switchMobileMusicView('library')" id="mobViewBtn_library" class="flex-1 py-2 rounded-xl text-xs font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer">
 <i data-lucide="folder" class="w-3.5 h-3.5"></i>
 <span>Library</span>
+</button>
+<button onclick="switchMobileMusicView('history')" id="mobViewBtn_history" class="flex-1 py-2 rounded-xl text-xs font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer">
+<i data-lucide="history" class="w-3.5 h-3.5"></i>
+<span>History</span>
+<span id="mobHistoryBadge" class="hidden px-1 rounded-full text-[8px] font-mono bg-indigo-500/20 text-indigo-300">0</span>
 </button>
 </div>
 </div>
@@ -280,52 +282,29 @@ transform: scale(1.04) !important;
 </div>
 </div>
 </div>
-<!-- MY PLAYLISTS (STORED LOCALLY) -->
-<div class="glass-panel rounded-[2rem] p-5 sm:p-6 flex flex-col gap-3.5 h-[240px] overflow-hidden shadow-2xl">
+<!-- MY PLAYLISTS & LISTENING HISTORY (STORED LOCALLY) -->
+<div class="glass-panel rounded-[2rem] p-5 flex flex-col gap-3.5 h-[320px] overflow-hidden shadow-2xl">
 <div class="flex items-center justify-between border-b border-white/5 pb-2">
-<div>
-<h2 class="text-xs font-black font-display uppercase tracking-wider text-pink-400">STUDIO PLAYLISTS</h2>
-<p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Persistent Custom Mixes</p>
+<div class="flex p-0.5 bg-black/60 rounded-xl border border-white/10 gap-1">
+<button onclick="switchLibrarySubTab('playlists')" id="libSubTab_playlists" class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-white bg-pink-600 transition-all shadow-sm">Playlists</button>
+<button onclick="switchLibrarySubTab('history')" id="libSubTab_history" class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-white transition-all flex items-center gap-1">
+<span>History</span>
+<span id="libHistoryCount" class="text-[9px] font-mono px-1 rounded-full bg-white/10 text-pink-300">0</span>
+</button>
 </div>
-<button onclick="createNewPlaylistPrompt()" class="p-1.5 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-400 hover:bg-pink-500 hover:text-white transition-all" title="Create Playlist">
+<div class="flex items-center gap-1">
+<button id="libAddPlaylistBtn" onclick="createNewPlaylistPrompt()" class="p-1.5 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-400 hover:bg-pink-500 hover:text-white transition-all" title="Create Playlist">
 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
 </button>
-</div>
-<div id="playlistsContainer" class="space-y-2 overflow-y-auto pr-1 flex-1">
-<!-- Populated dynamically via JS -->
-</div>
-</div>
-<!-- SONG HISTORY SECTION (DESKTOP & MOBILE LIBRARY CARD) -->
-<div id="leftPanelHistorySection" class="glass-panel rounded-[2rem] p-5 sm:p-6 flex flex-col gap-3.5 h-[360px] overflow-hidden shadow-2xl border border-white/10">
-<div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-<div class="flex items-center gap-2.5 min-w-0">
-<div class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-300 shrink-0 shadow-inner">
-<i data-lucide="history" class="w-4 h-4"></i>
-</div>
-<div class="min-w-0">
-<div class="flex items-center gap-1.5">
-<h2 class="text-xs font-black font-display uppercase tracking-wider text-white truncate">SONG HISTORY</h2>
-<span id="leftHistoryCountBadge" class="text-[9px] font-mono font-bold bg-white/10 text-slate-300 px-1.5 py-0.5 rounded-full">0</span>
-</div>
-<p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 truncate">Recently Played Tracks</p>
-</div>
-</div>
-<div class="flex items-center gap-1.5 shrink-0">
-<button onclick="playAllMusicHistory()" class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[9px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer" title="Play All History">
-<i data-lucide="play" class="w-3 h-3 fill-current"></i>
-<span>Play All</span>
-</button>
-<button onclick="clearMusicHistory()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer" title="Clear Song History">
+<button id="libClearHistoryBtn" onclick="clearListeningHistory()" class="hidden px-2 py-1 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all text-[9px] font-bold" title="Clear Listening History">
 Clear
 </button>
 </div>
 </div>
-<!-- Quick Filter inside Song History -->
-<div class="flex items-center bg-black/40 border border-white/8 rounded-xl px-3 py-1.5 focus-within:border-indigo-500/50 transition-colors">
-<i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 mr-2 shrink-0"></i>
-<input type="text" id="leftHistorySearchInput" oninput="renderMusicHistory()" placeholder="Filter song history..." class="bg-transparent text-[11px] w-full outline-none text-white placeholder-slate-600 font-medium">
+<div id="playlistsContainer" class="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
+<!-- Populated dynamically via JS -->
 </div>
-<div id="leftMusicHistoryList" class="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
+<div id="libHistoryContainer" class="hidden space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
 <!-- Populated dynamically via JS -->
 </div>
 </div>
@@ -443,14 +422,17 @@ Clear
 <span id="activeSourceBadge" class="text-[9px] font-mono font-black bg-indigo-500/10 border border-white/10 text-indigo-400 px-2 py-0.5 rounded-full uppercase">JioSaavn</span>
 </div>
 <!-- Search Source Segmented Tabs -->
-<div class="flex bg-black/40 p-1 rounded-2xl border border-white/5 gap-1 shadow-inner overflow-x-auto no-scrollbar">
-<button onclick="switchSearchSource('saavn')" id="tab_source_saavn" class="flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-white bg-indigo-600 transition-all shadow-md shrink-0">JioSaavn</button>
-<button onclick="switchSearchSource('history')" id="tab_source_history" class="flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1 shrink-0"><i data-lucide="history" class="w-3 h-3"></i><span>History</span></button>
-<button onclick="switchSearchSource('archive')" id="tab_source_archive" class="flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all shrink-0">Archive</button>
-<button onclick="switchSearchSource('curated')" id="tab_source_curated" class="flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all shrink-0">Curated</button>
-<button onclick="switchSearchSource('youtube')" id="tab_source_youtube" class="flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all shrink-0">YouTube</button>
-<button onclick="switchSearchSource('audius')" id="tab_source_audius" class="flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all shrink-0">Audius</button>
-<button onclick="switchSearchSource('jamendo')" id="tab_source_jamendo" class="flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all shrink-0">Jamendo</button>
+<div class="flex bg-black/40 p-1 rounded-2xl border border-white/5 gap-1 shadow-inner overflow-x-auto scrollbar-none">
+<button onclick="switchSearchSource('saavn')" id="tab_source_saavn" class="flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-white bg-indigo-600 transition-all shadow-md whitespace-nowrap">JioSaavn</button>
+<button onclick="switchSearchSource('archive')" id="tab_source_archive" class="flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">Archive.org</button>
+<button onclick="switchSearchSource('curated')" id="tab_source_curated" class="flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">Curated</button>
+<button onclick="switchSearchSource('youtube')" id="tab_source_youtube" class="flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">YouTube</button>
+<button onclick="switchSearchSource('audius')" id="tab_source_audius" class="flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">Audius</button>
+<button onclick="switchSearchSource('jamendo')" id="tab_source_jamendo" class="flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">Jamendo</button>
+<button onclick="switchSearchSource('history')" id="tab_source_history" class="flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap flex items-center justify-center gap-1">
+<span>History</span>
+<span id="rightPanelHistoryBadge" class="hidden px-1 rounded-full text-[8px] font-mono bg-white/15 text-indigo-200">0</span>
+</button>
 </div>
 <!-- Search Input with Interactive Button -->
 <div class="flex items-center bg-black/40 border border-white/5 rounded-2xl px-4 py-3 focus-within:border-indigo-500 transition-colors shadow-inner">
@@ -787,15 +769,15 @@ const centerP = document.getElementById('musicCenterPanel');
 const rightP = document.getElementById('musicRightPanel');
 const btnNow = document.getElementById('mobViewBtn_nowplaying');
 const btnSearch = document.getElementById('mobViewBtn_search');
-const btnHist = document.getElementById('mobViewBtn_history');
 const btnLib = document.getElementById('mobViewBtn_library');
+const btnHist = document.getElementById('mobViewBtn_history');
 if (!leftP || !centerP || !rightP) return;
 // Reset tab styles
-[btnNow, btnSearch, btnHist, btnLib].forEach(b => {
-if (b) b.className = "flex-1 py-2 rounded-xl text-[11px] font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer";
+[btnNow, btnSearch, btnLib, btnHist].forEach(b => {
+if (b) b.className = "flex-1 py-2 rounded-xl text-xs font-semibold text-center text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer";
 });
 if (view === 'nowplaying') {
-if (btnNow) btnNow.className = "flex-1 py-2 rounded-xl text-[11px] font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
+if (btnNow) btnNow.className = "flex-1 py-2 rounded-xl text-xs font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
 centerP.classList.remove('hidden');
 centerP.classList.add('flex');
 leftP.classList.add('hidden');
@@ -804,57 +786,38 @@ rightP.classList.add('hidden');
 rightP.classList.remove('flex');
 window.scrollTo({ top: 0, behavior: 'smooth' });
 } else if (view === 'search') {
-if (btnSearch) btnSearch.className = "flex-1 py-2 rounded-xl text-[11px] font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
+if (btnSearch) btnSearch.className = "flex-1 py-2 rounded-xl text-xs font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
 rightP.classList.remove('hidden');
 rightP.classList.add('flex');
 centerP.classList.add('hidden');
 centerP.classList.remove('flex');
 leftP.classList.add('hidden');
 leftP.classList.remove('flex');
-if (currentSearchSource === 'history') {
-switchSearchSource('saavn');
-}
+if (currentSearchSource === 'history') switchSearchSource('saavn');
 setTimeout(() => {
 const inp = document.getElementById('studioSearchInput');
 if (inp) inp.focus();
 }, 100);
-} else if (view === 'history') {
-if (btnHist) btnHist.className = "flex-1 py-2 rounded-xl text-[11px] font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
-rightP.classList.remove('hidden');
-rightP.classList.add('flex');
-centerP.classList.add('hidden');
-centerP.classList.remove('flex');
-leftP.classList.add('hidden');
-leftP.classList.remove('flex');
-switchSearchSource('history');
-window.scrollTo({ top: 0, behavior: 'smooth' });
 } else if (view === 'library') {
-if (btnLib) btnLib.className = "flex-1 py-2 rounded-xl text-[11px] font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
+if (btnLib) btnLib.className = "flex-1 py-2 rounded-xl text-xs font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
 leftP.classList.remove('hidden');
 leftP.classList.add('flex');
 centerP.classList.add('hidden');
 centerP.classList.remove('flex');
 rightP.classList.add('hidden');
 rightP.classList.remove('flex');
-if (typeof renderMusicHistory === 'function') renderMusicHistory();
+if (typeof switchLibrarySubTab === 'function') switchLibrarySubTab('playlists');
+} else if (view === 'history') {
+if (btnHist) btnHist.className = "flex-1 py-2 rounded-xl text-xs font-bold text-center text-white bg-indigo-600 transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer";
+leftP.classList.remove('hidden');
+leftP.classList.add('flex');
+centerP.classList.add('hidden');
+centerP.classList.remove('flex');
+rightP.classList.add('hidden');
+rightP.classList.remove('flex');
+if (typeof switchLibrarySubTab === 'function') switchLibrarySubTab('history');
 }
 if (window.lucide) lucide.createIcons();
-};
-window.openSongHistoryView = function() {
-if (window.innerWidth < 768) {
-window.switchMobileMusicView('history');
-} else if (window.innerWidth < 1280) {
-const rightP = document.getElementById('musicRightPanel');
-if (rightP) {
-rightP.classList.remove('hidden');
-rightP.classList.add('flex');
-}
-switchSearchSource('history');
-rightP?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-} else {
-switchSearchSource('history');
-if (typeof toggleMusicHistory === 'function') toggleMusicHistory(true);
-}
 };
 // Curated Lossless High-Fidelity Studio Master Tracks (100% verified URLs)
 const studioMasterTracks = [
@@ -969,7 +932,9 @@ let currentQueueIndex = 0;
 let isShuffleActive = false;
 let isRepeatActive = false;
 let customPlaylists = {};
-let currentSearchSource = 'saavn'; // saavn, archive, curated
+let listeningHistory = [];
+let activeLibrarySubTab = 'playlists';
+let currentSearchSource = 'saavn'; // saavn, archive, curated, youtube, audius, jamendo, history
 let activeLibraryResults = [...studioMasterTracks]; // dynamic cache of search results
 // Web Audio Analyzer Internals
 const audio = document.getElementById('audioEngine');
@@ -981,7 +946,9 @@ let isVisualizerSimulated = false;
 window.addEventListener('DOMContentLoaded', () => {
 lucide.createIcons();
 loadCustomPlaylists();
+loadListeningHistory();
 renderCustomPlaylists();
+renderListeningHistory();
 renderLiveStations();
 switchSearchSource('saavn'); // initialize search views on saavn so it matches the default search source
 initVolumeSettings();
@@ -1099,7 +1066,12 @@ const canvas = document.getElementById('visualizerCanvas');
 resizeVisualizerCanvas();
 window.addEventListener('resize', resizeVisualizerCanvas);
 try {
-audioContext = new (window.AudioContext || window.webkitAudioContext)();
+if (audio) {
+audio.crossOrigin = "anonymous";
+}
+audioContext = new (window.AudioContext || window.webkitAudioContext)({
+latencyHint: 'playback'
+});
 audioAnalyser = audioContext.createAnalyser();
 audioAnalyser.fftSize = 256;
 const source = audioContext.createMediaElementSource(audio);
@@ -1138,6 +1110,7 @@ let sleepCtx = null;
 if (sleepCanvas) sleepCtx = sleepCanvas.getContext('2d');
 let lastSleepWidth = 0;
 let lastSleepHeight = 0;
+let lastGlowUpdate = 0;
 function draw() {
 requestAnimationFrame(draw);
 const width = canvas.width;
@@ -1198,43 +1171,34 @@ window.vinylRotation += window.vinylVelocity * window.vinylDirection;
 vinylDeck.style.transform = `rotate(${window.vinylRotation}deg) scale(${scale})`;
 }
 canvasCtx.lineWidth = 6;
-const t = Date.now() * 0.001; // Slower base — reduces frantic hue cycling
+const t = Date.now() * 0.005;
+// Synchronize hue with time AND average music intensity
 const avgIntensity = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
-// Smooth hue: slow 8-deg/s rotation via lerp — no intensity-driven jitter
-window._smoothHue = window._smoothHue || 0;
-const targetHue = (t * 8) % 360;
-const hueDiff = ((targetHue - window._smoothHue + 540) % 360) - 180;
-window._smoothHue = (window._smoothHue + hueDiff * 0.03 + 360) % 360;
-const hue = window._smoothHue;
-// Throttle ambient DOM writes to every 4th frame (prevents style thrash = no glitter)
-window._vizFrame = (window._vizFrame || 0) + 1;
-if (window._vizFrame % 4 === 0) {
+const hue = (t * 20 + avgIntensity * 1.5) % 360;
+// Throttle DOM glow style updates to max 10 FPS to eliminate layout thrashing & animation blinking
+const now = Date.now();
+if (now - lastGlowUpdate > 100) {
+lastGlowUpdate = now;
 if (ambientGlow) {
-ambientGlow.style.opacity = isPlaying ? String(0.6 + (avgIntensity / 255) * 0.4) : '0.2';
-ambientGlow.style.background = `radial-gradient(circle at 50% 50%, hsla(${hue | 0}, 75%, 38%, 0.5) 0%, transparent 70%)`;
+ambientGlow.style.opacity = isPlaying ? (0.6 + (avgIntensity / 255) * 0.4).toFixed(2) : '0.2';
+ambientGlow.style.background = `radial-gradient(circle at 50% 50%, hsla(${Math.round(hue)}, 80%, 40%, 0.6) 0%, transparent 70%)`;
 }
 if (vinylGlow) {
-vinylGlow.style.opacity = isPlaying ? String(0.5 + (avgIntensity / 255) * 0.5) : '0';
-vinylGlow.style.backgroundColor = `hsl(${((hue + 120) % 360) | 0}, 80%, 42%)`;
+vinylGlow.style.opacity = isPlaying ? (0.5 + (avgIntensity / 255) * 0.5).toFixed(2) : '0';
+vinylGlow.style.backgroundColor = `hsl(${Math.round((hue + 120 + avgIntensity * 2.5) % 360)}, 100%, 50%)`;
 }
 }
 const gradient = canvasCtx.createLinearGradient(0, height, 0, 0);
-gradient.addColorStop(0, `hsla(${hue | 0}, 90%, 52%, 0.85)`);
-gradient.addColorStop(0.5, `hsla(${((hue + 60) % 360) | 0}, 90%, 52%, 0.85)`);
-gradient.addColorStop(1, `hsla(${((hue + 120) % 360) | 0}, 90%, 52%, 0.85)`);
+// Bar colors with dynamic rainbow spectrum gradient
+gradient.addColorStop(0, `hsla(${hue}, 100%, 50%, 0.9)`);
+gradient.addColorStop(0.5, `hsla(${(hue + 60) % 360}, 100%, 50%, 0.9)`);
+gradient.addColorStop(1, `hsla(${(hue + 120) % 360}, 100%, 50%, 0.9)`);
 canvasCtx.fillStyle = gradient;
-// No shadowBlur/shadowColor — GPU compositing artifacts cause visual glitter
 canvasCtx.shadowBlur = 0;
-canvasCtx.shadowColor = 'transparent';
-// Smooth per-bar lerp for silky movement (no jagged jumping)
-if (!window._smoothBars || window._smoothBars.length !== bufferLength) {
-window._smoothBars = new Float32Array(bufferLength);
-}
+canvasCtx.shadowColor = `hsl(${hue}, 100%, 50%)`;
 const barWidth = width / bufferLength * 1.5;
 for (let i = 0; i < bufferLength; i++) {
-const target = (dataArray[i] / 255) * height * 0.9;
-window._smoothBars[i] += (target - window._smoothBars[i]) * 0.18;
-const barHeight = window._smoothBars[i];
+const barHeight = (dataArray[i] / 255) * height * 0.9;
 canvasCtx.fillRect(i * (barWidth + 1), height - barHeight, barWidth, barHeight);
 }
 // Render to sleep screen if visible
@@ -1253,7 +1217,7 @@ sleepCtx.clearRect(0, 0, sleepWidth, sleepHeight);
 sleepCtx.fillStyle = gradient;
 const sleepBarWidth = sleepWidth / bufferLength * 1.5;
 for (let i = 0; i < bufferLength; i++) {
-const barHeight = (window._smoothBars ? window._smoothBars[i] : (dataArray[i] / 255) * sleepHeight * 0.9) * (sleepHeight / (height || sleepHeight));
+const barHeight = (dataArray[i] / 255) * sleepHeight * 0.9;
 sleepCtx.fillRect(i * (sleepBarWidth + 1), sleepHeight - barHeight, sleepBarWidth, barHeight);
 }
 }
@@ -1304,26 +1268,32 @@ highlightActivePlayingCard(`card_master_${activeTrack.id}`);
 // Segment switch for Search sources
 function switchSearchSource(source) {
 currentSearchSource = source;
-const tabs = ['saavn', 'history', 'archive', 'curated', 'youtube', 'audius', 'jamendo'];
+const tabs = ['saavn', 'archive', 'curated', 'youtube', 'audius', 'jamendo', 'history'];
 tabs.forEach(t => {
 const btn = document.getElementById(`tab_source_${t}`);
 if (btn) {
 if (t === source) {
-btn.className = "flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-white bg-indigo-600 shadow-md transition-all flex items-center justify-center gap-1 shrink-0";
+btn.className = "flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-white bg-indigo-600 shadow-md transition-all whitespace-nowrap flex items-center justify-center gap-1";
 } else {
-btn.className = "flex-1 py-2 px-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1 shrink-0";
+btn.className = "flex-1 px-2 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider text-center text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap flex items-center justify-center gap-1";
 }
 }
 });
 // Update badge & input placeholder
 const badge = document.getElementById('activeSourceBadge');
 const input = document.getElementById('studioSearchInput');
-if (badge) badge.innerText = source === 'saavn' ? 'JioSaavn' : (source === 'history' ? 'Song History' : (source === 'archive' ? 'Archive.org' : (source === 'youtube' ? 'YouTube' : (source === 'audius' ? 'Audius' : (source === 'jamendo' ? 'Jamendo' : 'Curated')))));
+if (badge) badge.innerText = source === 'saavn' ? 'JioSaavn' : (source === 'archive' ? 'Archive.org' : (source === 'youtube' ? 'YouTube' : (source === 'audius' ? 'Audius' : (source === 'jamendo' ? 'Jamendo' : (source === 'history' ? 'Listening History' : 'Curated')))));
+if (source === 'history') {
+if (input) {
+input.placeholder = "Filter your listening history...";
+input.value = "";
+}
+renderRightPanelHistory();
+return;
+}
 if (input) {
 if (source === 'saavn') {
 input.placeholder = "Search millions of songs on JioSaavn...";
-} else if (source === 'history') {
-input.placeholder = "Search your recently played songs, artists, or sources...";
 } else if (source === 'jamendo') {
 input.placeholder = "Search free music on Jamendo...";
 } else if (source === 'audius') {
@@ -1340,8 +1310,6 @@ const tagsDiv = document.getElementById('quickSuggestionTags');
 let suggestions = [];
 if (source === 'saavn') {
 suggestions = ["Top Hits", "Arijit Singh", "A.R. Rahman", "Lofi Beats", "Alan Walker"];
-} else if (source === 'history') {
-suggestions = ["All History", "Play All", "JioSaavn", "YouTube", "Clear History"];
 } else if (source === 'jamendo') {
 suggestions = ["Indie Rock", "Electronic Pop", "Acoustic", "Cinematic", "Hip-Hop"];
 } else if (source === 'audius') {
@@ -1354,13 +1322,11 @@ suggestions = ["NCS Release", "Lofi Girl", "Vevo Top", "Acoustic Covers", "Synth
 suggestions = ["All", "Synthwave", "Ambient", "Lo-Fi Chill", "Jazz Fusion"];
 }
 tagsDiv.innerHTML = suggestions.map(tag => `
-<button onclick="handleTagClick('${tag}')" class="whitespace-nowrap bg-white/5 border border-white/5 hover:border-white/10 px-3.5 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest text-slate-400 hover:text-slate-200 transition-all cursor-pointer">${tag}</button>
+<button onclick="handleTagClick('${tag}')" class="whitespace-nowrap bg-white/5 border border-white/5 hover:border-white/10 px-3.5 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest text-slate-400 hover:text-slate-200 transition-all">${tag}</button>
 `).join('');
 // Render default state
 if (source === 'curated') {
 renderStudioLibrary(studioMasterTracks);
-} else if (source === 'history') {
-if (typeof renderArchiveHistoryView === 'function') renderArchiveHistoryView('');
 } else {
 // Show empty search hint
 const container = document.getElementById('studioSongsContainer');
@@ -1375,22 +1341,6 @@ lucide.createIcons();
 }
 // Suggestions tag click trigger
 function handleTagClick(tag) {
-if (currentSearchSource === 'history') {
-if (tag === 'Play All') {
-if (typeof playAllMusicHistory === 'function') playAllMusicHistory();
-} else if (tag === 'Clear History') {
-if (typeof clearMusicHistory === 'function') clearMusicHistory();
-} else if (tag === 'All History') {
-const input = document.getElementById('studioSearchInput');
-if (input) input.value = '';
-if (typeof renderArchiveHistoryView === 'function') renderArchiveHistoryView('');
-} else {
-const input = document.getElementById('studioSearchInput');
-if (input) input.value = tag;
-if (typeof renderArchiveHistoryView === 'function') renderArchiveHistoryView(tag);
-}
-return;
-}
 if (currentSearchSource === 'curated') {
 if (tag.toLowerCase() === 'all') {
 renderStudioLibrary(studioMasterTracks);
@@ -1410,7 +1360,7 @@ handleSearch();
 async function handleSearch() {
 const query = document.getElementById('studioSearchInput').value.trim();
 if (currentSearchSource === 'history') {
-if (typeof renderArchiveHistoryView === 'function') renderArchiveHistoryView(query);
+renderRightPanelHistory(query);
 return;
 }
 if (query === "") {
@@ -1745,6 +1695,7 @@ const station = liveRadioStations.find(s => s.id === id);
 if (!station) return;
 setupWebAudioAPI(); // Unlock Web Audio
 activeTrack = station;
+recordTrackHistory(station);
 activePlaybackQueue = [...liveRadioStations];
 currentQueueIndex = activePlaybackQueue.findIndex(s => s.id === id);
 // Deck status indicator
@@ -1842,9 +1793,7 @@ showStatusNotification("Stream URL offline or restricted");
 return;
 }
 activeTrack = tr;
-if (typeof addToMusicHistory === 'function') {
-try { addToMusicHistory(tr); } catch(e) {}
-}
+recordTrackHistory(tr);
 // Adjust Deck Status Indicator to Studio
 document.getElementById('deckStatusPing').classList.add('hidden');
 document.getElementById('deckStatusIndicator').className = "relative inline-flex rounded-full h-2 w-2 bg-indigo-500";
@@ -2545,6 +2494,262 @@ container.innerHTML = keys.map(pName => `
 </div>
 `).join('');
 lucide.createIcons();
+}
+
+// ============================================================
+// LISTENING HISTORY ENGINE (DESKTOP RIGHT PANEL & MOBILE LIBRARY)
+// ============================================================
+function loadListeningHistory() {
+try {
+const raw = localStorage.getItem('stalker_music_history');
+if (raw) {
+const parsed = JSON.parse(raw);
+if (Array.isArray(parsed)) listeningHistory = parsed;
+}
+} catch (e) {
+console.warn("Failed to load listening history:", e);
+listeningHistory = [];
+}
+}
+
+function saveListeningHistory() {
+try {
+localStorage.setItem('stalker_music_history', JSON.stringify(listeningHistory.slice(0, 50)));
+} catch (e) {
+console.warn("Failed to save listening history:", e);
+}
+}
+
+function formatHistoryRelativeTime(ts) {
+if (!ts) return 'Recently';
+const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+if (diffSec < 45) return 'Just now';
+if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+return `${Math.floor(diffSec / 86400)}d ago`;
+}
+
+function recordTrackHistory(tr) {
+if (!tr || !tr.title) return;
+loadListeningHistory();
+const trackKey = String(tr.id || `${tr.title}_${tr.artist || ''}`).toLowerCase();
+listeningHistory = listeningHistory.filter(item => {
+const k = String(item.id || `${item.title}_${item.artist || ''}`).toLowerCase();
+return k !== trackKey;
+});
+const entry = {
+id: tr.id || ('hist_' + Date.now()),
+title: tr.title || 'Unknown Track',
+artist: tr.artist || 'Unknown Artist',
+album: tr.album || 'Studio Archive',
+img: tr.img || tr.image || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=250',
+url: tr.url || tr.streamUrl || '',
+streamUrl: tr.streamUrl || tr.url || '',
+duration: tr.duration || '3:30',
+source: tr.source || (tr.isSaavn ? 'jiosaavn' : (tr.isAudius ? 'audius' : (tr.isJamendo ? 'jamendo' : (tr.isArchive ? 'archive' : (tr.isLive ? 'radio' : 'studio'))))),
+isLive: !!tr.isLive,
+isSaavn: !!tr.isSaavn,
+isAudius: !!tr.isAudius,
+isJamendo: !!tr.isJamendo,
+isArchive: !!tr.isArchive,
+identifier: tr.identifier || null,
+playedAt: Date.now()
+};
+listeningHistory.unshift(entry);
+if (listeningHistory.length > 50) listeningHistory = listeningHistory.slice(0, 50);
+saveListeningHistory();
+renderListeningHistory();
+if (currentSearchSource === 'history') {
+renderRightPanelHistory();
+}
+}
+
+function switchLibrarySubTab(tab) {
+activeLibrarySubTab = tab;
+const btnPl = document.getElementById('libSubTab_playlists');
+const btnHist = document.getElementById('libSubTab_history');
+const plCont = document.getElementById('playlistsContainer');
+const histCont = document.getElementById('libHistoryContainer');
+const addBtn = document.getElementById('libAddPlaylistBtn');
+const clearBtn = document.getElementById('libClearHistoryBtn');
+
+if (tab === 'history') {
+if (btnHist) btnHist.className = "px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-white bg-indigo-600 transition-all shadow-sm flex items-center gap-1";
+if (btnPl) btnPl.className = "px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-white transition-all";
+if (plCont) plCont.classList.add('hidden');
+if (histCont) histCont.classList.remove('hidden');
+if (addBtn) addBtn.classList.add('hidden');
+if (clearBtn) {
+if (listeningHistory.length > 0) clearBtn.classList.remove('hidden');
+else clearBtn.classList.add('hidden');
+}
+renderListeningHistory();
+} else {
+if (btnPl) btnPl.className = "px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-white bg-pink-600 transition-all shadow-sm";
+if (btnHist) btnHist.className = "px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-white transition-all flex items-center gap-1";
+if (plCont) plCont.classList.remove('hidden');
+if (histCont) histCont.classList.add('hidden');
+if (addBtn) addBtn.classList.remove('hidden');
+if (clearBtn) clearBtn.classList.add('hidden');
+}
+}
+
+function renderListeningHistory() {
+const count = listeningHistory.length;
+const libBadge = document.getElementById('libHistoryCount');
+const mobBadge = document.getElementById('mobHistoryBadge');
+const rightBadge = document.getElementById('rightPanelHistoryBadge');
+const clearBtn = document.getElementById('libClearHistoryBtn');
+
+if (libBadge) libBadge.textContent = String(count);
+if (mobBadge) {
+mobBadge.textContent = String(count);
+if (count > 0) mobBadge.classList.remove('hidden');
+else mobBadge.classList.add('hidden');
+}
+if (rightBadge) {
+rightBadge.textContent = String(count);
+if (count > 0) rightBadge.classList.remove('hidden');
+else rightBadge.classList.add('hidden');
+}
+if (clearBtn && activeLibrarySubTab === 'history') {
+if (count > 0) clearBtn.classList.remove('hidden');
+else clearBtn.classList.add('hidden');
+}
+
+const histCont = document.getElementById('libHistoryContainer');
+if (!histCont) return;
+if (count === 0) {
+histCont.innerHTML = `
+<div class="text-center py-8 text-[9px] text-slate-500 font-extrabold uppercase tracking-widest border border-dashed border-white/5 rounded-2xl px-4">
+<i data-lucide="history" class="w-5 h-5 text-slate-600 mx-auto mb-1.5"></i>
+No Listening History Yet — Play Any Song
+</div>
+`;
+if (window.lucide) lucide.createIcons();
+return;
+}
+
+histCont.innerHTML = listeningHistory.map((tr, idx) => `
+<div class="glass-card rounded-xl px-3 py-2 flex items-center justify-between cursor-pointer group hover:border-indigo-500/40 transition-all" onclick="playFromHistory(${idx})">
+<div class="flex items-center gap-2.5 overflow-hidden text-left flex-1 min-w-0">
+<div class="w-8 h-8 rounded-lg overflow-hidden border border-white/10 flex-shrink-0 bg-black relative">
+<img src="${tr.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=250'" alt="">
+</div>
+<div class="overflow-hidden min-w-0 flex-1">
+<div class="text-xs font-bold text-white truncate group-hover:text-indigo-300 transition-colors">${tr.title}</div>
+<div class="flex items-center gap-1.5 text-[8px] font-mono text-slate-400 truncate uppercase">
+<span class="truncate">${tr.artist}</span>
+<span>•</span>
+<span class="text-indigo-400 shrink-0">${formatHistoryRelativeTime(tr.playedAt)}</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0">
+<button onclick="removeHistoryItem(${idx}, event)" class="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg bg-white/0 hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all" title="Remove from History">
+<i data-lucide="x" class="w-3 h-3"></i>
+</button>
+<div class="w-6 h-6 rounded-full bg-indigo-600/80 text-white flex items-center justify-center text-[9px] shadow-sm">
+<i data-lucide="play" class="w-3 h-3 ml-0.5"></i>
+</div>
+</div>
+</div>
+`).join('');
+if (window.lucide) lucide.createIcons();
+}
+
+function renderRightPanelHistory(filterQuery = '') {
+const tagsDiv = document.getElementById('quickSuggestionTags');
+if (tagsDiv) {
+tagsDiv.innerHTML = `
+<button onclick="playAllHistory()" class="flex-shrink-0 px-3 py-1.5 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600 hover:text-white text-[10px] font-bold flex items-center gap-1.5 transition-all">
+<i data-lucide="play" class="w-3 h-3"></i> <span>Play All (${listeningHistory.length})</span>
+</button>
+<button onclick="clearListeningHistory()" class="flex-shrink-0 px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-600 hover:text-white text-[10px] font-bold flex items-center gap-1.5 transition-all">
+<i data-lucide="trash-2" class="w-3 h-3"></i> <span>Clear History</span>
+</button>
+`;
+}
+const container = document.getElementById('studioSongsContainer');
+if (!container) return;
+const q = (filterQuery || '').toLowerCase().trim();
+const list = q ? listeningHistory.filter(t => (t.title || '').toLowerCase().includes(q) || (t.artist || '').toLowerCase().includes(q)) : listeningHistory;
+if (list.length === 0) {
+container.innerHTML = `
+<div class="text-center py-16 text-slate-500 font-bold uppercase tracking-widest text-[10px] border border-white/5 border-dashed rounded-3xl p-6">
+<i data-lucide="history" class="w-6 h-6 text-slate-600 mx-auto mb-2.5"></i>
+${q ? 'No matching tracks in your listening history' : 'Your listening history is empty — play any track to record it'}
+</div>
+`;
+if (window.lucide) lucide.createIcons();
+return;
+}
+container.innerHTML = list.map((tr) => {
+const origIdx = listeningHistory.findIndex(x => x.id === tr.id && x.playedAt === tr.playedAt);
+return `
+<div id="card_master_${tr.id}" class="glass-card rounded-2xl p-3 flex items-center justify-between group cursor-pointer" onclick="playFromHistory(${origIdx >= 0 ? origIdx : 0})">
+<div class="flex items-center gap-3 overflow-hidden text-left flex-1 min-w-0">
+<div class="w-10 h-10 rounded-xl overflow-hidden border border-white/5 flex-shrink-0 bg-black relative">
+<img src="${tr.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=250'" alt="Art">
+</div>
+<div class="overflow-hidden min-w-0 flex-1">
+<div class="text-xs font-bold text-white truncate group-hover:text-indigo-300 transition-colors">${tr.title}</div>
+<div class="flex items-center gap-2 text-[9px] text-slate-400 truncate uppercase tracking-wider mt-0.5 font-bold">
+<span class="truncate">${tr.artist}</span>
+<span>•</span>
+<span class="text-indigo-400 font-mono shrink-0">${formatHistoryRelativeTime(tr.playedAt)}</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1.5 flex-shrink-0">
+<button onclick="removeHistoryItem(${origIdx >= 0 ? origIdx : 0}, event)" class="p-2 text-slate-500 hover:text-rose-400 rounded-xl bg-white/5 hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all" title="Remove from History">
+<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+</button>
+<div class="w-[30px] h-[30px] rounded-full bg-indigo-600 text-white flex items-center justify-center transform group-hover:scale-105 active:scale-95 transition-all shadow-md shadow-indigo-600/10">
+<i data-lucide="play" class="w-3.5 h-3.5 ml-0.5"></i>
+</div>
+</div>
+</div>
+`;
+}).join('');
+if (window.lucide) lucide.createIcons();
+}
+
+function playFromHistory(idx) {
+const tr = listeningHistory[idx];
+if (!tr) return;
+activePlaybackQueue = [...listeningHistory];
+currentQueueIndex = idx;
+if (tr.isLive) {
+playLiveStation(tr.id);
+} else {
+playTrackObject(tr);
+}
+}
+
+function playAllHistory() {
+if (!listeningHistory.length) {
+showStatusNotification("Listening history is empty");
+return;
+}
+playFromHistory(0);
+}
+
+function removeHistoryItem(idx, e) {
+if (e) e.stopPropagation();
+if (idx < 0 || idx >= listeningHistory.length) return;
+listeningHistory.splice(idx, 1);
+saveListeningHistory();
+renderListeningHistory();
+if (currentSearchSource === 'history') renderRightPanelHistory();
+}
+
+function clearListeningHistory() {
+listeningHistory = [];
+saveListeningHistory();
+renderListeningHistory();
+if (currentSearchSource === 'history') renderRightPanelHistory();
+showStatusNotification("Listening history cleared");
 }
 // --- YouTube Background Video Logic ---
 let ytPlayer = null;
@@ -3346,326 +3551,6 @@ setTimeout(updateFooterVisibility, 100);
 </button>
 </div>
 </div>
-<!-- MUSIC HISTORY FLOATING DRAWER (DESKTOP & MOBILE QUICK POPUP) -->
-<div id="musicHistorySection" class="fixed bottom-[88px] right-3 sm:right-5 z-40 w-[94vw] max-w-[380px] glass-panel rounded-3xl border border-white/10 shadow-[0_25px_70px_rgba(0,0,0,0.85)] overflow-hidden hidden">
-  <div class="flex items-center justify-between px-4 py-3.5 border-b border-white/10 bg-zinc-950/90 backdrop-blur-xl">
-    <div class="flex items-center gap-2.5">
-      <div class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-300">
-        <i data-lucide="history" class="w-4 h-4 text-slate-300"></i>
-      </div>
-      <div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-xs font-bold uppercase tracking-wider text-white">Song History</span>
-          <span id="drawerHistoryCountBadge" class="text-[9px] font-mono font-bold bg-white/10 text-slate-300 px-1.5 py-0.5 rounded-full">0</span>
-        </div>
-        <p class="text-[9px] text-slate-400 font-medium">Tap any song to resume playback</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <button onclick="playAllMusicHistory()" class="text-[9px] font-bold text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-all uppercase tracking-wider px-2.5 py-1 rounded-lg">Play All</button>
-      <button onclick="clearMusicHistory()" class="text-[9px] font-medium text-slate-400 hover:text-white transition-colors uppercase tracking-wider px-2 py-1 rounded-lg hover:bg-white/5">Clear</button>
-      <button onclick="toggleMusicHistory(false)" class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
-        <i data-lucide="x" class="w-3.5 h-3.5"></i>
-      </button>
-    </div>
-  </div>
-  <div id="musicHistoryList" class="max-h-[58vh] overflow-y-auto overscroll-contain py-2 px-2.5 space-y-1.5 bg-zinc-950/75 backdrop-blur-xl custom-scrollbar"></div>
-  <div id="musicHistoryEmpty" class="hidden text-center py-10 text-slate-500 text-[10px] font-bold uppercase tracking-widest bg-zinc-950/75 backdrop-blur-xl px-4">
-    <i data-lucide="clock" class="w-6 h-6 mx-auto mb-2 text-slate-600"></i>
-    <div>No songs played yet</div>
-    <p class="text-[9px] text-slate-600 font-medium normal-case tracking-normal mt-1">Songs you play will automatically appear here.</p>
-  </div>
 </div>
-<!-- History Toggle Button (near footer, bottom-right) -->
-<button id="historyToggleBtn" onclick="toggleMusicHistory()" class="fixed bottom-[88px] right-3 sm:right-5 z-30 w-11 h-11 rounded-2xl bg-black/80 border border-white/15 text-slate-300 hover:text-white hover:bg-white/15 transition-all flex items-center justify-center shadow-xl backdrop-blur-xl cursor-pointer" title="Recently Played Songs" aria-label="Music History">
-  <i data-lucide="history" class="w-4 h-4"></i>
-</button>
-<script>
-// ===== FULL SONG HISTORY ENGINE (Desktop & Mobile + localStorage) =====
-const HISTORY_KEY = 'stalker_music_history';
-const MAX_HISTORY = 100;
-let _historyOpen = false;
-
-function getMusicHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
-}
-function saveMusicHistory(arr) {
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr.slice(0, MAX_HISTORY))); } catch {}
-  updateHistoryBadges();
-}
-function updateHistoryBadges() {
-  const count = getMusicHistory().length;
-  ['headerHistoryCountBadge', 'mobHistoryCountBadge', 'leftHistoryCountBadge', 'drawerHistoryCountBadge'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = String(count);
-  });
-}
-function getTrackSourceLabel(tr) {
-  if (!tr) return 'Studio';
-  if (tr.isSaavn || tr.source === 'saavn') return 'JioSaavn';
-  if (tr.source === 'youtube') return 'YouTube';
-  if (tr.isAudius || tr.source === 'audius') return 'Audius';
-  if (tr.isJamendo || tr.source === 'jamendo') return 'Jamendo';
-  if (tr.isArchive || tr.source === 'archive') return 'Archive';
-  if (tr.isLocal || tr.source === 'local') return 'Local';
-  if (tr.isLive) return 'Live Radio';
-  return tr.source || 'Master';
-}
-function addToMusicHistory(track) {
-  if (!track || !track.title) return;
-  const currentHist = getMusicHistory();
-  const existing = currentHist.find(h => (h.id && track.id && String(h.id) === String(track.id)) || (h.title === track.title && h.artist === track.artist));
-  const prevPlayCount = existing && existing.playCount ? Number(existing.playCount) : 0;
-  const hist = currentHist.filter(h => !((h.id && track.id && String(h.id) === String(track.id)) || (h.title === track.title && h.artist === track.artist)));
-  hist.unshift({
-    id: track.id || ('hist-' + Date.now()),
-    title: track.title,
-    artist: track.artist || 'Unknown Artist',
-    album: track.album || 'Single',
-    duration: track.duration || '3:45',
-    img: track.img || track.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=250&h=250',
-    url: (!track.isLocal && track.url) ? track.url : '',
-    streamUrl: (!track.isLocal && track.streamUrl) ? track.streamUrl : '',
-    source: track.source || getTrackSourceLabel(track).toLowerCase(),
-    sourceLabel: getTrackSourceLabel(track),
-    isSaavn: Boolean(track.isSaavn),
-    isJamendo: Boolean(track.isJamendo),
-    isAudius: Boolean(track.isAudius),
-    isArchive: Boolean(track.isArchive),
-    identifier: track.identifier || '',
-    playCount: prevPlayCount + 1,
-    playedAt: Date.now()
-  });
-  saveMusicHistory(hist);
-  renderMusicHistory();
-  if (typeof currentSearchSource !== 'undefined' && currentSearchSource === 'history') {
-    const q = document.getElementById('studioSearchInput')?.value || '';
-    renderArchiveHistoryView(q);
-  }
-}
-function formatHistoryTime(ts) {
-  if (!ts) return '';
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return 'Just now';
-  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-  return Math.floor(diff / 86400) + 'd ago';
-}
-function buildHistoryCardHtml(h, compact = false) {
-  const safeId = String(h.id || '').replace(/'/g, "\\'");
-  const isPlayingThis = typeof activeTrack !== 'undefined' && activeTrack && ((activeTrack.id && String(activeTrack.id) === String(h.id)) || activeTrack.title === h.title);
-  const srcLabel = h.sourceLabel || getTrackSourceLabel(h);
-  const playCountBadge = (h.playCount && h.playCount > 1) ? `<span class="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-300 border border-pink-500/25">${h.playCount}×</span>` : '';
-  return `
-    <div class="glass-card ${isPlayingThis ? 'active-play border-white/40 bg-white/10' : ''} rounded-2xl ${compact ? 'p-2' : 'p-2.5 sm:p-3'} flex items-center justify-between gap-2.5 group cursor-pointer transition-all" onclick="playHistoryTrackById('${safeId}')">
-      <div class="flex items-center gap-2.5 min-w-0 flex-1">
-        <div class="${compact ? 'w-9 h-9' : 'w-11 h-11'} rounded-xl overflow-hidden bg-zinc-900 border border-white/10 flex-shrink-0 relative">
-          ${h.img ? `<img src="${h.img}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=200&h=200'">` : ''}
-          <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <i data-lucide="play" class="w-4 h-4 text-white fill-white"></i>
-          </div>
-        </div>
-        <div class="min-w-0 flex-1 text-left">
-          <div class="flex items-center gap-1.5">
-            <span class="text-xs font-bold ${isPlayingThis ? 'text-white' : 'text-slate-200'} truncate group-hover:text-white transition-colors">${h.title}</span>
-            ${playCountBadge}
-          </div>
-          <div class="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">
-            <span class="truncate">${h.artist || 'Unknown Artist'}</span>
-            <span>•</span>
-            <span class="text-slate-300 font-mono shrink-0">${srcLabel}</span>
-          </div>
-          <div class="text-[8px] text-slate-500 font-mono mt-0.5 flex items-center gap-1.5">
-            <span>${formatHistoryTime(h.playedAt)}</span>
-            ${h.duration ? `<span>• ${h.duration}</span>` : ''}
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-1 shrink-0">
-        <button onclick="saveHistoryTrackToPlaylist('${safeId}', event)" class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-all" title="Save to Mixtape">
-          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-        </button>
-        <button onclick="removeSingleHistoryTrack('${safeId}', event)" class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all" title="Remove from History">
-          <i data-lucide="trash-2" class="w-3 h-3"></i>
-        </button>
-        <div class="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center shadow-md group-hover:scale-105 transition-all">
-          <i data-lucide="play" class="w-3 h-3 ml-0.5 fill-current"></i>
-        </div>
-      </div>
-    </div>
-  `;
-}
-function renderMusicHistory() {
-  updateHistoryBadges();
-  const hist = getMusicHistory();
-  // 1. Floating Drawer List
-  const list = document.getElementById('musicHistoryList');
-  const empty = document.getElementById('musicHistoryEmpty');
-  if (list) {
-    if (hist.length === 0) {
-      list.innerHTML = '';
-      if (empty) { empty.classList.remove('hidden'); list.classList.add('hidden'); }
-    } else {
-      if (empty) empty.classList.add('hidden');
-      list.classList.remove('hidden');
-      list.innerHTML = hist.map(h => buildHistoryCardHtml(h, true)).join('');
-    }
-  }
-  // 2. Left Panel Dedicated Song History Section
-  const leftList = document.getElementById('leftMusicHistoryList');
-  if (leftList) {
-    const q = (document.getElementById('leftHistorySearchInput')?.value || '').trim().toLowerCase();
-    const filtered = q ? hist.filter(h => (h.title || '').toLowerCase().includes(q) || (h.artist || '').toLowerCase().includes(q) || (h.sourceLabel || '').toLowerCase().includes(q)) : hist;
-    if (filtered.length === 0) {
-      leftList.innerHTML = `
-        <div class="text-center py-8 text-slate-500 text-[10px] font-bold uppercase tracking-widest border border-white/5 border-dashed rounded-2xl p-4">
-          <i data-lucide="history" class="w-5 h-5 mx-auto mb-1.5 text-slate-600"></i>
-          <div>${q ? 'No matching history tracks' : 'No song history yet'}</div>
-          <p class="text-[9px] text-slate-600 font-medium normal-case tracking-normal mt-0.5">Play any song to build your listening timeline.</p>
-        </div>
-      `;
-    } else {
-      leftList.innerHTML = filtered.map(h => buildHistoryCardHtml(h, true)).join('');
-    }
-  }
-  if (window.lucide) lucide.createIcons();
-}
-function renderArchiveHistoryView(filterQuery = '') {
-  const container = document.getElementById('studioSongsContainer');
-  if (!container) return;
-  const hist = getMusicHistory();
-  const q = (filterQuery || '').trim().toLowerCase();
-  const filtered = q
-    ? hist.filter(h => (h.title || '').toLowerCase().includes(q) || (h.artist || '').toLowerCase().includes(q) || (h.album || '').toLowerCase().includes(q) || (h.sourceLabel || '').toLowerCase().includes(q))
-    : hist;
-  if (filtered.length === 0) {
-    container.innerHTML = `
-      <div class="text-center py-14 text-slate-500 font-bold uppercase tracking-widest text-[10px] border border-white/5 border-dashed rounded-3xl p-6 space-y-2">
-        <i data-lucide="history" class="w-7 h-7 text-indigo-400/50 mx-auto mb-2"></i>
-        <div class="text-xs text-slate-300">${q ? 'No Matching Songs in History' : 'Your Song History is Empty'}</div>
-        <p class="text-[10px] text-slate-500 normal-case tracking-normal max-w-xs mx-auto">Every song you stream from JioSaavn, YouTube, Audius, Jamendo, or Master Studio is automatically saved here for instant replay.</p>
-      </div>
-    `;
-    if (window.lucide) lucide.createIcons();
-    return;
-  }
-  const headerBar = `
-    <div class="flex items-center justify-between px-3 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 mb-2">
-      <div class="flex items-center gap-2">
-        <i data-lucide="clock" class="w-3.5 h-3.5 text-indigo-400"></i>
-        <span class="text-[10px] font-black uppercase tracking-wider text-indigo-200">${filtered.length} Recently Played ${filtered.length === 1 ? 'Song' : 'Songs'}</span>
-      </div>
-      <div class="flex items-center gap-1.5">
-        <button onclick="playAllMusicHistory()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer">
-          <i data-lucide="play" class="w-2.5 h-2.5 fill-current"></i> Play All
-        </button>
-        <button onclick="clearMusicHistory()" class="px-2 py-1 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer">
-          Clear All
-        </button>
-      </div>
-    </div>
-  `;
-  container.innerHTML = headerBar + filtered.map(h => buildHistoryCardHtml(h, false)).join('');
-  if (window.lucide) lucide.createIcons();
-}
-function toggleMusicHistory(forceState) {
-  _historyOpen = forceState !== undefined ? forceState : !_historyOpen;
-  const panel = document.getElementById('musicHistorySection');
-  const btn = document.getElementById('historyToggleBtn');
-  if (panel) panel.classList.toggle('hidden', !_historyOpen);
-  if (btn) btn.classList.toggle('text-indigo-400', _historyOpen);
-  if (_historyOpen) renderMusicHistory();
-}
-function removeSingleHistoryTrack(id, event) {
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
-  }
-  const next = getMusicHistory().filter(h => String(h.id) !== String(id));
-  saveMusicHistory(next);
-  renderMusicHistory();
-  if (typeof currentSearchSource !== 'undefined' && currentSearchSource === 'history') {
-    const q = document.getElementById('studioSearchInput')?.value || '';
-    renderArchiveHistoryView(q);
-  }
-  if (typeof showStatusNotification === 'function') showStatusNotification('Removed song from history');
-}
-function saveHistoryTrackToPlaylist(id, event) {
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
-  }
-  const h = getMusicHistory().find(item => String(item.id) === String(id));
-  if (!h) return;
-  if (!activeLibraryResults.some(t => String(t.id) === String(h.id))) {
-    activeLibraryResults.unshift(h);
-  }
-  if (typeof addTrackToPlaylistPrompt === 'function') {
-    addTrackToPlaylistPrompt(h.id, event);
-  }
-}
-function clearMusicHistory() {
-  saveMusicHistory([]);
-  renderMusicHistory();
-  if (typeof currentSearchSource !== 'undefined' && currentSearchSource === 'history') {
-    renderArchiveHistoryView('');
-  }
-  if (typeof showStatusNotification === 'function') showStatusNotification('Song history cleared');
-}
-async function playHistoryTrackById(id) {
-  toggleMusicHistory(false);
-  const hist = getMusicHistory();
-  const item = hist.find(h => String(h.id) === String(id));
-  if (!item) return;
-
-  // Set playback queue to history so Next/Prev buttons step through song history naturally
-  activePlaybackQueue = [...hist];
-  currentQueueIndex = activePlaybackQueue.findIndex(h => String(h.id) === String(id));
-
-  // If the item has a direct playable URL or is YouTube/Archive, play directly
-  if (item.url || item.streamUrl || item.source === 'youtube' || item.isArchive) {
-    playTrackObject(item);
-    return;
-  }
-
-  // Fallback: check studioMasterTracks or activeLibraryResults
-  const libMatch = (activeLibraryResults || []).find(t => String(t.id) === String(id) || t.title === item.title) ||
-                   (studioMasterTracks || []).find(t => String(t.id) === String(id) || t.title === item.title);
-  if (libMatch) {
-    playTrackObject(libMatch);
-    return;
-  }
-
-  // Otherwise resolve dynamically via JioSaavn search
-  if (typeof searchJioSaavn === 'function') {
-    if (typeof showStatusNotification === 'function') showStatusNotification(`Loading "${item.title}"...`);
-    try {
-      const results = await searchJioSaavn(`${item.title} ${item.artist || ''}`.trim());
-      if (results && results.length > 0) {
-        playTrackObject(results[0]);
-        return;
-      }
-    } catch (e) {}
-  }
-}
-function playAllMusicHistory() {
-  const hist = getMusicHistory();
-  if (!hist.length) {
-    if (typeof showStatusNotification === 'function') showStatusNotification('No songs in history yet');
-    return;
-  }
-  toggleMusicHistory(false);
-  activePlaybackQueue = [...hist];
-  currentQueueIndex = 0;
-  playHistoryTrackById(hist[0].id);
-  if (typeof showStatusNotification === 'function') showStatusNotification(`Playing all ${hist.length} songs from History`);
-}
-document.addEventListener('DOMContentLoaded', () => {
-  renderMusicHistory();
-});
-setTimeout(() => {
-  try { renderMusicHistory(); } catch(e) {}
-}, 150);
-</script>
 </body>
 </html>

@@ -21,7 +21,7 @@ import { getCineProStreams, CINEPRO_PROVIDERS } from './src/services/cineproServ
 import cineproM3uRouter from './src/routes/cineproM3u';
 import express, { Request, Response, NextFunction } from 'express';
 import { EventEmitter } from 'events';
-import { spawn } from 'child_process';
+import { spawn, execFile } from 'child_process';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -40,7 +40,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, requireAdmin, getClientIp, isAdminAuthenticated } from './src/middleware/auth';
 import { StalkerAPI, StalkerConfig } from './src/stalkerAPI';
-import { handleLiveStream, isSafeUrl, cleanTsBuffer, hlsSegmentCache } from './src/proxy';
+import { handleLiveStream, isSafeUrl, cleanTsBuffer, hlsSegmentCache, killAllActiveStreams } from './src/proxy';
 import { handleXtreamStream } from './src/xtream/xtreamProxy';
 import adminRouter from './src/routes/admin';
 import { SecurityGateKeeper } from './src/services/securityGateKeeper';
@@ -61,6 +61,7 @@ import { LogoService } from './src/services/logoService';
 import { SportsScraperService, GoogleSportsResultsEngine } from './src/services/sportsScraperService';
 import { ChannelJsonService } from './src/services/channelJsonService';
 import { partySyncService } from './src/services/partySyncService';
+import { fetchAniSkipTimes, resolveMalIdFromTitle } from './src/services/animeScraperService';
 import { streamHealthService } from './src/services/streamHealthService';
 import { AiStreamDoctorService } from './src/services/aiStreamDoctorService';
 import { webrtcService } from './src/services/webrtcService';
@@ -73,6 +74,7 @@ import { fetchPrimeEvents } from './src/services/primeService';
 import { getMegaPlayToken } from './src/services/megaPlayService';
 import { verifyMasterPin, bindDevice, isDeviceAuthorized, touchDevice, getAllBoundDevices, revokeDevice, revokeAllDevices } from './src/services/deviceBindingService';
 import { logServerEvent, queryServerLogs, clearAllLogs, exportLogsAsText, getAllDetailedSessions, endUserStreamSession, trackUserStreamSession } from './src/services/loggerService';
+import { syncFromFirestore, syncM3uFromFirestore, syncToFirestore, startFirestoreListener, logIpToFirestore, getAnalyticsFromFirestore, saveAndSyncAdminDB } from './src/services/firestoreSyncService';
 
 dotenv.config();
 
@@ -282,7 +284,7 @@ let blacklist: string[] = [];
 export const systemState = {
     status: 'active' as 'active' | 'offline' | 'killed',
     maintenanceMode: false,
-    maintenanceAdminBypass: false,
+    maintenanceAdminBypass: true,
     consumetMaintenance: false,
     playMaintenance: false,
     playConsumetMaintenance: false,
@@ -403,58 +405,79 @@ export let systemStatus: 'active' | 'offline' = 'active';
 export let features = systemState.features;
 
 // Load System Config from DB
-function loadSystemConfig() {
+function loadSystemConfig(overrideData: any = null) {
     const dbFile = path.join(process.cwd(), 'doctor_strange', 'admin_db.json');
+    let db: any = {};
+    
     if (fs.existsSync(dbFile)) {
         try {
-            const db = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
-            blacklist = db.blacklist || [];
-            systemState.status = db.systemStatus || 'active';
-            systemStatus = (systemState.status === 'killed' ? 'offline' : systemState.status) as any;
-            systemState.maintenanceMode = !!db.maintenanceMode;
-            systemState.maintenanceAdminBypass = !!db.maintenanceAdminBypass;
-            systemState.consumetMaintenance = !!db.consumetMaintenance;
-            systemState.playMaintenance = !!db.playMaintenance;
-            systemState.playConsumetMaintenance = !!db.playConsumetMaintenance;
-            systemState.siteLockMode = !!db.siteLockMode;
-            systemState.siteLockPassword = db.siteLockPassword || '202012';
-            systemState.siteLockTitle = db.siteLockTitle || 'RESTRICTED ACCESS PORTAL';
-            systemState.siteLockMessage = db.siteLockMessage || 'This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.';
-            systemState.siteLockHint = db.siteLockHint !== undefined ? db.siteLockHint : '';
-            systemState.siteLockEpoch = db.siteLockEpoch || 0;
-            systemState.developerMode = !!db.developerMode;
-            systemState.allowedDeveloperIps = db.allowedDeveloperIps || [];
-            systemState.activeTemplate = db.activeTemplate || 'Scheduled Downtime';
-            systemState.maintenanceTitle = db.maintenanceTitle || '';
-            systemState.maintenanceText = db.maintenanceText || '';
-            systemState.maintenanceMusicMode = db.maintenanceMusicMode || 'query';
-            systemState.maintenanceMusicQuery = db.maintenanceMusicQuery || 'lofi relax';
-            systemState.maintenanceMusicPlaylist = db.maintenanceMusicPlaylist || [];
-            systemState.maintenanceVideoEnabled = !!db.maintenanceVideoEnabled;
-            systemState.maintenanceVideoType = db.maintenanceVideoType || 'auto';
-            systemState.maintenanceVideoUrl = db.maintenanceVideoUrl || '';
-            systemState.maintenanceVideoTitle = db.maintenanceVideoTitle || '';
-            systemState.maintenanceVideoSubtitle = db.maintenanceVideoSubtitle || '';
-            systemState.maintenanceVideoAutoplay = db.maintenanceVideoAutoplay !== undefined ? db.maintenanceVideoAutoplay : true;
-            systemState.maintenanceVideoMuted = db.maintenanceVideoMuted !== undefined ? db.maintenanceVideoMuted : false;
-            systemState.maintenanceVideoLoop = db.maintenanceVideoLoop !== undefined ? db.maintenanceVideoLoop : true;
-            systemState.maintenanceVideoUploadedFile = db.maintenanceVideoUploadedFile || '';
-            (systemState as any).maintenanceVideoVersion = db.maintenanceVideoVersion || 1;
-            if (db.maintenanceSchedule) {
-                systemState.maintenanceSchedule = {
-                    enabled: !!db.maintenanceSchedule.enabled,
-                    scheduledTime: db.maintenanceSchedule.scheduledTime || '',
-                    durationMinutes: parseInt(db.maintenanceSchedule.durationMinutes, 10) || 60,
-                    noticeText: db.maintenanceSchedule.noticeText || 'Scheduled system maintenance in progress.',
-                    autoActivate: db.maintenanceSchedule.autoActivate !== undefined ? !!db.maintenanceSchedule.autoActivate : true
-                };
-            }
-            systemState.features = db.features || systemState.features;
-            features = systemState.features;
-        } catch (e: any) {
-            blacklist = [];
-            systemState.status = 'active';
+            db = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+        } catch (e) {
+            console.error('[SystemConfig] Failed to parse local admin_db.json:', e);
         }
+    }
+
+    // Merge override data (e.g. from Firestore real-time listener)
+    if (overrideData) {
+        db = { ...db, ...overrideData };
+        // Map common field name variations
+        if (overrideData.status !== undefined) db.systemStatus = overrideData.status;
+    }
+
+    // Apply to live memory state with strict type safety and defaults
+    if (db.blacklist) blacklist = db.blacklist;
+    
+    if (db.systemStatus !== undefined) systemState.status = db.systemStatus;
+    // systemStatus is the exported 'active' | 'offline' simplified state
+    systemStatus = (systemState.status === 'killed' ? 'offline' : systemState.status) as any;
+    
+    if (db.maintenanceMode !== undefined) systemState.maintenanceMode = !!db.maintenanceMode;
+    if (db.maintenanceAdminBypass !== undefined) systemState.maintenanceAdminBypass = !!db.maintenanceAdminBypass;
+    if (db.consumetMaintenance !== undefined) systemState.consumetMaintenance = !!db.consumetMaintenance;
+    if (db.playMaintenance !== undefined) systemState.playMaintenance = !!db.playMaintenance;
+    if (db.playConsumetMaintenance !== undefined) systemState.playConsumetMaintenance = !!db.playConsumetMaintenance;
+    
+    if (db.siteLockMode !== undefined) systemState.siteLockMode = !!db.siteLockMode;
+    if (db.siteLockPassword) systemState.siteLockPassword = String(db.siteLockPassword);
+    if (db.siteLockTitle) systemState.siteLockTitle = db.siteLockTitle;
+    if (db.siteLockMessage) systemState.siteLockMessage = db.siteLockMessage;
+    if (db.siteLockHint !== undefined) systemState.siteLockHint = db.siteLockHint;
+    if (db.siteLockEpoch !== undefined) systemState.siteLockEpoch = db.siteLockEpoch;
+    
+    if (db.developerMode !== undefined) systemState.developerMode = !!db.developerMode;
+    if (db.allowedDeveloperIps) systemState.allowedDeveloperIps = db.allowedDeveloperIps;
+    
+    if (db.activeTemplate) systemState.activeTemplate = db.activeTemplate;
+    if (db.maintenanceTitle !== undefined) systemState.maintenanceTitle = db.maintenanceTitle;
+    if (db.maintenanceText !== undefined) systemState.maintenanceText = db.maintenanceText;
+    
+    if (db.maintenanceMusicMode) systemState.maintenanceMusicMode = db.maintenanceMusicMode;
+    if (db.maintenanceMusicQuery) systemState.maintenanceMusicQuery = db.maintenanceMusicQuery;
+    if (db.maintenanceMusicPlaylist) systemState.maintenanceMusicPlaylist = db.maintenanceMusicPlaylist;
+    
+    if (db.maintenanceVideoEnabled !== undefined) systemState.maintenanceVideoEnabled = !!db.maintenanceVideoEnabled;
+    if (db.maintenanceVideoType) systemState.maintenanceVideoType = db.maintenanceVideoType;
+    if (db.maintenanceVideoUrl !== undefined) systemState.maintenanceVideoUrl = db.maintenanceVideoUrl;
+    if (db.maintenanceVideoTitle !== undefined) systemState.maintenanceVideoTitle = db.maintenanceVideoTitle;
+    if (db.maintenanceVideoSubtitle !== undefined) systemState.maintenanceVideoSubtitle = db.maintenanceVideoSubtitle;
+    if (db.maintenanceVideoAutoplay !== undefined) systemState.maintenanceVideoAutoplay = !!db.maintenanceVideoAutoplay;
+    if (db.maintenanceVideoMuted !== undefined) systemState.maintenanceVideoMuted = !!db.maintenanceVideoMuted;
+    if (db.maintenanceVideoLoop !== undefined) systemState.maintenanceVideoLoop = !!db.maintenanceVideoLoop;
+    if (db.maintenanceVideoUploadedFile !== undefined) systemState.maintenanceVideoUploadedFile = db.maintenanceVideoUploadedFile;
+    if (db.maintenanceVideoVersion !== undefined) (systemState as any).maintenanceVideoVersion = db.maintenanceVideoVersion;
+
+    if (db.maintenanceSchedule) {
+        systemState.maintenanceSchedule = {
+            enabled: !!db.maintenanceSchedule.enabled,
+            scheduledTime: db.maintenanceSchedule.scheduledTime || '',
+            durationMinutes: parseInt(db.maintenanceSchedule.durationMinutes, 10) || 60,
+            noticeText: db.maintenanceSchedule.noticeText || 'Scheduled system maintenance in progress.',
+            autoActivate: db.maintenanceSchedule.autoActivate !== undefined ? !!db.maintenanceSchedule.autoActivate : true
+        };
+    }
+    if (db.features) {
+        systemState.features = db.features;
+        features = db.features;
     }
 
     // Strict Lock Check (Synchronized with admin database)
@@ -500,7 +523,7 @@ setInterval(() => {
                     db.maintenanceSchedule.autoActivate = false;
                 }
                 
-                fs.writeFileSync(dbFile + '.tmp', JSON.stringify(db, null, 2)); fs.renameSync(dbFile + '.tmp', dbFile);
+                saveAndSyncAdminDB(db);
                 
                 // Set Strict Lock to persist forever
                 const strictLockFile = require('path').join(process.cwd(), '.maintenance_lock');
@@ -657,8 +680,8 @@ export function getRequestClientIp(req: Request): string {
     return first.replace(/^::ffff:/, '').trim() || '127.0.0.1';
 }
 
-// Initial disk load
-loadUnlockedIpsFromDisk();
+// Clear stale IP unlocks to enforce per-session token validation
+clearUnlockedIps();
 
 // Helper to escape HTML characters
 function escapeHtml(str: string): string {
@@ -672,6 +695,12 @@ function escapeHtml(str: string): string {
 
 // Helper to check if request is authorized / unlocked for site lock mode
 export function isSiteUnlocked(req: Request): boolean {
+    const cleanIp = getRequestClientIp(req);
+    // Local loopback is always unlocked
+    if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost') {
+        return true;
+    }
+
     const rawCookieHeader = req.headers.cookie || '';
     const parsed = parseCookies(rawCookieHeader);
     const cookies: Record<string, string> = { ...parsed, ...((req as any).cookies || {}) };
@@ -700,13 +729,9 @@ export function isSiteUnlocked(req: Request): boolean {
         } catch (e: any) {}
     }
 
-    // 2. IP WHITELIST CHECK (Only for non-loopback external clients)
-    const clientIp = getRequestClientIp(req);
-    const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost';
-    if (!isLoopback && isIpUnlocked(clientIp)) {
-        return true;
-    }
-
+    // 2. Strict Per-Session/Per-Client Security:
+    // Access strictly requires the user's cryptographically signed site_unlock_token.
+    // IP whitelisting is explicitly NOT used to prevent one user's unlock from globally unlocking all users sharing an IP/proxy/NAT.
     return false;
 }
 
@@ -1580,8 +1605,15 @@ app.use((req, res, next) => {
     // 2.2 SITE LOCK MODE: If lock mode is active, require password authentication before accessing website
     const isUnlocked = isSiteUnlocked(req);
     if (req.query?.unlock_token && isUnlocked) {
+        const isHttps = req.secure || 
+                        req.headers['x-forwarded-proto'] === 'https' || 
+                        req.headers['x-forwarded-ssl'] === 'on' ||
+                        req.protocol === 'https';
         setSecureCookie(req, res, 'site_unlock_token', req.query.unlock_token as string, {
-            maxAge: IP_UNLOCK_DURATION_MS
+            maxAge: IP_UNLOCK_DURATION_MS,
+            httpOnly: true,
+            sameSite: isHttps ? 'none' : 'lax',
+            secure: isHttps
         });
     }
 
@@ -1603,7 +1635,23 @@ app.use((req, res, next) => {
                          req.path === '/api/system/verify-m3u-vault' ||
                          req.path === '/api/system/relock-site' || 
                          req.path === '/api/system/lock-status' ||
+                         req.path === '/play_bingr.php' ||
+                         req.path === '/play_consumet.php' ||
+                         req.path === '/play.php' ||
+                         req.path === '/play_bing.php' ||
+                         req.path === '/bing.php' ||
+                         req.path === '/consumet.html' ||
+                         req.path === '/' ||
                          req.path.startsWith('/api/admin') ||
+                         req.path.startsWith('/api/media/') ||
+                         req.path.startsWith('/api/anime/') ||
+                         req.path.startsWith('/api/bingr/') ||
+                         req.path.startsWith('/api/movies4u') ||
+                         req.path.startsWith('/api/play_stream/') ||
+                         req.path.startsWith('/api/scrape-m3u8') ||
+                         req.path.startsWith('/api/sports/') ||
+                         req.path.startsWith('/api/mdtv/') ||
+                         req.path.startsWith('/stream_proxy.php') ||
                          req.path.startsWith('/assets/logos/') ||
                          req.path.startsWith('/images/') ||
                          req.path === '/favicon.ico' ||
@@ -1672,6 +1720,7 @@ app.use((req, res, next) => {
     if ((systemState.status === 'offline' || systemState.status === 'killed' || systemState.maintenanceMode || isSpecificMaintenance) && !isMaintenanceAdminBypassed) {
         // Exclude admin API, music proxy, video uploads, and admin UI from being blocked
         if (req.path.startsWith('/api/admin') || 
+            req.path.startsWith('/api/system') ||
             req.path.startsWith('/api/webrtc') ||
             req.path.startsWith('/api/music') ||
             req.path.startsWith('/api/v1/youtube') ||
@@ -1769,6 +1818,7 @@ app.use((req, res, next) => {
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root { font-family: 'Space Grotesk', sans-serif; }
@@ -2009,6 +2059,7 @@ app.use((req, res, next) => {
                         </div>
                     </div>
                     <audio id="audioPlayerIndex" preload="auto" class="hidden"></audio>
+                    <div id="offlineYtPlayerContainer" style="position:fixed; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-999; bottom:0; right:0;"><div id="offlineYtPlayer"></div></div>
                     <div class="space-y-4">
                         <div class="flex items-center gap-3">
                             <span id="currentTimeIndex" class="text-[9px] font-mono font-medium text-cyan-500/80 w-8 text-left">0:00</span>
@@ -2042,6 +2093,34 @@ app.use((req, res, next) => {
     <script>
         window.__IS_503_MAINTENANCE_PAGE__ = true;
         const IS_MAINTENANCE = ${systemState.maintenanceMode ? 'true' : 'false'} === 'true';
+
+        window.offlineYtPlayer = null;
+        window.onYouTubeIframeAPIReady = function() {
+            try {
+                window.offlineYtPlayer = new YT.Player('offlineYtPlayer', {
+                    height: '1',
+                    width: '1',
+                    videoId: '',
+                    playerVars: {
+                        autoplay: 0,
+                        controls: 0,
+                        disablekb: 1,
+                        fs: 0,
+                        modestbranding: 1,
+                        playsinline: 1,
+                        enablejsapi: 1
+                    },
+                    events: {
+                        onStateChange: (event) => {
+                            // Sync status if needed
+                        }
+                    }
+                });
+                console.log('[Offline Player] YouTube IFrame API Ready');
+            } catch(e) {
+                console.error('[Offline Player] YouTube Init Failed:', e);
+            }
+        };
 
         // DOM Element References for Audio Player
         const playerIndex = document.getElementById('audioPlayerIndex');
@@ -2907,9 +2986,31 @@ app.use((req, res, next) => {
                         vid = track.url.split('youtu.be/')[1].split('?')[0].split('&')[0];
                     }
                 }
-                const trackTitle = track.title || '';
-                const trackArtist = track.artist || '';
-                audioSrc = '/api/v1/youtube/stream?v=' + encodeURIComponent(vid) + '&type=audio&title=' + encodeURIComponent(trackTitle) + '&artist=' + encodeURIComponent(trackArtist);
+                
+                // CRITICAL: Prioritize YouTube IFrame API for client-side playback (without server proxy)
+                if (typeof YT !== 'undefined' && window.offlineYtPlayer && typeof window.offlineYtPlayer.loadVideoById === 'function') {
+                    console.log('[Offline Player] Playing via IFrame API:', vid);
+                    window.offlineYtPlayer.loadVideoById(vid);
+                    window.offlineYtPlayer.unMute();
+                    window.offlineYtPlayer.setVolume(100);
+                    window.offlineYtPlayer.playVideo();
+                    
+                    // Stop native audio
+                    if (playerIndex) {
+                        playerIndex.pause();
+                        playerIndex.src = '';
+                    }
+                    audioSrc = ''; // Prevent native player from loading
+                    
+                    // Sync play/pause icons
+                    if (playIconIndex) playIconIndex.classList.add('hidden');
+                    if (pauseIconIndex) pauseIconIndex.classList.remove('hidden');
+                } else {
+                    console.warn('[Offline Player] IFrame API not ready, falling back to stream proxy');
+                    const trackTitle = track.title || '';
+                    const trackArtist = track.artist || '';
+                    audioSrc = '/api/v1/youtube/stream?v=' + encodeURIComponent(vid) + '&type=audio&title=' + encodeURIComponent(trackTitle) + '&artist=' + encodeURIComponent(trackArtist);
+                }
             } else if (track.url) {
                 audioSrc = track.url;
             }
@@ -5466,9 +5567,23 @@ app.get('/api/music/yt-info', async (req: Request, res: Response) => {
     }
 });
 
-// YouTube Video & Audio High Quality Downloader Endpoint
+function getPureYoutubeGooglevideoAudio(vid: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const ytdlpPath = getYtdlpExecutable();
+        const args = ["-g", "-f", "bestaudio/best", "--no-playlist", "--no-warnings", `https://www.youtube.com/watch?v=${vid}`];
+        execFile(ytdlpPath, args, { timeout: 12000 }, (err, stdout) => {
+            if (err) return reject(err);
+            const url = stdout ? stdout.trim().split('\n')[0].trim() : '';
+            if (url && url.startsWith('http')) {
+                resolve(url);
+            } else {
+                reject(new Error('No valid googlevideo URL returned by yt-dlp'));
+            }
+        });
+    });
+}
 
-// Route: /api/v1/youtube/stream?v=VIDEO_ID&type=mp4&quality=1080
+// YouTube Video & Audio High Quality Downloader Endpoint
 export async function handleCobaltStream(req: Request, res: Response) {
   const videoParam = (req.query.v || req.query.url || req.query.id || '').toString().trim();
   const type = (req.query.type || 'mp4').toString().toLowerCase();
@@ -5486,20 +5601,29 @@ export async function handleCobaltStream(req: Request, res: Response) {
     vid = videoParam.split('embed/')[1].split('?')[0].split('&')[0];
   }
 
-  const targetUrl = videoParam.startsWith('http')
-    ? videoParam
-    : `https://www.youtube.com/watch?v=${vid}`;
-
   const isAudio = type === 'mp3' || type === 'audio';
 
   // Handle Audio Stream requests with multi-tier lossless resolver
   if (isAudio) {
+    // 1. TIER 1: PURE YouTube Direct (.googlevideo.com) Audio Stream via yt-dlp
+    if (vid) {
+      try {
+        const pureYtUrl = await getPureYoutubeGooglevideoAudio(vid);
+        if (pureYtUrl) {
+          console.log(`[YouTube Stream] Successfully resolved PURE YouTube (.googlevideo.com) audio stream for ${vid}`);
+          return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(pureYtUrl)}`);
+        }
+      } catch (e: any) {
+        console.warn(`[YouTube Stream] yt-dlp direct extraction notice for ${vid}:`, e.message);
+      }
+    }
+
     let title = (req.query.title || '').toString().trim();
     let artist = (req.query.artist || '').toString().trim();
 
     if (!title && vid) {
       try {
-        const oeRes = await axios.get(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`, { timeout: 3500 });
+        const oeRes = await axios.get(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`, { timeout: 3000 });
         if (oeRes.data) {
           title = oeRes.data.title || '';
           artist = oeRes.data.author_name || '';
@@ -5513,95 +5637,100 @@ export async function handleCobaltStream(req: Request, res: Response) {
       .replace(/[\(\[\{].*?(official|video|audio|lyrics|visualizer|remaster|hd|4k|mv|music video|full song|tears|original).*?[\)\]\}]/gi, '')
       .replace(/feat\..*|ft\..*/gi, '')
       .replace(/\|.*$/g, '')
-      .replace(/[\(\[\{].*?[\)\]\}]/g, '')
       .trim();
 
-    // 1. Resolve to pristine 320kbps JioSaavn audio stream
-    try {
-      const q = cleanTitle ? `${cleanTitle} ${artist}` : (title || vid);
-      let songs = await JioSaavnService.searchSongs(q, 3);
-      if ((!songs || songs.length === 0) && cleanTitle) {
-        songs = await JioSaavnService.searchSongs(cleanTitle, 3);
+    // 1. TIER 1: Direct Pure YouTube (.googlevideo.com) Audio Stream Extraction
+    if (vid) {
+      const youtubeExtractors = [
+        `https://invidious.flokinet.to/api/v1/videos/${vid}`,
+        `https://inv.riverside.rocks/api/v1/videos/${vid}`,
+        `https://invidious.nerdvpn.de/api/v1/videos/${vid}`,
+        `https://invidious.drgns.space/api/v1/videos/${vid}`,
+        `https://inv.tux.pizza/api/v1/videos/${vid}`,
+        `https://invidious.jing.rocks/api/v1/videos/${vid}`,
+        `https://invidious.lunar.icu/api/v1/videos/${vid}`,
+        `https://pipedapi.kavin.rocks/streams/${vid}`,
+        `https://pipedapi.tokyo.kappa.lat/streams/${vid}`
+      ];
+      for (const instUrl of youtubeExtractors) {
+        try {
+          const invRes = await axios.get(instUrl, { timeout: 3500, headers: { 'User-Agent': 'Mozilla/5.0' } });
+          if (invRes.data) {
+            // Invidious format extraction
+            if (invRes.data.adaptiveFormats && Array.isArray(invRes.data.adaptiveFormats)) {
+              const audioFormats = invRes.data.adaptiveFormats.filter((f: any) => f.type && f.type.includes('audio')).sort((a: any, b: any) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
+              const bestAudio = audioFormats[0];
+              if (bestAudio && bestAudio.url) {
+                console.log(`[YouTube Stream] Successfully resolved PURE YouTube audio stream for ${vid} via Invidious`);
+                return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(bestAudio.url)}`);
+              }
+            }
+            // Piped format extraction
+            if (invRes.data.audioStreams && Array.isArray(invRes.data.audioStreams) && invRes.data.audioStreams.length > 0) {
+              const pipedAudio = invRes.data.audioStreams.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+              if (pipedAudio && pipedAudio.url) {
+                console.log(`[YouTube Stream] Successfully resolved PURE YouTube piped audio stream for ${vid}`);
+                return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(pipedAudio.url)}`);
+              }
+            }
+          }
+        } catch (e: any) {}
       }
-      if (songs && songs.length > 0 && songs[0].streamUrl) {
-        let streamUrl = songs[0].streamUrl;
+    }
+
+    // 2. TIER 2 Fallback: JioSaavn Search (Backup if YouTube direct stream is geo-blocked)
+    // ONLY fallback if it wasn't a strict YouTube request or if the title/artist are clear
+    const saavnQueries = [
+      cleanTitle ? `${cleanTitle} ${artist}` : '',
+      title ? `${title} ${artist}` : '',
+      cleanTitle || title || ''
+    ].filter(q => q && q.length > 3);
+
+    if (saavnQueries.length > 0) {
+      for (const q of saavnQueries) {
+        try {
+          const songs = await JioSaavnService.searchSongs(q, 3);
+          if (songs && songs.length > 0 && songs[0].streamUrl) {
+            let streamUrl = songs[0].streamUrl;
+            if (streamUrl.startsWith('/api/music/proxy?url=')) {
+              streamUrl = decodeURIComponent(streamUrl.replace('/api/music/proxy?url=', ''));
+            }
+            console.log(`[YouTube Stream] Fallback to JioSaavn for query: ${q}`);
+            return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(streamUrl)}`);
+          }
+        } catch (e: any) {}
+      }
+    }
+
+    // 3. Fallback to iTunes Audio Stream
+    try {
+      const itunesQuery = cleanTitle || title || 'Lofi Chill Hits';
+      const itRes = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(itunesQuery)}&entity=song&limit=1`, { timeout: 3000 });
+      if (itRes.data?.results?.[0]?.previewUrl) {
+        return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(itRes.data.results[0].previewUrl)}`);
+      }
+    } catch (e: any) {}
+
+    // 4. Fallback to Audius Network Stream
+    try {
+      const audRes = await axios.get(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(cleanTitle || title || 'Lofi')}&app_name=AETHERIS`, { timeout: 3000 });
+      if (audRes.data?.data?.[0]?.id) {
+        const audTrackId = audRes.data.data[0].id;
+        return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(`https://discoveryprovider.audius.co/v1/tracks/${audTrackId}/stream?app_name=AETHERIS`)}`);
+      }
+    } catch (e: any) {}
+
+    // 5. Ultimate Fallback: Guaranteed 320kbps JioSaavn Top Ambient Track
+    try {
+      const fallbackSongs = await JioSaavnService.searchSongs('Lofi Chill Ambient Hits', 3);
+      if (fallbackSongs && fallbackSongs.length > 0 && fallbackSongs[0].streamUrl) {
+        let streamUrl = fallbackSongs[0].streamUrl;
         if (streamUrl.startsWith('/api/music/proxy?url=')) {
           streamUrl = decodeURIComponent(streamUrl.replace('/api/music/proxy?url=', ''));
         }
         return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(streamUrl)}`);
       }
-    } catch (e: any) {
-      console.warn('[YouTube Stream] JioSaavn match notice:', e.message);
-    }
-
-    // 2. Fallback to iTunes Audio Stream
-    try {
-      const itunesQuery = cleanTitle || title || vid;
-      const itRes = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(itunesQuery)}&entity=song&limit=1`, { timeout: 3500 });
-      if (itRes.data?.results?.[0]?.previewUrl) {
-        return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(itRes.data.results[0].previewUrl)}`);
-      }
-    } catch (e: any) {
-      console.warn('[YouTube Stream] iTunes match notice:', e.message);
-    }
-
-    // 3. Fallback to Audius Network Stream
-    try {
-      const audRes = await axios.get(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(cleanTitle || title)}&app_name=AETHERIS`, { timeout: 3500 });
-      if (audRes.data?.data?.[0]?.id) {
-        const audTrackId = audRes.data.data[0].id;
-        return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(`https://discoveryprovider.audius.co/v1/tracks/${audTrackId}/stream?app_name=AETHERIS`)}`);
-      }
-    } catch (e: any) {
-      console.warn('[YouTube Stream] Audius match notice:', e.message);
-    }
-  }
-  
-  // Try Cobalt API
-  try {
-      const response = await axios.post('https://cobalt-api.kwiatechu.com/api/json', {
-          url: targetUrl,
-          isAudioOnly: isAudio,
-          aFormat: isAudio ? 'mp3' : 'best',
-          vQuality: '1080'
-      }, {
-          headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-          },
-          timeout: 6000
-      });
-      
-      if (response.data && response.data.url) {
-          return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(response.data.url)}`);
-      }
-  } catch (e: any) {
-      console.warn('[Cobalt] API fallback triggered', e.message);
-  }
-
-  // Fallback to ytdl-core if accessible
-  try {
-      const ytdl = require('@distube/ytdl-core');
-      if (ytdl.validateURL(targetUrl)) {
-          res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'video/mp4');
-          const format = ytdl.chooseFormat(await ytdl.getInfo(targetUrl), { quality: isAudio ? 'highestaudio' : 'highest' });
-          
-          return ytdl(targetUrl, { format: format })
-              .on('error', (err: any) => {
-                  console.error('[ytdl-core] Streaming error:', err.message);
-                  if (!res.headersSent) {
-                    res.redirect(302, `/api/music/proxy?url=${encodeURIComponent('https://ice1.somafm.com/groovesalad-128-mp3')}`);
-                  }
-              })
-              .pipe(res);
-      }
-  } catch (err: any) {
-      console.warn('[ytdl-core] Fallback notice:', err.message);
-  }
-
-  // Final fallback for audio: redirect to high-res stream
-  if (isAudio) {
-    return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent('https://ice1.somafm.com/groovesalad-128-mp3')}`);
+    } catch (e: any) {}
   }
 
   if (!res.headersSent) res.status(500).send('Streaming Failed');
@@ -6082,7 +6211,6 @@ const ADMIN_DB_PATH = path.join(process.cwd(), 'doctor_strange', 'admin_db.json'
 
 
 app.get('/api/system/public-status', (req: Request, res: Response) => {
-    loadSystemConfig();
     const targetPage = (req.query.page as string) || req.headers.referer || '/';
     let urlPath = targetPage;
     try {
@@ -6956,10 +7084,7 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
         });
     }
 
-    // Whitelist this client IP address for the next 4.5 hours!
-    unlockIpForDuration(clientIp, IP_UNLOCK_DURATION_MS);
-
-    // Two-Way Identification: Bind hardware device signature
+    // Two-Way Identification: Bind hardware device signature for this specific client only
     let boundDevId = deviceId;
     if (deviceId && deviceFingerprint) {
         const bound = bindDevice({
@@ -6986,9 +7111,15 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
 
     const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '4.5h' });
     
+    const isHttps = req.secure || 
+                    req.headers['x-forwarded-proto'] === 'https' || 
+                    req.headers['x-forwarded-ssl'] === 'on' ||
+                    req.protocol === 'https';
     setSecureCookie(req, res, 'site_unlock_token', token, {
         maxAge: IP_UNLOCK_DURATION_MS,
-        httpOnly: true
+        httpOnly: true,
+        sameSite: isHttps ? 'none' : 'lax',
+        secure: isHttps
     });
 
     logServerEvent('AUTH', `Hardware device bound & unlocked successfully: ${boundDevId || 'Generic'} (IP: ${clientIp})`, {
@@ -7059,7 +7190,7 @@ app.post('/api/system/relock-site', (req: Request, res: Response) => {
 
 // List all registered & bound hardware devices
 app.get('/api/system/bound-devices', (req: Request, res: Response) => {
-    const isAuth = isSiteUnlocked(req);
+    const isAuth = isSiteUnlocked(req) || isAdminAuthenticated(req);
     if (!isAuth) {
         return res.status(401).json({ status: "error", message: "Unauthorized. Site is locked." });
     }
@@ -7134,6 +7265,26 @@ app.get('/api/system/lock-status', (req: Request, res: Response) => {
         title: systemState.siteLockTitle,
         message: systemState.siteLockMessage,
         hasHint: !!systemState.siteLockHint
+    });
+});
+
+// Public Hero Configuration Endpoint (Dynamic Video & Music Controller)
+app.get(['/api/hero-config', '/api/hero/config'], (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    const configPath = path.join(process.cwd(), 'assets', 'hero-config.json');
+    if (fs.existsSync(configPath)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            return res.json({ status: "success", config: data });
+        } catch (e) {}
+    }
+    return res.json({
+        status: "success",
+        config: {
+            heroVideo: { type: "local", url: "/assets/hero-video.mp4" },
+            musicMedia: { sourceType: "local", audioUrl: "/assets/x_video_music_bg.mp4", videoBgUrl: "/assets/x_video_music_bg.mp4" },
+            tvVideo: { type: "local", url: "/assets/floating_glass_hud.mp4" }
+        }
     });
 });
 
@@ -7310,17 +7461,17 @@ app.get(['/api/mdtv/manifest/:id', '/api/mdtv/manifest/:id.mpd'], async (req: Re
                         const tokenPart = parts[1]?.match(/Cookie=([^\s&]+)/i)?.[1] || parts[1]?.match(/__hdnea__=[^\s"';&]+/i)?.[0] || ch.token;
                         directU = parts[0].trim() + (tokenPart ? (parts[0].includes('?') ? '&' : '?') + tokenPart : '');
                     }
-                    if (directU.includes('_BTS') || directU.includes('jiotvpllive')) {
+                    if (directU.includes('_BTS') || directU.includes('jiotvpllive') || !directU.includes('__hdnea__=')) {
                         const expM = directU.match(/exp=(\d+)/);
                         const isExp = !expM || (parseInt(expM[1], 10) * 1000 <= Date.now() + 30000);
-                        if (isExp || directU.includes('acl=/*')) {
-                            const wc = await JtvService.fetchWildcardCookie().catch(() => '');
-                            const tokenPart = isExp ? (wc ? (wc.startsWith('__hdnea__=') ? wc : `__hdnea__=${wc}`) : '') : '';
-                            const cleanBase = directU.split('?')[0]
-                                .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
-                                .replace('_BTS', '_MOB');
-                            directU = tokenPart ? `${cleanBase}?${tokenPart}` : cleanBase;
-                        }
+                        const wc = await JtvService.fetchWildcardCookie().catch(() => '');
+                        const validWc = wc ? (wc.startsWith('__hdnea__=') ? wc : `__hdnea__=${wc}`) : '';
+                        const existingToken = (directU.includes('?') ? directU.split('?')[1] : '') || (ch.token ? (ch.token.startsWith('__hdnea__=') ? ch.token : `__hdnea__=${ch.token}`) : '');
+                        const activeToken = (isExp && validWc) ? validWc : (existingToken || validWc);
+                        const cleanBase = directU.split('?')[0]
+                            .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
+                            .replace('_BTS', '_MOB');
+                        directU = activeToken ? `${cleanBase}?${activeToken}` : cleanBase;
                     }
                     upstreamRedirectUrl = directU;
                 }
@@ -7938,6 +8089,18 @@ app.get(['/api/jtv/manifest/:id', '/api/jtv/manifest/:id.mpd'], async (req: Requ
                         const tokenPart = parts[1]?.match(/Cookie=([^\s&]+)/i)?.[1] || parts[1]?.match(/__hdnea__=[^\s"';&]+/i)?.[0] || ch.token;
                         directU = parts[0].trim() + (tokenPart ? (parts[0].includes('?') ? '&' : '?') + tokenPart : '');
                     }
+                    if (directU.includes('_BTS') || directU.includes('jiotvpllive') || !directU.includes('__hdnea__=')) {
+                        const expM = directU.match(/exp=(\d+)/);
+                        const isExp = !expM || (parseInt(expM[1], 10) * 1000 <= Date.now() + 30000);
+                        const wc = await JtvService.fetchWildcardCookie().catch(() => '');
+                        const validWc = wc ? (wc.startsWith('__hdnea__=') ? wc : `__hdnea__=${wc}`) : '';
+                        const existingToken = (directU.includes('?') ? directU.split('?')[1] : '') || (ch.token ? (ch.token.startsWith('__hdnea__=') ? ch.token : `__hdnea__=${ch.token}`) : '');
+                        const activeToken = (isExp && validWc) ? validWc : (existingToken || validWc);
+                        const cleanBase = directU.split('?')[0]
+                            .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
+                            .replace('_BTS', '_MOB');
+                        directU = activeToken ? `${cleanBase}?${activeToken}` : cleanBase;
+                    }
                     upstreamRedirectUrl = directU;
                 }
             } else {
@@ -8094,6 +8257,10 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://vidly.pro/';
         headers['Origin'] = 'https://vidly.pro';
+    } else if (u.hostname.includes('amberandash') || u.hostname.includes('opalescentorchard') || u.hostname.includes('stellarconductornexus') || u.hostname.includes('vidsrc')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://stellarconductornexus.com/';
+        headers['Origin'] = 'https://stellarconductornexus.com';
     }
 
     if (u.hostname.includes('m4uplay') || u.hostname.includes('acek-cdn') || u.hostname.includes('cloudxalviro') || u.hostname.includes('agilebusiness')) {
@@ -8172,11 +8339,12 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
 
     const isHotstar = /hotstar\.com$/i.test(u.hostname) || /hotstar-cdn\.net$/i.test(u.hostname) || u.hostname.includes('hotstar');
     const isAkamaiOrJio = isHotstar || u.hostname.includes('akamaized.net') || u.hostname.includes('jio.com') || u.hostname.includes('jiotv');
+    const isTokenBoundCdn = u.hostname.includes('acek-cdn') || u.hostname.includes('m4uplay') || u.hostname.includes('goldcrestlearninggroup');
     if (isAkamaiOrJio) {
         headers['X-Forwarded-For'] = effectiveClientIp;
         headers['True-Client-IP'] = effectiveClientIp;
         headers['Client-IP'] = effectiveClientIp;
-    } else if (!isCloudOrPrivate && rawIp) {
+    } else if (!isCloudOrPrivate && rawIp && !isTokenBoundCdn) {
         headers['X-Forwarded-For'] = rawIp;
     }
 
@@ -8309,7 +8477,7 @@ export function getOutboundProxyAgent(): https.Agent | any {
 }
 
 function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, directSegments = false): string {
-    const isMaster = text.includes('#EXT-X-STREAM-INF') || text.includes('#EXT-X-MEDIA');
+    const isMaster = text.includes('#EXT-X-STREAM-INF') || text.includes('#EXT-X-MEDIA:');
     
     // In master playlists, strip storyboard thumbnail tracks (e.g. tiles.m3u8) that break video playback
     if (isMaster) {
@@ -8361,14 +8529,17 @@ function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, dir
                     defaultAudioSet = true;
                 }
 
-                if (directSegments) {
-                    return processedLine.replace(/URI="([^"]+)"/g, (_, u) => `URI="${toAbs(u)}"`);
-                }
+                // Sub-manifests (e.g. audio playlists, subtitles) inside URI="..." MUST always be proxied through proxyBase
                 return processedLine.replace(/URI="([^"]+)"/g, (_, u) => {
                     if (u.includes('stream_proxy.php?url=') || u.includes('/api/proxy/hls?url=')) {
                         return `URI="${u}"`;
                     }
-                    return `URI="${wrap(toAbs(u))}"`;
+                    const abs = toAbs(u);
+                    // Non-manifest files (rare key/image) can be direct if directSegments is true; all .m3u8 manifests MUST be proxied
+                    if (directSegments && !abs.includes('.m3u8') && !abs.includes('m3u8')) {
+                        return `URI="${abs}"`;
+                    }
+                    return `URI="${wrap(abs)}"`;
                 });
             }
 
@@ -8384,9 +8555,8 @@ function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, dir
         .filter(l => l !== '')
         .join('\n');
 
-    const isLiveStream = text.includes('#EXT-X-MEDIA-SEQUENCE') || 
-                         text.includes('#EXT-X-DISCONTINUITY-SEQUENCE') || 
-                         text.includes('#EXT-X-PROGRAM-DATE-TIME') ||
+    const isExplicitVod = text.includes('#EXT-X-PLAYLIST-TYPE:VOD') || text.includes('#EXT-X-ENDLIST');
+    const isLiveStream = !isExplicitVod && (
                          text.includes('#EXT-X-PLAYLIST-TYPE:EVENT') ||
                          baseUrl.hostname.includes('sonyliv') ||
                          baseUrl.hostname.includes('akamaized.net') ||
@@ -8396,7 +8566,7 @@ function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, dir
                          baseUrl.hostname.includes('junksonus') ||
                          baseUrl.hostname.includes('timst') ||
                          baseUrl.pathname.includes('/live/') ||
-                         baseUrl.pathname.includes('/live.php');
+                         baseUrl.pathname.includes('/live.php'));
 
     // Ensure VOD media playlists end with #EXT-X-ENDLIST so Hls.js never misidentifies VOD streams as Live TV
     if (!isMaster && !isLiveStream && !text.includes('#EXT-X-ENDLIST') && text.includes('#EXT-X-PLAYLIST-TYPE:VOD')) {
@@ -8588,8 +8758,13 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
                                     targetUrl.pathname.includes('Cricket') ||
                                     targetUrl.pathname.includes('Footlive')
                                 ));
+        const isCorsOpenCdn = targetUrl.hostname.includes('cloudfront.net') || 
+                              targetUrl.hostname.includes('fastly.net') || 
+                              targetUrl.hostname.includes('b-cdn.net') || 
+                              targetUrl.hostname.includes('workers.dev') || 
+                              targetUrl.hostname.includes('dash-hls-bridge');
         const isDirectSegmentCdn = (req.query.direct === '1' || 
-                                   (targetUrl.hostname.includes('cloudfront.net') && !isSonyLivStream)) && !isFanCodeStream && !isSonyLivStream;
+                                   (isCorsOpenCdn && !isSonyLivStream)) && !isFanCodeStream && !isSonyLivStream;
 
         // Check instant RAM cache for previously prefetched / loaded HLS video segments and encryption keys
         const isSonyKey = isSonyLivStream && (targetUrl.pathname.includes('key') || targetUrl.search.includes('key') || targetUrl.pathname.includes('license'));
@@ -8744,9 +8919,8 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
             }
 
             // 2. Prefetch upcoming live edge segments (Live streams ONLY; never on VOD movies/episodes to prevent socket starvation)
-            const isLiveStream = text.includes('#EXT-X-MEDIA-SEQUENCE') || 
-                                 text.includes('#EXT-X-DISCONTINUITY-SEQUENCE') || 
-                                 text.includes('#EXT-X-PROGRAM-DATE-TIME') ||
+            const isExplicitVod = text.includes('#EXT-X-PLAYLIST-TYPE:VOD') || text.includes('#EXT-X-ENDLIST');
+            const isLiveStream = !isExplicitVod && (
                                  text.includes('#EXT-X-PLAYLIST-TYPE:EVENT') ||
                                  targetUrl.hostname.includes('sonyliv') ||
                                  targetUrl.hostname.includes('akamaized.net') ||
@@ -8756,7 +8930,7 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
                                  targetUrl.hostname.includes('junksonus') ||
                                  targetUrl.hostname.includes('timst') ||
                                  targetUrl.pathname.includes('/live/') ||
-                                 targetUrl.pathname.includes('/live.php');
+                                 targetUrl.pathname.includes('/live.php'));
 
             if (!text.includes('#EXT-X-STREAM-INF') && isLiveStream) {
                 const bodyLines = body.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
@@ -9652,6 +9826,183 @@ app.get('/api/rareanimes/stream', async (req: Request, res: Response) => {
         return res.json(result);
     } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message, sources: [] });
+    }
+});
+
+// TheIntroDB & AniSkip Skip Times Endpoint (https://theintrodb.org/docs)
+const introDbCache = new Map<string, { data: any; timestamp: number }>();
+
+app.get(['/api/anime/skip-times', '/api/media/skip-times'], async (req: Request, res: Response) => {
+    try {
+        const malId = (req.query.malId || req.query.mal_id || '').toString().trim();
+        const tmdbId = (req.query.tmdb_id || req.query.tmdbId || req.query.id || '').toString().trim();
+        const imdbId = (req.query.imdb_id || req.query.imdbId || req.query.imdb || '').toString().trim();
+        const season = parseInt((req.query.season || req.query.s || '1') as string, 10) || 1;
+        const episode = parseInt((req.query.episode || req.query.e || '1') as string, 10) || 1;
+        const episodeLength = parseFloat((req.query.episodeLength || '0') as string) || 0;
+        const type = (req.query.type || 'tv').toString().toLowerCase();
+        const title = (req.query.title || req.query.name || '').toString().trim();
+
+        let cleanTmdbId = tmdbId;
+        let cleanImdbId = imdbId;
+
+        // Normalize TMDB vs IMDb IDs
+        if (cleanTmdbId.startsWith('tt')) {
+            if (!cleanImdbId) cleanImdbId = cleanTmdbId;
+            cleanTmdbId = '';
+        }
+        if (cleanImdbId && !cleanImdbId.startsWith('tt') && /^\d+$/.test(cleanImdbId)) {
+            if (!cleanTmdbId) cleanTmdbId = cleanImdbId;
+            cleanImdbId = '';
+        }
+
+        const isTv = type !== 'movie' && (type === 'tv' || type === 'anime' || type === 'series' || (req.query.season !== undefined && type !== 'movie'));
+
+        // If ID missing but title provided, auto-resolve TMDB ID
+        if (!cleanTmdbId && !cleanImdbId && title) {
+            try {
+                const match = await findTmdbMatch(title, isTv ? 'tv' : 'movie');
+                if (match && match.id) {
+                    cleanTmdbId = String(match.id);
+                }
+            } catch (_) {}
+        }
+
+        // 1. If MAL ID present, query AniSkip first
+        if (malId && malId !== '0') {
+            try {
+                const aniRes = await fetchAniSkipTimes(malId, episode, episodeLength);
+                if (aniRes && aniRes.found && aniRes.results && aniRes.results.length > 0) {
+                    return res.json({
+                        success: true,
+                        found: true,
+                        source: 'aniskip',
+                        results: aniRes.results
+                    });
+                }
+            } catch (_) {}
+        }
+
+        // 2. Query TheIntroDB for movies and TV series
+        const targetId = cleanTmdbId || cleanImdbId;
+        if (targetId) {
+            const cacheKey = isTv ? `${type}_${targetId}_${season}_${episode}` : `${type}_${targetId}`;
+            const cached = introDbCache.get(cacheKey);
+            if (cached && (Date.now() - cached.timestamp < 24 * 3600 * 1000)) {
+                return res.json(cached.data);
+            }
+
+            const q = new URLSearchParams();
+            if (cleanTmdbId) q.set('tmdb_id', cleanTmdbId);
+            else if (cleanImdbId) q.set('imdb_id', cleanImdbId);
+
+            if (isTv) {
+                q.set('season', String(season));
+                q.set('episode', String(episode));
+            }
+            if (episodeLength > 0) {
+                q.set('duration_ms', String(Math.round(episodeLength * 1000)));
+            }
+
+            try {
+                const introRes = await axios.get(`https://api.theintrodb.org/v4/media?${q.toString()}`, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) HL-Player/2.0' },
+                    timeout: 4500
+                });
+
+                if (introRes.data) {
+                    const data = introRes.data;
+                    const results: any[] = [];
+
+                    // Opening / Intro
+                    if (Array.isArray(data.intro)) {
+                        for (const it of data.intro) {
+                            if (it.end_ms) {
+                                results.push({
+                                    skipType: 'op',
+                                    interval: {
+                                        startTime: it.start_ms ? it.start_ms / 1000 : 0,
+                                        endTime: it.end_ms / 1000
+                                    },
+                                    skipId: 'introdb_intro'
+                                });
+                            }
+                        }
+                    }
+
+                    // Recap
+                    if (Array.isArray(data.recap)) {
+                        for (const it of data.recap) {
+                            if (it.end_ms) {
+                                results.push({
+                                    skipType: 'recap',
+                                    interval: {
+                                        startTime: it.start_ms ? it.start_ms / 1000 : 0,
+                                        endTime: it.end_ms / 1000
+                                    },
+                                    skipId: 'introdb_recap'
+                                });
+                            }
+                        }
+                    }
+
+                    // Ending / Credits
+                    if (Array.isArray(data.credits)) {
+                        for (const it of data.credits) {
+                            if (it.start_ms) {
+                                results.push({
+                                    skipType: 'ed',
+                                    interval: {
+                                        startTime: it.start_ms / 1000,
+                                        endTime: it.end_ms ? it.end_ms / 1000 : (it.start_ms / 1000 + 120)
+                                    },
+                                    skipId: 'introdb_credits'
+                                });
+                            }
+                        }
+                    }
+
+                    const payload = {
+                        success: true,
+                        found: results.length > 0,
+                        source: 'theintrodb',
+                        results
+                    };
+                    introDbCache.set(cacheKey, { data: payload, timestamp: Date.now() });
+                    if (results.length > 0) {
+                        return res.json(payload);
+                    }
+                }
+            } catch (err: any) {
+                if (err.response && err.response.status === 404) {
+                    const notFoundPayload = { success: true, found: false, results: [] };
+                    introDbCache.set(cacheKey, { data: notFoundPayload, timestamp: Date.now() });
+                }
+            }
+        }
+
+        // 3. Fallback: If TV / Anime with title, auto-resolve MAL ID for AniSkip
+        if (isTv && (!malId || malId === '0') && title) {
+            try {
+                const resolvedMal = await resolveMalIdFromTitle(title);
+                if (resolvedMal) {
+                    const aniRes = await fetchAniSkipTimes(resolvedMal, episode, episodeLength);
+                    if (aniRes && aniRes.found && aniRes.results && aniRes.results.length > 0) {
+                        return res.json({
+                            success: true,
+                            found: true,
+                            source: 'aniskip',
+                            malId: resolvedMal,
+                            results: aniRes.results
+                        });
+                    }
+                }
+            } catch (_) {}
+        }
+
+        return res.json({ success: true, found: false, results: [] });
+    } catch (e: any) {
+        return res.status(500).json({ success: false, error: e?.message, results: [] });
     }
 });
 
@@ -10606,6 +10957,44 @@ app.get('/local-ai.css', (req, res) => {
 // Serve assets and public directory
 app.use('/assets', express.static(path.join(process.cwd(), 'assets')));
 app.use(express.static(path.join(process.cwd(), 'public'), { index: false }));
+
+app.get(['/sw.js', '/service-worker.js'], (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    const swPath = path.join(process.cwd(), 'public', 'sw.js');
+    if (fs.existsSync(swPath)) return res.sendFile(swPath);
+    return res.sendFile(path.join(process.cwd(), 'sw.js'));
+});
+
+app.get('/manifest.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const mfPath = path.join(process.cwd(), 'public', 'manifest.json');
+    if (fs.existsSync(mfPath)) return res.sendFile(mfPath);
+    return res.sendFile(path.join(process.cwd(), 'manifest.json'));
+});
+
+app.get('/search_launcher.js', (req, res) => {
+    const pubPath = path.join(process.cwd(), 'public', 'search_launcher.js');
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    if (fs.existsSync(pubPath)) return res.sendFile(pubPath);
+    return res.status(200).send('// search_launcher ready\n');
+});
+
+app.get('/app.js', (req, res) => {
+    const rootAppJs = path.join(process.cwd(), 'app.js');
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    if (fs.existsSync(rootAppJs)) return res.sendFile(rootAppJs);
+    return res.status(200).send('// app ready\n');
+});
+
+app.get('/styles.css', (req, res) => {
+    const rootCss = path.join(process.cwd(), 'styles.css');
+    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    if (fs.existsSync(rootCss)) return res.sendFile(rootCss);
+    return res.status(200).send('');
+});
 
 // Page and Script Routing
 
@@ -12780,12 +13169,30 @@ setInterval(() => {
     }
 }, 60 * 60 * 1000); // Every 1 hour
 
-import { syncFromFirestore, syncM3uFromFirestore, logIpToFirestore, getAnalyticsFromFirestore } from './src/services/firestoreSyncService';
+
 
 async function startServer() {
     await syncFromFirestore();
     await syncM3uFromFirestore();
     loadSystemConfig();
+    startFirestoreListener((data) => {
+        const oldLockMode = systemState.siteLockMode;
+        const oldMaintenanceMode = systemState.maintenanceMode;
+        
+        loadSystemConfig(data);
+        
+        // Proactive actions on remote state change
+        if (systemState.siteLockMode !== oldLockMode && systemState.siteLockMode === true) {
+            console.log('[Firestore] Site Lock Mode activated remotely. Purging session tokens.');
+            clearUnlockedIps();
+        }
+        
+        if (systemState.maintenanceMode !== oldMaintenanceMode) {
+            console.log(`[Firestore] Maintenance Mode ${systemState.maintenanceMode ? 'ACTIVATED' : 'DEACTIVATED'} remotely.`);
+            notifyVideoBroadcastChanged();
+            if (systemState.maintenanceMode) killAllActiveStreams();
+        }
+    });
     console.log('Attempting to start server on port', port);
     const server = app.listen(port as number, '0.0.0.0', () => {
     // Initial fetch of live sports

@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "systemConfig": {
+      "title": "System Configuration",
+      "description": "Global system state including maintenance and lock modes.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["active", "offline", "killed"] },
+        "maintenanceMode": { "type": "boolean" },
+        "siteLockMode": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["status", "maintenanceMode", "siteLockMode"]
+    }
+  },
+  "firestore": {
+    "/system/config": {
+      "schema": "systemConfig",
+      "description": "Singleton document for system configuration."
+    }
+  }
+}

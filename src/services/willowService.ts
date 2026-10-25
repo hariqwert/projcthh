@@ -239,15 +239,22 @@ export async function fetchWillowEvents(forceRefresh = false): Promise<WillowEve
         const sortedIndia = [...liveIndiaMatches].sort((a, b) => (b.startMinutes || 0) - (a.startMinutes || 0));
         latestLiveId = sortedIndia[0].id;
     } else {
-        events.forEach(e => {
-            if (e.isLive || e.status === 'LIVE') {
-                const startVal = e.startMinutes || 0;
-                if (startVal > maxStartVal) {
-                    maxStartVal = startVal;
-                    latestLiveId = e.id;
+        // Prioritize live Test matches (highest prestige cricket format)
+        const testMatches = events.filter(e => (e.isLive || e.status === 'LIVE') && /\b(test\s*match|test\s*series|\d+(?:st|nd|rd|th)\s*test|the\s*ashes|ashes|border[\s\-]gavaskar)\b/i.test(e.title || ''));
+        if (testMatches.length > 0) {
+            const sortedTest = [...testMatches].sort((a, b) => (b.startMinutes || 0) - (a.startMinutes || 0));
+            latestLiveId = sortedTest[0].id;
+        } else {
+            events.forEach(e => {
+                if (e.isLive || e.status === 'LIVE') {
+                    const startVal = e.startMinutes || 0;
+                    if (startVal > maxStartVal) {
+                        maxStartVal = startVal;
+                        latestLiveId = e.id;
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     // Mark the latest live event as active broadcast, and conclude linear stream for older live events

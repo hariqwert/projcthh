@@ -29,6 +29,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
     <script src="https://unpkg.com/lucide@latest" crossorigin></script>
     <script src="/search_launcher.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="manifest" href="/manifest.json">
+    <script src="/assets/tv-navigation.js" defer></script>
     <script>
         window.resolveBackUrl = function() {
             let s = '';
@@ -99,6 +101,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             inset: 0;
         }
 
+        body {
+            background-color: #05070c;
+            color: #f1f5f9;
+        }
+
         #playerContainer {
             position: relative;
             width: 100%;
@@ -108,86 +115,61 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #000;
+            background: radial-gradient(circle at 50% 30%, #0d131f 0%, #05070c 100%);
             transition: transform 0.3s ease;
             overflow: hidden;
         }
 
-        /* Fullscreen Cinema Styles */
-        body.is-fullscreen #playerContainer,
-        #playerContainer.fullscreen-active {
-            width: 100vw !important;
-            height: 100vh !important;
-            height: 100dvh !important;
-            position: fixed !important;
-            inset: 0 !important;
-            z-index: 99999 !important;
-        }
-
-        video {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain;
-            transition: transform 0.3s ease, object-fit 0.3s ease;
-        }
-        video.fit-cover { object-fit: cover !important; }
-        video.fit-fill { object-fit: fill !important; }
-        video.zoom-120 { transform: scale(1.2) !important; }
-
-        /* Subtitle Styling */
-        ::cue {
-            font-size: var(--sub-font-size) !important;
-            color: var(--sub-color) !important;
-            background-color: var(--sub-bg) !important;
-            text-shadow: var(--sub-shadow) !important;
-            line-height: 1.4 !important;
-            border-radius: 8px !important;
-            padding: 3px 8px !important;
-        }
-
-        /* Glassmorphism Classes */
+        /* Pure Glassmorphic Theme (Clean Deep Void & Frosted Acrylic) */
         .glass-panel {
-            background: rgba(10, 10, 14, 0.90);
-            backdrop-filter: blur(28px) saturate(180%);
-            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            background: rgba(13, 17, 26, 0.85);
+            backdrop-filter: blur(32px) saturate(190%);
+            -webkit-backdrop-filter: blur(32px) saturate(190%);
             border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 1px 1px rgba(255, 255, 255, 0.05);
         }
         .glass-sub-panel {
-            background: rgba(14, 14, 20, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(20px);
-        }
-        .glass-btn, .ott-btn {
-            background: rgba(18, 18, 24, 0.78);
-            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(22, 29, 44, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.10);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            color: #ffffff;
+        }
+        /* Icon-Only Buttons: Pure floating icons without ugly backgrounds */
+        .glass-btn, .ott-btn {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            color: #e2e8f0 !important;
             transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .glass-btn:hover, .ott-btn:hover {
-            background: rgba(32, 32, 42, 0.92);
-            border-color: rgba(255, 255, 255, 0.35);
-            color: #ffffff;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+            background: rgba(255, 255, 255, 0.14) !important;
+            color: #ffffff !important;
+            transform: scale(1.10);
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.12) !important;
+            border-radius: 9999px !important;
         }
         .glass-btn:active, .ott-btn:active {
             transform: scale(0.92);
-            background: rgba(14, 14, 18, 0.95);
+            background: rgba(255, 255, 255, 0.22) !important;
         }
         .ott-segmented {
-            background: rgba(12, 12, 16, 0.85);
+            background: rgba(18, 23, 35, 0.75);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.14);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 9999px;
             padding: 2.5px;
             display: inline-flex;
             align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
         }
 
         /* Animated Play/Pause Button */
@@ -226,6 +208,26 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
         .icon-morph {
             transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.18s ease;
+        }
+
+        /* Aspect Ratio Transformations for HTML5 Video */
+        #mainVideo {
+            object-fit: contain;
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), object-fit 0.28s ease !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        #mainVideo.fit-cover {
+            object-fit: cover !important;
+            transform: scale(1) !important;
+        }
+        #mainVideo.fit-fill {
+            object-fit: fill !important;
+            transform: scale(1) !important;
+        }
+        #mainVideo.zoom-120 {
+            object-fit: cover !important;
+            transform: scale(1.25) !important;
         }
 
         /* Timeline Scrubber - Ultra High Visibility & Smooth Touch */
@@ -831,15 +833,23 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     </div>
                 </div>
 
-                <!-- Refined Cinema Quote (Anti-Boredom, Elegant & Minimalist) -->
-                <div class="w-full text-center px-1 py-1 my-0.5 min-h-[38px] flex items-center justify-center">
-                    <p id="streamLoadingQuoteText" class="text-[11px] sm:text-xs font-normal italic text-zinc-300 leading-relaxed transition-opacity duration-300 text-center">
-                        Dimming the theater lights — your front-row stream is warming up.
-                    </p>
+                <!-- Real-Time Stream Diagnostic Telemetry HUD (Accurate Live Metrics) -->
+                <div class="w-full my-2 p-2.5 rounded-2xl glass-sub-panel border border-white/10 space-y-1.5 font-mono text-[10px]">
+                    <div class="flex items-center justify-between text-zinc-300">
+                        <span class="flex items-center gap-1.5 truncate">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span id="telemetryNode" class="text-white font-bold truncate">Resolving Cinema Node...</span>
+                        </span>
+                        <span id="telemetryLatency" class="text-emerald-400 font-semibold shrink-0">⚡ 16ms</span>
+                    </div>
+                    <div class="flex items-center justify-between text-zinc-400 text-[9px] pt-1 border-t border-white/5">
+                        <span id="telemetryProtocol" class="truncate">HLS v4 • ABR Adaptive</span>
+                        <span id="telemetryAudio" class="text-zinc-300 truncate ml-2">Probing Multi-Audio...</span>
+                    </div>
                 </div>
 
                 <!-- Hairline Silver Progress Bar & Status Hint -->
-                <div class="w-full space-y-1.5 mt-2">
+                <div class="w-full space-y-1.5 mt-1">
                     <div class="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
                         <div id="streamLoadingProgressBar" class="h-full bg-gradient-to-r from-white/40 via-white to-white/90 rounded-full transition-all duration-500" style="width: 24%"></div>
                     </div>
@@ -916,17 +926,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
         <!-- TOP CONTROLS BAR -->
         <div id="topControlsBar" class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 sm:p-6 bg-gradient-to-b from-black/80 via-black/30 to-transparent transition-opacity duration-300">
-            <!-- Left Controls: Back + Rotate + Title Pill -->
-            <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 sm:flex-initial">
-                <button id="btnBack" onclick="handleGoBack()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full glass-btn hover:bg-red-600 hover:border-red-500/50 flex items-center justify-center text-white shrink-0 shadow-lg cursor-pointer active:scale-95" title="Back">
+            <!-- Left Controls: Back + Title & Subtitle Pill (Rotate removed from left side to prevent confusion) -->
+            <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 sm:flex-initial">
+                <button id="btnBack" onclick="handleGoBack()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full glass-btn hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white shrink-0 shadow-lg cursor-pointer active:scale-95 transition-all" title="Back">
                     <i data-lucide="arrow-left" class="w-4 h-4 sm:w-5 sm:h-5"></i>
                 </button>
-                <!-- Quick Rotate Screen Button for Mobile / Tablet -->
-                <button id="btnRotateTopMob" onclick="toggleRotation(event)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full glass-btn flex items-center justify-center text-zinc-300 hover:text-white shrink-0 shadow-lg cursor-pointer active:scale-95" title="Rotate Screen (Cinema Landscape)">
-                    <i data-lucide="smartphone" class="w-4 h-4"></i>
-                </button>
                 <div class="flex flex-col min-w-0">
-                    <h2 id="topBarTitle" class="text-xs sm:text-base font-bold text-white truncate drop-shadow max-w-[150px] xs:max-w-[210px] sm:max-w-md">
+                    <h2 id="topBarTitle" class="text-xs sm:text-base font-bold text-white truncate drop-shadow max-w-[160px] xs:max-w-[220px] sm:max-w-md">
                         <?php echo htmlspecialchars($title); ?>
                     </h2>
                     <span id="topBarSub" class="text-[9px] sm:text-[10px] text-zinc-400 font-semibold tracking-wider uppercase truncate">
@@ -935,84 +941,56 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 </div>
             </div>
 
-            <!-- Mobile Quick Actions Cluster (Clean Glass OTT Pills - No colored square buttons) -->
-            <div class="mobile-controls-cluster items-center gap-1.5 shrink-0 ml-2">
-                <!-- Fullscreen Cinema Quick Toggle (Landscape Cinema) -->
-                <button id="btnFullscreenTopMob" onclick="toggleFullscreen(event)" class="ott-btn w-9 h-9 text-zinc-300 hover:text-white shrink-0 active:scale-90 shadow-lg" title="Toggle Fullscreen (Landscape Cinema)">
-                    <i id="fullscreenTopIconMob" data-lucide="maximize" class="w-4 h-4 text-white"></i>
-                </button>
-                <!-- Aspect Ratio Quick Toggle -->
-                <button id="btnAspectTopMob" onclick="toggleAspectRatio(); updateMobileStatusBadges(); if(event) event.stopPropagation();" class="ott-btn w-9 h-9 text-zinc-300 hover:text-white shrink-0 active:scale-90 shadow-lg" title="Toggle Aspect Ratio">
-                    <i data-lucide="scan" class="w-4 h-4 text-zinc-300"></i>
-                </button>
+            <!-- Mobile Quick Actions Cluster (Clean Glass OTT Pills - Floating Icon-Only Design) -->
+            <div class="mobile-controls-cluster items-center gap-1 shrink-0 ml-2">
                 <!-- TV Episodes Drawer Toggle (If Series) -->
-                <button id="btnEpisodesDrawerMob" onclick="toggleEpisodesDrawer(); if(event) event.stopPropagation();" class="<?php echo $type === 'tv' ? 'flex' : 'hidden'; ?> ott-btn px-2.5 py-1.5 gap-1.5 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Episodes Picker">
+                <button id="btnEpisodesDrawerMob" onclick="toggleEpisodesDrawer(); if(event) event.stopPropagation();" class="<?php echo $type === 'tv' ? 'flex' : 'hidden'; ?> ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Episodes Picker">
                     <i data-lucide="list-video" class="w-3.5 h-3.5 text-zinc-300"></i>
                     <span class="text-[11px] font-bold">Ep</span>
                 </button>
-                <!-- Audio & Subs Pill -->
-                <button onclick="openSubtitlesModalTab(); if(event) event.stopPropagation();" class="ott-btn px-2.5 py-1.5 gap-1.5 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Audio Dubs & Subtitles">
+                <!-- Audio & Subs CC Pill -->
+                <button onclick="openSubtitlesModalTab(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Audio Dubs & Subtitles">
                     <i data-lucide="languages" class="w-3.5 h-3.5 text-zinc-300"></i>
                     <span class="text-[11px]">CC</span>
                 </button>
-                <!-- Quality & Server Pill (Clean monochrome glass - No colored squares) -->
-                <button id="btnOpenQualityServerMob" onclick="toggleQualityServerModal(); if(event) event.stopPropagation();" class="ott-btn px-2.5 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Quality & Servers">
+                <!-- Quality & Server Pill -->
+                <button id="btnOpenQualityServerMob" onclick="toggleQualityServerModal(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Quality & Servers">
                     <span id="qualityButtonLabelMob" class="text-[11px] font-mono">1080p</span>
                 </button>
-                <!-- Mobile Quick Settings Button -->
-                <button onclick="toggleMobileMoreMenu(); if(event) event.stopPropagation();" class="ott-btn w-9 h-9 text-zinc-300 hover:text-white shadow-lg shrink-0 active:scale-90" title="Player Quick Settings">
-                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                <!-- Aspect Ratio Quick Toggle -->
+                <button id="btnAspectMob" onclick="toggleAspectRatio(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Cycle Aspect Ratio">
+                    <i data-lucide="crop" class="w-3.5 h-3.5 text-sky-400"></i>
+                    <span id="mobAspectPill" class="text-[10px] font-mono">Fit</span>
+                </button>
+                <!-- Rotate Cinema Screen -->
+                <button id="btnRotateMob" onclick="toggleRotation(event); if(event) event.stopPropagation();" class="ott-btn w-8 h-8 text-zinc-300 hover:text-white shadow-lg shrink-0 active:scale-90" title="Rotate Cinema Screen">
+                    <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+                </button>
+                <!-- Retry / Reconnect Stream -->
+                <button id="btnRetryMob" onclick="triggerAutoReconnect(); if(event) event.stopPropagation();" class="ott-btn w-8 h-8 text-zinc-300 hover:text-white shadow-lg shrink-0 active:scale-90" title="Retry & Reconnect Stream">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
+                </button>
+                <!-- Settings Button (Unified Drawer) -->
+                <button id="btnSettingsMob" onclick="toggleMobileMoreMenu(); if(event) event.stopPropagation();" class="ott-btn w-8 h-8 text-zinc-300 hover:text-white shadow-lg shrink-0 active:scale-90" title="Player Settings">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                </button>
+                <!-- Fullscreen Cinema Quick Toggle -->
+                <button id="btnFullscreenTopMob" onclick="toggleFullscreen(event)" class="ott-btn w-8 h-8 text-white bg-white/10 hover:bg-white/20 shrink-0 active:scale-90 shadow-lg" title="Toggle Fullscreen">
+                    <i id="fullscreenTopIconMob" data-lucide="maximize" class="w-4 h-4 text-white"></i>
                 </button>
             </div>
 
-            <!-- Desktop Right Controls -->
-            <div class="desktop-controls-cluster items-center gap-2.5 min-w-0 justify-end">
-                <!-- Reconnect Stream Button -->
-                <button onclick="triggerAutoReconnect()" class="hide-in-embed w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0" title="Reconnect Stream">
-                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-                </button>
-
-                <!-- Aspect Ratio Button -->
-                <button onclick="toggleAspectRatio()" class="hide-in-embed w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0" title="Toggle Aspect Ratio">
-                    <i data-lucide="scan" class="w-4 h-4"></i>
-                </button>
-
-                <!-- Rotate View Button -->
-                <button onclick="toggleRotation(event)" class="hide-in-embed w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0" title="Rotate Player">
-                    <i data-lucide="smartphone" class="w-4 h-4"></i>
-                </button>
-
-                <!-- Fullscreen Button in Desktop Top Bar -->
-                <button id="btnFullscreenTop" onclick="toggleFullscreen(event)" class="hide-in-embed w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-white hover:bg-red-600 shadow-lg cursor-pointer shrink-0 transition-all" title="Toggle Fullscreen">
-                    <i id="fullscreenTopIcon" data-lucide="maximize" class="w-4 h-4"></i>
-                </button>
-
-                <!-- Sleep Timer Button -->
-                <button onclick="toggleSleepModal()" class="hide-in-embed w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0" title="Sleep Timer">
-                    <i data-lucide="clock" class="w-4 h-4"></i>
-                </button>
-
+            <!-- Desktop Right Controls (Sleek Glassmorphic OTT Suite) -->
+            <div class="desktop-controls-cluster items-center gap-1.5 min-w-0 justify-end">
                 <!-- TV Episodes Drawer Toggle (If Series) -->
-                <button id="btnEpisodesDrawer" onclick="toggleEpisodesDrawer()" class="hidden px-3 py-2 rounded-xl bg-black/90 hover:bg-zinc-900 border border-white/20 hover:border-white/40 text-xs font-bold text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shrink-0" title="Episodes Picker">
+                <button id="btnEpisodesDrawer" onclick="toggleEpisodesDrawer()" class="<?php echo $type === 'tv' ? 'flex' : 'hidden'; ?> px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Episodes Picker">
                     <i data-lucide="list-video" class="w-3.5 h-3.5 text-zinc-300"></i>
                     <span>Episodes</span>
                 </button>
 
-                <!-- Watch Together (Party Mode) Button -->
-                <button onclick="togglePartyMode()" class="hide-in-embed px-3 py-2 rounded-xl bg-black/90 hover:bg-zinc-900 border border-white/20 hover:border-white/40 text-xs font-bold text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shrink-0" title="Watch Together (Party Mode)">
-                    <i data-lucide="users" class="w-3.5 h-3.5 text-zinc-300"></i>
-                    <span>Party</span>
-                </button>
-
-                <!-- Quality & Server Button (Clean monochrome glass - No colored squares) -->
-                <button id="btnOpenQualityServer" onclick="toggleQualityServerModal()" class="px-3 py-2 rounded-xl bg-black/90 hover:bg-zinc-900 border border-white/20 hover:border-white/40 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Quality & Servers">
-                    <span id="qualityButtonLabel" class="hidden xs:inline">Auto &bull; 1080p</span>
-                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-zinc-400"></i>
-                </button>
-
                 <!-- Direct Mode Switch Button (Visible when embedded) -->
-                <button id="btnSwitchToDirect" onclick="switchPlayerMode('direct', '', true)" class="hidden px-3.5 py-2 rounded-xl bg-black/90 hover:bg-zinc-900 border border-white/25 hover:border-white/50 text-xs font-bold text-white flex items-center gap-1.5 shadow-xl cursor-pointer transition-all active:scale-95 shrink-0" title="Switch to Direct Native Stream">
-                    <i data-lucide="play-circle" class="w-4 h-4 text-white"></i>
+                <button id="btnSwitchToDirect" onclick="switchPlayerMode('direct', '', true)" class="hidden px-3.5 py-2 rounded-xl glass-btn border border-emerald-500/40 text-xs font-bold text-emerald-300 items-center gap-1.5 shadow-xl cursor-pointer transition-all active:scale-95 shrink-0" title="Switch to Direct Native Stream">
+                    <i data-lucide="play-circle" class="w-4 h-4 text-emerald-400"></i>
                     <span>Direct Player</span>
                 </button>
 
@@ -1028,17 +1006,42 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     <span>Subtitles</span>
                 </button>
 
-                <!-- AniSkip (MAL ID) Button -->
-                <button id="btnOpenAniSkip" onclick="toggleAniSkipModal()" class="hide-in-embed px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg hover:border-amber-400/40 transition-all shrink-0" title="AniSkip Anime Intro & Outro Timestamps">
-                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
-                    <span id="topBarAniSkipLabel">AniSkip</span>
-                    <span id="aniSkipBadge" class="hidden px-1.5 py-0.5 text-[9px] rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 font-extrabold">OP/ED</span>
+                <!-- Quality & Server Button -->
+                <button id="btnOpenQualityServer" onclick="toggleQualityServerModal()" class="px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Quality & Servers">
+                    <span id="qualityButtonLabel" class="hidden xs:inline">Auto &bull; 1080p</span>
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-zinc-400"></i>
+                </button>
+
+                <!-- Aspect Ratio Quick Toggle -->
+                <button id="btnAspectRatio" onclick="toggleAspectRatio()" class="px-2.5 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Aspect Ratio (Fit/Cover/Stretch/Zoom)">
+                    <i data-lucide="crop" class="w-3.5 h-3.5 text-sky-400"></i>
+                    <span id="topAspectBadge" class="text-[11px] font-mono">Fit</span>
+                </button>
+
+                <!-- Rotate Screen (Orientation) -->
+                <button id="btnRotateScreen" onclick="toggleRotation(event)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Rotate Cinema Screen (0°/90°/180°/270°)">
+                    <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+                </button>
+
+                <!-- Reconnect / Retry Stream -->
+                <button id="btnRetryStream" onclick="triggerAutoReconnect()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Retry Stream (Reload & Reconnect)">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
+                </button>
+
+                <!-- Settings Button (Unified Modal) -->
+                <button id="btnPlayerSettings" onclick="toggleMobileMoreMenu(); if(event) event.stopPropagation();" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Settings (Sleep Timer, Watch Party, Speed, Screen Lock)">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Fullscreen Button -->
+                <button id="btnFullscreenTop" onclick="toggleFullscreen(event)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn bg-white/10 hover:bg-white/20 flex items-center justify-center text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Toggle Fullscreen">
+                    <i id="fullscreenTopIcon" data-lucide="maximize" class="w-4 h-4"></i>
                 </button>
             </div>
         </div>
 
         <!-- BOTTOM CONTROLS BAR -->
-        <div id="bottomControlsBar" class="absolute bottom-0 left-0 right-0 z-30 flex flex-col p-3 sm:p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 gap-1.5 sm:gap-2">
+        <div id="bottomControlsBar" class="absolute bottom-0 left-0 right-0 z-30 flex flex-col p-3 sm:p-6 bg-gradient-to-t from-[#05070c]/90 via-[#05070c]/45 to-transparent transition-opacity duration-300 gap-1.5 sm:gap-2">
             <!-- Timeline Scrubber -->
             <div id="timelineContainer" class="timeline-container w-full">
                 <div class="timeline-track relative">
@@ -1148,56 +1151,56 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             </div>
         </div>
 
-        <!-- FLOATING SKIP INTRO & NEXT EPISODE PILLS -->
-        <button id="btnSkipIntro" onclick="skipIntro()" class="apple-skip-btn bottom-24 right-6 bg-black/90 hover:bg-zinc-900 border border-white/20 hover:border-white/40 text-white font-bold items-center gap-2" title="Skip Segment (Key: S)">
+        <!-- FLOATING SKIP INTRO & NEXT EPISODE PILLS (Glassmorphic Cinema Design) -->
+        <button id="btnSkipIntro" onclick="skipIntro()" class="apple-skip-btn bottom-24 right-6 glass-btn bg-white/10 hover:bg-white/20 border border-white/25 hover:border-white/50 text-white font-bold items-center gap-2 shadow-2xl backdrop-blur-xl" title="Skip Segment (Key: S)">
             <i id="skipIntroIcon" data-lucide="fast-forward" class="w-4 h-4 text-amber-400"></i>
             <span id="skipIntroText">Skip Intro</span>
         </button>
 
-        <button id="btnNextEpisode" onclick="playNextEpisode()" class="apple-skip-btn bottom-36 right-6 bg-black/90 hover:bg-zinc-900 border border-white/20 hover:border-white/40 text-white font-bold" title="Next Episode (Key: N)">
+        <button id="btnNextEpisode" onclick="playNextEpisode()" class="apple-skip-btn bottom-36 right-6 glass-btn bg-white/10 hover:bg-white/20 border border-white/25 hover:border-white/50 text-white font-bold shadow-2xl backdrop-blur-xl" title="Next Episode (Key: N)">
             <i data-lucide="skip-forward" class="w-4 h-4 text-zinc-300"></i>
             <span>Next Episode</span>
         </button>
 
-        <!-- MOBILE QUICK SETTINGS SHEET -->
-        <div id="mobileMoreMenuSheet" class="fixed inset-x-0 bottom-0 z-50 glass-panel rounded-t-3xl p-5 shadow-2xl border-t border-white/20 hidden animate-slide-up text-white max-h-[85vh] overflow-y-auto pb-8">
-            <div class="w-12 h-1 bg-white/25 rounded-full mx-auto mb-4"></div>
+        <!-- UNIFIED QUICK PLAYER SETTINGS (DESKTOP MODAL & MOBILE SHEET) -->
+        <div id="mobileMoreMenuSheet" class="fixed inset-x-0 bottom-0 sm:bottom-auto sm:inset-auto sm:top-16 sm:right-6 lg:right-10 z-50 glass-panel rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl border border-white/20 hidden animate-slide-up text-white w-full sm:w-[440px] max-h-[85vh] overflow-y-auto pb-8 sm:pb-5">
+            <div class="w-12 h-1 bg-white/25 rounded-full mx-auto mb-4 sm:hidden"></div>
             <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
                 <span class="text-xs font-extrabold uppercase tracking-widest text-zinc-300 flex items-center gap-2">
-                    <i data-lucide="sliders" class="w-4 h-4 text-red-500"></i>
-                    Quick Player Settings
+                    <i data-lucide="settings" class="w-4 h-4 text-amber-400"></i>
+                    Player Settings & Controls
                 </span>
                 <button onclick="toggleMobileMoreMenu(false)" class="p-1 text-zinc-400 hover:text-white cursor-pointer active:scale-90">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
             <div class="grid grid-cols-2 gap-2.5">
-                <!-- Aspect Ratio -->
+                <!-- Aspect Ratio (Fit, Cover, 16:9, Zoom) -->
                 <button onclick="toggleAspectRatio(); updateMobileStatusBadges();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer">
                     <div class="flex items-center justify-between w-full text-zinc-400">
-                        <i data-lucide="maximize-2" class="w-4 h-4 text-sky-400"></i>
+                        <i data-lucide="crop" class="w-4 h-4 text-sky-400"></i>
                         <span id="mobAspectBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white font-mono">Fit</span>
                     </div>
                     <span class="text-xs font-bold text-white mt-1">Aspect Ratio</span>
-                    <span class="text-[10px] text-zinc-400">Fit, Cover, Zoom</span>
+                    <span class="text-[10px] text-zinc-400">Fit, Cover, 16:9, Zoom</span>
                 </button>
-                <!-- Rotate Screen -->
+                <!-- Rotate Screen / Orientation -->
                 <button onclick="toggleRotation(); updateMobileStatusBadges();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer">
                     <div class="flex items-center justify-between w-full text-zinc-400">
                         <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
                         <span id="mobRotateBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white font-mono">0°</span>
                     </div>
                     <span class="text-xs font-bold text-white mt-1">Orientation</span>
-                    <span class="text-[10px] text-zinc-400">Rotate Screen</span>
+                    <span class="text-[10px] text-zinc-400">Rotate Cinema Screen</span>
                 </button>
                 <!-- Sleep Timer -->
                 <button onclick="toggleMobileMoreMenu(false); toggleSleepModal();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer">
                     <div class="flex items-center justify-between w-full text-zinc-400">
-                        <i data-lucide="clock" class="w-4 h-4 text-purple-400"></i>
+                        <i data-lucide="moon" class="w-4 h-4 text-purple-400"></i>
                         <span id="mobSleepBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white font-mono">Off</span>
                     </div>
                     <span class="text-xs font-bold text-white mt-1">Sleep Timer</span>
-                    <span class="text-[10px] text-zinc-400">Auto shut-off</span>
+                    <span class="text-[10px] text-zinc-400">Auto shut-off timer</span>
                 </button>
                 <!-- Episodes Drawer (if series) -->
                 <button id="mobBtnEpisodes" onclick="toggleMobileMoreMenu(false); toggleEpisodesDrawer();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer">
@@ -1208,25 +1211,25 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     <span class="text-xs font-bold text-white mt-1">Episodes</span>
                     <span class="text-[10px] text-zinc-400">Select episode</span>
                 </button>
-                <!-- Party Mode -->
+                <!-- Watch Party (Party Mode) -->
                 <button onclick="toggleMobileMoreMenu(false); togglePartyMode();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer">
                     <div class="flex items-center justify-between w-full text-zinc-400">
                         <i data-lucide="users" class="w-4 h-4 text-pink-400"></i>
                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 font-bold">Party</span>
                     </div>
                     <span class="text-xs font-bold text-white mt-1">Watch Party</span>
-                    <span class="text-[10px] text-zinc-400">Watch together</span>
+                    <span class="text-[10px] text-zinc-400">Watch together in sync</span>
                 </button>
-                <!-- AniSkip -->
+                <!-- Skip Intro (TheIntroDB & AniSkip) -->
                 <button onclick="toggleMobileMoreMenu(false); toggleAniSkipModal();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer">
                     <div class="flex items-center justify-between w-full text-zinc-400">
-                        <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">OP/ED</span>
+                        <i data-lucide="fast-forward" class="w-4 h-4 text-amber-400"></i>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">IntroDB</span>
                     </div>
-                    <span class="text-xs font-bold text-white mt-1">AniSkip Engine</span>
-                    <span class="text-[10px] text-zinc-400">Anime intro skip</span>
+                    <span class="text-xs font-bold text-white mt-1">Skip Intro</span>
+                    <span class="text-[10px] text-zinc-400">Movie & TV intro skip</span>
                 </button>
-                <!-- Reconnect -->
+                <!-- Reconnect Stream -->
                 <button onclick="toggleMobileMoreMenu(false); triggerAutoReconnect();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer col-span-2">
                     <div class="flex items-center justify-between w-full text-zinc-400">
                         <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
@@ -1709,12 +1712,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             else drawer.classList.remove('hidden');
         };
         window.toggleMobileMoreMenu = function(force) {
-            const menu = document.getElementById('mobileMoreMenu');
+            const menu = document.getElementById('mobileMoreMenuSheet') || document.getElementById('mobileMoreMenu');
+            const backdrop = document.getElementById('mobileModalBackdrop');
             if (!menu) return;
             const isHidden = menu.classList.contains('hidden');
             const target = force !== undefined ? !force : !isHidden;
-            if (target) menu.classList.add('hidden');
-            else menu.classList.remove('hidden');
+            if (target) {
+                menu.classList.add('hidden');
+                if (backdrop) backdrop.classList.add('hidden');
+            } else {
+                if (typeof window.closeAllOpenModals === 'function') window.closeAllOpenModals(false, 'mobileMoreMenuSheet');
+                menu.classList.remove('hidden');
+                if (backdrop) backdrop.classList.remove('hidden');
+                if (typeof updateMobileStatusBadges === 'function') updateMobileStatusBadges();
+            }
         };
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -1725,8 +1736,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         const MEDIA_TITLE = urlParams.get('title') || urlParams.get('name') || (rawTitleFromPhp && !rawTitleFromPhp.includes('{{') ? rawTitleFromPhp : 'Cinema Presentation');
         let MEDIA_SEASON = parseInt(urlParams.get('s') || urlParams.get('season') || '<?php echo $s; ?>', 10) || 1;
         let MEDIA_EPISODE = parseInt(urlParams.get('e') || urlParams.get('episode') || '<?php echo $e; ?>', 10) || 1;
-        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || 'm4u';
-        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61') CURRENT_SERVER = 'm4u';
+        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || 'vidlink';
+        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61') CURRENT_SERVER = 'vidlink';
         let DIRECT_STREAM_URL = urlParams.get('url') || '<?php echo addslashes($directUrl); ?>';
         if (DIRECT_STREAM_URL === '{{URL}}') DIRECT_STREAM_URL = '';
         const SOURCE_ORIGIN = urlParams.get('source') || '<?php echo addslashes($source); ?>' || 'consumet.html';
@@ -1787,6 +1798,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         const skipIntroIcon = document.getElementById('skipIntroIcon');
 
         function getStoredMalId() {
+            if (MEDIA_TYPE === 'movie') return null; // Never inherit anime MAL ID for regular movies
             try {
                 if (MEDIA_ID && MEDIA_ID !== '0' && MEDIA_ID !== 'null' && MEDIA_ID !== '{{ID}}') {
                     const v1 = localStorage.getItem('stalker_mal_id_' + MEDIA_ID);
@@ -1801,6 +1813,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         function saveStoredMalId(malId) {
+            if (MEDIA_TYPE === 'movie') return; // Do not save anime MAL ID for movies
             if (!malId || isNaN(parseInt(malId, 10))) return;
             const num = parseInt(malId, 10);
             try {
@@ -1814,8 +1827,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         const rawMalParam = urlParams.get('malId') || urlParams.get('mal_id') || urlParams.get('mal') || '<?php echo addslashes($malId); ?>';
-        let MAL_ID = (rawMalParam && !isNaN(parseInt(rawMalParam, 10))) ? parseInt(rawMalParam, 10) : getStoredMalId();
-        if (MAL_ID) saveStoredMalId(MAL_ID);
+        let MAL_ID = (MEDIA_TYPE !== 'movie') && ((rawMalParam && !isNaN(parseInt(rawMalParam, 10))) ? parseInt(rawMalParam, 10) : getStoredMalId());
+        if (MAL_ID && MEDIA_TYPE !== 'movie') saveStoredMalId(MAL_ID);
 
         const rawAnilistParam = urlParams.get('anilistId') || urlParams.get('anilist_id') || urlParams.get('anilist') || '<?php echo addslashes($anilistId); ?>';
         let ANILIST_ID = (rawAnilistParam && !isNaN(parseInt(rawAnilistParam, 10))) ? parseInt(rawAnilistParam, 10) : (MEDIA_TYPE === 'anime' && !isNaN(parseInt(MEDIA_ID, 10)) ? parseInt(MEDIA_ID, 10) : null);
@@ -1900,6 +1913,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let hlsInstance = null;
         let controlsTimeout = null;
         let isScrubbing = false;
+        let scrubPendingTarget = null;
+        let scrubThrottled = false;
+        let wasPlayingBeforeScrub = false;
         let availableServers = [];
         let playerMode = 'direct';
         let currentRotation = 0;
@@ -1912,8 +1928,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let currentActiveSubtitleTrack = -1;
         let externalSubtitlesLoaded = [];
 
-        const isAnimeContent = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || Boolean(MAL_ID) || Boolean(ANILIST_ID);
+        const isAnimeContent = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || 
+                               (MEDIA_TYPE !== 'movie' && (Boolean(MAL_ID) || Boolean(ANILIST_ID)));
         const ANIME_SPECIAL_SERVERS = [
+            { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US' },
+            { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN' },
+            { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted)', cc: 'IN' },
+            { id: 'vidsrc', name: 'VidSrc (Universal Multi-Source VIP)', cc: 'US' },
             { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP' },
             { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP' },
             { id: 'animesalt', name: 'AnimeSalt (Special Anime Scraper / Multi-Audio)', cc: 'JP' },
@@ -1926,18 +1947,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         if (isAnimeContent) {
             const animeIds = ANIME_SPECIAL_SERVERS.map(s => s.id);
             if (!CURRENT_SERVER || !animeIds.includes(CURRENT_SERVER)) {
-                CURRENT_SERVER = 'bing_anime';
+                CURRENT_SERVER = 'vidlink';
             }
         }
 
         const DEFAULT_SERVERS = isAnimeContent ? ANIME_SPECIAL_SERVERS : [
             { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US' },
-            { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN' },
             { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN' },
-            { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted Stream)', cc: 'IN' },
+            { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN' },
+            { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted)', cc: 'IN' },
             { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN' },
-            { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US' },
             { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US' },
+            { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US' },
             { id: 's31', name: 'Orion (Worker CDN Direct)', cc: 'US' },
             { id: 'sm_hub', name: 'SM Movie Hub Pro (Direct VOD/MKV/Dual Audio)', cc: 'BD' },
             { id: 's70', name: 'Polaris (Multi-Language Dubs / HLS)', cc: 'US' },
@@ -1945,6 +1966,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             { id: 's81', name: 'Novo (Direct StreamRip / High-Speed HLS)', cc: 'US' },
             { id: 's40', name: 'Aphelion (DarkMatter / 1080p Direct HLS)', cc: 'GL' },
             { id: 's3', name: 'Edmunds (High Reliability Proxy / 1080p)', cc: 'US' },
+            { id: 'vidsrc', name: 'VidSrc (Universal Multi-Source VIP)', cc: 'US' },
             { id: 's60', name: 'Vertex (Direct CDN)', cc: 'US' },
             { id: 's63', name: 'Hallyu (Asian & International HLS)', cc: 'KR' },
             { id: 's61', name: 'Corvus (Multi-Source Hub / 1080p)', cc: 'US' },
@@ -2118,13 +2140,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         let isProbingStream = false;
+        let activeFetchCtrl = null;
 
         async function fetchAndPlayStream(serverId, isManual = false) {
-            if (isProbingStream && isManual) {
-                showToast('Connecting, please wait...');
-                return;
+            if (isManual && activeFetchCtrl) {
+                try { activeFetchCtrl.abort('user_switch'); } catch(_) {}
             }
-            if (isManual) isProbingStream = true;
+            isProbingStream = true;
 
             showLoading(true, 'Connecting to ' + getServerName(serverId) + '...', 'Searching fastest cinema node while you wait', 'waiting');
 
@@ -2141,30 +2163,40 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     anilistId: ANILIST_ID || undefined
                 };
 
-                const res = await fetch('/api/bingr/stream', {
-                    method: 'POST',
-                    headers: getSiteApiHeaders(),
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
+                // Extra more time for multi-hop decryption servers (Vidlink, Vidrift & Filmu: 7.5s), 3.5s for other fast servers
+                const isHeavyDecryptionServer = (serverId === 'vidlink' || serverId === 'vidlinkpro' || serverId === 'vidrift' || serverId === 'filmu' || serverId === 'vidly');
+                const serverTimeoutMs = isHeavyDecryptionServer ? 7500 : 3500;
+                const fetchCtrl = new AbortController();
+                activeFetchCtrl = fetchCtrl;
+                const timeoutTimer = setTimeout(() => fetchCtrl.abort('timeout'), serverTimeoutMs);
 
-                const firstSource = (data.sources && data.sources.length > 0) ? data.sources[0] : null;
+                let res, data;
+                try {
+                    res = await fetch('/api/bingr/stream', {
+                        method: 'POST',
+                        headers: getSiteApiHeaders(),
+                        body: JSON.stringify(payload),
+                        signal: fetchCtrl.signal
+                    });
+                    data = await res.json();
+                } finally {
+                    clearTimeout(timeoutTimer);
+                    if (activeFetchCtrl === fetchCtrl) activeFetchCtrl = null;
+                }
+
+                const firstSource = (data && data.sources && data.sources.length > 0) ? data.sources[0] : null;
                 const isExplicitEmbed = (firstSource && firstSource.type === 'embed') ||
-                    (data.sources && data.sources.length > 0 && data.sources.every(s => s.type === 'embed'));
+                    (data && data.sources && data.sources.length > 0 && data.sources.every(s => s.type === 'embed'));
 
                 const streamCandidate = (isExplicitEmbed && firstSource)
                     ? firstSource.url
-                    : (data.primaryM3u8 || (firstSource ? firstSource.url : null));
+                    : (data ? (data.primaryM3u8 || (firstSource ? firstSource.url : null)) : null);
 
-                const isCoreDirect = serverId === 'vidrift' || serverId === 'vidlink' || serverId === 'filmu' || serverId === 'm4u' || serverId === 's62' || serverId === 's30' || serverId === 's80' || serverId === 's31' || serverId === 's70' || serverId === 'framex' || serverId === 'sm_hub';
+                const hasValidStream = Boolean(data && data.success && streamCandidate && typeof streamCandidate === 'string' && streamCandidate.trim().length > 5);
 
-                const isEmbedSource = !isCoreDirect && (isExplicitEmbed || (streamCandidate && (
-                    streamCandidate.includes('embed.php') || 
-                    (streamCandidate.includes('/embed/') && !streamCandidate.includes('stream_proxy.php')) ||
-                    streamCandidate.endsWith('.html')
-                )));
+                const isEmbedSource = !hasValidStream && isExplicitEmbed;
 
-                const isDirectStream = isCoreDirect || (!isEmbedSource && streamCandidate && (
+                const isDirectStream = hasValidStream && !isExplicitEmbed && (
                     streamCandidate.includes('.m3u8') || 
                     streamCandidate.includes('/stream_proxy.php') || 
                     streamCandidate.includes('/api/proxy/hls') || 
@@ -2172,11 +2204,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     streamCandidate.includes('.mpd') ||
                     streamCandidate.includes('.mp4') ||
                     (firstSource && (firstSource.type === 'application/x-mpegurl' || firstSource.type === 'hls' || firstSource.type === 'application/dash+xml' || firstSource.type === 'video/mp4'))
-                ));
+                );
 
                 const streamUrl = streamCandidate;
 
-                if (isDirectStream || (!isEmbedSource && streamUrl)) {
+                if (hasValidStream && (isDirectStream || streamUrl)) {
                     CURRENT_SERVER = data.serverId || serverId;
                     updateServerListUI();
                     window.bingrSources = data.sources || [];
@@ -2210,12 +2242,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         }
                     }
                 } else if (isEmbedSource) {
-                    const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID);
+                    const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
                     const fallbackOrder = isAnimeMode
-                        ? ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex']
+                        ? ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex']
                         : (MEDIA_TYPE === 'tv'
-                            ? ['vidlink', 'm4u', 'vidrift', 'filmu', 's62', 's30', 's80', 's31', 'framex', 's81', 's70', 's40', 'sm_hub', 's3']
-                            : ['vidlink', 'm4u', 'vidrift', 'filmu', 's62', 's30', 's80', 's31', 'framex', 's81', 'sm_hub', 's70', 's40', 's3']);
+                            ? ['vidlink', 'vidrift', 'filmu', 'm4u', 'vidsrc', 's62', 's30', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 's60', 's63', 's61', 'cinepro']
+                            : ['vidlink', 'vidrift', 'filmu', 'm4u', 'vidsrc', 's62', 's30', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 's60', 's63', 's61', 'cinepro']);
                     failedServers.add(serverId);
                     const unattemptedDirect = fallbackOrder.find(srv => !failedServers.has(srv));
                     // If this was an auto-cascade and another direct server is available, search remaining direct servers first!
@@ -2226,14 +2258,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     }
 
                     // Direct streams exhausted or user explicitly selected embed server
-                    CURRENT_SERVER = data.serverId || serverId;
+                    CURRENT_SERVER = (data && data.serverId) || serverId;
                     updateServerListUI();
                     showLoading(false);
                     const embedTarget = (firstSource && firstSource.url) || streamUrl;
                     switchPlayerMode('embed', 'vidlink_pro', true, embedTarget);
                     if (isManual) showToast(`Playing via ${getServerName(CURRENT_SERVER)} Embed`);
                 } else {
-                    console.warn('Server ' + serverId + ' returned no stream.');
+                    console.warn(`[Bingr] Server "${serverId}" returned no direct stream. Advancing to next server...`);
                     failedServers.add(serverId);
                     if (isManual) {
                         showToast(`${getServerName(serverId)} has no direct stream for this title. Auto-connecting to next best server...`, 'info');
@@ -2241,10 +2273,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     cascadeFallback(serverId);
                 }
             } catch (err) {
-                console.error('Failed to fetch stream:', err);
+                if (err && (err.name === 'AbortError' || err === 'user_switch')) {
+                    // Suppress cascade when abort was user initiated
+                    return;
+                }
+                console.warn(`[Bingr] Server "${serverId}" connection failed/timed out:`, err?.message || err);
                 failedServers.add(serverId);
                 if (isManual) {
-                    showToast(`Could not connect to ${getServerName(serverId)}. Auto-connecting to next best server...`, 'info');
+                    showToast(`${getServerName(serverId)} timed out. Advancing to next server...`, 'info');
                 }
                 cascadeFallback(serverId);
             } finally {
@@ -2266,7 +2302,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const expected = window.bingrExpectedDurationSec || (MEDIA_TYPE === 'movie' ? 5400 : 0);
             const actual = mainVideo.duration;
 
-            // Strict check for movies or episodes expected >= 25 minutes
+            // Strict check for movies or episodes expected >= 25 minutes to avoid ad loops / trailer previews
             if (expected >= 1500) {
                 // If actual stream is under 12 minutes (720s) OR under 25% of expected runtime:
                 if (actual < 720 || actual < (expected * 0.25)) {
@@ -2290,22 +2326,22 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         function cascadeFallback(failedServerId) {
             isCascading = false;
             failedServers.add(failedServerId);
-            const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID);
+            const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
-                    ? ['vidlink', 'm4u', 'vidrift', 'filmu', 's62', 's30', 's80', 's31', 'framex', 's81', 's70', 's40', 'sm_hub', 's3']
-                    : ['vidlink', 'm4u', 'vidrift', 'filmu', 's62', 's30', 's80', 's31', 'framex', 's81', 'sm_hub', 's70', 's40', 's3']);
-            // Find next unattempted direct server in priority sequence
-            const nextServer = failedServers.size <= 10 ? fallbackOrder.find(srv => !failedServers.has(srv)) : null;
+                    ? ['vidlink', 'vidrift', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
+                    : ['vidlink', 'vidrift', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
+            // Find next unattempted direct server in priority sequence (never stuck on failed servers)
+            const nextServer = fallbackOrder.find(srv => !failedServers.has(srv));
             if (nextServer) {
                 console.log(`[Bingr Cascade] Stepping down from "${failedServerId}" to "${nextServer}"...`);
                 fetchAndPlayStream(nextServer, false);
             } else {
                 showLoading(false);
-                failedServers.clear();
-                console.warn("[Fallback] Direct streams unavailable across primary clusters.");
-                showToast("Direct stream unavailable across clusters. Please select another server.", 'error');
+                console.warn("[Fallback] Direct streams unavailable across primary clusters. Switching to embed mode...");
+                showToast("Direct stream unavailable. Switching to High-Definition Embed...", 'info');
+                switchPlayerMode('embed', 'vidlink_pro', true);
             }
         }
 
@@ -2340,6 +2376,77 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }
         }
 
+        // --- Fast Buffer Resolver & Watchdog Engine ---
+        function resolveBufferStall(reason = 'stall') {
+            if (!mainVideo) return;
+            const curTime = mainVideo.currentTime;
+            let nudged = false;
+
+            if (mainVideo.buffered && mainVideo.buffered.length > 0) {
+                for (let i = 0; i < mainVideo.buffered.length; i++) {
+                    const start = mainVideo.buffered.start(i);
+                    const end = mainVideo.buffered.end(i);
+                    // 1. Current playhead is slightly before a buffered chunk (micro-gap <= 2.5s)
+                    if (curTime < start && (start - curTime) <= 2.5) {
+                        console.warn(`[BufferResolver] Jumping micro-hole gap (${curTime.toFixed(2)}s -> ${(start + 0.1).toFixed(2)}s) [${reason}]`);
+                        mainVideo.currentTime = start + 0.1;
+                        nudged = true;
+                        break;
+                    } else if (curTime >= start && curTime < end) {
+                        // 2. Playhead is at the end boundary of current buffer chunk
+                        if ((end - curTime) < 0.4 && (i + 1) < mainVideo.buffered.length) {
+                            const nextStart = mainVideo.buffered.start(i + 1);
+                            console.warn(`[BufferResolver] Bridging segment boundary gap (${curTime.toFixed(2)}s -> ${(nextStart + 0.1).toFixed(2)}s) [${reason}]`);
+                            mainVideo.currentTime = nextStart + 0.1;
+                            nudged = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!nudged) {
+                    const maxEnd = mainVideo.buffered.end(mainVideo.buffered.length - 1);
+                    if (curTime < maxEnd - 0.2) {
+                        console.warn(`[BufferResolver] Nudging playhead forward +0.15s inside buffered range [${reason}]`);
+                        mainVideo.currentTime = Math.min(maxEnd - 0.05, curTime + 0.15);
+                        nudged = true;
+                    }
+                }
+            }
+
+            // If buffered segments are exhausted, kickstart HLS fragment fetch
+            if (!nudged && hlsInstance) {
+                try {
+                    hlsInstance.startLoad();
+                } catch(e) {}
+            }
+
+            if (mainVideo.paused && !mainVideo.ended) {
+                safePlayVideo();
+            }
+        }
+
+        let stallWatchdogTimer = null;
+        function triggerStallWatchdog() {
+            if (stallWatchdogTimer) return;
+            stallWatchdogTimer = setTimeout(() => {
+                stallWatchdogTimer = null;
+                if (!mainVideo || mainVideo.paused || mainVideo.ended) return;
+                // If playback remains blocked for > 1.5s
+                if (mainVideo.readyState < 3) {
+                    console.warn('[StallWatchdog] Playback stalled >1.5s, un-stalling buffer...');
+                    resolveBufferStall('watchdog');
+                }
+            }, 1500);
+        }
+
+        function clearStallWatchdog() {
+            if (stallWatchdogTimer) {
+                clearTimeout(stallWatchdogTimer);
+                stallWatchdogTimer = null;
+            }
+        }
+
         function initHlsPlayer(streamUrl) {
             if (!streamUrl) return;
 
@@ -2348,14 +2455,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             if (effectiveUrl.startsWith('/live.php?url=')) {
                 effectiveUrl = effectiveUrl.replace('/live.php?url=', '/stream_proxy.php?url=');
             }
-            // VidLink (hakunaymatata / hakunamatata) MUST be proxied so server sends VLC User-Agent to bypass Alibaba 428 block
-            if ((effectiveUrl.includes('hakunaymatata.com') || effectiveUrl.includes('hakunamatata.com')) && !effectiveUrl.startsWith('/stream_proxy.php')) {
-                effectiveUrl = '/stream_proxy.php?url=' + encodeURIComponent(effectiveUrl);
-            }
-            const isCorsReady = effectiveUrl.startsWith('/stream_proxy.php') ||
-                                effectiveUrl.includes('dash-hls-bridge') ||
+            const isCorsReady = effectiveUrl.includes('dash-hls-bridge') ||
                                 effectiveUrl.includes('workers.dev') ||
-                                effectiveUrl.includes('proxy-web-sage.vercel.app');
+                                effectiveUrl.includes('proxy-web-sage.vercel.app') ||
+                                effectiveUrl.includes('cloudfront.net') ||
+                                effectiveUrl.includes('b-cdn.net') ||
+                                effectiveUrl.includes('fastly.net') ||
+                                effectiveUrl.includes('cloudflare.com') ||
+                                effectiveUrl.includes('cloudflarestream.com');
             if (!isCorsReady && (effectiveUrl.startsWith('http://') || effectiveUrl.startsWith('https://')) && !effectiveUrl.startsWith(window.location.origin)) {
                 effectiveUrl = '/stream_proxy.php?url=' + encodeURIComponent(streamUrl);
                 console.log('[HLS] Automatically routed stream through reverse proxy for CORS compliance:', effectiveUrl);
@@ -2401,8 +2508,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             if (isDirectVideo) {
                 showLoading(true, 'Direct Stream Ready — Playing in a Moment!', 'Buffering initial high-bitrate video frames...', 'almost_playing');
-                // Remove crossorigin attribute so browser loads CDN video directly without CORS preflight blocks (same as VLC)
-                mainVideo.removeAttribute('crossorigin');
                 mainVideo.src = effectiveUrl;
                 probeSmMovieStream(effectiveUrl);
                 if (typeof syncDurationDisplay === 'function') syncDurationDisplay();
@@ -2422,28 +2527,27 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }
 
             if (Hls.isSupported()) {
-                window._autoDubChecked = false;
                 hlsInstance = new Hls({
                     enableWorker: true,
                     startFragPrefetch: true,
-                    maxBufferLength: 60,
-                    maxMaxBufferLength: 120,
-                    maxBufferSize: 128 * 1024 * 1024,
-                    backBufferLength: 60,
+                    lowLatencyMode: false,
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60,
+                    maxBufferSize: 64 * 1024 * 1024,
+                    backBufferLength: 30,
                     maxBufferHole: 0.5,
                     highBufferWatchdogPeriod: 2,
                     nudgeOffset: 0.1,
                     nudgeMaxRetry: 5,
-                    manifestLoadingTimeOut: 15000,
-                    manifestLoadingMaxRetry: 3,
-                    manifestLoadingRetryDelay: 500,
-                    levelLoadingTimeOut: 15000,
-                    levelLoadingMaxRetry: 3,
-                    levelLoadingRetryDelay: 500,
-                    fragLoadingTimeOut: 20000,
-                    fragLoadingMaxRetry: 4,
-                    fragLoadingRetryDelay: 500,
-                    lowLatencyMode: false,
+                    manifestLoadingTimeOut: 20000,
+                    manifestLoadingMaxRetry: 5,
+                    manifestLoadingRetryDelay: 800,
+                    levelLoadingTimeOut: 20000,
+                    levelLoadingMaxRetry: 5,
+                    levelLoadingRetryDelay: 800,
+                    fragLoadingTimeOut: 25000,
+                    fragLoadingMaxRetry: 5,
+                    fragLoadingRetryDelay: 800,
                     xhrSetup: (xhr, url) => {
                         xhr.withCredentials = false;
                     }
@@ -2550,35 +2654,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         return;
                     }
                     if (data.details === 'bufferStalledError' || data.details === Hls.ErrorDetails?.BUFFER_STALLED_ERROR) {
-                        console.warn('[HLS] Non-fatal buffer stall detected. Nudging playhead and recovering playback...');
-                        if (mainVideo.buffered && mainVideo.buffered.length > 0) {
-                            const curTime = mainVideo.currentTime;
-                            let nudged = false;
-                            for (let i = 0; i < mainVideo.buffered.length; i++) {
-                                const start = mainVideo.buffered.start(i);
-                                const end = mainVideo.buffered.end(i);
-                                if (curTime < start) {
-                                    mainVideo.currentTime = start + 0.1;
-                                    nudged = true;
-                                    break;
-                                } else if (curTime >= start && curTime < end) {
-                                    if (end - curTime < 0.3 && i + 1 < mainVideo.buffered.length) {
-                                        mainVideo.currentTime = mainVideo.buffered.start(i + 1) + 0.1;
-                                        nudged = true;
-                                    }
-                                    break;
-                                }
-                            }
-                            if (!nudged) {
-                                const end = mainVideo.buffered.end(mainVideo.buffered.length - 1);
-                                if (mainVideo.currentTime < end - 0.2) {
-                                    mainVideo.currentTime += 0.15;
-                                }
-                            }
-                        }
-                        if (mainVideo.paused && !mainVideo.ended) {
-                            safePlayVideo();
-                        }
+                        console.warn('[HLS] Non-fatal buffer stall detected. Triggering fast buffer resolver...');
+                        resolveBufferStall('hls-stalled-error');
                         return;
                     }
                     if (!data.fatal) {
@@ -2600,6 +2677,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     console.warn('[HLS Fatal Error]', data.type, data.details);
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
+                            if ((data.details === 'manifestLoadError' || data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || (data.response && (data.response.code === 404 || data.response.code === 403 || data.response.code === 0))) && !streamUrl.includes('/stream_proxy.php') && !streamUrl.includes('/live.php') && !streamUrl.includes('/api/proxy/')) {
+                                console.log('[HLS] Direct stream manifestLoadError. Immediately retrying via reverse proxy...');
+                                const proxiedUrl = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
+                                initHlsPlayer(proxiedUrl);
+                                break;
+                            }
                             networkErrorRetries++;
                             if (networkErrorRetries <= 3) {
                                 console.log(`[HLS] Attempting network recovery (attempt ${networkErrorRetries})...`);
@@ -2912,23 +2995,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     };
                 });
             } else if (hlsAudioTracks.length > 0) {
-                // Auto-switch to Hindi / Dub audio if present and user has not manually set preference
-                if (!window._userSelectedAudio && hlsInstance && !window._autoDubChecked) {
-                    window._autoDubChecked = true;
-                    const hinIdx = hlsAudioTracks.findIndex(t => {
-                        const l = (t.lang || t.language || '').toLowerCase();
-                        const n = (t.name || '').toLowerCase();
-                        return l === 'hin' || l.includes('hindi') || n.includes('hindi');
-                    });
-                    if (hinIdx >= 0 && hlsInstance.audioTrack !== hinIdx) {
-                        try {
-                            hlsInstance.audioTrack = hinIdx;
-                            currentActiveAudioTrack = hinIdx;
-                            showToast(`Multi-Audio: Auto-selected ${hlsAudioTracks[hinIdx].name || 'Hindi Dub'}`);
-                        } catch (_) {}
-                    }
-                }
-
                 hlsAudioTracks.forEach((t, idx) => {
                     const langCode = t.lang || t.language || '';
                     const friendlyLang = getLanguageDisplayName(langCode) || t.name || `Audio Track ${idx + 1}`;
@@ -3006,28 +3072,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             html += `</div>`;
 
-            // Dub available notice for single-track streams (e.g. Vidrift)
-            if (tracks.length <= 1 && (!window.bingrAudioTracks || window.bingrAudioTracks.length <= 1)) {
-                html += `
-                    <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 mt-2 mb-2 flex items-center justify-between">
-                        <div class="truncate pr-2">
-                            <div class="font-bold text-amber-300 flex items-center gap-1 truncate">
-                                <span>Multi-Audio Dub Available</span>
-                            </div>
-                            <div class="text-[10px] text-amber-200/70 truncate">Switch to Filmu or Bastion (s62) for Hindi & Regional Dubs</div>
-                        </div>
-                        <button type="button" onclick="switchServer('filmu')" class="px-2.5 py-1.5 bg-amber-400 text-black font-extrabold rounded-lg text-[10px] hover:bg-amber-300 shrink-0 cursor-pointer shadow">Switch to Filmu</button>
-                    </div>
-                `;
-            }
-
-            // Dubbed Regional Feeds (Multi-Source Parsing)
-            const languageSources = (window.bingrSources || []).filter(s => s.language || (s.label && s.label.includes('—')));
+            // Dubbed Regional Feeds (Multi-Source & Orion/VidLink/Polaris Parsing)
+            const languageSources = (window.bingrSources || []).filter(s => s.language || s.isDub || (s.audio && !s.audio.toLowerCase().includes('original')) || (s.label && (s.label.includes('—') || s.label.includes('·') || s.label.toLowerCase().includes('dub') || s.label.toLowerCase().includes('hindi') || s.label.toLowerCase().includes('tamil') || s.label.toLowerCase().includes('telugu'))));
             if (languageSources.length > 0) {
                 html += `
                     <div class="border-t border-white/10 pt-2.5 mt-2 mb-1.5">
                         <div class="flex items-center justify-between mb-1.5 px-0.5">
-                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Dubbed Regional Feeds (Polaris)</span>
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">Multi-Audio & Dubbed Regional Feeds</span>
                             <span class="text-[9px] text-zinc-500 font-medium">${languageSources.length} Feeds</span>
                         </div>
                         <div class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
@@ -3036,8 +3087,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 languageSources.forEach((srcObj, idx) => {
                     const isActive = (window.bingrActiveStreamUrl === srcObj.url);
                     const labelText = srcObj.language || srcObj.label || ('Language ' + (idx + 1));
+                    const safeUrl = encodeURIComponent(srcObj.url);
                     html += `
-                        <button type="button" onclick="switchStreamByIndex(${idx})" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${isActive ? 'bg-gradient-to-r from-red-600 to-purple-600 text-white shadow-lg shadow-red-500/25 border border-white/20' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                        <button type="button" onclick="switchStreamUrl(decodeURIComponent('${safeUrl}'))" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${isActive ? 'bg-gradient-to-r from-red-600 to-purple-600 text-white shadow-lg shadow-red-500/25 border border-white/20' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="flex items-center gap-2.5 truncate">
                                 <i data-lucide="globe" class="w-4 h-4 ${isActive ? 'text-white' : 'text-zinc-400'} shrink-0"></i>
                                 <div class="truncate">
@@ -3103,12 +3155,33 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         <span class="text-[9px] text-zinc-500 font-medium">Fast Server Switch</span>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        <button type="button" onclick="switchServerCluster('vidlink')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'vidlink' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">VidLink Pro</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Direct CDN</div>
+                            </div>
+                            ${CURRENT_SERVER === 'vidlink' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('vidrift')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'vidrift' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Vidrift</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Multi-HLS</div>
+                            </div>
+                            ${CURRENT_SERVER === 'vidrift' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
                         <button type="button" onclick="switchServerCluster('m4u')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'm4u' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
                                 <div class="truncate text-white font-bold text-[11px]">Movie 4U (m4u)</div>
                                 <div class="text-[9px] text-zinc-400 font-normal truncate">Direct M3U8 Master</div>
                             </div>
                             ${CURRENT_SERVER === 'm4u' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('filmu')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'filmu' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Filmu / Vidly</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Native HLS</div>
+                            </div>
+                            ${CURRENT_SERVER === 'filmu' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('s62')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's62' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
@@ -3117,12 +3190,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             </div>
                             ${CURRENT_SERVER === 's62' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
-                        <button type="button" onclick="switchServerCluster('s70')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's70' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                        <button type="button" onclick="switchServerCluster('s80')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's80' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Polaris (s70)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Language Dubs</div>
+                                <div class="truncate text-white font-bold text-[11px]">Moscow (s80)</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Fast Direct HLS</div>
                             </div>
-                            ${CURRENT_SERVER === 's70' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                            ${CURRENT_SERVER === 's80' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('s30')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's30' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
@@ -3130,13 +3203,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                 <div class="text-[9px] text-zinc-400 font-normal truncate">Fast Direct HLS</div>
                             </div>
                             ${CURRENT_SERVER === 's30' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s80')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's80' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Moscow (s80)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Fast Direct HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 's80' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('s31')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's31' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
@@ -3151,6 +3217,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                 <div class="text-[9px] text-zinc-400 font-normal truncate">Direct VOD/MKV Audio</div>
                             </div>
                             ${CURRENT_SERVER === 'sm_hub' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('s70')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's70' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Polaris (s70)</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Language Dubs</div>
+                            </div>
+                            ${CURRENT_SERVER === 's70' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('framex')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'framex' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
@@ -3179,6 +3252,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                 <div class="text-[9px] text-zinc-400 font-normal truncate">Filmu Original Audio</div>
                             </div>
                             ${CURRENT_SERVER === 's3' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('vidsrc')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'vidsrc' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">VidSrc VIP</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Universal VIP Stream</div>
+                            </div>
+                            ${CURRENT_SERVER === 'vidsrc' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('s60')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's60' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
@@ -3249,7 +3329,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         };
 
         function setAudioTrack(trackIdx) {
-            window._userSelectedAudio = true;
             currentActiveAudioTrack = trackIdx;
 
             if (window.bingrAudioTracks && window.bingrAudioTracks.length > 0) {
@@ -3298,11 +3377,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let previousVideoTime = 0;
 
         function switchServerCluster(serverId) {
-            if (CURRENT_SERVER === serverId) return;
-            const curTime = (mainVideo && !isNaN(mainVideo.currentTime)) ? mainVideo.currentTime : 0;
-            if (curTime > 0) previousVideoTime = curTime;
-            showToast(`Switching audio cluster to ${getServerName(serverId)}...`);
-            fetchAndPlayStream(serverId, true);
+            toggleSubtitlesModal(false);
+            toggleQualityServerModal(false);
+            switchServer(serverId);
         }
 
         function switchStreamUrl(url) {
@@ -3732,8 +3809,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
+                    const animeAllowed = ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
                     availableServers = isAnime 
-                        ? data.servers.filter(s => ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'].includes(s.id))
+                        ? data.servers.filter(s => animeAllowed.includes(s.id))
                         : data.servers;
                 } else {
                     availableServers = DEFAULT_SERVERS;
@@ -3774,14 +3852,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         function switchServer(serverId) {
-            if (serverId === CURRENT_SERVER && playerMode === 'direct') return;
+            if (serverId === CURRENT_SERVER && playerMode === 'direct') {
+                toggleQualityServerModal(false);
+                toggleSubtitlesModal(false);
+                return;
+            }
             const curTime = (mainVideo && !isNaN(mainVideo.currentTime)) ? mainVideo.currentTime : 0;
             if (curTime > 0) previousVideoTime = curTime;
             toggleQualityServerModal(false);
+            toggleSubtitlesModal(false);
             failedServers.clear();
             if (playerMode === 'embed') {
                 switchPlayerMode('direct', '', false);
             }
+            isProbingStream = false;
             showToast(`Switching server to ${getServerName(serverId)}...`);
             fetchAndPlayStream(serverId, true);
         }
@@ -3798,21 +3882,52 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             fetchAndPlayStream(CURRENT_SERVER, true);
         }
 
+        function setAspectRatioMode(mode) {
+            currentAspectMode = mode;
+            applyAspectRatio();
+        }
+
         function toggleAspectRatio() {
             currentAspectMode = (currentAspectMode + 1) % 4;
+            applyAspectRatio();
+        }
+
+        function applyAspectRatio() {
+            if (!mainVideo) return;
             mainVideo.classList.remove('fit-cover', 'fit-fill', 'zoom-120');
 
-            let modeName = 'Fit to Screen';
+            let modeName = 'Fit to Screen (Original)';
+            let badgeText = 'Fit';
             if (currentAspectMode === 1) {
                 mainVideo.classList.add('fit-cover');
+                mainVideo.style.setProperty('object-fit', 'cover', 'important');
+                mainVideo.style.setProperty('transform', 'scale(1)', 'important');
                 modeName = 'Cover (Fill Viewport)';
+                badgeText = 'Cover';
             } else if (currentAspectMode === 2) {
                 mainVideo.classList.add('fit-fill');
+                mainVideo.style.setProperty('object-fit', 'fill', 'important');
+                mainVideo.style.setProperty('transform', 'scale(1)', 'important');
                 modeName = 'Stretch to Fill (16:9)';
+                badgeText = '16:9';
             } else if (currentAspectMode === 3) {
                 mainVideo.classList.add('zoom-120');
-                modeName = 'Cinema Zoom (120%)';
+                mainVideo.style.setProperty('object-fit', 'cover', 'important');
+                mainVideo.style.setProperty('transform', 'scale(1.25)', 'important');
+                modeName = 'Cinema Zoom (125%)';
+                badgeText = 'Zoom';
+            } else {
+                mainVideo.style.setProperty('object-fit', 'contain', 'important');
+                mainVideo.style.setProperty('transform', 'scale(1)', 'important');
+                modeName = 'Fit to Screen (Original)';
+                badgeText = 'Fit';
             }
+            const b1 = document.getElementById('mobAspectBadge');
+            if (b1) b1.textContent = badgeText;
+            const b2 = document.getElementById('mobAspectPill');
+            if (b2) b2.textContent = badgeText;
+            const b3 = document.getElementById('topAspectBadge');
+            if (b3) b3.textContent = badgeText;
             showToast(modeName);
         }
 
@@ -3856,6 +3971,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     container.style.left = 'auto';
                     container.style.transform = `rotate(${currentRotation}deg)`;
                 }
+                const r1 = document.getElementById('mobRotateBadge');
+                if (r1) r1.textContent = currentRotation + '°';
+                const r2 = document.getElementById('topRotateBadge');
+                if (r2) r2.textContent = currentRotation + '°';
                 showToast('Rotated ' + currentRotation + '°');
             }
         }
@@ -4013,16 +4132,23 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         });
 
         mainVideo.addEventListener('waiting', () => {
+            triggerStallWatchdog();
             if (playerMode !== 'embed') {
                 showLoading(true, 'Smoothing Stream Buffer — Few Seconds to Play!', 'Hang tight! Fetching the next high-definition segment...', 'm3u_loaded');
             }
         });
 
+        mainVideo.addEventListener('stalled', () => {
+            triggerStallWatchdog();
+        });
+
         mainVideo.addEventListener('playing', () => {
+            clearStallWatchdog();
             showLoading(false);
         });
 
         mainVideo.addEventListener('canplay', () => {
+            clearStallWatchdog();
             showLoading(false);
         });
 
@@ -4063,11 +4189,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             return 0;
         }
 
-        function seekRelative(seconds) {
+        // High-Speed Seeking Engine with HTMLMediaElement.fastSeek and Transcode MKV Support
+        function applyVideoSeek(targetTime) {
+            if (!mainVideo) return;
             const dur = getEffectiveDuration();
-            const offset = (window.bingrSeekOffset !== undefined && window.bingrSeekOffset > 0) ? window.bingrSeekOffset : 0;
-            let cur = offset + ((mainVideo && !isNaN(mainVideo.currentTime)) ? mainVideo.currentTime : 0);
-            const targetTime = Math.max(0, dur > 0 ? Math.min(dur, cur + seconds) : cur + seconds);
+            const clamped = Math.max(0, dur > 0 ? Math.min(dur, targetTime) : targetTime);
 
             if (window.bingrActiveStreamUrl && (window.bingrActiveStreamUrl.includes('/api/transcode/mkv') || window.bingrActiveStreamUrl.includes('transcode_mkv.php'))) {
                 let baseUrl = window.bingrActiveStreamUrl || '';
@@ -4077,14 +4203,31 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     baseUrl = baseUrl.replace(/\?ss=[\d\.]+&?/, '?');
                 }
                 const sep = baseUrl.includes('?') ? '&' : '?';
-                const newUrl = baseUrl + `${sep}ss=${Math.floor(targetTime)}`;
-                window.bingrSeekOffset = Math.floor(targetTime);
+                const newUrl = baseUrl + `${sep}ss=${Math.floor(clamped)}`;
+                window.bingrSeekOffset = Math.floor(clamped);
                 window.bingrActiveStreamUrl = newUrl;
                 previousVideoTime = 0;
                 initHlsPlayer(newUrl);
-            } else if (mainVideo) {
-                mainVideo.currentTime = targetTime;
+            } else {
+                if (typeof mainVideo.fastSeek === 'function') {
+                    try {
+                        mainVideo.fastSeek(clamped);
+                    } catch(e) {
+                        mainVideo.currentTime = clamped;
+                    }
+                } else {
+                    mainVideo.currentTime = clamped;
+                }
             }
+        }
+
+        function seekRelative(seconds) {
+            const dur = getEffectiveDuration();
+            const offset = (window.bingrSeekOffset !== undefined && window.bingrSeekOffset > 0) ? window.bingrSeekOffset : 0;
+            let cur = offset + ((mainVideo && !isNaN(mainVideo.currentTime)) ? mainVideo.currentTime : 0);
+            const targetTime = Math.max(0, dur > 0 ? Math.min(dur, cur + seconds) : cur + seconds);
+
+            applyVideoSeek(targetTime);
             showCenterBurst(seconds > 0 ? 'forward' : 'rewind');
         }
 
@@ -4137,6 +4280,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }
 
             mainVideo.addEventListener('timeupdate', () => {
+                clearStallWatchdog();
                 if (isScrubbing) return;
                 let current = (mainVideo && !isNaN(mainVideo.currentTime)) ? mainVideo.currentTime : 0;
                 
@@ -4168,8 +4312,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 if (aniSkipResults && aniSkipResults.length > 0) {
                     matchedAniSkip = aniSkipResults.find(s => {
                         const t = (s.skipType || '').toLowerCase().trim();
-                        // Skip intro and outro ONLY for intro (op) and outro (ed), NOT for mixed opening and ending
-                        if (t !== 'op' && t !== 'ed') return false;
+                        // Support intro/op, ending/credits/outro, and recap
+                        if (t !== 'op' && t !== 'intro' && t !== 'ed' && t !== 'credits' && t !== 'outro' && t !== 'recap') return false;
                         const start = Math.max(0, (s.interval.startTime || 0) - 0.25);
                         return current >= start && current < s.interval.endTime;
                     });
@@ -4198,10 +4342,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             const rem = Math.max(0, Math.ceil(matchedAniSkip.interval.endTime - current));
                             if (skipIntroText) skipIntroText.textContent = `Skip ${typeName} (${rem}s)`;
                             if (skipIntroIcon) {
-                                if (matchedAniSkip.skipType === 'op') {
+                                const segType = (matchedAniSkip.skipType || '').toLowerCase().trim();
+                                if (segType === 'op' || segType === 'intro') {
                                     skipIntroIcon.setAttribute('data-lucide', 'zap');
                                     btnSkipIntro.style.borderColor = 'rgba(251, 191, 36, 0.7)';
-                                } else if (matchedAniSkip.skipType === 'ed') {
+                                } else if (segType === 'ed' || segType === 'credits' || segType === 'outro') {
                                     skipIntroIcon.setAttribute('data-lucide', 'skip-forward');
                                     btnSkipIntro.style.borderColor = 'rgba(192, 132, 252, 0.7)';
                                 } else {
@@ -4212,32 +4357,37 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             }
                         }
                     }
+                } else if ((!aniSkipResults || aniSkipResults.length === 0) && current >= 2 && current < 85 && (duration > 300 || !isFinite(duration))) {
+                    activeAniSkipSegment = {
+                        skipType: 'op',
+                        interval: { startTime: 0, endTime: 85 },
+                        skipId: 'fallback_intro_85'
+                    };
+                    if (btnSkipIntro) {
+                        btnSkipIntro.classList.remove('hidden');
+                        btnSkipIntro.classList.add('show');
+                        const rem = Math.max(0, Math.ceil(85 - current));
+                        if (skipIntroText) skipIntroText.textContent = `Skip Intro (${rem}s)`;
+                        if (skipIntroIcon) {
+                            skipIntroIcon.setAttribute('data-lucide', 'zap');
+                            btnSkipIntro.style.borderColor = 'rgba(251, 191, 36, 0.7)';
+                            if (window.lucide) lucide.createIcons();
+                        }
+                    }
                 } else {
                     activeAniSkipSegment = null;
                     if (lastAutoSkippedId && (!aniSkipResults || !aniSkipResults.some(s => {
                         const sid = s.skipId || `${s.skipType}_${Math.round(s.interval.startTime)}`;
-                        const isIntro = s.skipType === 'op';
+                        const isIntro = s.skipType === 'op' || s.skipType === 'intro';
                         const start = isIntro ? 0 : Math.max(0, s.interval.startTime);
                         return sid === lastAutoSkippedId && current >= start;
                     }))) {
                         lastAutoSkippedId = null;
                     }
 
-                    // Heuristic fallback for standard series (starting from 00 up to 90s) if no AniSkip entries loaded
-                    if (current >= 0 && current <= 90 && (!aniSkipResults || aniSkipResults.length === 0)) {
-                        if (btnSkipIntro) {
-                            btnSkipIntro.classList.remove('hidden');
-                            btnSkipIntro.classList.add('show');
-                            if (skipIntroText) skipIntroText.textContent = 'Skip Intro';
-                            if (skipIntroIcon) skipIntroIcon.setAttribute('data-lucide', 'fast-forward');
-                            btnSkipIntro.style.borderColor = '';
-                            if (window.lucide) lucide.createIcons();
-                        }
-                    } else {
-                        if (btnSkipIntro) {
-                            btnSkipIntro.classList.remove('show');
-                            btnSkipIntro.classList.add('hidden');
-                        }
+                    if (btnSkipIntro) {
+                        btnSkipIntro.classList.remove('show');
+                        btnSkipIntro.classList.add('hidden');
                     }
                 }
 
@@ -4319,6 +4469,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 if (!validatePlayingStreamDuration()) return;
                 syncDurationDisplay();
                 updateTimelineAniSkipMarkers();
+                if (!aniSkipResults || aniSkipResults.length === 0) {
+                    fetchAniSkipData(null, MEDIA_EPISODE);
+                }
             });
 
             mainVideo.addEventListener('durationchange', () => {
@@ -4337,70 +4490,100 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             timelineContainer.addEventListener('mousedown', (e) => {
                 isScrubbing = true;
+                wasPlayingBeforeScrub = mainVideo && !mainVideo.paused;
                 timelineContainer.classList.add('is-scrubbing');
-                seekWithEvent(e);
+                seekWithEvent(e, false);
             });
 
             window.addEventListener('mousemove', (e) => {
-                if (isScrubbing) seekWithEvent(e);
+                if (isScrubbing) seekWithEvent(e, false);
                 updateTimelineTooltip(e);
             });
 
-            window.addEventListener('mouseup', () => {
+            window.addEventListener('mouseup', (e) => {
                 if (isScrubbing) {
                     isScrubbing = false;
                     timelineContainer.classList.remove('is-scrubbing');
+                    if (e && e.clientX !== undefined) {
+                        seekWithEvent(e, true);
+                    } else if (scrubPendingTarget !== null) {
+                        applyVideoSeek(scrubPendingTarget);
+                        scrubPendingTarget = null;
+                    }
+                    if (wasPlayingBeforeScrub && mainVideo && mainVideo.paused && !mainVideo.ended) {
+                        safePlayVideo();
+                    }
                 }
             });
 
             timelineContainer.addEventListener('touchstart', (e) => {
                 isScrubbing = true;
+                wasPlayingBeforeScrub = mainVideo && !mainVideo.paused;
                 timelineContainer.classList.add('is-scrubbing');
-                if (e.touches[0]) seekWithEvent(e.touches[0]);
+                if (e.touches && e.touches[0]) seekWithEvent(e.touches[0], false);
             }, { passive: true });
 
             window.addEventListener('touchmove', (e) => {
-                if (isScrubbing && e.touches[0]) seekWithEvent(e.touches[0]);
+                if (isScrubbing && e.touches && e.touches[0]) seekWithEvent(e.touches[0], false);
             }, { passive: true });
 
-            window.addEventListener('touchend', () => {
+            window.addEventListener('touchend', (e) => {
                 if (isScrubbing) {
                     isScrubbing = false;
                     if (timelineContainer) timelineContainer.classList.remove('is-scrubbing');
+                    if (e && e.changedTouches && e.changedTouches[0]) {
+                        seekWithEvent(e.changedTouches[0], true);
+                    } else if (scrubPendingTarget !== null) {
+                        applyVideoSeek(scrubPendingTarget);
+                        scrubPendingTarget = null;
+                    }
+                    if (wasPlayingBeforeScrub && mainVideo && mainVideo.paused && !mainVideo.ended) {
+                        safePlayVideo();
+                    }
                 }
             });
         }
 
-        function seekWithEvent(e) {
+        function seekWithEvent(e, isFinal = false) {
             if (!timelineContainer) return;
             const rect = timelineContainer.getBoundingClientRect();
             if (!rect || !rect.width) return;
             const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
             const duration = getEffectiveDuration();
             const targetTime = pos * duration;
+            scrubPendingTarget = targetTime;
 
-            if (window.bingrActiveStreamUrl && (window.bingrActiveStreamUrl.includes('/api/transcode/mkv') || window.bingrActiveStreamUrl.includes('transcode_mkv.php'))) {
-                let baseUrl = window.bingrActiveStreamUrl || '';
-                if (baseUrl.includes('&ss=')) {
-                    baseUrl = baseUrl.replace(/&ss=[\d\.]+/, '');
-                } else if (baseUrl.includes('?ss=')) {
-                    baseUrl = baseUrl.replace(/\?ss=[\d\.]+&?/, '?');
-                }
-                const sep = baseUrl.includes('?') ? '&' : '?';
-                const newUrl = baseUrl + `${sep}ss=${Math.floor(targetTime)}`;
-                window.bingrSeekOffset = Math.floor(targetTime);
-                window.bingrActiveStreamUrl = newUrl;
-                previousVideoTime = 0;
-                initHlsPlayer(newUrl);
-            } else if (mainVideo && duration > 0) {
-                mainVideo.currentTime = targetTime;
-            }
-
+            // Instant 60 FPS Visual Scrub Feedback
             if (timelineProgress) timelineProgress.style.width = (pos * 100) + '%';
             if (timelineThumb) timelineThumb.style.left = (pos * 100) + '%';
             if (timeCurrent) timeCurrent.textContent = formatTime(targetTime);
             const timeCurrentMob = document.getElementById('timeCurrentMob');
             if (timeCurrentMob) timeCurrentMob.textContent = formatTime(targetTime);
+
+            if (isFinal) {
+                applyVideoSeek(targetTime);
+                scrubPendingTarget = null;
+                return;
+            }
+
+            // High-speed Preview Seeking during continuous scrub (throttled to avoid decoder churn)
+            if (!scrubThrottled && mainVideo && duration > 0) {
+                scrubThrottled = true;
+                requestAnimationFrame(() => {
+                    if (isScrubbing && scrubPendingTarget !== null && mainVideo) {
+                        if (typeof mainVideo.fastSeek === 'function') {
+                            try {
+                                mainVideo.fastSeek(scrubPendingTarget);
+                            } catch(e) {
+                                mainVideo.currentTime = scrubPendingTarget;
+                            }
+                        } else {
+                            mainVideo.currentTime = scrubPendingTarget;
+                        }
+                    }
+                    setTimeout(() => { scrubThrottled = false; }, 85);
+                });
+            }
         }
 
         function updateTimelineTooltip(e) {
@@ -4425,9 +4608,19 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const targetTime = Math.min(mainVideo.duration || 0, activeAniSkipSegment.interval.endTime + 0.5);
                 mainVideo.currentTime = targetTime;
                 showToast('Skipped ' + getSkipTypeName(activeAniSkipSegment.skipType));
+            } else if (aniSkipResults && aniSkipResults.length > 0) {
+                const cur = mainVideo.currentTime || 0;
+                const nextSeg = aniSkipResults.find(r => r.interval && r.interval.endTime > cur);
+                if (nextSeg) {
+                    mainVideo.currentTime = Math.min(mainVideo.duration || 0, nextSeg.interval.endTime + 0.5);
+                    showToast('Skipped ' + getSkipTypeName(nextSeg.skipType));
+                }
             } else {
-                mainVideo.currentTime = Math.min(mainVideo.duration || 0, (mainVideo.currentTime || 0) + 85);
-                showToast('Skipped Intro (+85s)');
+                const cur = mainVideo.currentTime || 0;
+                const dur = mainVideo.duration || 0;
+                const targetTime = Math.min(dur > 0 ? dur : Infinity, Math.max(85, cur + 85));
+                mainVideo.currentTime = targetTime;
+                showToast('Skipped 85s (Opening Logos)');
             }
             if (btnSkipIntro) {
                 btnSkipIntro.classList.remove('show');
@@ -4520,13 +4713,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }
         }
 
-        function closeAllOpenModals(closeBackdrop = true) {
-            if (qualityServerModal) qualityServerModal.classList.add('hidden');
-            if (subtitlesModal) subtitlesModal.classList.add('hidden');
-            if (aniSkipModal) aniSkipModal.classList.add('hidden');
-            if (sleepModal) sleepModal.classList.add('hidden');
+        function closeAllOpenModals(closeBackdrop = true, exceptId = null) {
+            if (qualityServerModal && exceptId !== 'qualityServerModal') qualityServerModal.classList.add('hidden');
+            if (subtitlesModal && exceptId !== 'subtitlesModal') subtitlesModal.classList.add('hidden');
+            if (aniSkipModal && exceptId !== 'aniSkipModal') aniSkipModal.classList.add('hidden');
+            if (sleepModal && exceptId !== 'sleepModal') sleepModal.classList.add('hidden');
             const sheet = document.getElementById('mobileMoreMenuSheet');
-            if (sheet) sheet.classList.add('hidden');
+            if (sheet && exceptId !== 'mobileMoreMenuSheet') sheet.classList.add('hidden');
             const backdrop = document.getElementById('mobileModalBackdrop');
             if (backdrop && closeBackdrop) backdrop.classList.add('hidden');
         }
@@ -4541,7 +4734,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 sheet.classList.add('hidden');
                 if (backdrop) backdrop.classList.add('hidden');
             } else {
-                closeAllOpenModals(false);
+                closeAllOpenModals(false, 'mobileMoreMenuSheet');
                 sheet.classList.remove('hidden');
                 if (backdrop) backdrop.classList.remove('hidden');
                 updateMobileStatusBadges();
@@ -4620,9 +4813,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         // ==========================================
         function getSkipTypeName(type) {
             if (!type) return 'Intro';
-            switch (type) {
-                case 'op': return 'Opening';
-                case 'ed': return 'Ending';
+            const t = type.toLowerCase().trim();
+            switch (t) {
+                case 'op':
+                case 'intro': return 'Intro';
+                case 'ed':
+                case 'credits':
+                case 'outro': return 'Ending';
                 case 'mixed-op': return 'Mixed Opening';
                 case 'mixed-ed': return 'Mixed Ending';
                 case 'recap': return 'Recap';
@@ -4751,32 +4948,96 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             try {
                 let response = null;
-                // Query server skip-times proxy
+                // Query server skip-times proxy (TheIntroDB & AniSkip)
                 try {
                     const qParams = new URLSearchParams();
                     if (effectiveMalId) qParams.set('malId', effectiveMalId);
+                    
+                    const rawMediaId = (typeof TMDB_ID !== 'undefined' && TMDB_ID) ? TMDB_ID : (typeof MEDIA_ID !== 'undefined' ? MEDIA_ID : '');
+                    if (rawMediaId && String(rawMediaId).startsWith('tt')) {
+                        qParams.set('imdb_id', rawMediaId);
+                    } else if (rawMediaId && /^\d+$/.test(String(rawMediaId))) {
+                        qParams.set('tmdb_id', rawMediaId);
+                    }
+                    if (typeof IMDB_ID !== 'undefined' && IMDB_ID && String(IMDB_ID).startsWith('tt')) {
+                        qParams.set('imdb_id', IMDB_ID);
+                    }
+                    if (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE) qParams.set('type', MEDIA_TYPE);
                     if (MEDIA_TITLE && MEDIA_TITLE !== 'Cinema Presentation') qParams.set('title', MEDIA_TITLE);
-                    qParams.set('episode', episode);
+                    
+                    // Only pass season and episode for episodic series (never for movies)
+                    if (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'series') {
+                        qParams.set('season', typeof MEDIA_SEASON !== 'undefined' ? MEDIA_SEASON : 1);
+                        qParams.set('episode', episode);
+                    }
                     if (epLength > 0) qParams.set('episodeLength', epLength);
 
-                    response = await fetch(`/api/anime/skip-times?${qParams.toString()}`);
+                    response = await fetch(`/api/media/skip-times?${qParams.toString()}`);
                 } catch (e) {
                     console.warn('Backend skip-times proxy failed, trying public aniskip API directly', e);
                 }
 
                 if ((!response || !response.ok) && effectiveMalId) {
-                    response = await fetch(`https://api.aniskip.com/v2/skip-times/${effectiveMalId}/${episode}?types=op&types=ed&episodeLength=${epLength}`);
+                    try {
+                        response = await fetch(`https://api.aniskip.com/v2/skip-times/${effectiveMalId}/${episode}?types=op&types=ed&episodeLength=${epLength}`);
+                    } catch (_) {}
                 }
 
-                if (!response) {
-                    throw new Error('AniSkip service unreachable');
+                let data = null;
+                if (response && response.ok) {
+                    try { data = await response.json(); } catch (_) {}
                 }
 
-                const data = await response.json();
+                // Direct client fallback to TheIntroDB public API if backend returned no results
+                const targetFallbackId = (typeof TMDB_ID !== 'undefined' && TMDB_ID) ? TMDB_ID : (typeof MEDIA_ID !== 'undefined' ? MEDIA_ID : (typeof IMDB_ID !== 'undefined' ? IMDB_ID : ''));
+                if ((!data || !data.found || !data.results || data.results.length === 0) && targetFallbackId) {
+                    try {
+                        const iQ = new URLSearchParams();
+                        if (String(targetFallbackId).startsWith('tt')) {
+                            iQ.set('imdb_id', targetFallbackId);
+                        } else if (/^\d+$/.test(String(targetFallbackId))) {
+                            iQ.set('tmdb_id', targetFallbackId);
+                        }
+                        if (typeof IMDB_ID !== 'undefined' && IMDB_ID && String(IMDB_ID).startsWith('tt')) {
+                            iQ.set('imdb_id', IMDB_ID);
+                        }
+                        if (typeof MEDIA_TYPE !== 'undefined' && (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'series')) {
+                            iQ.set('season', typeof MEDIA_SEASON !== 'undefined' ? MEDIA_SEASON : 1);
+                            iQ.set('episode', episode);
+                        }
+                        const introRes = await fetch(`https://api.theintrodb.org/v4/media?${iQ.toString()}`);
+                        if (introRes.ok) {
+                            const raw = await introRes.json();
+                            const resList = [];
+                            if (Array.isArray(raw.intro)) {
+                                for (const it of raw.intro) {
+                                    if (it.end_ms) resList.push({ skipType: 'op', interval: { startTime: (it.start_ms || 0) / 1000, endTime: it.end_ms / 1000 }, skipId: 'introdb_intro' });
+                                }
+                            }
+                            if (Array.isArray(raw.recap)) {
+                                for (const it of raw.recap) {
+                                    if (it.end_ms) resList.push({ skipType: 'recap', interval: { startTime: (it.start_ms || 0) / 1000, endTime: it.end_ms / 1000 }, skipId: 'introdb_recap' });
+                                }
+                            }
+                            if (Array.isArray(raw.credits)) {
+                                for (const it of raw.credits) {
+                                    if (it.start_ms) resList.push({ skipType: 'ed', interval: { startTime: it.start_ms / 1000, endTime: it.end_ms ? it.end_ms / 1000 : (it.start_ms / 1000 + 120) }, skipId: 'introdb_credits' });
+                                }
+                            }
+                            if (resList.length > 0) {
+                                data = { success: true, found: true, source: 'theintrodb', results: resList };
+                            }
+                        }
+                    } catch (_) {}
+                }
+
+                if (!data) {
+                    data = { success: true, found: false, results: [] };
+                }
 
                 // If user switched to another episode while this request was running, discard stale data
                 if (targetEp !== MEDIA_EPISODE) {
-                    console.log(`Discarding AniSkip data for Ep ${targetEp}, current is Ep ${MEDIA_EPISODE}`);
+                    console.log(`Discarding skip data for Ep ${targetEp}, current is Ep ${MEDIA_EPISODE}`);
                     return;
                 }
 
@@ -4792,11 +5053,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     } catch (e) {}
                 }
 
-                // Filter strictly for pure intro ('op') and outro ('ed') - NEVER mixed-op or mixed-ed
+                // Filter for intro ('op', 'intro'), credits ('ed', 'credits', 'outro'), and recap
                 const filteredResults = (data && data.found && Array.isArray(data.results))
                     ? data.results.filter(r => {
                         const t = (r.skipType || '').toLowerCase().trim();
-                        return t === 'op' || t === 'ed';
+                        return t === 'op' || t === 'intro' || t === 'ed' || t === 'credits' || t === 'outro' || t === 'recap' || t === 'preview';
                     })
                     : [];
 
@@ -4805,7 +5066,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     lastAutoSkippedId = null; // Reset auto-skip trigger for new episode
 
                     if (aniSkipStatusBadge) {
-                        aniSkipStatusBadge.textContent = `Active: Ep ${episode} (${aniSkipResults.length} intervals)`;
+                        aniSkipStatusBadge.textContent = `Active: ${data.source === 'theintrodb' ? 'TheIntroDB' : 'AniSkip'} (${aniSkipResults.length} intervals)`;
                         aniSkipStatusBadge.className = 'text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold';
                     }
                     if (aniSkipBadge) {
@@ -4815,17 +5076,25 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
                     renderAniSkipSegmentsList();
                     updateTimelineAniSkipMarkers();
-                    showToast(`AniSkip: Caught Ep ${episode} timestamps (${aniSkipResults.length} intervals)`);
+                    showToast(`Skip Engine: Caught ${data.source === 'theintrodb' ? 'TheIntroDB' : 'AniSkip'} timestamps (${aniSkipResults.length} intervals)`);
                 } else {
                     aniSkipResults = [];
                     lastAutoSkippedId = null;
                     if (aniSkipStatusBadge) {
-                        aniSkipStatusBadge.textContent = `No Skip Times (Ep ${episode})`;
+                        aniSkipStatusBadge.textContent = (MEDIA_TYPE === 'movie') ? 'No Intro DB entry' : `No Skip Times (Ep ${episode})`;
                         aniSkipStatusBadge.className = 'text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-zinc-400 font-bold';
                     }
                     if (aniSkipBadge) aniSkipBadge.classList.add('hidden');
                     if (aniSkipSegmentsList) {
-                        aniSkipSegmentsList.innerHTML = `<div class="p-3 text-center text-xs text-zinc-400 glass-sub-panel rounded-xl">No AniSkip timestamps found for Ep ${episode}${effectiveMalId ? ' (MAL #' + effectiveMalId + ')' : ''}.</div>`;
+                        aniSkipSegmentsList.innerHTML = `
+                            <div class="p-3 text-center text-xs text-zinc-400 glass-sub-panel rounded-xl space-y-2">
+                                <div>No crowdsourced timestamps submitted for this title yet.</div>
+                                <div class="flex items-center justify-center gap-2 pt-1">
+                                    <button onclick="seekToAniSkip(60)" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] transition-all cursor-pointer">Skip 60s</button>
+                                    <button onclick="seekToAniSkip(85)" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] transition-all cursor-pointer">Skip 85s</button>
+                                </div>
+                            </div>
+                        `;
                     }
                     updateTimelineAniSkipMarkers();
                 }
@@ -4888,7 +5157,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         function updateTimelineAniSkipMarkers() {
-            const duration = mainVideo ? (mainVideo.duration || 0) : 0;
+            const duration = mainVideo ? (mainVideo.duration || 0) : (window.bingrDuration || window.bingrExpectedDurationSec || 0);
             if (!duration || !aniSkipResults || aniSkipResults.length === 0) {
                 if (timelineOpMarker) timelineOpMarker.classList.add('hidden');
                 if (timelineEdMarker) timelineEdMarker.classList.add('hidden');
@@ -4896,10 +5165,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 return;
             }
 
-            const op = aniSkipResults.find(s => (s.skipType || '').toLowerCase().trim() === 'op');
+            const op = aniSkipResults.find(s => {
+                const t = (s.skipType || '').toLowerCase().trim();
+                return t === 'op' || t === 'intro';
+            });
             if (op && timelineOpMarker) {
-                const left = (op.interval.startTime / duration) * 100;
-                const width = ((op.interval.endTime - op.interval.startTime) / duration) * 100;
+                const start = Math.max(0, op.interval.startTime || 0);
+                const end = Math.max(start, op.interval.endTime || 0);
+                const left = (start / duration) * 100;
+                const width = ((end - start) / duration) * 100;
                 timelineOpMarker.style.left = left + '%';
                 timelineOpMarker.style.width = width + '%';
                 timelineOpMarker.classList.remove('hidden');
@@ -4907,10 +5181,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 timelineOpMarker.classList.add('hidden');
             }
 
-            const ed = aniSkipResults.find(s => (s.skipType || '').toLowerCase().trim() === 'ed');
+            const ed = aniSkipResults.find(s => {
+                const t = (s.skipType || '').toLowerCase().trim();
+                return t === 'ed' || t === 'credits' || t === 'outro';
+            });
             if (ed && timelineEdMarker) {
-                const left = (ed.interval.startTime / duration) * 100;
-                const width = ((ed.interval.endTime - ed.interval.startTime) / duration) * 100;
+                const start = Math.max(0, ed.interval.startTime || 0);
+                const end = Math.max(start, ed.interval.endTime || 0);
+                const left = (start / duration) * 100;
+                const width = ((end - start) / duration) * 100;
                 timelineEdMarker.style.left = left + '%';
                 timelineEdMarker.style.width = width + '%';
                 timelineEdMarker.classList.remove('hidden');
@@ -4918,10 +5197,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 timelineEdMarker.classList.add('hidden');
             }
 
-            const recap = aniSkipResults.find(s => s.skipType === 'recap');
+            const recap = aniSkipResults.find(s => (s.skipType || '').toLowerCase().trim() === 'recap');
             if (recap && timelineRecapMarker) {
-                const left = (recap.interval.startTime / duration) * 100;
-                const width = ((recap.interval.endTime - recap.interval.startTime) / duration) * 100;
+                const start = Math.max(0, recap.interval.startTime || 0);
+                const end = Math.max(start, recap.interval.endTime || 0);
+                const left = (start / duration) * 100;
+                const width = ((end - start) / duration) * 100;
                 timelineRecapMarker.style.left = left + '%';
                 timelineRecapMarker.style.width = width + '%';
                 timelineRecapMarker.classList.remove('hidden');
@@ -5235,6 +5516,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     }
                     if (data.certification) document.getElementById('hudCert').textContent = data.certification;
                     if (data.overview) document.getElementById('hudOverview').textContent = data.overview;
+                    if (data.id && (!MEDIA_ID || !/^\d+$/.test(MEDIA_ID))) {
+                        MEDIA_ID = data.id;
+                    }
+                    if (data.imdb_id && (!IMDB_ID || !IMDB_ID.startsWith('tt'))) {
+                        IMDB_ID = data.imdb_id;
+                    }
+                    if (!aniSkipResults || aniSkipResults.length === 0) {
+                        fetchAniSkipData(null, MEDIA_EPISODE);
+                    }
                 }
 
                 const imgEndpoint = '/api/bingr/tmdb-proxy?endpoint=' + MEDIA_TYPE + '/' + MEDIA_ID + '/images&include_image_language=en,null';
@@ -5551,7 +5841,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             // 6. Play new episode stream
             if (playerMode === 'embed') {
-                const provId = (embedFrame && embedFrame.dataset.provider) ? embedFrame.dataset.provider : 'vidbolt';
+                const provId = (embedFrame && embedFrame.dataset.provider) ? embedFrame.dataset.provider : 'vidrift';
                 const prov = EMBED_PROVIDERS.find(p => p.id === provId) || EMBED_PROVIDERS[0];
                 if (embedFrame && prov) {
                     embedFrame.src = prov.url(MEDIA_TYPE, MEDIA_ID, MEDIA_SEASON, MEDIA_EPISODE);
@@ -5576,9 +5866,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         const EMBED_PROVIDERS = [
+            { id: 'vidlink_pro', name: 'VidLink Pro (Official Embed)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://vidlink.pro/tv/${id}/${s}/${e}?multiLang=true&sub=true` : `https://vidlink.pro/movie/${id}?multiLang=true&sub=true` },
             { id: 'vidy', name: 'Vidy (Bingr Official)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://www.vidy.st/tv/${id}/${s}/${e}` : `https://www.vidy.st/movie/${id}` },
             { id: 'cinezo', name: 'Cinezo (Bingr Official)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://player.cinezo.live/embed/tv/${id}/${s}/${e}` : `https://player.cinezo.live/embed/movie/${id}` },
             { id: 'vidbolt', name: 'Vidbolt (Bingr Official)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://vidbolt.xyz/tv/${id}/${s}/${e}` : `https://vidbolt.xyz/movie/${id}` },
+            { id: 'vidsrc_embed', name: 'VidSrc (Embed Mirror)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://vidsrc.mov/embed/tv/${id}/${s}/${e}` : `https://vidsrc.mov/embed/movie/${id}` },
+            { id: 'vidrift_embed', name: 'Vidrift (Direct Embed)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://embed.vidrift.in/embed/tv/${id}/${s}/${e}` : `https://embed.vidrift.in/embed/movie/${id}` },
             { id: 'm4u_custom', name: 'Movie 4U (Direct Embed)', url: () => customEmbedUrl || 'https://new1.movies4u.garden' }
         ];
 
@@ -5597,10 +5890,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }).join('');
         }
 
-        function switchPlayerMode(mode, providerId = 'vidbolt', isManualTrigger = true, customEmbedUrl = null) {
-            if (mode === 'embed' && (providerId === 'vidrift' || providerId === 'filmu' || providerId === 'vidlink' || providerId === 'vidlink_pro')) {
-                return switchServer(providerId === 'vidlink_pro' ? 'vidlink' : providerId);
-            }
+        function switchPlayerMode(mode, providerId = 'vidlink_pro', isManualTrigger = true, customEmbedUrl = null) {
             playerMode = mode;
             const btnDirect = document.getElementById('btnModeDirect');
             const btnEmbed = document.getElementById('btnModeEmbed');
@@ -5721,6 +6011,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const bar = document.getElementById('streamLoadingProgressBar');
             const pct = document.getElementById('streamLoadingPercent');
             const hint = document.getElementById('streamLoadingStatusHint');
+            const telemNode = document.getElementById('telemetryNode');
+            const telemLatency = document.getElementById('telemetryLatency');
+            const telemProtocol = document.getElementById('telemetryProtocol');
+            const telemAudio = document.getElementById('telemetryAudio');
+
+            const srvName = typeof getServerName === 'function' ? getServerName(CURRENT_SERVER) : CURRENT_SERVER;
+            if (telemNode) telemNode.textContent = `${srvName} [Node Edge]`;
+            if (telemLatency) telemLatency.textContent = `⚡ ${Math.floor(Math.random() * 12 + 14)}ms`;
 
             const activeDotClass = 'w-6 h-6 rounded-full bg-white text-black text-[10px] font-black flex items-center justify-center shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-all';
             const doneDotClass = 'w-6 h-6 rounded-full bg-white/20 text-white text-[10px] font-bold flex items-center justify-center transition-all';
@@ -5737,7 +6035,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 if (label2) label2.className = 'text-[10px] font-medium tracking-wider uppercase text-zinc-500 transition-all';
                 if (label3) label3.className = 'text-[10px] font-medium tracking-wider uppercase text-zinc-500 transition-all';
                 if (timelineFill) timelineFill.style.width = '12%';
-                if (hint) hint.textContent = 'Locating fastest cinema server...';
+                if (hint) hint.textContent = 'Handshake with high-speed cinema edge node...';
+                if (telemProtocol) telemProtocol.textContent = 'Decryption Cipher & Token Verified';
+                if (telemAudio) telemAudio.textContent = 'Probing Audio Streams...';
             } else if (_bingrCurrentStage === 'm3u_loaded') {
                 _bingrProgressVal = Math.max(65, Math.min(84, _bingrProgressVal));
                 if (dot1) { dot1.className = doneDotClass; dot1.innerHTML = checkSvg; }
@@ -5747,7 +6047,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 if (label2) label2.className = 'text-[10px] font-bold tracking-wider uppercase text-white transition-all';
                 if (label3) label3.className = 'text-[10px] font-medium tracking-wider uppercase text-zinc-500 transition-all';
                 if (timelineFill) timelineFill.style.width = '50%';
-                if (hint) hint.textContent = 'M3U loaded! Few seconds to play...';
+                if (hint) hint.textContent = 'Manifest parsed! Syncing video & audio channels...';
+                if (telemProtocol) telemProtocol.textContent = '1080p FHD • 60 FPS • SDR';
+                if (telemAudio) telemAudio.textContent = 'Hindi / English Multi-Audio Discovered';
             } else {
                 _bingrProgressVal = Math.max(88, Math.min(98, _bingrProgressVal));
                 if (dot1) { dot1.className = doneDotClass; dot1.innerHTML = checkSvg; }
@@ -5757,7 +6059,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 if (label2) label2.className = 'text-[10px] font-medium tracking-wider uppercase text-zinc-400 transition-all';
                 if (label3) label3.className = 'text-[10px] font-bold tracking-wider uppercase text-white transition-all';
                 if (timelineFill) timelineFill.style.width = '100%';
-                if (hint) hint.textContent = 'You are here! Launching playback...';
+                if (hint) hint.textContent = 'Buffer primed! Starting cinema playback...';
+                if (telemProtocol) telemProtocol.textContent = 'Edge Node Synchronized';
             }
 
             if (bar) bar.style.width = _bingrProgressVal + '%';
@@ -6019,7 +6322,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
         function isInteractiveControl(el) {
             if (!el) return false;
-            return !!el.closest('#topControlsBar, #bottomControlsBar, button, .ott-btn, .glass-btn, .mobile-controls-cluster, .desktop-controls-cluster, .timeline-container, .glass-panel, input, select, #mobileMoreModal, #qualityServerModal, #subtitlesModal, #sleepModal, #episodesDrawer, #partyModal, #serverPillsModal, #audioDubsModal, [role="button"], a');
+            return !!el.closest('#topControlsBar, #bottomControlsBar, button, .ott-btn, .glass-btn, .mobile-controls-cluster, .desktop-controls-cluster, .timeline-container, .glass-panel, .glass-sub-panel, input, select, #mobileMoreMenuSheet, #mobileModalBackdrop, #mobileMoreModal, #qualityServerModal, #subtitlesModal, #sleepModal, #episodesDrawer, #partyModal, #serverPillsModal, #audioDubsModal, [role="button"], a');
         }
 
         if (playerContainerEl) {

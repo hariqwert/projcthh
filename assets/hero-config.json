@@ -1,0 +1,25 @@
+{
+  "heroVideo": {
+    "type": "local",
+    "url": "/assets/hero-video.mp4",
+    "fallbackUrl": "/assets/char_head.mp4"
+  },
+  "musicMedia": {
+    "sourceType": "local",
+    "title": "Lossless Studio Vinyl Continuum",
+    "artist": "Audius 24-Bit Acoustic Masters",
+    "audioUrl": "/assets/music_cinematic_macro.mp4",
+    "videoBgUrl": "/assets/music_cinematic_macro.mp4",
+    "query": "",
+    "ytVideoId": "",
+    "m3uUrl": "",
+    "autoplay": true,
+    "mutedByDefault": true,
+    "volume": 0.95
+  },
+  "tvVideo": {
+    "type": "local",
+    "url": "/assets/floating_glass_hud.mp4"
+  },
+  "lastUpdated": 1729858600000
+}

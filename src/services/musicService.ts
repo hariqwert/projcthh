@@ -80,7 +80,27 @@ export class MusicService {
             } catch (e: any) {}
         }
 
-        // 2. TIER 2: Audius Full-Length Master Audio Network
+        // 2. TIER 2: YouTube Music Core (Global High-Coverage Scraper)
+        if (results.length < limit) {
+            try {
+                const ytItems = await YouTubeService.searchYouTube(cleanQ, Math.max(5, limit - results.length));
+                for (const y of ytItems) {
+                    results.push({
+                        id: `yt-${y.id}`,
+                        title: y.title,
+                        artist: y.uploader,
+                        artwork: y.thumbnail || `https://i.ytimg.com/vi/${y.id}/hqdefault.jpg`,
+                        streamUrl: `/api/v1/youtube/stream?v=${y.id}&type=audio&title=${encodeURIComponent(y.title)}&artist=${encodeURIComponent(y.uploader)}`,
+                        downloadUrl: `/api/v1/youtube/stream?v=${y.id}&type=audio`,
+                        source: 'youtube'
+                    });
+                }
+            } catch (e: any) {
+                console.error('[MusicService] YouTube Tier 2 error:', e.message);
+            }
+        }
+
+        // 3. TIER 3: Audius Full-Length Master Audio Network
         if (results.length < limit) {
             try {
                 const audiusUrl = `https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(cleanQ)}&app_name=STALKER_PRO`;

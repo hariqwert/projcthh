@@ -8,7 +8,7 @@ router.get(['/', '/search'], async (req: Request, res: Response) => {
     try {
         const query = (req.query.q || req.query.query || '') as string;
         const source = (req.query.source || 'all') as string;
-        const limit = parseInt(req.query.limit as string) || 24;
+        const limit = parseInt(req.query.limit as string) || 48;
 
         if (!query.trim()) {
             return res.json({
@@ -34,7 +34,7 @@ router.get(['/', '/search'], async (req: Request, res: Response) => {
 router.get('/suggestions', (req: Request, res: Response) => {
     try {
         const query = (req.query.q || req.query.query || '') as string;
-        const limit = parseInt(req.query.limit as string) || 8;
+        const limit = parseInt(req.query.limit as string) || 10;
         const suggestions = ConsumetSearchService.getSuggestions(query, limit);
         return res.json({ status: "success", suggestions });
     } catch (e: any) {
@@ -70,7 +70,7 @@ router.get('/sports', async (req: Request, res: Response) => {
 router.get('/movies', async (req: Request, res: Response) => {
     try {
         const query = (req.query.q || req.query.query || '') as string;
-        const limit = parseInt(req.query.limit as string) || 24;
+        const limit = parseInt(req.query.limit as string) || 48;
         const movies = await ConsumetSearchService.searchMoviesAndSeriesFast(query, limit);
         return res.json({ status: "success", count: movies.length, movies });
     } catch (e: any) {

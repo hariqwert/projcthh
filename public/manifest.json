@@ -1,33 +1,42 @@
 {
-  "id": "/",
-  "name": "Stalker Pro Entertainment Hub",
+  "id": "/consumet.html",
+  "name": "Stalker Pro 2.0",
   "short_name": "Stalker Pro",
-  "description": "High-performance IPTV portal emulator, pure HLS video player, and comprehensive entertainment hub for movies, TV and music.",
-  "start_url": "/",
+  "description": "Enterprise Live Sports & VOD Streaming Platform",
+  "start_url": "/consumet.html?pwa=1",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
   "background_color": "#030712",
-  "theme_color": "#ef4444",
-  "categories": ["entertainment", "video", "multimedia"],
+  "theme_color": "#030712",
+  "orientation": "any",
   "icons": [
     {
-      "src": "/pwa-192x192.png",
+      "src": "/assets/pwa-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-512x512.png",
+      "src": "/assets/pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-maskable-512x512.png",
+      "src": "/assets/pwa-maskable-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "categories": ["entertainment", "video", "sports"],
+  "screenshots": [
+    {
+      "src": "/assets/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Stalker Pro 2.0 Streaming Dashboard"
     }
   ]
 }

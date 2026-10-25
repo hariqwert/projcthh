@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
+import https from 'https';
 import net from 'net';
 import { cleanTsBuffer } from '../proxy';
 import {
@@ -8,11 +9,13 @@ import {
     getTvDetails,
     getTvEpisodes,
     findTmdbMatch,
+    resolveImdbToTmdbId,
     scrapeBingrStream,
     buildBingrM3u,
     unwrapDirectStreamUrl,
     normalizeServerId,
     BINGR_SERVERS,
+    BingrServerCluster,
     getTmdbKeys,
     getRotatingTmdbKey,
     getCdnHeaders,
@@ -29,6 +32,7 @@ import {
 } from '../services/smMovieHubService';
 
 const router = Router();
+const tmdbHttpsAgent = new https.Agent({ keepAlive: true, family: 4, maxSockets: 100 });
 
 /**
  * Validates that an HTTP/HTTPS URL does not target localhost, private subnets,
@@ -80,11 +84,11 @@ export function isSafePublicUrl(inputUrl: string): boolean {
 }
 
 /**
- * Sliding-window rate limiter for TMDB Proxy (60 requests per minute per IP)
+ * Sliding-window rate limiter for TMDB Proxy (300 requests per minute per IP)
  */
 const tmdbRateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const TMDB_RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const TMDB_RATE_LIMIT_MAX_REQUESTS = 60;
+const TMDB_RATE_LIMIT_MAX_REQUESTS = 300;
 
 function isTmdbRateLimited(ip: string): boolean {
     const now = Date.now();
@@ -159,9 +163,22 @@ router.get('/tmdb-proxy', async (req: Request, res: Response) => {
         return res.status(429).json({ error: 'Too many TMDB requests. Please slow down.' });
     }
 
-    const endpoint = (req.query.endpoint as string || '').trim();
+    let endpoint = (req.query.endpoint as string || '').trim();
     if (!endpoint || endpoint.includes('..') || !ALLOWED_TMDB_ENDPOINT.test(endpoint)) {
         return res.status(400).json({ error: 'Invalid or unauthorized TMDB endpoint' });
+    }
+
+    // If endpoint contains an IMDb ID (e.g., movie/tt8661774 or tv/tt8661774), resolve to numeric TMDB ID first
+    const imdbEndpointMatch = endpoint.match(/^(movie|tv)\/(tt\d+)(\/.*)?$/i);
+    if (imdbEndpointMatch) {
+        const imdbId = imdbEndpointMatch[2];
+        const suffix = imdbEndpointMatch[3] || '';
+        try {
+            const resolved = await resolveImdbToTmdbId(imdbId);
+            if (resolved && resolved.tmdbId) {
+                endpoint = `${resolved.type}/${resolved.tmdbId}${suffix}`;
+            }
+        } catch (_) {}
     }
 
     // Build normalized cache key excluding api_key
@@ -186,12 +203,13 @@ router.get('/tmdb-proxy', async (req: Request, res: Response) => {
 
     const keys = getTmdbKeys();
     for (let attempts = 0; attempts < keys.length; attempts++) {
-        const apiKey = keys[attempts];
+        const apiKey = getRotatingTmdbKey();
         params.set('api_key', apiKey);
         
         try {
             const tmdbRes = await axios.get(`https://api.themoviedb.org/3/${endpoint}?${params.toString()}`, {
-                timeout: 6000
+                timeout: 3500,
+                httpsAgent: tmdbHttpsAgent
             });
             if (tmdbRes.status === 200 && tmdbRes.data) {
                 if (tmdbProxyCache.size >= MAX_CACHE_ENTRIES) {
@@ -237,18 +255,20 @@ router.get('/servers', (req: Request, res: Response) => {
                     Boolean(req.query.mal) || 
                     Boolean(req.query.anilistId);
     if (isAnime) {
-        const animeServers = BINGR_SERVERS.filter(s =>
-            ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'].includes(s.id)
-        );
+        const animeIds = ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
+        const animeServers = animeIds
+            .map(id => BINGR_SERVERS.find(s => s.id === id))
+            .filter((s): s is BingrServerCluster => Boolean(s));
         return res.json({ status: 'success', servers: animeServers });
     }
     res.json({ status: 'success', servers: BINGR_SERVERS });
 });
 
 router.get('/anime_servers', (req: Request, res: Response) => {
-    const animeServers = BINGR_SERVERS.filter(s =>
-        ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'].includes(s.id)
-    );
+    const animeIds = ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
+    const animeServers = animeIds
+        .map(id => BINGR_SERVERS.find(s => s.id === id))
+        .filter((s): s is BingrServerCluster => Boolean(s));
     res.json({ status: 'success', servers: animeServers });
 });
 
@@ -456,7 +476,6 @@ router.all(['/stream', '/scrape'], async (req: Request, res: Response) => {
         const episode = body.episode ? Number(body.episode) : (body.query?.episode ? Number(body.query.episode) : undefined);
         const srv = body.srv || body.server;
         const strictSrv = body.strictSrv === true || body.strict === true || body.strictSrv === 'true' || body.strict === 'true';
-        const nocache = body.nocache === '1' || body.nocache === true || body.force === '1' || body.force === true;
 
         const result = await scrapeBingrStream({
             type,
@@ -468,8 +487,7 @@ router.all(['/stream', '/scrape'], async (req: Request, res: Response) => {
             srv,
             strictSrv,
             anilistId,
-            malId,
-            nocache
+            malId
         });
 
         if (result.success) {

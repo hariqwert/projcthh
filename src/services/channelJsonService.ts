@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { syncToFirestore } from './firestoreSyncService';
+import { syncToFirestore, saveAndSyncAdminDB } from './firestoreSyncService';
 import axios from 'axios';
 import { LogoService } from './logoService';
 
@@ -17,6 +17,7 @@ export interface ChannelItem {
     score?: number;
     streamUrl?: string;
     playUrl?: string;
+    [key: string]: any;
 }
 
 export interface ConvertOptions {
@@ -559,7 +560,7 @@ export class ChannelJsonService {
                     if (db.liveEvents.length !== beforeLen) dbChanged = true;
                 }
                 if (dbChanged) {
-                    fs.writeFileSync(adminDbPath + '.tmp', JSON.stringify(db, null, 2), 'utf8'); fs.renameSync(adminDbPath + '.tmp', adminDbPath); syncToFirestore(db).catch((e: any) => console.error("Firestore sync error from channelJsonService:", e));
+                    saveAndSyncAdminDB(db);
                 }
             }
         } catch (e) {}

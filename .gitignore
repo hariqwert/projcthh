@@ -15,7 +15,10 @@ clean-anime-repo/
 dist/
 anime-scraper/storage/cache/
 storage/*.m3u
+# Allow hero and music background videos in assets
 *.mp4
+!assets/*.mp4
+!assets/**/*.mp4
 doctor_strange/server_logs_36h.jsonl
 doctor_strange/multiverse.log
 doctor_strange/tmp_chunks/

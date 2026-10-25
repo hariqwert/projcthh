@@ -252,6 +252,8 @@ if (!file_exists($DARK_SIDE . "/login.stalker") && !$has_playlists) {
     }
 </style>
     <link rel="icon" type="image/png" href="stalker_pro_infinity.svg">
+    <!-- Global Ambient Background & Audio Stream Injector -->
+    <script src="/bg-inject.js"></script>
 </head>
 <body class="bg-black text-white">
 

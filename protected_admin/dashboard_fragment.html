@@ -370,17 +370,63 @@
                         </div>
                     </div>
 
-                    <!-- Search Tool for JioSaavn & YouTube -->
-                    <div class="p-5 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-mono font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
-                                <i data-lucide="search" class="w-4 h-4"></i>
-                                Instant Cloud Music Search (JioSaavn & YouTube)
-                            </span>
-                            <span class="text-[10px] font-mono text-zinc-500">Pick any track to auto-populate Audio URL</span>
+                    <!-- SUB-PANEL A: DEDICATED MUSIC VIDEO CONTROLLER (Visual Background) -->
+                    <div class="p-5 rounded-2xl bg-gradient-to-r from-amber-950/20 via-zinc-950/90 to-black border border-amber-500/30 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded bg-amber-400 text-black font-mono font-bold text-[10px] uppercase">VIDEO LAYER</span>
+                                <h3 class="text-sm font-black text-white uppercase tracking-wider">Music Section Background Video Controller</h3>
+                            </div>
+                            <span class="text-[11px] font-mono text-amber-300">The video playing behind Stage 4 Acoustics</span>
                         </div>
+
+                        <!-- Presets for Music Video -->
+                        <div>
+                            <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-2">Quick Video Presets:</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" onclick="setHeroMusicPresetVideo('/assets/music_cinematic_macro.mp4')" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-400 hover:text-black border border-amber-500/30 text-amber-300 text-xs font-mono font-bold transition-all flex items-center gap-1.5">
+                                    <i data-lucide="disc" class="w-3.5 h-3.5"></i>
+                                    <span>🎥 Vinyl Roller Macro (Original)</span>
+                                </button>
+                                <button type="button" onclick="setHeroMusicPresetVideo('/assets/x-video-2112396538651775204-1-720p.mp4')" class="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-400 hover:text-black border border-purple-500/30 text-purple-300 text-xs font-mono font-bold transition-all flex items-center gap-1.5">
+                                    <i data-lucide="film" class="w-3.5 h-3.5"></i>
+                                    <span>🎥 Cyberpunk Audio Haze</span>
+                                </button>
+                                <button type="button" onclick="setHeroMusicPresetVideo('/assets/floating_glass_hud.mp4')" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-400 hover:text-black border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold transition-all flex items-center gap-1.5">
+                                    <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
+                                    <span>🎥 Holographic Studio HUD</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                            <div class="md:col-span-8">
+                                <label class="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">Background Video Path / URL (MP4 / WebM / Stream)</label>
+                                <input type="text" id="heroMusicVideoBgUrl" class="w-full h-10 px-3.5 rounded-xl bg-black/80 border border-zinc-700 text-xs font-mono text-white focus:outline-none focus:border-amber-400" placeholder="/assets/music_cinematic_macro.mp4">
+                            </div>
+                            <div class="md:col-span-4 flex items-center gap-2">
+                                <button type="button" onclick="copyVideoUrlToAudioUrl()" class="flex-1 h-10 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 font-mono font-bold text-xs uppercase transition-all" title="Sets the song audio to match this video file">
+                                    Use Video Audio
+                                </button>
+                                <button type="button" onclick="testHeroMediaPreview()" class="px-4 h-10 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-mono font-bold text-xs uppercase transition-all">
+                                    Preview
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-PANEL B: DEDICATED MUSIC AUDIO CONTROLLER (Soundtrack / Cloud Stream) -->
+                    <div class="p-5 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-4">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded bg-indigo-500 text-white font-mono font-bold text-[10px] uppercase">AUDIO LAYER</span>
+                                <h3 class="text-sm font-black text-white uppercase tracking-wider">Music Soundtrack & Cloud Stream Controller</h3>
+                            </div>
+                            <span class="text-[11px] font-mono text-zinc-500">Pick any track to auto-populate Audio URL</span>
+                        </div>
+
                         <div class="flex flex-col sm:flex-row items-center gap-3">
-                            <input type="text" id="heroMusicSearchQuery" placeholder="Search track, artist, album (e.g. Kesariya, Arijit Singh, Believer, Alan Walker)..." class="flex-1 w-full h-11 px-4 rounded-xl bg-black border border-zinc-700 text-sm font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400">
+                            <input type="text" id="heroMusicSearchQuery" placeholder="Search song or artist on JioSaavn or YouTube (e.g. Kesariya, Arijit Singh, Believer)..." class="flex-1 w-full h-11 px-4 rounded-xl bg-black border border-zinc-700 text-sm font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400">
                             <div class="flex items-center gap-2 w-full sm:w-auto">
                                 <button type="button" onclick="searchHeroMusic('jiosaavn')" class="flex-1 sm:flex-initial px-4 h-11 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all">
                                     <i data-lucide="music-2" class="w-4 h-4"></i>

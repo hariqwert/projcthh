@@ -4875,11 +4875,11 @@ window.setAdminSearchSource = function(src, target = 'maintenance') {
     window._adminActiveMusicSource = src;
     const isMaintenance = target === 'maintenance';
     ['saavn', 'archive', 'itunes', 'curated', 'youtube', 'upload'].forEach(s => {
-        ['maintenance', 'power'].forEach(t => {
+        ['maintenance', 'power', 'bgAudio'].forEach(t => {
             const btn = document.getElementById(`btn_src_${t}_${s}`);
             if (btn) {
                 if (s === src) {
-                    btn.className = `flex-1 py-1.5 rounded-lg text-white ${t === 'maintenance' ? 'bg-pink-600' : 'bg-teal-600'} font-bold transition-all shadow-md`;
+                    btn.className = `flex-1 py-1.5 rounded-lg text-white ${t === 'maintenance' ? 'bg-pink-600' : (t === 'bgAudio' ? 'bg-indigo-600' : 'bg-teal-600')} font-bold transition-all shadow-md`;
                 } else {
                     btn.className = "flex-1 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all";
                 }
@@ -4888,14 +4888,16 @@ window.setAdminSearchSource = function(src, target = 'maintenance') {
     });
     const badges = [
         document.getElementById('maintenanceActiveSourceBadge'),
-        document.getElementById('powerActiveSourceBadge')
+        document.getElementById('powerActiveSourceBadge'),
+        document.getElementById('bgAudioSourceBadge')
     ];
     badges.forEach(badge => {
         if (badge) badge.textContent = src.toUpperCase();
     });
     const inputs = [
         document.getElementById('maintenanceMusicQuery'),
-        document.getElementById('powerMusicQuery')
+        document.getElementById('powerMusicQuery'),
+        document.getElementById('bgAudioQuery')
     ];
     inputs.forEach(input => {
         if (input && !input.value.trim()) {
@@ -5089,9 +5091,9 @@ window.searchAdminMusic = async function(target = 'maintenance') {
         if (fileInput) fileInput.click();
         return;
     }
-    const queryInput = document.getElementById(target === 'power' ? 'powerMusicQuery' : 'maintenanceMusicQuery');
+    const queryInput = document.getElementById(target === 'power' ? 'powerMusicQuery' : (target === 'bgAudio' ? 'bgAudioQuery' : 'maintenanceMusicQuery'));
     const query = queryInput ? queryInput.value.trim() : '';
-    const resultsDiv = document.getElementById(target === 'power' ? 'powerMusicResults' : 'adminMusicResults');
+    const resultsDiv = document.getElementById(target === 'power' ? 'powerMusicResults' : (target === 'bgAudio' ? 'bgAudioResults' : 'adminMusicResults'));
     if (!resultsDiv) return;
 
     if (!query && window._adminActiveMusicSource !== 'curated') {
@@ -9904,30 +9906,36 @@ window.clearBgAudio = function() {
 };
 
 window.saveBgAudio = async function() {
+    const adminToken = localStorage.getItem('adminToken') || (typeof getAdminToken === 'function' ? getAdminToken() : '') || (typeof token !== 'undefined' ? token : '');
+    const audioUrl = (document.getElementById('bgAudioUrl')?.value || '').trim();
+    if (!audioUrl) {
+        showToast('Error', 'Please select or search an audio stream track first', 'error');
+        return;
+    }
     const payload = {
         globalAudio: {
-            type: document.getElementById('bgAudioType').value || 'auto',
-            url: document.getElementById('bgAudioUrl').value || '',
-            title: document.getElementById('bgAudioSelectedTitle').innerText,
-            artist: document.getElementById('bgAudioSelectedArtist').innerText,
-            thumbnail: document.getElementById('bgAudioSelectedImg').src,
+            type: document.getElementById('bgAudioType')?.value || 'auto',
+            url: audioUrl,
+            title: document.getElementById('bgAudioSelectedTitle')?.innerText || 'Global Ambient Audio',
+            artist: document.getElementById('bgAudioSelectedArtist')?.innerText || '',
+            thumbnail: document.getElementById('bgAudioSelectedImg')?.src || '',
             target: document.getElementById('bgAudioTarget') ? document.getElementById('bgAudioTarget').value : 'global'
         }
     };
     try {
         const res = await fetch('/api/admin/backgrounds', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
             body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.status === 'success') {
-            showToast(data.message || 'Global audio updated successfully', 'success');
+            showToast('Success', data.message || 'Global ambient audio updated successfully live!', 'success');
         } else {
-            showToast(data.message || 'Failed to save global audio', 'error');
+            showToast('Error', data.message || 'Failed to save global audio', 'error');
         }
     } catch (err) {
-        showToast('Failed to save global audio', 'error');
+        showToast('Error', 'Failed to save global audio: ' + (err.message || 'Network error'), 'error');
     }
 };
 
@@ -12561,12 +12569,33 @@ async function saveHeroConfig() {
         const data = await res.json();
         if (data.status === 'success') {
             activeHeroConfig = payload;
-            showToast('Hero page & music configuration updated successfully live!', 'success');
+            showToast('Success', 'Hero page & music configuration updated successfully live!', 'success');
         } else {
-            showToast(data.message || 'Error saving configuration', 'error');
+            showToast('Error', data.message || 'Error saving configuration', 'error');
         }
     } catch (e) {
-        showToast(`Save error: ${e.message}`, 'error');
+        showToast('Error', `Save error: ${e.message}`, 'error');
     }
 }
+
+window.setHeroMusicPresetVideo = function(url) {
+    const input = document.getElementById('heroMusicVideoBgUrl');
+    if (input) {
+        input.value = url;
+        testHeroMediaPreview();
+        showToast('Preset Applied', `Background video set to ${url.split('/').pop()}`, 'info');
+    }
+};
+
+window.copyVideoUrlToAudioUrl = function() {
+    const vUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim();
+    if (vUrl) {
+        const aInput = document.getElementById('heroMusicAudioUrl');
+        if (aInput) {
+            aInput.value = vUrl;
+            testHeroMediaPreview();
+            showToast('Audio Synced', 'Now using video soundtrack as audio', 'info');
+        }
+    }
+};
 

@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#05050a" />
+  <link rel="icon" type="image/svg+xml" href="/aetheris_infinity.svg" />
+  <title>Aetheris — Offline Dino Arcade</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    :root {
+      --bg-deep: #05050a;
+      --bg-card: rgba(11, 14, 28, 0.86);
+      --border-glow: rgba(0, 240, 255, 0.25);
+      --cyan: #00f0ff;
+      --indigo: #6366f1;
+      --pink: #ec4899;
+      --emerald: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      position: relative;
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Pure CSS Cosmic Ambient Nebulae */
+    .nebula {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.42;
+      animation: floatNebula 10s ease-in-out infinite alternate;
+    }
+
+    .nebula-1 {
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.35), transparent 70%);
+      top: -90px;
+      left: -80px;
+    }
+
+    .nebula-2 {
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(236, 72, 153, 0.32), transparent 70%);
+      bottom: -110px;
+      right: -80px;
+      animation-delay: -5s;
+    }
+
+    @keyframes floatNebula {
+      0% { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.12) translate(18px, -18px); }
+    }
+
+    .cosmic-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at center, black 40%, transparent 88%);
+      -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 88%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .offline-shell {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 680px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      border-radius: 28px;
+      padding: 26px 24px;
+      text-align: center;
+      box-shadow:
+        0 25px 65px rgba(0, 0, 0, 0.8),
+        0 0 45px rgba(0, 240, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+    }
+
+    /* Top Header Row */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.22), rgba(5, 5, 10, 0.95));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.18);
+    }
+
+    .logo-badge svg {
+      width: 30px;
+      height: 30px;
+      filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.5));
+    }
+
+    .brand-text {
+      text-align: left;
+    }
+
+    .brand-title {
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #ffffff 0%, #7dd3fc 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      line-height: 1.1;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 13px;
+      border-radius: 999px;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      color: #fda4af;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    .status-badge.online {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #f43f5e;
+      box-shadow: 0 0 10px #f43f5e;
+      animation: blinkDot 1.5s ease-in-out infinite;
+    }
+
+    .status-badge.online .status-dot {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    @keyframes blinkDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.85); }
+    }
+
+    /* Chrome Dino Inspired Arcade Container */
+    .dino-stage {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, #060913 0%, #0b1124 75%, #0f172a 100%);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      overflow: hidden;
+      margin-bottom: 14px;
+      box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.85);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    canvas#dinoCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .dino-hud {
+      position: absolute;
+      top: 12px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+    }
+
+    .dino-tag {
+      color: var(--cyan);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      text-transform: uppercase;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      padding: 3px 9px;
+      border-radius: 8px;
+    }
+
+    .dino-scores {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .score-cur {
+      color: #ffffff;
+      font-size: 14px;
+    }
+
+    /* Mobile Touch Controls Bar */
+    .arcade-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .ctrl-btn {
+      flex: 1;
+      padding: 11px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .ctrl-btn:active, .ctrl-btn:hover {
+      background: rgba(0, 240, 255, 0.18);
+      border-color: rgba(0, 240, 255, 0.5);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .hint-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 480px) {
+      .actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: 15px;
+      border: 1px solid rgba(0, 240, 255, 0.5);
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.24), rgba(99, 102, 241, 0.3), rgba(236, 72, 153, 0.24));
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 10px 25px rgba(0, 240, 255, 0.15);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0, 240, 255, 0.85);
+      box-shadow: 0 14px 30px rgba(0, 240, 255, 0.28);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+    }
+
+    @media (max-height: 520px) and (orientation: landscape) {
+      body {
+        padding: 8px;
+      }
+      .offline-shell {
+        padding: 12px 16px;
+        max-width: 95vw;
+        border-radius: 16px;
+      }
+      .top-bar {
+        margin-bottom: 8px;
+      }
+      .dino-stage {
+        height: 140px;
+        margin-bottom: 8px;
+      }
+      .arcade-controls {
+        margin-bottom: 8px;
+      }
+      .ctrl-btn {
+        padding: 6px 10px;
+        font-size: 10px;
+      }
+      .hint-text {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="nebula nebula-1"></div>
+  <div class="nebula nebula-2"></div>
+  <div class="cosmic-grid"></div>
+
+  <main class="offline-shell">
+    <div class="top-bar">
+      <div class="brand-row">
+        <div class="logo-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+            <defs>
+              <linearGradient id="aetherGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00f0ff" />
+                <stop offset="50%" stop-color="#6366f1" />
+                <stop offset="100%" stop-color="#ec4899" />
+              </linearGradient>
+            </defs>
+            <path d="M256 96 L266 128 L298 138 L266 148 L256 180 L246 148 L214 138 L246 128 Z" fill="#ffffff" />
+            <path d="M256 256 C205 186, 98 186, 98 256 C98 326, 205 326, 256 256 C307 186, 414 186, 414 256 C414 326, 307 326, 256 256 Z"
+                  stroke="url(#aetherGrad)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">Aetheris</h1>
+          <p class="brand-sub">Quantum Offline Dino Runner</p>
+        </div>
+      </div>
+
+      <div id="netStatusBadge" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="netStatusText">No Internet</span>
+      </div>
+    </div>
+
+    <!-- Chrome Dino-Inspired Endless Runner Stage -->
+    <div class="dino-stage" id="dinoStage" title="Tap or press Space to Jump">
+      <div class="dino-hud">
+        <span class="dino-tag">&#9889; Cyber-Rex Runner</span>
+        <div class="dino-scores">
+          <span>HI <span id="hiScoreVal">00000</span></span>
+          <span class="score-cur" id="curScoreVal">00000</span>
+        </div>
+      </div>
+      <canvas id="dinoCanvas" width="640" height="220"></canvas>
+    </div>
+
+    <div class="arcade-controls">
+      <button type="button" class="ctrl-btn" id="btnJump">&#9650; Jump (Space / Tap)</button>
+      <button type="button" class="ctrl-btn" id="btnDuck">&#9660; Duck (Hold Down)</button>
+    </div>
+
+    <!-- Featured 3D Offline Game Banner (Subway Surfers Mumbai) -->
+    <a href="/subway.html" style="display: block; margin: 14px 0 16px; border-radius: 18px; overflow: hidden; position: relative; border: 1px solid rgba(245, 158, 11, 0.4); text-decoration: none; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); transition: transform 0.2s ease;">
+      <div style="height: 130px; background: url('/assets/games/subway/promo_mumbai_sunset.jpg') center/cover no-repeat; position: relative;">
+        <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,5,10,0.2) 0%, rgba(5,5,10,0.85) 100%);"></div>
+        <div style="position: absolute; bottom: 12px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div style="text-align: left;">
+            <span style="background: #f59e0b; color: #1e1302; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 6px; letter-spacing: 0.06em;">100% OFFLINE PWA READY</span>
+            <h3 style="margin: 4px 0 0; font-size: 16px; font-weight: 900; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.8);">Subway Surfers: Mumbai 3D</h3>
+          </div>
+          <span style="background: rgba(255, 194, 61, 0.25); border: 1px solid #f59e0b; color: #ffc23d; font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 10px;">PLAY 3D ➔</span>
+        </div>
+      </div>
+    </a>
+
+    <p class="hint-text" id="offlineHint">
+      Network signal is offline. Play <strong>Aetheris Cyber-Rex</strong> or launch <strong>Subway Surfers: Mumbai (3D)</strong> directly offline.
+    </p>
+
+    <div class="actions">
+      <a href="/subway.html" class="btn-primary" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color: #fbbf24; color: #1e1302; font-weight: 900; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);">
+        <span>🛹 Play Subway Surfers: Mumbai (3D)</span>
+      </a>
+      <a href="/hero.html" class="btn-secondary">
+        <span>Launch Aetheris Portal</span>
+      </a>
+      <a href="/consumet.html" class="btn-secondary">
+        <span>Open Cinema &amp; Live TV</span>
+      </a>
+    </div>
+  </main>
+
+  <script>
+    (function() {
+      const canvas = document.getElementById('dinoCanvas');
+      const ctx = canvas.getContext('2d');
+      const curScoreEl = document.getElementById('curScoreVal');
+      const hiScoreEl = document.getElementById('hiScoreVal');
+      const stageEl = document.getElementById('dinoStage');
+      const btnJump = document.getElementById('btnJump');
+      const btnDuck = document.getElementById('btnDuck');
+      const netBadge = document.getElementById('netStatusBadge');
+      const netText = document.getElementById('netStatusText');
+      const offlineHint = document.getElementById('offlineHint');
+
+      // Web Audio Retro Synth Beeps
+      let audioCtx = null;
+      function playTone(freq, dur, type) {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type || 'square';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + dur);
+        } catch (e) {}
+      }
+
+      const W = 640;
+      const H = 220;
+      const GROUND_Y = 182;
+
+      let hiScore = parseInt(localStorage.getItem('aetheris_dino_hi') || '0', 10) || 0;
+      hiScoreEl.textContent = String(hiScore).padStart(5, '0');
+
+      let score = 0;
+      let speed = 5.6;
+      let running = false;
+      let gameOver = false;
+      let frame = 0;
+
+      const dino = {
+        x: 56,
+        y: GROUND_Y - 44,
+        vy: 0,
+        w: 40,
+        h: 44,
+        ducking: false,
+        grounded: true,
+        jumps: 0
+      };
+
+      let obstacles = [];
+      let stars = [];
+      let groundDots = [];
+
+      for (let i = 0; i < 32; i++) {
+        stars.push({
+          x: Math.random() * W,
+          y: 25 + Math.random() * 115,
+          r: Math.random() * 1.6 + 0.5,
+          s: Math.random() * 0.4 + 0.15
+        });
+      }
+      for (let i = 0; i < 45; i++) {
+        groundDots.push({
+          x: Math.random() * W,
+          y: GROUND_Y + 6 + Math.random() * 20,
+          w: 2 + Math.random() * 6
+        });
+      }
+
+      // Crisp 1-Bit Pixel Sprite Maps for Chrome T-Rex Dino & Cacti
+      const DINO_STAND_MAP = [
+        "      ████████",
+        "     ██▄██████",
+        "     █████████",
+        "     █████    ",
+        "     ███████  ",
+        "█   ██████    ",
+        "██ ██████████ ",
+        "███████████  █",
+        " ██████████   ",
+        "  ████████    ",
+        "    ██  ██    ",
+        "    █    █    "
+      ];
+
+      const DINO_DUCK_MAP = [
+        "                  ",
+        "                  ",
+        "                  ",
+        "       ██████████ ",
+        "      ██▄█████████",
+        "█    █████████████",
+        "██  ██████████    ",
+        "██████████████ ██ ",
+        " ████████████     ",
+        "   ████████       ",
+        "    ██   ██       ",
+        "    ██   ██       "
+      ];
+
+      function drawPixelSprite(map, x, y, scale, color) {
+        ctx.fillStyle = color;
+        for (let r = 0; r < map.length; r++) {
+          const row = map[r];
+          for (let c = 0; c < row.length; c++) {
+            const ch = row[c];
+            if (ch === '█') {
+              ctx.fillRect(x + c * scale, y + r * scale, scale, scale);
+            } else if (ch === '▄') {
+              ctx.fillStyle = '#05050a';
+              ctx.fillRect(x + c * scale, y + r * scale, scale, scale);
+              ctx.fillStyle = color;
+            }
+          }
+        }
+      }
+
+      function resetGame() {
+        score = 0;
+        speed = 5.8;
+        frame = 0;
+        obstacles = [];
+        dino.y = GROUND_Y - 44;
+        dino.vy = 0;
+        dino.grounded = true;
+        dino.jumps = 0;
+        gameOver = false;
+        running = true;
+        playTone(520, 0.08, 'square');
+      }
+
+      function triggerJump() {
+        if (!running || gameOver) {
+          resetGame();
+          return;
+        }
+        if (dino.grounded || dino.jumps < 2) {
+          dino.vy = dino.grounded ? -11.6 : -9.8;
+          dino.grounded = false;
+          dino.jumps++;
+          playTone(dino.jumps === 1 ? 620 : 840, 0.09, 'square');
+        }
+      }
+
+      function spawnObstacle() {
+        const isBird = score > 180 && Math.random() < 0.3;
+        if (isBird) {
+          const heights = [GROUND_Y - 34, GROUND_Y - 62, GROUND_Y - 82];
+          const by = heights[Math.floor(Math.random() * heights.length)];
+          obstacles.push({
+            type: 'ptero',
+            x: W + 20,
+            y: by,
+            w: 36,
+            h: 22
+          });
+        } else {
+          const cluster = Math.floor(Math.random() * 3) + 1;
+          const cw = 16 * cluster + (cluster - 1) * 4;
+          const ch = cluster === 1 ? 42 : (cluster === 2 ? 36 : 32);
+          obstacles.push({
+            type: 'cactus',
+            cluster,
+            x: W + 20,
+            y: GROUND_Y - ch,
+            w: cw,
+            h: ch
+          });
+        }
+      }
+
+      function update() {
+        if (!running || gameOver) return;
+        frame++;
+        score += 0.18;
+        const intScore = Math.floor(score);
+        curScoreEl.textContent = String(intScore).padStart(5, '0');
+
+        if (intScore > 0 && intScore % 100 === 0 && frame % 6 === 0) {
+          playTone(880, 0.07, 'sine');
+          setTimeout(() => playTone(1180, 0.12, 'sine'), 70);
+        }
+
+        speed = Math.min(13.5, 5.8 + score * 0.0045);
+
+        // Dino physics
+        const targetH = dino.ducking && dino.grounded ? 28 : 44;
+        dino.h = targetH;
+
+        if (!dino.grounded) {
+          dino.vy += dino.ducking ? 1.15 : 0.62;
+          dino.y += dino.vy;
+          if (dino.y >= GROUND_Y - dino.h) {
+            dino.y = GROUND_Y - dino.h;
+            dino.vy = 0;
+            dino.grounded = true;
+            dino.jumps = 0;
+          }
+        } else {
+          dino.y = GROUND_Y - dino.h;
+        }
+
+        // Spawn obstacles
+        const lastOb = obstacles[obstacles.length - 1];
+        const minGap = 210 + speed * 14 + Math.random() * 140;
+        if (!lastOb || (W - lastOb.x) > minGap) {
+          spawnObstacle();
+        }
+
+        // Move & check collisions
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          const ob = obstacles[i];
+          ob.x -= speed;
+
+          // Forgiving hitbox padding
+          const pad = 6;
+          if (
+            dino.x + pad < ob.x + ob.w - pad &&
+            dino.x + dino.w - pad > ob.x + pad &&
+            dino.y + pad < ob.y + ob.h - pad &&
+            dino.y + dino.h - pad > ob.y + pad
+          ) {
+            gameOver = true;
+            running = false;
+            playTone(190, 0.22, 'sawtooth');
+            if (intScore > hiScore) {
+              hiScore = intScore;
+              try { localStorage.setItem('aetheris_dino_hi', String(hiScore)); } catch (e) {}
+              hiScoreEl.textContent = String(hiScore).padStart(5, '0');
+            }
+            break;
+          }
+
+          if (ob.x + ob.w < -40) {
+            obstacles.splice(i, 1);
+          }
+        }
+
+        // Parallax stars & ground
+        for (const s of stars) {
+          s.x -= s.s;
+          if (s.x < 0) s.x = W;
+        }
+        for (const g of groundDots) {
+          g.x -= speed;
+          if (g.x + g.w < 0) {
+            g.x = W + Math.random() * 40;
+            g.y = GROUND_Y + 6 + Math.random() * 20;
+          }
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Stars
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+        for (const s of stars) {
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Horizon Line
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, GROUND_Y);
+        ctx.lineTo(W, GROUND_Y);
+        ctx.stroke();
+
+        // Ground dashes
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.35)';
+        for (const g of groundDots) {
+          ctx.fillRect(g.x, g.y, g.w, 2);
+        }
+
+        // Draw Dino
+        const sprite = (dino.ducking && dino.grounded) ? DINO_DUCK_MAP : DINO_STAND_MAP;
+        const drawY = (dino.ducking && dino.grounded) ? (GROUND_Y - 40) : dino.y;
+        drawPixelSprite(sprite, dino.x, drawY, 3.2, '#00f0ff');
+
+        // Running legs animation overlay
+        if (running && dino.grounded && Math.floor(frame / 5) % 2 === 0) {
+          ctx.fillStyle = '#060913';
+          ctx.fillRect(dino.x + 12, GROUND_Y - 6, 8, 6);
+        } else if (running && dino.grounded) {
+          ctx.fillStyle = '#060913';
+          ctx.fillRect(dino.x + 24, GROUND_Y - 6, 8, 6);
+        }
+
+        // Draw Obstacles
+        for (const ob of obstacles) {
+          if (ob.type === 'cactus') {
+            ctx.fillStyle = '#ec4899';
+            const count = ob.cluster || 1;
+            for (let c = 0; c < count; c++) {
+              const cx = ob.x + c * 20;
+              // Main stem
+              ctx.fillRect(cx + 5, ob.y, 6, ob.h);
+              // Left arm
+              ctx.fillRect(cx, ob.y + 8, 5, 4);
+              ctx.fillRect(cx, ob.y + 4, 3, 6);
+              // Right arm
+              ctx.fillRect(cx + 11, ob.y + 12, 5, 4);
+              ctx.fillRect(cx + 13, ob.y + 6, 3, 8);
+            }
+          } else {
+            // Cyber-Pterodactyl
+            ctx.fillStyle = '#a855f7';
+            const wingUp = Math.floor(frame / 7) % 2 === 0;
+            ctx.fillRect(ob.x + 6, ob.y + 8, 24, 6);
+            ctx.fillRect(ob.x, ob.y + 10, 8, 3);
+            if (wingUp) {
+              ctx.fillRect(ob.x + 12, ob.y, 10, 8);
+            } else {
+              ctx.fillRect(ob.x + 12, ob.y + 14, 10, 8);
+            }
+          }
+        }
+
+        // Start / Game Over Overlay Prompt
+        if (!running) {
+          ctx.fillStyle = 'rgba(5, 5, 10, 0.65)';
+          ctx.fillRect(0, 0, W, H);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '800 18px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.textAlign = 'center';
+          if (gameOver) {
+            ctx.fillStyle = '#f43f5e';
+            ctx.fillText('GAME OVER', W / 2, H / 2 - 10);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '700 12px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText('Tap or Press SPACE to Play Again', W / 2, H / 2 + 16);
+          } else {
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillText('PRESS SPACE OR TAP TO RUN', W / 2, H / 2);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '600 11px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText('Double-Jump enabled • Dodge Neon Cacti & Cyber-Birds', W / 2, H / 2 + 22);
+          }
+        }
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+      loop();
+
+      // Input Listeners
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+          e.preventDefault();
+          triggerJump();
+        } else if (e.code === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+          e.preventDefault();
+          dino.ducking = true;
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+          dino.ducking = false;
+        }
+      });
+
+      stageEl.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        triggerJump();
+      });
+
+      btnJump.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        triggerJump();
+      });
+
+      btnDuck.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        dino.ducking = true;
+      });
+      btnDuck.addEventListener('pointerup', () => { dino.ducking = false; });
+      btnDuck.addEventListener('pointerleave', () => { dino.ducking = false; });
+
+      // Live Connection Monitor
+      function syncNetworkState() {
+        if (navigator.onLine) {
+          netBadge.classList.add('online');
+          netText.textContent = 'Back Online';
+          offlineHint.innerHTML = 'Connection restored! Click <strong>Launch Aetheris Portal</strong> below to enter <code>hero.html</code>.';
+        } else {
+          netBadge.classList.remove('online');
+          netText.textContent = 'No Internet';
+        }
+      }
+      window.addEventListener('online', syncNetworkState);
+      window.addEventListener('offline', syncNetworkState);
+      syncNetworkState();
+    })();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          console.log('[PWA] Offline Center service worker active:', reg.scope);
+        }).catch((err) => {
+          console.warn('[PWA] Service worker registration error:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

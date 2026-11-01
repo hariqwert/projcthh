@@ -768,6 +768,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
         let subtitleSyncOffset = 0;
 
         const DEFAULT_SERVERS = [
+            { id: 'aniembed', name: 'AniEmbed (Dual Audio JP/EN HLS)', cc: 'JP' },
             { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP' },
             { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP' },
             { id: 'animesalt', name: 'AnimeSalt (Special Multi-Audio Anime)', cc: 'JP' },
@@ -842,7 +843,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
 
         function cascadeFallback(failedServerId) {
             failedServers.add(failedServerId);
-            const fallbackOrder = ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
+            const fallbackOrder = ['aniembed', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
             const nextServer = fallbackOrder.find(srv => !failedServers.has(srv));
             if (nextServer) {
                 fetchAndPlayStream(nextServer);
@@ -997,7 +998,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                 const res = await fetch(`/api/bingr/servers${qParams}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    availableServers = data.servers.filter(s => ['bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'].includes(s.id));
+                    availableServers = data.servers.filter(s => ['aniembed', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'].includes(s.id));
                 } else {
                     availableServers = DEFAULT_SERVERS;
                 }
@@ -1821,10 +1822,37 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
             let referer = '';
             let depth = 0;
 
+            // Direct match from active scraped sources inventory if present
+            if (Array.isArray(window.bingrSources)) {
+                const match = window.bingrSources.find(s => s && (s.url === current || s.rawUrl === current || s.directUrl === current));
+                if (match && (match.rawUrl || match.directUrl)) {
+                    current = match.rawUrl || match.directUrl;
+                    if (match.referrer || match.referer) {
+                        referer = match.referrer || match.referer;
+                    }
+                }
+            }
+
             while (depth++ < 10) {
                 if (!current) break;
                 let unwrapped = false;
                 try {
+                    // Extract and strip pipe headers (e.g. url|Cookie=... or |Referer=...)
+                    if (current.includes('|')) {
+                        const pipeIdx = current.indexOf('|');
+                        const pipeData = current.slice(pipeIdx + 1);
+                        current = current.slice(0, pipeIdx);
+                        const parts = pipeData.split('&');
+                        for (const part of parts) {
+                            const eq = part.indexOf('=');
+                            if (eq > 0) {
+                                const k = part.slice(0, eq).toLowerCase();
+                                const v = decodeURIComponent(part.slice(eq + 1));
+                                if (k === 'referer' || k === 'referrer') referer = v;
+                            }
+                        }
+                    }
+
                     const parseTarget = current.startsWith('http://') || current.startsWith('https://')
                         ? current
                         : (window.location.origin + (current.startsWith('/') ? '' : '/') + current);
@@ -1834,15 +1862,18 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         parsed.pathname.includes('/stream_proxy.php') ||
                         parsed.pathname.includes('/proxy/m3u8') ||
                         parsed.pathname.includes('/api/proxy') ||
+                        parsed.pathname.includes('/live.php') ||
+                        parsed.pathname.includes('/api/play_stream') ||
                         parsed.hostname.includes('filmu.in') ||
                         parsed.hostname.includes('wormhole');
 
-                    const inner = parsed.searchParams.get('url');
+                    const inner = parsed.searchParams.get('url') || parsed.searchParams.get('u') || parsed.searchParams.get('stream');
+                    const idParam = parsed.searchParams.get('id');
                     if (inner && (isProxy || inner.startsWith('http://') || inner.startsWith('https://'))) {
                         current = decodeURIComponent(inner);
                         unwrapped = true;
 
-                        const ref = parsed.searchParams.get('referer') || parsed.searchParams.get('ref');
+                        const ref = parsed.searchParams.get('referer') || parsed.searchParams.get('ref') || parsed.searchParams.get('referrer');
                         if (ref) referer = decodeURIComponent(ref);
 
                         const hdrs = parsed.searchParams.get('headers');
@@ -1853,6 +1884,16 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                     referer = parsedHeaders.Referer || parsedHeaders.referer;
                                 }
                             } catch (_) {}
+                        }
+                    } else if (idParam) {
+                        const decId = decodeURIComponent(idParam);
+                        if (decId.startsWith('http://') || decId.startsWith('https://')) {
+                            current = decId;
+                            unwrapped = true;
+                        } else if (decId.startsWith('mdtv-')) {
+                            const cleanMdtvId = decId.replace('mdtv-', '');
+                            current = `${window.location.origin}/api/mdtv/manifest/${cleanMdtvId}.mpd`;
+                            unwrapped = true;
                         }
                     }
                 } catch(e) {
@@ -1870,6 +1911,10 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                     referer = 'https://megaplay.buzz/';
                 } else if (lower.includes('darkmatter') || lower.includes('fetchbox') || lower.includes('bingr.one')) {
                     referer = 'https://bingr.one/';
+                } else if (lower.includes('2vcdn.skin') || lower.includes('2embed')) {
+                    referer = 'https://2vcdn.skin/';
+                } else if (lower.includes('megavid.se') || lower.includes('aniembed')) {
+                    referer = 'https://aniembed.se/';
                 }
             }
 

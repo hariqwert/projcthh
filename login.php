@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="robots" content="noindex">
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
@@ -95,7 +97,7 @@
             50% { opacity: 0.5; }
         }
 </style>
-    <link rel="icon" type="image/png" href="stalker_pro_infinity.svg">
+    
 </head>
 <body class="p-4 md:p-10 unlocked">
     <!-- HANDSHAKE ENGINE UI -->

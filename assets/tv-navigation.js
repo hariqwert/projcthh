@@ -38,21 +38,34 @@
             transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, outline 0.15s ease !important;
         }
 
-        /* Glowing Cyan D-Pad Focus Ring */
+        /* TV Mode Exclusive D-Pad Spatial Focus Ring (Strictly scoped - Never shows on desktop) */
         body.tv-mode *:focus-visible,
         body.tv-mode .tv-focus-active,
-        *:focus-visible.tv-focus-active,
-        button:focus-visible,
-        a:focus-visible,
-        [tabindex="0"]:focus-visible,
-        .movie-card:focus-visible,
-        .channel-card:focus-visible {
-            outline: 3.5px solid #38bdf8 !important;
+        body.tv-mode button:focus-visible,
+        body.tv-mode a:focus-visible,
+        body.tv-mode [tabindex="0"]:focus-visible,
+        body.tv-mode .movie-card:focus-visible,
+        body.tv-mode .channel-card:focus-visible {
+            outline: 2.5px solid #f43f5e !important;
             outline-offset: 3px !important;
-            box-shadow: 0 0 25px rgba(56, 189, 248, 0.9), 0 0 45px rgba(14, 165, 233, 0.45) !important;
-            transform: scale(1.08) !important;
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.6) !important;
+            transform: scale(1.05) !important;
             z-index: 9999 !important;
             transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s ease !important;
+        }
+
+        /* Desktop Mode: Completely remove blue outlines and blue rays */
+        body:not(.tv-mode) *,
+        body:not(.tv-mode) *:focus,
+        body:not(.tv-mode) *:focus-visible,
+        body:not(.tv-mode) a:focus,
+        body:not(.tv-mode) a:focus-visible,
+        body:not(.tv-mode) button:focus,
+        body:not(.tv-mode) button:focus-visible,
+        body:not(.tv-mode) input:focus,
+        body:not(.tv-mode) input:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
         }
     `;
     document.head.appendChild(styleEl);

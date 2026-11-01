@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import axios from 'axios';
 import https from 'https';
 import http from 'http';
 import fs from 'fs';
@@ -1161,7 +1162,7 @@ router.get('/api/sports/proxy-streams', async (req: Request, res: Response) => {
     }
 });
 
-// Dedicated TimStreams Live Events endpoint (https://timst.cfd/api/streams)
+// Dedicated TimStreams Live Events endpoint (https://timstreams.co.rw/api/streams)
 router.get('/api/sports/live-events', async (req: Request, res: Response) => {
     try {
         const force = req.query.refresh === '1';
@@ -1360,5 +1361,80 @@ async function getProxyStreamsList(): Promise<any[]> {
 
     return list;
 }
+
+// POST /api/sports/probe-sources - Fast parallel live stream health check for Live Now sources
+router.post('/api/sports/probe-sources', async (req: Request, res: Response) => {
+    try {
+        const { sources = [] } = req.body;
+        if (!Array.isArray(sources) || sources.length === 0) {
+            return res.json({ status: 'success', results: [] });
+        }
+
+        const probeOne = async (item: { id: string; url?: string; streamUrl?: string; playUrl?: string }) => {
+            const rawTarget = item.streamUrl || item.url || '';
+            const playUrl = item.playUrl || '';
+            let target = rawTarget;
+
+            if (!target && playUrl) {
+                if (playUrl.includes('url=')) {
+                    try {
+                        target = decodeURIComponent(playUrl.split('url=')[1].split('&')[0]);
+                    } catch (_) {}
+                } else if (playUrl.includes('channel_id=')) {
+                    try {
+                        const chId = decodeURIComponent(playUrl.split('channel_id=')[1].split('&')[0]);
+                        target = `http://127.0.0.1:3000/live.php?token=STALKER_PRO&id=${encodeURIComponent(chId)}`;
+                    } catch (_) {}
+                } else {
+                    target = playUrl;
+                }
+            }
+
+            if (!target) {
+                return { id: item.id, alive: false, latencyMs: 0, status: 404, note: 'No stream URL provided' };
+            }
+
+            const t0 = Date.now();
+            try {
+                let checkUrl = target;
+                if (target.startsWith('/')) {
+                    checkUrl = `http://127.0.0.1:3000${target}`;
+                }
+
+                const resp = await axios.get(checkUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Range': 'bytes=0-1024'
+                    },
+                    timeout: 2500,
+                    validateStatus: (s) => (s >= 200 && s < 400)
+                });
+
+                const latencyMs = Date.now() - t0;
+                const contentType = resp.headers['content-type'] || '';
+                return {
+                    id: item.id,
+                    alive: true,
+                    latencyMs,
+                    status: resp.status,
+                    contentType
+                };
+            } catch (err: any) {
+                return {
+                    id: item.id,
+                    alive: false,
+                    latencyMs: Date.now() - t0,
+                    status: err?.response?.status || 500,
+                    error: err?.message || 'Unreachable'
+                };
+            }
+        };
+
+        const results = await Promise.all(sources.slice(0, 10).map(s => probeOne(s)));
+        return res.json({ status: 'success', results });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Probe failed' });
+    }
+});
 
 export default router;

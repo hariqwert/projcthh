@@ -173,82 +173,106 @@ async function checkUrlAutoPlay() {
   const autoQuery = urlParams.get('play') || urlParams.get('q') || urlParams.get('search') || urlParams.get('magnet');
 
   if (autoQuery) {
-    const queryStr = autoQuery.trim();
+    let queryStr = autoQuery.trim();
     console.log(`[Auto-Play API] Direct play trigger for: "${queryStr}"`);
     magnetInput.value = queryStr;
 
+    const type = urlParams.get('type') || 'movie';
+    let season = urlParams.get('season') || urlParams.get('s') || '';
+    let episode = urlParams.get('episode') || urlParams.get('e') || '';
+
+    // If season and episode not in query params, parse from autoQuery string
+    // e.g. "ep3 s2", "s2 e3", "season 2 ep 3"
+    const epSe = queryStr.match(/(?:ep|episode|e)\s*0*(\d+)\s*(?:season|s)\s*0*(\d+)/i);
+    const se = queryStr.match(/s0*(\d+)\s*e0*(\d+)/i) || queryStr.match(/(\d+)x0*(\d+)/i) || queryStr.match(/season\s*0*(\d+)\s*(?:ep|episode)?\s*0*(\d+)/i);
+    if (!season && !episode) {
+      if (epSe) {
+        episode = epSe[1];
+        season = epSe[2];
+      } else if (se) {
+        season = se[1];
+        episode = se[2];
+      }
+    }
+
+    // Auto typo correction: "black cover" -> "Black Clover"
+    if (/^black\s+cover$/i.test(queryStr.trim()) || /^black\s+cover\b/i.test(queryStr.trim())) {
+      queryStr = queryStr.replace(/black\s+cover/gi, 'Black Clover');
+    }
+
+    window.activeTargetSeason = season ? parseInt(season, 10) : 0;
+    window.activeTargetEpisode = episode ? parseInt(episode, 10) : 0;
+    window.activeTitleHint = queryStr;
+
     if (queryStr.startsWith('magnet:?') || queryStr.startsWith('http://') || queryStr.startsWith('https://')) {
-      playMagnetOrUrl(queryStr);
+      playMagnetOrUrl(queryStr, season, episode, queryStr);
     } else {
       showLoading(`Searching & Auto-Playing "${queryStr}"...`, 'Fetching best stream from external providers...');
       try {
-        const type = urlParams.get('type') || 'movie';
-        const season = urlParams.get('season') || urlParams.get('s') || '1';
-        const episode = urlParams.get('episode') || urlParams.get('e') || '1';
         const tmdb = urlParams.get('tmdb');
         const imdb = urlParams.get('imdb');
 
-        let searchApiUrl = `/api/v1/search?q=${encodeURIComponent(queryStr)}&type=${type}&s=${season}&e=${episode}`;
+        let searchApiUrl = `/api/v1/search?q=${encodeURIComponent(queryStr)}&type=${type}&s=${season || '1'}&e=${episode || '1'}`;
         if (tmdb) searchApiUrl += `&tmdb=${tmdb}`;
         if (imdb) searchApiUrl += `&imdb=${imdb}`;
 
         const res = await fetch(searchApiUrl);
         if (res.ok) {
           if (!res.ok) throw new Error(`Server returned ${res.status} ${res.statusText}`);
-    const data = await res.json();
+          const data = await res.json();
           
-    let results = data.results || data.streams || [];
-    if (results.length === 0 && data.imdbId) {
-        try {
-            const torrentioType = data.mediaType === 'series' ? 'series' : 'movie';
-            const streamPath = torrentioType === 'series' ? `${data.imdbId}:${data.season}:${data.episode}` : data.imdbId;
-            const torUrl = `https://torrentio.strem.fun/stream/${torrentioType}/${streamPath}.json`;
-            console.log('Fallback fetching from Torrentio API on client:', torUrl);
-            const torRes = await fetch(torUrl);
-            const torData = await torRes.json();
-            if (torData && torData.streams) {
+          let results = data.results || data.streams || [];
+          if (results.length === 0 && data.imdbId) {
+            try {
+              const torrentioType = data.mediaType === 'series' ? 'series' : 'movie';
+              const streamPath = torrentioType === 'series' ? `${data.imdbId}:${data.season}:${data.episode}` : data.imdbId;
+              const torUrl = `https://torrentio.strem.fun/stream/${torrentioType}/${streamPath}.json`;
+              console.log('Fallback fetching from Torrentio API on client:', torUrl);
+              const torRes = await fetch(torUrl);
+              const torData = await torRes.json();
+              if (torData && torData.streams) {
                 results = torData.streams.map(s => {
-                    const infoHash = s.infoHash;
-                    let magnet = s.magnet;
-                    if (!magnet && infoHash) {
-                        magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(data.title)}`;
-                        const DEFAULT_TRACKERS = [
-                            'http://nyaa.tracker.wf:7777/announce',
-                            'udp://tracker.opentrackr.org:1337/announce',
-                            'udp://open.stealth.si:80/announce',
-                            'udp://tracker.torrent.eu.org:451/announce',
-                            'udp://exodus.desync.com:6969/announce',
-                            'udp://tracker.dler.org:6969/announce',
-                            'udp://open.demonii.com:1337/announce',
-                            'udp://tracker.openbittorrent.com:6969/announce',
-                            'udp://opentracker.i2p.rocks:6969/announce'
-                        ];
-                        DEFAULT_TRACKERS.forEach(tr => {
-                            magnet += `&tr=${encodeURIComponent(tr)}`;
-                        });
-                    }
-                    const rawTitle = s.title || s.name || data.title;
-                    const seedMatch = rawTitle.match(/👤\s*(\d+)/);
-                    const sizeMatch = rawTitle.match(/💾\s*([\d\.]+\s*[GMK]B)/i);
-                    const qualityMatch = rawTitle.match(/(2160p|4K|1080p|720p|HDR|Remux|CAM|TS)/i);
-                    return {
-                        name: s.name || 'Torrent Stream',
-                        title: `${data.title} (${qualityMatch ? qualityMatch[1] : '1080p'})`,
-                        raw_title: rawTitle,
-                        magnet: magnet,
-                        infoHash: infoHash,
-                        seeders: seedMatch ? parseInt(seedMatch[1]) : 0,
-                        size: sizeMatch ? sizeMatch[1] : 'Unknown',
-                        quality: qualityMatch ? qualityMatch[1] : 'HD'
-                    };
+                  const infoHash = s.infoHash;
+                  let magnet = s.magnet;
+                  if (!magnet && infoHash) {
+                    magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(data.title)}`;
+                    const DEFAULT_TRACKERS = [
+                      'http://nyaa.tracker.wf:7777/announce',
+                      'udp://tracker.opentrackr.org:1337/announce',
+                      'udp://open.stealth.si:80/announce',
+                      'udp://tracker.torrent.eu.org:451/announce',
+                      'udp://exodus.desync.com:6969/announce',
+                      'udp://tracker.dler.org:6969/announce',
+                      'udp://open.demonii.com:1337/announce',
+                      'udp://tracker.openbittorrent.com:6969/announce',
+                      'udp://opentracker.i2p.rocks:6969/announce'
+                    ];
+                    DEFAULT_TRACKERS.forEach(tr => {
+                      magnet += `&tr=${encodeURIComponent(tr)}`;
+                    });
+                  }
+                  const rawTitle = s.title || s.name || data.title;
+                  const seedMatch = rawTitle.match(/👤\s*(\d+)/);
+                  const sizeMatch = rawTitle.match(/💾\s*([\d\.]+\s*[GMK]B)/i);
+                  const qualityMatch = rawTitle.match(/(2160p|4K|1080p|720p|HDR|Remux|CAM|TS)/i);
+                  return {
+                    name: s.name || 'Torrent Stream',
+                    title: `${data.title} (${qualityMatch ? qualityMatch[1] : '1080p'})`,
+                    raw_title: rawTitle,
+                    magnet: magnet,
+                    infoHash: infoHash,
+                    seeders: seedMatch ? parseInt(seedMatch[1]) : 0,
+                    size: sizeMatch ? sizeMatch[1] : 'Unknown',
+                    quality: qualityMatch ? qualityMatch[1] : 'HD'
+                  };
                 });
                 results.sort((a, b) => getStreamPriorityScore(b, (type || 'movie') === 'movie') - getStreamPriorityScore(a, (type || 'movie') === 'movie'));
                 data.results = results;
+              }
+            } catch (e) {
+              console.error('Fallback torrentio error:', e);
             }
-        } catch (e) {
-            console.error('Fallback torrentio error:', e);
-        }
-    }
+          }
 
           if (data.results && data.results.length > 0) {
             const isMovie = (type || 'movie') === 'movie';
@@ -256,14 +280,14 @@ async function checkUrlAutoPlay() {
             const bestResult = data.results[0];
             console.log(`[Auto-Play API] Selected top stream (Size Prioritized): ${bestResult.title} (${bestResult.size || 'Unknown'})`);
             magnetInput.value = bestResult.magnet;
-            playMagnetOrUrl(bestResult.magnet);
+            playMagnetOrUrl(bestResult.magnet, season, episode, bestResult.title || queryStr);
             return;
           }
         }
       } catch (e) {
         console.warn('Auto-play search failed:', e);
       }
-      playMagnetOrUrl(queryStr);
+      playMagnetOrUrl(queryStr, season, episode, queryStr);
     }
   }
 }
@@ -786,9 +810,19 @@ function setServerStatus(isOnline, text) {
 }
 
 // Main Function: Play Magnet Link or Stream URL
-async function playMagnetOrUrl(input) {
+async function playMagnetOrUrl(input, season, episode, titleHint) {
   if (metadataPollTimer) clearTimeout(metadataPollTimer);
   if (statsPollInterval) clearInterval(statsPollInterval);
+
+  if (season !== undefined && season !== null && season !== '') {
+    window.activeTargetSeason = parseInt(String(season), 10) || 0;
+  }
+  if (episode !== undefined && episode !== null && episode !== '') {
+    window.activeTargetEpisode = parseInt(String(episode), 10) || 0;
+  }
+  if (titleHint) {
+    window.activeTitleHint = titleHint;
+  }
 
   if (!input.startsWith('magnet:?') && !input.startsWith('http://') && !input.startsWith('https://')) {
     searchModal.classList.remove('hidden');
@@ -868,24 +902,18 @@ async function pollTorrentMetadata(hash, attempts = 0) {
     if (fileStats.length > 0) {
       renderFileList(fileStats);
 
-      const videoFiles = fileStats.filter(f => isVideoFile(f.path));
-      let targetFile = null;
-
-      // Prefer MKV/MP4 files over legacy AVI files for native browser playback
-      const mkvMp4Files = videoFiles.filter(f => !f.path.toLowerCase().endsWith('.avi'));
-      if (mkvMp4Files.length > 0) {
-        targetFile = mkvMp4Files.reduce((prev, current) => (prev.length > current.length) ? prev : current);
-      } else if (videoFiles.length > 0) {
-        targetFile = videoFiles.reduce((prev, current) => (prev.length > current.length) ? prev : current);
-      } else {
-        targetFile = fileStats.reduce((prev, current) => (prev.length > current.length) ? prev : current);
-      }
+      // Select target episode file or best clean video file (strictly excludes backcover.mp4/samples)
+      const targetFile = findTargetTorrentFile(fileStats, window.activeTargetSeason, window.activeTargetEpisode, window.activeTitleHint || data.title);
 
       if (targetFile) {
+        if (window.activeTargetEpisode && window.activeTargetEpisode > 0) {
+          console.log(`[TorrServer Engine] Successfully resolved Target Episode file (ID: ${targetFile.id}): ${targetFile.path}`);
+          showToast(`Playing Target Episode: ${getFileName(targetFile.path)}`, 'info');
+        }
         playTorrentFile(hash, targetFile.id, targetFile.path, data.title || targetFile.path, targetFile.length);
       } else {
         hideLoading();
-        showToast('No printable files found inside this torrent.', 'warning');
+        showToast('No playable video files found inside this torrent.', 'warning');
       }
 
       loadActiveTorrentsList();
@@ -1470,18 +1498,27 @@ function renderFileList(fileStats) {
   }
 
   filesListContainer.innerHTML = '';
+  let maxBytes = 0;
+  fileStats.forEach(f => {
+    const len = f.length || f.size || 0;
+    if (len > maxBytes) maxBytes = len;
+  });
+
   fileStats.forEach(file => {
     const isVideo = isVideoFile(file.path);
-    const isAvi = file.path.toLowerCase().endsWith('.avi');
+    const isAvi = (file.path || '').toLowerCase().endsWith('.avi');
+    const isJunk = isJunkVideo(file.path, file.length, maxBytes);
 
     const item = document.createElement('div');
-    item.className = `file-item ${file.id === activeFileIndex ? 'active' : ''}`;
+    item.className = `file-item ${file.id === activeFileIndex ? 'active' : ''} ${isJunk ? 'opacity-40' : ''}`;
     item.dataset.fileId = file.id;
 
     const fileNameSpan = document.createElement('span');
     fileNameSpan.className = 'file-name';
     fileNameSpan.title = file.path;
-    fileNameSpan.textContent = (isAvi ? '⚠️ ' : (isVideo ? '🎬 ' : '📄 ')) + getFileName(file.path);
+
+    let icon = isJunk ? '🚫 ' : (isAvi ? '⚠️ ' : (isVideo ? '🎬 ' : '📄 '));
+    fileNameSpan.textContent = icon + getFileName(file.path) + (isJunk ? ' (Cover/Sample)' : '');
 
     const fileSizeSpan = document.createElement('span');
     fileSizeSpan.className = 'file-size';
@@ -1617,7 +1654,99 @@ function parseMediaMetadata(raw) {
   };
 }
 
-// Utilities
+// Utilities & Junk Media Filter
+function isJunkVideo(filePath, fileLength, maxVideoBytes) {
+  if (!filePath) return true;
+  const fileName = getFileName(filePath.toLowerCase());
+
+  // Filter out image/nfo/text/sample non-video files
+  if (/\.(jpg|jpeg|png|gif|webp|nfo|txt|exe|url|sfv|srr|torrent)$/i.test(fileName)) {
+    return true;
+  }
+
+  // Explicit junk keywords
+  if (/(?:^|[\._\- \[\(])(sample|trailer|promo|preview|featurette|backcover|frontcover|cover|bonus|extras?|proof|screen|screener)(?:$|[\._\- \] \)])/i.test(fileName)) {
+    return true;
+  }
+  if (/(?:backcover|frontcover|sample|trailer)\.(?:mp4|mkv|avi|webm|ts|mov)$/i.test(fileName)) {
+    return true;
+  }
+
+  // Small clips (< 35 MB) when full files are > 120 MB
+  if (fileLength && maxVideoBytes && maxVideoBytes > 120 * 1024 * 1024 && fileLength < 35 * 1024 * 1024) {
+    return true;
+  }
+
+  return false;
+}
+
+function findTargetTorrentFile(fileStats, targetSeason, targetEpisode, titleHint) {
+  if (!fileStats || fileStats.length === 0) return null;
+
+  let maxBytes = 0;
+  fileStats.forEach(f => {
+    const len = f.length || f.size || 0;
+    if (isVideoFile(f.path) && len > maxBytes) maxBytes = len;
+  });
+
+  const cleanVideos = fileStats.filter(f => {
+    const len = f.length || f.size || 0;
+    return isVideoFile(f.path) && !isJunkVideo(f.path, len, maxBytes);
+  });
+  const candidatePool = cleanVideos.length > 0 ? cleanVideos : fileStats.filter(f => isVideoFile(f.path));
+  if (candidatePool.length === 0) return fileStats[0] || null;
+
+  const s = parseInt(targetSeason, 10);
+  const e = parseInt(targetEpisode, 10);
+
+  if (!isNaN(e) && e > 0) {
+    // 1. Exact Season + Episode: S02E03, 2x03, Season 2 Episode 3, S2 - 03
+    if (!isNaN(s) && s > 0) {
+      const exactMatch = candidatePool.find(f => {
+        const name = (f.path || '').toLowerCase();
+        return new RegExp(`s0*${s}e0*${e}\\b`, 'i').test(name) ||
+               new RegExp(`\\b0*${s}x0*${e}\\b`, 'i').test(name) ||
+               new RegExp(`season\\s*0*${s}.*?(?:ep|episode)\\s*0*${e}\\b`, 'i') ||
+               new RegExp(`s0*${s}\\s*-\\s*0*${e}\\b`, 'i');
+      });
+      if (exactMatch) return exactMatch;
+    }
+
+    // 2. Black Clover / Anime Absolute Episode Check: S2E3 = Episode 54 (S1 has 51 eps)
+    const isBlackClover = (titleHint && /black\s*(?:clover|cover)/i.test(titleHint)) ||
+                          candidatePool.some(f => /black\s*clover/i.test(f.path || ''));
+    if (isBlackClover && s === 2) {
+      const bcAbsEp = 51 + e; // S2 Ep 3 -> 54
+      const absMatch = candidatePool.find(f => {
+        const name = (f.path || '').toLowerCase();
+        return new RegExp(`(?:-|ep|episode|#|\\s)\\s*0*${bcAbsEp}\\b`, 'i').test(name) ||
+               new RegExp(`\\[0*${bcAbsEp}\\]`, 'i').test(name);
+      });
+      if (absMatch) return absMatch;
+    }
+
+    // 3. Episode number in filename: EP03, Episode 03, - 03, [03]
+    const epMatch = candidatePool.find(f => {
+      const name = (f.path || '').toLowerCase();
+      if (!isNaN(s) && s > 0) {
+        const otherSeason = new RegExp(`s0*(?!${s}\\b)\\d+e`, 'i');
+        if (otherSeason.test(name)) return false;
+      }
+      return new RegExp(`(?:ep|episode|\\s-\\s|#)\\s*0*${e}\\b`, 'i').test(name) ||
+             new RegExp(`\\[0*${e}\\]`, 'i').test(name) ||
+             new RegExp(`\\b0*${e}\\.(?:mp4|mkv|webm|avi)`, 'i').test(name);
+    });
+    if (epMatch) return epMatch;
+  }
+
+  // 4. Default: Prefer MKV/MP4 over AVI, select largest clean video file
+  const mkvMp4 = candidatePool.filter(f => !(f.path || '').toLowerCase().endsWith('.avi'));
+  if (mkvMp4.length > 0) {
+    return mkvMp4.reduce((prev, curr) => ((prev.length || 0) > (curr.length || 0)) ? prev : curr);
+  }
+  return candidatePool.reduce((prev, curr) => ((prev.length || 0) > (curr.length || 0)) ? prev : curr);
+}
+
 function isVideoFile(path) {
   if (!path) return false;
   const ext = path.split('.').pop().toLowerCase();

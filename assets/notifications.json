@@ -1,0 +1,72 @@
+[
+  {
+    "id": "notif-sports-1",
+    "title": "ICC Champions Trophy: IND vs PAK",
+    "message": "🔥 High-voltage clash LIVE NOW in 4K 60FPS! Indian top order batting with live Hindi commentary.",
+    "thumbnail": "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=500&auto=format&fit=crop&q=80",
+    "category": "sports",
+    "actionUrl": "/live.php?token=STALKER_PRO&id=mdtv-1106&m3u=1",
+    "actionType": "sports",
+    "mediaId": "mdtv-1106",
+    "mediaTitle": "Star Sports 1 HD",
+    "badge": "🔴 LIVE NOW",
+    "timestamp": 1729000000000,
+    "createdAt": "Just now"
+  },
+  {
+    "id": "notif-episode-1",
+    "title": "Solo Leveling - Episode 12 (Finale)",
+    "message": "The Monarch Awakens! Episode 12 is now streaming in 4K Ultra HD Dual Audio (Dub & Sub).",
+    "thumbnail": "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80",
+    "category": "episode",
+    "actionUrl": "122226",
+    "actionType": "anime",
+    "mediaId": "122226",
+    "mediaTitle": "Solo Leveling",
+    "badge": "NEW EPISODE",
+    "timestamp": 1728996000000,
+    "createdAt": "10m ago"
+  },
+  {
+    "id": "notif-episode-2",
+    "title": "House of the Dragon - S2 Ep 8",
+    "message": "Season 2 Finale 'The Red Dragon' is now available in Dolby Atmos 4K HDR. Witness the naval clash.",
+    "thumbnail": "https://image.tmdb.org/t/p/w500/1XDDXPXGiI8id7MrUxK26VI48ue.jpg",
+    "category": "episode",
+    "actionUrl": "94997",
+    "actionType": "tv",
+    "mediaId": "94997",
+    "mediaTitle": "House of the Dragon",
+    "badge": "NEW EPISODE",
+    "timestamp": 1728992000000,
+    "createdAt": "25m ago"
+  },
+  {
+    "id": "notif-sports-2",
+    "title": "Premier League: Arsenal vs Chelsea",
+    "message": "London Derby LIVE NOW • English Premier League 2026 • 60 FPS Ultra Stream on Server 1",
+    "thumbnail": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop&q=80",
+    "category": "sports",
+    "actionUrl": "/live.php?token=STALKER_PRO&id=mdtv-1108&m3u=1",
+    "actionType": "sports",
+    "mediaId": "mdtv-1108",
+    "mediaTitle": "Star Sports Select 1 HD",
+    "badge": "🔴 LIVE NOW",
+    "timestamp": 1728988000000,
+    "createdAt": "Live Now"
+  },
+  {
+    "id": "notif-admin-1",
+    "title": "✨ Aetheris Cinema AI Engine Live",
+    "message": "AI Powered Personalized Recommendations and Live Event Notifications are now active!",
+    "thumbnail": "/aetheris_infinity.svg",
+    "category": "alert",
+    "actionUrl": "",
+    "actionType": "tab",
+    "mediaId": "home",
+    "mediaTitle": "AI Recommendations",
+    "badge": "⚡ SPECIAL",
+    "timestamp": 1728980000000,
+    "createdAt": "1h ago"
+  }
+]

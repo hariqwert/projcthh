@@ -9,6 +9,7 @@ import { streamicRouter } from './src/routes/streamic';
 import kisskhRouter from './src/routes/kisskhM3u';
 import asiaflixRouter from './src/routes/asiaflixM3u';
 import { m3uHubRouter } from './src/routes/m3uHub';
+import { comicsRouter } from './src/routes/comics';
 import {
     MOVIES4U_PRIMARY_INDEX_URL,
     MOVIES4U_COMPANION_INDEXES,
@@ -40,10 +41,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, requireAdmin, getClientIp, isAdminAuthenticated } from './src/middleware/auth';
 import { StalkerAPI, StalkerConfig } from './src/stalkerAPI';
-import { handleLiveStream, isSafeUrl, cleanTsBuffer, hlsSegmentCache, killAllActiveStreams } from './src/proxy';
+import { handleLiveStream, isSafeUrl, cleanTsBuffer, hlsSegmentCache, killAllActiveStreams, isStreamingTargetAllowed } from './src/proxy';
 import { handleXtreamStream } from './src/xtream/xtreamProxy';
 import adminRouter from './src/routes/admin';
 import { SecurityGateKeeper } from './src/services/securityGateKeeper';
+import { PerimeterDefenseShield } from './src/services/perimeterDefense';
 import { wrapFanCodeProxyUrl } from './src/services/fancodeService';
 import subtitlesRouter from './src/routes/subtitles';
 import { hybridM3uRouter } from './src/routes/hybridM3u';
@@ -284,6 +286,7 @@ let blacklist: string[] = [];
 export const systemState = {
     status: 'active' as 'active' | 'offline' | 'killed',
     maintenanceMode: false,
+    deadKill: false,
     maintenanceAdminBypass: true,
     consumetMaintenance: false,
     playMaintenance: false,
@@ -432,6 +435,7 @@ function loadSystemConfig(overrideData: any = null) {
     systemStatus = (systemState.status === 'killed' ? 'offline' : systemState.status) as any;
     
     if (db.maintenanceMode !== undefined) systemState.maintenanceMode = !!db.maintenanceMode;
+    if (db.deadKill !== undefined) systemState.deadKill = !!db.deadKill;
     if (db.maintenanceAdminBypass !== undefined) systemState.maintenanceAdminBypass = !!db.maintenanceAdminBypass;
     if (db.consumetMaintenance !== undefined) systemState.consumetMaintenance = !!db.consumetMaintenance;
     if (db.playMaintenance !== undefined) systemState.playMaintenance = !!db.playMaintenance;
@@ -713,6 +717,16 @@ export function isSiteUnlocked(req: Request): boolean {
         try {
             const decoded = jwt.verify(unlockCookie, JWT_SECRET) as any;
             if (decoded && decoded.unlocked === true) {
+                // Verify client IP binding if present in token
+                if (decoded.ip && decoded.ip !== '127.0.0.1' && decoded.ip !== '::1' && decoded.ip !== 'localhost') {
+                    if (decoded.ip !== cleanIp) {
+                        return false;
+                    }
+                }
+                // Verify token expiration explicitly
+                if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+                    return false;
+                }
                 // Invalidate tokens issued before siteLockEpoch (e.g. when admin toggles or relocks)
                 if (systemState.siteLockEpoch && decoded.timestamp && decoded.timestamp < systemState.siteLockEpoch) {
                     return false;
@@ -1254,6 +1268,7 @@ export function setSecureCookie(req: Request, res: Response, name: string, value
 }
 
 const app = express();
+app.use(PerimeterDefenseShield.middleware());
 app.disable('x-powered-by');
 
 // ==========================================================================
@@ -1717,6 +1732,28 @@ app.use((req, res, next) => {
         }
     }
 
+    // 2.9 DEAD KILL MODE: Ultimate lockdown prohibited state - returns bare white page HTTP 403
+    if (systemState.deadKill && !isMaintenanceAdminBypassed) {
+        const isAdminAccess = req.path === '/login.php' || 
+                              req.path === '/api/admin/login' || 
+                              req.path === '/api/admin/maintenance/dead-kill' || 
+                              req.path === '/api/admin/maintenance';
+        if (!isAdminAccess) {
+            const isApi = req.path.startsWith('/api/') || req.headers['accept']?.includes('application/json');
+            if (isApi) {
+                return res.status(403).json({ error: "403 Forbidden: Server Died or Prohibited State" });
+            }
+            return res.status(403).send(`<!DOCTYPE html>
+<html>
+<head><title>403 Forbidden</title></head>
+<body style="background:#fff;color:#000;font-family:monospace;margin:20px;">
+403 Forbidden: Server Died or Prohibited State
+</body>
+</html>`);
+        }
+    }
+
+
     if ((systemState.status === 'offline' || systemState.status === 'killed' || systemState.maintenanceMode || isSpecificMaintenance) && !isMaintenanceAdminBypassed) {
         // Exclude admin API, music proxy, video uploads, and admin UI from being blocked
         if (req.path.startsWith('/api/admin') || 
@@ -1866,6 +1903,12 @@ app.use((req, res, next) => {
                     <i data-lucide="volume-x" id="broadcastAudioIconMuted" class="w-4 h-4 ${videoMuted ? '' : 'hidden'}"></i>
                     <i data-lucide="volume-2" id="broadcastAudioIconUnmuted" class="w-4 h-4 ${videoMuted ? 'hidden' : ''}"></i>
                     <span id="broadcastAudioLabel" class="text-[11px]">${videoMuted ? 'Unmute' : 'Mute'}</span>
+                </button>
+
+                <!-- Dead Kill Prohibited State Button -->
+                <button type="button" onclick="triggerDeadKill()" class="px-3 py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/70 border border-rose-500/50 text-rose-300 hover:text-white text-xs font-bold font-mono flex items-center gap-1.5 backdrop-blur-md transition-all cursor-pointer shadow-[0_0_15px_rgba(244,63,94,0.35)]" title="Engage Dead Kill (White Page 403)">
+                    <i data-lucide="skull" class="w-4 h-4 text-rose-400"></i>
+                    <span>DEAD KILL</span>
                 </button>
 
                 <!-- Minimize to Floating Corner Player -->
@@ -5105,6 +5148,20 @@ app.use((req, res, next) => {
         window.minimizeBroadcastVideo = minimizeBroadcastVideo;
         window.maximizeBroadcastVideo = maximizeBroadcastVideo;
         window.closeBroadcastVideo = closeBroadcastVideo;
+        window.triggerDeadKill = function() {
+            if (!confirm("⚠️ WARNING: ENGAGE DEAD KILL?\n\nThis will terminate ALL active streams and lock the entire server into a prohibited dead state.\n\nAll non-admin visitors will receive a bare white HTTP 403 page.")) return;
+            fetch('/api/admin/maintenance/dead-kill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: true })
+            })
+            .then(r => r.json())
+            .then(d => {
+                alert(d.message || "DEAD KILL ENGAGED. Server is now in prohibited state.");
+                window.location.reload();
+            })
+            .catch(err => alert("Error: " + err.message));
+        };
         window.toggleBroadcastAudio = toggleBroadcastAudio;
         window.unmuteBroadcastImmediately = unmuteBroadcastImmediately;
         window.toggleBroadcastFullscreen = toggleBroadcastFullscreen;
@@ -8275,8 +8332,8 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
 
     if (u.hostname.includes('tiktokcdn') || u.hostname.includes('byteoversea')) {
         headers['User-Agent'] = headers['User-Agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
-        headers['Referer'] = headers['Referer'] || 'https://timst.top/';
-        headers['Origin'] = headers['Origin'] || 'https://timst.top';
+        headers['Referer'] = headers['Referer'] || 'https://timstreams.co.rw/';
+        headers['Origin'] = headers['Origin'] || 'https://timstreams.co.rw';
     }
 
     if (u.hostname.includes('fragrancecdn') || u.hostname.includes('cdnvideo')) {
@@ -8313,10 +8370,15 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         headers['Origin'] = headers['Origin'] || 'https://megaplay.buzz';
     }
 
-    if (u.hostname.includes('ravok') || u.hostname.includes('as-cdn') || u.hostname.includes('animesalt')) {
+    if (u.hostname.includes('dramahot') || u.hostname.includes('zokoanime')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
-        headers['Referer'] = headers['Referer'] || 'https://animesalt.cx/';
-        headers['Origin'] = headers['Origin'] || 'https://animesalt.cx';
+        headers['Referer'] = 'https://zokoanime.video/';
+        delete headers['Origin'];
+    } else if (u.hostname.includes('ravok') || u.hostname.includes('as-cdn') || u.hostname.includes('animesalt')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = u.hostname.includes('ravok') ? 'https://ravok.buzz/' : (headers['Referer'] || 'https://animesalt.cx/');
+        // as-cdn returns HTTP 500 when Origin header is present
+        delete headers['Origin'];
     }
 
     if (u.hostname.includes('exmxbxe') || u.hostname.includes('ehgembxe') || u.hostname.includes('grandemx') || u.hostname.includes('epiembeds') || u.hostname.includes('hundxvision') || u.hostname.includes('timst') || u.hostname.includes('cdx-') || u.hostname.includes('judiaslevels') || u.hostname.includes('embeds.gay')) {
@@ -8713,6 +8775,10 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
     if (!(await isSafeUrl(cleanTarget))) {
         return res.status(403).send('403 Forbidden: Restricted or unsafe URL target');
     }
+    // Strict stream proxy allowlist check: prevent arbitrary SSRF / free relay abuse
+    if (!isStreamingTargetAllowed(targetUrl)) {
+        return res.status(403).send('403 Forbidden: Target host not authorized for stream proxy relay');
+    }
 
     try {
         const forwardedProto = (req.headers['x-forwarded-proto'] as string || '').split(',')[0].trim();
@@ -8790,23 +8856,11 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
                              targetUrl.pathname.includes('tplv-') ||
                              targetUrl.search.includes('aka_msn=') ||
                              targetUrl.search.includes('.ts');
-        const reqKey = targetUrl.toString();
-        const pathKey = targetUrl.origin + targetUrl.pathname;
-        if (isSegmentReq && !clientRange && (hlsSegmentCache.has(reqKey) || hlsSegmentCache.has(pathKey))) {
-            const cached = (hlsSegmentCache.get(reqKey) || hlsSegmentCache.get(pathKey))!;
-            if (Date.now() < cached.expiresAt && cached.buffer) {
-                res.setHeader('Content-Type', cached.contentType || (isKeyReq ? 'application/octet-stream' : 'video/mp2t'));
-                res.setHeader('Content-Length', String(cached.buffer.length));
-                res.setHeader('Cache-Control', isKeyReq ? 'public, max-age=600, immutable' : 'public, max-age=86400, immutable');
-                res.setHeader('X-Cache', 'HIT');
-                return res.status(200).send(cached.buffer);
-            }
-        }
-
         const outboundAgent = getOutboundProxyAgent();
 
         // High-Speed Progressive Video Stream Piper (Pipes VidLink / Hakunamatata MP4 Range requests directly to HTML5 video)
         const isByteStream = (Boolean(clientRange) && !isHlsSegment) || 
+                             targetUrl.pathname.endsWith('.mp4') || 
                              targetUrl.pathname.endsWith('.mkv') || 
                              targetUrl.pathname.endsWith('.webm') ||
                              targetUrl.hostname.includes('hakunamatata') || 
@@ -8831,7 +8885,7 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
                     }
                 }
                 if (!streamRes.headers['content-type']) {
-                    res.setHeader('Content-Type', 'video/mp4');
+                    res.setHeader('Content-Type', targetUrl.pathname.endsWith('.mp4') || targetUrl.hostname.includes('hakunaymatata') ? 'video/mp4' : 'application/octet-stream');
                 }
                 if (!streamRes.headers['accept-ranges']) {
                     res.setHeader('Accept-Ranges', 'bytes');
@@ -8841,6 +8895,20 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
             } catch (err: any) {
                 console.warn(`[Stream Proxy] Byte stream pipe error for ${targetUrl.toString()}: ${err.message}`);
                 return res.status(502).send(`Upstream stream pipe failed: ${err.message}`);
+            }
+        }
+
+        const reqKey = targetUrl.toString();
+        const pathKey = targetUrl.origin + targetUrl.pathname;
+        if (isSegmentReq && !clientRange && (hlsSegmentCache.has(reqKey) || hlsSegmentCache.has(pathKey))) {
+            const cached = (hlsSegmentCache.get(reqKey) || hlsSegmentCache.get(pathKey))!;
+            if (Date.now() < cached.expiresAt && cached.buffer) {
+                const isMp4 = targetUrl.pathname.endsWith('.mp4') || targetUrl.hostname.includes('hakunaymatata');
+                res.setHeader('Content-Type', cached.contentType || (isKeyReq ? 'application/octet-stream' : (isMp4 ? 'video/mp4' : 'video/mp2t')));
+                res.setHeader('Content-Length', String(cached.buffer.length));
+                res.setHeader('Cache-Control', isKeyReq ? 'public, max-age=600, immutable' : 'public, max-age=86400, immutable');
+                res.setHeader('X-Cache', 'HIT');
+                return res.status(200).send(cached.buffer);
             }
         }
         let upstreamRes: any;
@@ -9011,7 +9079,7 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
         if (!targetUrl.pathname.toLowerCase().endsWith('.vtt') && !targetUrl.pathname.toLowerCase().endsWith('.key')) {
             const cleaned = cleanTsBuffer(segmentBuf);
             segmentBuf = cleaned.buffer;
-            if (segmentBuf[0] === 0x47 || finalCt.includes('image') || targetUrl.pathname.includes('.ts') || targetUrl.pathname.includes('page-') || targetUrl.pathname.includes('seg-')) {
+            if (segmentBuf[0] === 0x47 || finalCt.includes('image') || targetUrl.pathname.includes('.ts') || targetUrl.pathname.includes('page-') || targetUrl.pathname.includes('seg-') || targetUrl.hostname.includes('as-cdn')) {
                 finalCt = 'video/mp2t';
             } else if (targetUrl.pathname.toLowerCase().endsWith('.mkv') || finalCt.includes('matroska')) {
                 finalCt = 'video/mp4';
@@ -9335,6 +9403,81 @@ app.get('/api/sports/containers', (req: Request, res: Response) => {
 // app.use(youtubeModule.default || youtubeModule);
 app.use('/', sportsM3uRouter);
 app.use('/', customM3uProxyRouter);
+
+// Public Background Music Tracks API (Supplies background tracks to Subway Surfers & Hero Page)
+app.get(['/api/music/background-tracks', '/api/system/background-music'], (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    let heroTracks: any[] = [];
+    const configPath = path.join(process.cwd(), 'assets', 'hero-config.json');
+    if (fs.existsSync(configPath)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (data?.musicMedia?.playlist) {
+                heroTracks = data.musicMedia.playlist;
+            }
+        } catch (_) {}
+    }
+
+    const defaultTracks = [
+        {
+            id: "studio_fidelity",
+            title: "Studio Fidelity Continuum",
+            artist: "Aetheris Acoustics",
+            url: "/assets/music_cinematic_macro.mp4",
+            type: "local"
+        },
+        {
+            id: "deep_continuum",
+            title: "Aetheris Deep Continuum",
+            artist: "Aetheris Audio Lab",
+            url: "/assets/x_video_music_bg.mp4",
+            type: "local"
+        },
+        {
+            id: "mumbai_sprint",
+            title: "Mumbai Cyber-Sprint Beats",
+            artist: "Aetheris Game Sound",
+            url: "/api/music/proxy?url=https%3A%2F%2Fcdn.pixabay.com%2Fdownload%2Faudio%2F2022%2F05%2F27%2Faudio_1808fbf07a.mp3",
+            type: "stream"
+        },
+        {
+            id: "lofi_beats",
+            title: "Lofi Hip Hop Radio — Beats to Relax",
+            artist: "Lofi Girl (Chill Stream)",
+            url: "/api/v1/youtube/stream?v=jfKfPfyJRdk&type=audio",
+            ytId: "jfKfPfyJRdk",
+            type: "youtube"
+        },
+        {
+            id: "synthwave_chill",
+            title: "Synthwave Radio — ChillSynth FM",
+            artist: "ChillSynth Retro Waves",
+            url: "/api/v1/youtube/stream?v=4xDzrJKXOOY&type=audio",
+            ytId: "4xDzrJKXOOY",
+            type: "youtube"
+        }
+    ];
+
+    const allTracks = [...defaultTracks];
+    heroTracks.forEach(ht => {
+        if (!allTracks.some(t => t.url === ht.audioUrl || t.title === ht.title)) {
+            allTracks.push({
+                id: "custom_" + allTracks.length,
+                title: ht.title,
+                artist: ht.artist || 'Aetheris Studio',
+                url: ht.audioUrl,
+                ytId: ht.ytId,
+                type: ht.sourceType || 'stream'
+            });
+        }
+    });
+
+    res.json({
+        status: "success",
+        tracks: allTracks
+    });
+});
+
 app.use('/api/admin', adminRouter);
 app.use('/api/hybrid-m3u', hybridM3uRouter);
 app.use('/api/m3u', m3uHubRouter);
@@ -9350,6 +9493,10 @@ app.use('/api/kisskh', kisskhRouter);
 app.use('/kisskh', kisskhRouter);
 app.use('/api/asiaflix', asiaflixRouter);
 app.use('/asiaflix', asiaflixRouter);
+app.use('/api/comics', comicsRouter);
+app.use('/comics', comicsRouter);
+app.use('/api/manga', comicsRouter);
+app.use('/manga', comicsRouter);
 // Bingr Scraper microservice top-level parity routes
 app.use('/peakstream', peakstreamRouter);
 app.use('/servers', (req, res, next) => { req.url = '/servers'; bingrRouter(req, res, next); });
@@ -9370,6 +9517,86 @@ app.use('/tv', (req, res, next) => {
     bingrRouter(req, res, next);
 });
 app.use('/scrape', (req, res, next) => { req.url = '/scrape'; bingrRouter(req, res, next); });
+
+// --- Dynamic Notification Center & Admin Broadcast API ---
+const NOTIFICATIONS_FILE = path.join(process.cwd(), 'assets', 'notifications.json');
+
+function getNotificationsFromDisk(): any[] {
+    try {
+        if (fs.existsSync(NOTIFICATIONS_FILE)) {
+            const raw = fs.readFileSync(NOTIFICATIONS_FILE, 'utf8');
+            return JSON.parse(raw);
+        }
+    } catch (e) {
+        console.error('[NOTIFICATIONS] Read error:', e);
+    }
+    return [];
+}
+
+function saveNotificationsToDisk(items: any[]): boolean {
+    try {
+        const dir = path.dirname(NOTIFICATIONS_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(items, null, 2), 'utf8');
+        return true;
+    } catch (e) {
+        console.error('[NOTIFICATIONS] Save error:', e);
+        return false;
+    }
+}
+
+app.get('/api/notifications', (req: Request, res: Response) => {
+    const list = getNotificationsFromDisk();
+    res.json({ status: 'success', count: list.length, notifications: list });
+});
+
+app.post(['/api/admin/notifications', '/api/notifications'], express.json(), (req: Request, res: Response) => {
+    try {
+        const { title, message, thumbnail, category, actionUrl, actionType, mediaId, mediaTitle, badge } = req.body;
+        if (!title || !message) {
+            return res.status(400).json({ error: 'Title and message are required' });
+        }
+        const list = getNotificationsFromDisk();
+        const newNotif = {
+            id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+            title: String(title).trim(),
+            message: String(message).trim(),
+            thumbnail: thumbnail || '/aetheris_infinity.svg',
+            category: category || 'alert',
+            actionUrl: actionUrl || '',
+            actionType: actionType || (category === 'sports' ? 'sports' : (category === 'episode' ? 'tv' : 'tab')),
+            mediaId: mediaId || '',
+            mediaTitle: mediaTitle || title,
+            badge: badge || (category === 'sports' ? '🔴 LIVE NOW' : (category === 'episode' ? 'NEW EPISODE' : '⚡ ANNOUNCEMENT')),
+            timestamp: Date.now(),
+            createdAt: 'Just now'
+        };
+        list.unshift(newNotif);
+        if (list.length > 50) list.length = 50;
+        saveNotificationsToDisk(list);
+        console.log(`[NOTIFICATIONS] Admin broadcast event published: "${newNotif.title}" (${newNotif.category})`);
+        res.json({ status: 'success', notification: newNotif });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete(['/api/admin/notifications/:id', '/api/notifications/:id'], (req: Request, res: Response) => {
+    try {
+        const id = req.params.id;
+        let list = getNotificationsFromDisk();
+        const initialLen = list.length;
+        list = list.filter((n: any) => n.id !== id);
+        if (list.length < initialLen) {
+            saveNotificationsToDisk(list);
+            res.json({ status: 'success', message: 'Notification removed' });
+        } else {
+            res.status(404).json({ error: 'Notification not found' });
+        }
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 
 // --- Public endpoint to remove broken channels from the UI ---
@@ -9781,22 +10008,73 @@ app.get('/api/anime/popular', async (req: Request, res: Response) => {
 });
 
 app.get('/api/anime/top-airing', async (req: Request, res: Response) => {
-    const provider = new ANIME.Hianime();
     try {
+        const provider = new ANIME.Hianime();
         const results = await provider.fetchTopAiring();
-        res.json(results);
-    } catch (e: any) {
-        res.status(500).json({ error: e.message || 'Failed to fetch top airing anime' });
+        return res.json(results);
+    } catch (_) {
+        try {
+            const anilistRes = await axios.post('https://graphql.anilist.co', {
+                query: `
+                    query {
+                        Page(page: 1, perPage: 20) {
+                            media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
+                                id
+                                title { romaji english userPreferred }
+                                coverImage { large extraLarge }
+                                averageScore
+                                episodes
+                                genres
+                            }
+                        }
+                    }
+                `
+            }, { timeout: 6000 });
+            const list = (anilistRes.data?.data?.Page?.media || []).map((m: any) => ({
+                id: m.id,
+                title: m.title?.english || m.title?.userPreferred || m.title?.romaji || 'Anime',
+                image: m.coverImage?.extraLarge || m.coverImage?.large,
+                rating: m.averageScore,
+                totalEpisodes: m.episodes
+            }));
+            return res.json({ results: list });
+        } catch (err: any) {
+            return res.status(500).json({ error: err.message || 'Failed to fetch top airing anime' });
+        }
     }
 });
 
 app.get('/api/anime/upcoming', async (req: Request, res: Response) => {
-    const provider = new ANIME.Hianime();
     try {
+        const provider = new ANIME.Hianime();
         const results = await provider.fetchTopUpcoming();
-        res.json(results);
-    } catch (e: any) {
-        res.status(500).json({ error: e.message || 'Failed to fetch upcoming anime' });
+        return res.json(results);
+    } catch (_) {
+        try {
+            const anilistRes = await axios.post('https://graphql.anilist.co', {
+                query: `
+                    query {
+                        Page(page: 1, perPage: 20) {
+                            media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC) {
+                                id
+                                title { romaji english userPreferred }
+                                coverImage { large extraLarge }
+                                genres
+                            }
+                        }
+                    }
+                `
+            }, { timeout: 6000 });
+            const list = (anilistRes.data?.data?.Page?.media || []).map((m: any) => ({
+                id: m.id,
+                title: m.title?.english || m.title?.userPreferred || m.title?.romaji || 'Anime',
+                image: m.coverImage?.extraLarge || m.coverImage?.large,
+                totalEpisodes: m.episodes
+            }));
+            return res.json({ results: list });
+        } catch (err: any) {
+            return res.status(500).json({ error: err.message || 'Failed to fetch upcoming anime' });
+        }
     }
 });
 
@@ -10975,6 +11253,20 @@ app.get('/manifest.json', (req, res) => {
     return res.sendFile(path.join(process.cwd(), 'manifest.json'));
 });
 
+app.get(['/subway', '/subway.html'], (req, res) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    const pubPath = path.join(process.cwd(), 'public', 'subway.html');
+    if (fs.existsSync(pubPath)) return res.sendFile(pubPath);
+    return res.sendFile(path.join(process.cwd(), 'subway.html'));
+});
+
+app.get(['/offline', '/offline.html'], (req, res) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    const pubPath = path.join(process.cwd(), 'public', 'offline.html');
+    if (fs.existsSync(pubPath)) return res.sendFile(pubPath);
+    return res.sendFile(path.join(process.cwd(), 'offline.html'));
+});
+
 app.get('/search_launcher.js', (req, res) => {
     const pubPath = path.join(process.cwd(), 'public', 'search_launcher.js');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
@@ -11209,7 +11501,8 @@ app.get('/play.php', async (req, res) => {
             '{{STREAM_URL}}': stream_url,
             '{{NAME}}': name,
             '{{SOURCE}}': source,
-            '{{LOGO}}': (req.query.logo as string) || ''
+            '{{LOGO}}': (req.query.logo as string) || '',
+            '{{POSTER}}': (req.query.poster as string) || (req.query.thumb as string) || (req.query.logo as string) || ''
         });
     }
 
@@ -11318,7 +11611,8 @@ app.get(['/play_consumet.php', '/consumet/play_consumet.php'], async (req, res) 
         '{{STREAM_URL}}': stream_url,
         '{{NAME}}': name,
         '{{SOURCE}}': source,
-        '{{LOGO}}': (req.query.logo as string) || ''
+        '{{LOGO}}': (req.query.logo as string) || '',
+        '{{POSTER}}': (req.query.poster as string) || (req.query.thumb as string) || (req.query.logo as string) || ''
     });
 });
 

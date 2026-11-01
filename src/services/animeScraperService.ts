@@ -3,6 +3,7 @@ import path from 'path';
 import axios from 'axios';
 import { Request, Response } from 'express';
 import { scrapeMegaPlayAnime } from './megaPlayService';
+import { resolveTokyoInsiderStream } from './tokyoInsiderService';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -101,9 +102,10 @@ export interface AnimeScrapeResult {
     audioTracks: AnimeAudioTrack[];
     qualities: AnimeQualityStream[];
     subtitles: Array<{ lang: string; url: string; label?: string }>;
-    sources: Array<{ url: string; quality: string; type: string; label: string; name?: string; language?: string; rawUrl?: string }>;
+    sources: Array<{ url: string; quality: string; type: string; label: string; name?: string; language?: string; rawUrl?: string; skipProxy?: boolean; iframeUrl?: string }>;
     resolvedAt: string;
     cacheHit?: boolean;
+    error?: string;
 }
 
 // In-memory cache for query responses
@@ -163,6 +165,133 @@ export function parseMasterPlaylist(masterContent: string, baseUrl: string): { a
     }
 
     return { audioTracks, qualities };
+}
+
+// ==========================================
+// 🚀 ZOKOANIME / HIANIME REAL STREAM EXTRACTOR
+// ==========================================
+const ZOKO_OBF_KEY = 'otaku-embed-v1';
+
+function zokoXor(str: string): string {
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+        out += String.fromCharCode(str.charCodeAt(i) ^ ZOKO_OBF_KEY.charCodeAt(i % ZOKO_OBF_KEY.length));
+    }
+    return out;
+}
+
+export function deobfuscateZokoPayload(blob: string): any {
+    try {
+        const bin = Buffer.from(blob, 'base64').toString('binary');
+        return JSON.parse(decodeURIComponent(escape(zokoXor(bin))));
+    } catch {
+        return null;
+    }
+}
+
+export async function resolveZokoStream(malId: number | string, ep: number = 1, type: 'sub' | 'dub' = 'sub'): Promise<{
+    success: boolean;
+    masterM3u8?: string;
+    subtitles?: Array<{ lang: string; label: string; src: string; default?: boolean }>;
+    skip?: { intro?: { start: number; end: number }; outro?: { start: number; end: number } };
+}> {
+    const url = `https://zokoanime.video/stream/mal/${malId}/${ep}/${type}?color=35d5bf`;
+    try {
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': USER_AGENT,
+                'Referer': 'https://hianimes.se/'
+            },
+            timeout: 8000
+        });
+        const match = (res.data || '').match(/window\.__P="([^"]+)"/);
+        if (!match) return { success: false };
+        const decoded = deobfuscateZokoPayload(match[1]);
+        if (!decoded || !decoded.src) return { success: false };
+        return {
+            success: true,
+            masterM3u8: decoded.src,
+            subtitles: decoded.subtitles,
+            skip: decoded.skip
+        };
+    } catch {
+        return { success: false };
+    }
+}
+
+// ==========================================
+// 🚀 RAVOK / ANIMESALT REAL STREAM EXTRACTOR
+// ==========================================
+export async function resolveRavokStream(videoUrlOrId: string): Promise<{
+    success: boolean;
+    masterM3u8?: string;
+    poster?: string;
+}> {
+    const match = videoUrlOrId.match(/[a-f0-9]{32}/i);
+    if (!match) return { success: false };
+    const id = match[0];
+
+    let realHash = id;
+
+    // 1. Fetch Ravok embed page to extract dynamic secret hash 'ck'
+    try {
+        const pageRes = await axios.get(`https://ravok.buzz/video/${id}`, {
+            headers: {
+                'User-Agent': USER_AGENT,
+                'Referer': 'https://animesalt.cx/'
+            },
+            timeout: 7000
+        });
+        const pageHtml = pageRes.data || '';
+
+        // Extract packed JS
+        const pIdx = pageHtml.indexOf('eval(function(p,a,c,k,e,d)');
+        if (pIdx !== -1) {
+            const endIdx = pageHtml.indexOf('</script>', pIdx);
+            const scriptBlock = endIdx !== -1 ? pageHtml.substring(pIdx, endIdx).trim() : pageHtml.substring(pIdx).trim();
+            const runnable = scriptBlock.replace(/^eval\(/, 'return (');
+            const unpacked = (new Function(runnable)() || '') as string;
+
+            // Extract "ck":"\\x4f\\x57..."
+            const ckMatch = unpacked.match(/"ck":\s*"([^"]+)"/);
+            if (ckMatch) {
+                const hexStr = ckMatch[1];
+                const unescaped = hexStr.replace(/\\x([0-9a-fA-F]{2})/g, (_: string, h: string) => String.fromCharCode(parseInt(h, 16)));
+                const decoded = Buffer.from(unescaped, 'base64').toString('utf8').trim();
+                if (decoded && /^[a-f0-9]{32}$/i.test(decoded)) {
+                    realHash = decoded;
+                }
+            }
+        }
+    } catch (_) {}
+
+    const url = `https://ravok.buzz/player/index.php?data=${id}&do=getVideo`;
+    try {
+        const res = await axios.post(url, new URLSearchParams({
+            hash: realHash,
+            r: 'https://animesalt.cx/'
+        }).toString(), {
+            headers: {
+                'User-Agent': USER_AGENT,
+                'Referer': `https://ravok.buzz/video/${id}`,
+                'Origin': 'https://ravok.buzz',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            timeout: 8000
+        });
+        const data = res.data;
+        if (data && data.videoSource) {
+            return {
+                success: true,
+                masterM3u8: data.videoSource,
+                poster: data.videoImage || ''
+            };
+        }
+    } catch {
+        return { success: false };
+    }
+    return { success: false };
 }
 
 export const ANIMESALT_BASE_URL = 'https://animesalt.cx';
@@ -543,6 +672,28 @@ export async function resolveAnimeEpisodeStream(episodeUrl: string, options: { d
         return cached.data;
     }
 
+    // Direct TokyoInsider media URL bypass
+    if (episodeUrl.includes('tokyoinsider.com')) {
+        try {
+            const tokyoRes = await resolveTokyoInsiderStream({ url: episodeUrl });
+            if (tokyoRes.success && tokyoRes.source) {
+                const result: AnimeStreamData = {
+                    videoId: 'tokyoinsider',
+                    iframeUrl: tokyoRes.source.url,
+                    masterM3u8: tokyoRes.source.url,
+                    proxiedM3u8: tokyoRes.source.url,
+                    poster: '',
+                    audioTracks: [{ language: 'Japanese', name: 'Japanese Audio', uri: tokyoRes.source.url }],
+                    qualities: [{ resolution: tokyoRes.source.quality, name: tokyoRes.source.quality, uri: tokyoRes.source.url }],
+                    subtitles: [],
+                    resolvedAt: new Date().toISOString()
+                };
+                MEMORY_CACHE.set(cacheKey, { timestamp: Date.now(), data: result, ttl: 60 * 60 * 1000 });
+                return result;
+            }
+        } catch (_) {}
+    }
+
     // 1. Fetch Episode HTML
     const epRes = await axios.get(episodeUrl, {
         headers: {
@@ -569,34 +720,33 @@ export async function resolveAnimeEpisodeStream(episodeUrl: string, options: { d
         } catch (_) {}
     }
 
-    // Check MegaPlay dub/sub iframes
-    const megaMatches = [...html.matchAll(/https:\/\/megaplay\.buzz\/stream\/s-2\/(\d+)\/(dub|sub)/gi)];
-    if (megaMatches.length > 0) {
-        const epRealId = megaMatches[0][1];
-        videoId = epRealId;
-        // Resolve using MegaPlay scraper with real ID or series title
-        try {
-            const urlEpMatch = episodeUrl.match(/\/episode\/([a-z0-9-]+?)(?:-(\d+)x(\d+)|-(\d+))\//i);
-            const seriesSlug = urlEpMatch ? urlEpMatch[1] : '';
-            const epNumber = urlEpMatch ? parseInt(urlEpMatch[3] || urlEpMatch[4], 10) : 1;
+    // Always try to resolve ZokoAnime / HiAnime English Dub directly
+    try {
+        const urlEpMatch = episodeUrl.match(/\/episode\/([a-z0-9-]+?)(?:-(\d+)x(\d+)|-(\d+))\//i);
+        const seriesSlug = urlEpMatch ? urlEpMatch[1] : '';
+        const epNumber = urlEpMatch ? parseInt(urlEpMatch[3] || urlEpMatch[4], 10) : 1;
+        if (seriesSlug) {
             const malId = await resolveMalIdFromTitle(seriesSlug.replace(/-/g, ' '));
             if (malId) {
-                const subMega = await scrapeMegaPlayAnime({ malId, episode: epNumber, type: 'sub' });
-                if (subMega.success && subMega.sources.length > 0) {
-                    masterM3u8 = subMega.sources[0].url;
-                }
-                const dubMega = await scrapeMegaPlayAnime({ malId, episode: epNumber, type: 'dub' });
-                if (dubMega.success && dubMega.sources.length > 0) {
-                    dubM3u8 = dubMega.sources[0].url;
+                const zokoDub = await resolveZokoStream(malId, epNumber, 'dub').catch(() => null);
+                if (zokoDub && zokoDub.success && zokoDub.masterM3u8) {
+                    dubM3u8 = zokoDub.masterM3u8;
                 }
             }
-        } catch (_) {}
-    }
+        }
+    } catch (_) {}
 
     // Check Ravok iframe
-    const ravokMatch = html.match(/src=[\"'](https:\/\/ravok\.buzz\/video\/[a-zA-Z0-9]+)[\"']/i);
+    const ravokMatch = html.match(/src=["'](https:\/\/ravok\.buzz\/video\/[a-zA-Z0-9]+)["']/i);
     if (!masterM3u8 && ravokMatch) {
         iframeUrl = ravokMatch[1];
+        try {
+            const ravokRes = await resolveRavokStream(ravokMatch[1]);
+            if (ravokRes && ravokRes.success && ravokRes.masterM3u8) {
+                masterM3u8 = ravokRes.masterM3u8;
+                if (ravokRes.poster) poster = ravokRes.poster;
+            }
+        } catch (_) {}
     }
 
     // Check direct m3u8 URL in page
@@ -724,7 +874,39 @@ export async function scrapeAnimeEpisode(title: string, season: number = 1, epis
         }
     }
 
+    // 0. TokyoInsider (FIRST PRIORITY direct 1080p MP4 check)
+    const tokyoRes = await resolveTokyoInsiderStream({ title, season: sNum, episode: epNum }).catch(() => null);
+
     if (!targetEpUrl) {
+        if (tokyoRes && tokyoRes.success && tokyoRes.source) {
+            const tokyoSource = {
+                url: tokyoRes.source.url,
+                rawUrl: tokyoRes.source.rawUrl,
+                quality: tokyoRes.source.quality,
+                type: 'video/mp4',
+                label: tokyoRes.source.label,
+                name: tokyoRes.source.name,
+                language: tokyoRes.source.language,
+                skipProxy: true
+            };
+            const result: AnimeScrapeResult = {
+                success: true,
+                animeTitle: title,
+                episodeTitle: `${title} - Episode ${epNum}`,
+                season: sNum,
+                episode: epNum,
+                primaryM3u8: tokyoRes.source.url,
+                directM3u8: tokyoRes.source.rawUrl || tokyoRes.source.url,
+                poster: '',
+                audioTracks: [{ language: 'Japanese', name: 'Japanese Audio', uri: tokyoRes.source.url }],
+                qualities: [{ resolution: tokyoRes.source.quality, name: tokyoRes.source.quality, uri: tokyoRes.source.url }],
+                subtitles: [],
+                sources: [tokyoSource],
+                resolvedAt: new Date().toISOString()
+            };
+            MEMORY_CACHE.set(cacheKey, { timestamp: Date.now(), data: result, ttl: 30 * 60 * 1000 });
+            return result;
+        }
         throw new Error(`Anime episode matching failed for "${title}" S${sNum}E${epNum} on AnimeSalt`);
     }
 
@@ -732,7 +914,24 @@ export async function scrapeAnimeEpisode(title: string, season: number = 1, epis
     const streamData = await resolveAnimeEpisodeStream(targetEpUrl);
 
     // 4. Construct clean direct M3U8 sources only (strictly NO unwanted embeds)
-    const sources: Array<{ url: string; quality: string; type: string; label: string; name?: string; language?: string; rawUrl?: string; skipProxy?: boolean }> = [];
+    const sources: Array<{ url: string; quality: string; type: string; label: string; name?: string; language?: string; rawUrl?: string; skipProxy?: boolean; iframeUrl?: string }> = [];
+
+    // 0. TokyoInsider (FIRST PRIORITY direct 1080p MP4)
+    try {
+        const tokyoRes = await resolveTokyoInsiderStream({ title, season: sNum, episode: epNum });
+        if (tokyoRes.success && tokyoRes.source) {
+            sources.push({
+                url: tokyoRes.source.url,
+                rawUrl: tokyoRes.source.rawUrl,
+                quality: tokyoRes.source.quality,
+                type: 'video/mp4',
+                label: tokyoRes.source.label,
+                name: tokyoRes.source.name,
+                language: tokyoRes.source.language,
+                skipProxy: true
+            });
+        }
+    } catch (_) {}
 
     const formatPlayableUrl = (m3uUrl: string): string => {
         if (!m3uUrl) return '';
@@ -742,21 +941,42 @@ export async function scrapeAnimeEpisode(title: string, season: number = 1, epis
         return `/stream_proxy.php?url=${encodeURIComponent(m3uUrl)}`;
     };
 
-    // Direct Japanese Sub stream
-    if (streamData.masterM3u8 && streamData.masterM3u8.includes('.m3u8')) {
+    // Direct Japanese Sub stream (HLS or Progressive MP4)
+    if (streamData.masterM3u8 && !streamData.masterM3u8.includes('animesalt.cx/episode')) {
+        const isMp4 = streamData.masterM3u8.includes('.mp4') || streamData.masterM3u8.includes('hakunaymatata');
         sources.push({
             url: formatPlayableUrl(streamData.masterM3u8),
             rawUrl: streamData.masterM3u8,
             quality: '1080p',
-            type: 'application/x-mpegurl',
-            label: 'AnimeSalt Japanese Sub (Direct HLS)',
+            type: isMp4 ? 'video/mp4' : 'application/x-mpegurl',
+            label: isMp4 ? 'AnimeSalt Japanese Sub (Direct 1080p MP4)' : 'AnimeSalt Japanese Sub (Direct HLS)',
             name: 'AnimeSalt Sub',
             language: 'Japanese Sub',
             skipProxy: true
         });
+    } else {
+        try {
+            const malId = await resolveMalIdFromTitle(title);
+            if (malId) {
+                const zokoSub = await resolveZokoStream(malId, epNum, 'sub');
+                if (zokoSub && zokoSub.success && zokoSub.masterM3u8) {
+                    streamData.masterM3u8 = zokoSub.masterM3u8;
+                    sources.push({
+                        url: formatPlayableUrl(zokoSub.masterM3u8),
+                        rawUrl: zokoSub.masterM3u8,
+                        quality: '1080p',
+                        type: 'application/x-mpegurl',
+                        label: 'Japanese Sub (Direct HLS)',
+                        name: 'Anime Sub',
+                        language: 'Japanese Sub',
+                        skipProxy: true
+                    });
+                }
+            }
+        } catch (_) {}
     }
 
-    // Direct English Dub stream
+    // Direct English Dub stream (or fetch via ZokoAnime / HiAnime engine if missing)
     if (streamData.dubM3u8 && streamData.dubM3u8.includes('.m3u8')) {
         sources.push({
             url: formatPlayableUrl(streamData.dubM3u8),
@@ -768,35 +988,74 @@ export async function scrapeAnimeEpisode(title: string, season: number = 1, epis
             language: 'English Dub',
             skipProxy: true
         });
+    } else {
+        try {
+            const malId = await resolveMalIdFromTitle(title);
+            if (malId) {
+                const zokoDub = await resolveZokoStream(malId, epNum, 'dub');
+                if (zokoDub && zokoDub.success && zokoDub.masterM3u8) {
+                    streamData.dubM3u8 = zokoDub.masterM3u8;
+                    sources.push({
+                        url: formatPlayableUrl(zokoDub.masterM3u8),
+                        rawUrl: zokoDub.masterM3u8,
+                        quality: '1080p',
+                        type: 'application/x-mpegurl',
+                        label: 'HiAnime / AnimeSalt English Dub (Direct HLS)',
+                        name: 'AnimeSalt Dub',
+                        language: 'English Dub',
+                        skipProxy: true
+                    });
+                }
+            }
+        } catch (_) {}
     }
 
-    // Fallback: If page didn't yield direct M3U8, resolve directly via title/malId using MegaPlay engine
+    // Include any Multi-Language Feeds (Hindi, Tamil, Telugu, etc.) from page
+    if (Array.isArray(streamData.multiAudioFeeds) && streamData.multiAudioFeeds.length > 0) {
+        streamData.multiAudioFeeds.forEach(feed => {
+            if (feed && feed.link) {
+                sources.push({
+                    url: feed.link,
+                    rawUrl: feed.link,
+                    quality: '1080p',
+                    type: 'embed',
+                    label: `AnimeSalt ${feed.language || 'Dub'} Stream`,
+                    name: `AnimeSalt ${feed.language || 'Dub'}`,
+                    language: `${feed.language || 'Multi'} Dub`,
+                    iframeUrl: feed.link,
+                    skipProxy: true
+                });
+            }
+        });
+    }
+
+    // Fallback: If page didn't yield direct M3U8, resolve directly via title/malId using ZokoAnime / HiAnime engine
     if (sources.length === 0) {
         try {
             const malId = await resolveMalIdFromTitle(title);
             if (malId) {
-                const subMega = await scrapeMegaPlayAnime({ malId, episode: epNum, type: 'sub' });
-                if (subMega.success && subMega.sources.length > 0) {
+                const zokoSub = await resolveZokoStream(malId, epNum, 'sub');
+                if (zokoSub.success && zokoSub.masterM3u8) {
                     sources.push({
-                        url: formatPlayableUrl(subMega.sources[0].url),
-                        rawUrl: subMega.sources[0].url,
+                        url: formatPlayableUrl(zokoSub.masterM3u8),
+                        rawUrl: zokoSub.masterM3u8,
                         quality: '1080p',
                         type: 'application/x-mpegurl',
-                        label: 'AnimeSalt Japanese Sub (Direct HLS)',
-                        name: 'AnimeSalt Sub',
+                        label: 'HiAnime Japanese Sub (Direct HLS)',
+                        name: 'HiAnime Sub',
                         language: 'Japanese Sub',
                         skipProxy: true
                     });
                 }
-                const dubMega = await scrapeMegaPlayAnime({ malId, episode: epNum, type: 'dub' });
-                if (dubMega.success && dubMega.sources.length > 0) {
+                const zokoDub = await resolveZokoStream(malId, epNum, 'dub');
+                if (zokoDub.success && zokoDub.masterM3u8) {
                     sources.push({
-                        url: formatPlayableUrl(dubMega.sources[0].url),
-                        rawUrl: dubMega.sources[0].url,
+                        url: formatPlayableUrl(zokoDub.masterM3u8),
+                        rawUrl: zokoDub.masterM3u8,
                         quality: '1080p',
                         type: 'application/x-mpegurl',
-                        label: 'AnimeSalt English Dub (Direct HLS)',
-                        name: 'AnimeSalt Dub',
+                        label: 'HiAnime English Dub (Direct HLS)',
+                        name: 'HiAnime Dub',
                         language: 'English Dub',
                         skipProxy: true
                     });

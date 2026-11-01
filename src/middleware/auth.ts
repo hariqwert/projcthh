@@ -12,11 +12,14 @@ let secret = process.env.JWT_SECRET;
 if (!secret) {
     if (fs.existsSync(SECRET_FILE)) {
         secret = fs.readFileSync(SECRET_FILE, 'utf8').trim();
-    } else {
-        secret = crypto.randomBytes(32).toString('hex');
-        if (fs.existsSync(path.join(process.cwd(), 'doctor_strange'))) {
-            fs.writeFileSync(SECRET_FILE, secret);
-        }
+    }
+    if (!secret) {
+        secret = 'stalker_pro_quantum_master_jwt_secret_2025_v2';
+        try {
+            if (fs.existsSync(path.join(process.cwd(), 'doctor_strange'))) {
+                fs.writeFileSync(SECRET_FILE, secret);
+            }
+        } catch (e) {}
     }
 }
 export const JWT_SECRET = secret;

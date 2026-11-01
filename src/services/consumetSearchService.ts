@@ -5,6 +5,8 @@ import { ChannelJsonService, ChannelItem } from './channelJsonService';
 import { SportsScraperService, SportsEvent } from './sportsScraperService';
 import { getRotatingTmdbKey, ROTATING_TMDB_KEYS } from './bingrScraperService';
 import { searchSmMovies } from './smMovieHubService';
+import { JtvService } from './jtvService';
+import { getLiveM3uChannels } from './liveM3uService';
 
 // Force IPv4 (family: 4) to prevent 3000ms+ IPv6 DNS/connect stalls on Cloud Run / Linux containers
 const httpAgent = new http.Agent({ keepAlive: true, family: 4, maxSockets: 100 });
@@ -668,6 +670,8 @@ export class ConsumetSearchService {
     private static channelsIndexedAt: number = 0;
     private static INDEX_TTL = 10 * 60 * 1000; // 10 minutes
 
+    private static isWarmingExtraChannels = false;
+
     /**
      * Build or refresh in-memory channel index
      */
@@ -679,17 +683,90 @@ export class ConsumetSearchService {
 
         try {
             const rawChannels = ChannelJsonService.getChannels() || [];
-            this.indexedChannels = rawChannels.map(ch => {
+            const seenNames = new Set<string>();
+            const nextIndexed: Array<ChannelItem & { cleanName: string; tokens: string[] }> = [];
+
+            for (const ch of rawChannels) {
                 const name = String(ch.name || ch.title || '').trim();
-                const cleanName = name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+                if (!name) continue;
+                const cleanName = name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+                if (!cleanName || seenNames.has(cleanName)) continue;
+                seenNames.add(cleanName);
                 const tokens = cleanName.split(/\s+/).filter(t => t.length > 0);
-                return {
+                nextIndexed.push({
                     ...ch,
                     cleanName,
                     tokens
-                };
-            });
-            this.channelsIndexedAt = now;
+                });
+            }
+
+            if (nextIndexed.length > 0 || this.indexedChannels.length === 0) {
+                this.indexedChannels = nextIndexed;
+                this.channelsIndexedAt = now;
+            }
+
+            // Asynchronously merge JioTV & Live.m3u channels into the in-memory index
+            if (!this.isWarmingExtraChannels) {
+                this.isWarmingExtraChannels = true;
+                Promise.allSettled([
+                    JtvService.fetchChannels(false),
+                    getLiveM3uChannels(false)
+                ]).then(([jtvRes, liveM3uRes]) => {
+                    const combined = [...this.indexedChannels];
+                    const existingNames = new Set(combined.map(c => c.cleanName));
+
+                    if (jtvRes.status === 'fulfilled' && Array.isArray(jtvRes.value)) {
+                        for (const jch of jtvRes.value) {
+                            const name = String(jch.name || '').trim();
+                            const cleanName = name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+                            if (!cleanName || existingNames.has(cleanName)) continue;
+                            existingNames.add(cleanName);
+                            const isHls = jch.source === 'sonyliv' || jch.source === 'hotstar' || (jch.stream_url && jch.stream_url.includes('.m3u8'));
+                            const manifestTarget = isHls ? (jch.full_stream_url || jch.stream_url) : (jch.manifest_url || `/api/jtv/manifest/${jch.id}.mpd`);
+                            const playUrl = `/play_consumet.php?channel_id=jtv-${encodeURIComponent(jch.id)}&url=${encodeURIComponent(manifestTarget)}&key_id=${encodeURIComponent(jch.key_id || '')}&key=${encodeURIComponent(jch.key || '')}&name=${encodeURIComponent(name)}&source=consumet.html&type=${isHls ? 'hls' : 'dash'}`;
+                            combined.push({
+                                channel_id: `jtv-${jch.id}`,
+                                name,
+                                genre: jch.category || jch.genre || 'Live TV',
+                                group: jch.category || 'Live TV',
+                                logo: jch.logo || '',
+                                stream_url: manifestTarget,
+                                playUrl,
+                                source: 'jtv',
+                                cleanName,
+                                tokens: cleanName.split(/\s+/).filter(Boolean)
+                            } as any);
+                        }
+                    }
+
+                    if (liveM3uRes.status === 'fulfilled' && Array.isArray(liveM3uRes.value?.channels)) {
+                        for (const lch of liveM3uRes.value.channels) {
+                            const name = String(lch.name || '').trim();
+                            const cleanName = name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+                            if (!cleanName || existingNames.has(cleanName)) continue;
+                            existingNames.add(cleanName);
+                            const playUrl = lch.play_url || `/play_consumet.php?channel_id=${encodeURIComponent(lch.id)}&url=${encodeURIComponent(lch.stream_url)}&name=${encodeURIComponent(name)}&source=livem3u&type=${lch.type || 'hls'}`;
+                            combined.push({
+                                channel_id: lch.id,
+                                name,
+                                genre: lch.category || lch.group || 'Live Sports',
+                                group: lch.group || 'Live Sports',
+                                logo: lch.logo || '',
+                                stream_url: lch.stream_url,
+                                playUrl,
+                                source: 'livem3u',
+                                cleanName,
+                                tokens: cleanName.split(/\s+/).filter(Boolean)
+                            } as any);
+                        }
+                    }
+
+                    this.indexedChannels = combined;
+                    this.channelsIndexedAt = Date.now();
+                }).catch(() => {}).finally(() => {
+                    this.isWarmingExtraChannels = false;
+                });
+            }
         } catch (e: any) {
             console.error('[ConsumetSearch] Failed to index channels:', e?.message || e);
         }
@@ -794,9 +871,36 @@ export class ConsumetSearchService {
         }
         this.isFetchingSportsEvents = true;
         try {
-            const events = await SportsScraperService.scrapeLiveSportsEvents(false);
-            if (events && events.length > 0) {
-                this.cachedSportsEvents = events;
+            const [scrapedRes, jtvEventsRes] = await Promise.allSettled([
+                SportsScraperService.scrapeLiveSportsEvents(false),
+                JtvService.fetchLiveEvents(false)
+            ]);
+            const merged: SportsEvent[] = [];
+            if (scrapedRes.status === 'fulfilled' && Array.isArray(scrapedRes.value)) {
+                merged.push(...scrapedRes.value);
+            }
+            if (jtvEventsRes.status === 'fulfilled' && Array.isArray(jtvEventsRes.value)) {
+                for (const jev of jtvEventsRes.value) {
+                    const isMpd = jev.manifest_type === 'mpd' || jev.manifest_type === 'dash' || (jev.stream_url && jev.stream_url.includes('.mpd'));
+                    const playUrl = `/play_consumet.php?id=${encodeURIComponent(jev.id)}&url=${encodeURIComponent(jev.stream_url)}&key_id=${encodeURIComponent(jev.key_id || '')}&key=${encodeURIComponent(jev.key || '')}&name=${encodeURIComponent(jev.title || jev.name)}&source=consumet.html&type=${isMpd ? 'dash' : 'hls'}&from_tab=sports`;
+                    merged.push({
+                        id: jev.id,
+                        title: jev.title || jev.name,
+                        sport: jev.tournament || jev.group || 'Live Sports',
+                        league: jev.tournament || jev.badge || 'Live Broadcast',
+                        time: 'LIVE',
+                        isLive: true,
+                        homeTeam: jev.title || jev.name,
+                        awayTeam: jev.tournament || '',
+                        homeLogo: jev.logo || '',
+                        channelName: jev.badge || 'Live Stream',
+                        playUrl,
+                        channels: []
+                    } as any);
+                }
+            }
+            if (merged.length > 0) {
+                this.cachedSportsEvents = merged;
                 this.lastSportsEventsFetch = Date.now();
             }
         } catch (e: any) {
@@ -813,8 +917,12 @@ export class ConsumetSearchService {
         if (!query) return [];
         const cleanQ = query.toLowerCase().trim();
 
-        // Trigger background warmer if stale or empty without blocking search
-        if (!this.cachedSportsEvents.length || Date.now() - this.lastSportsEventsFetch > 5 * 60 * 1000) {
+        if (!this.cachedSportsEvents.length) {
+            await Promise.race([
+                this.warmSportsEvents(),
+                new Promise(resolve => setTimeout(resolve, 800))
+            ]);
+        } else if (Date.now() - this.lastSportsEventsFetch > 5 * 60 * 1000) {
             this.warmSportsEvents().catch(() => {});
         }
 
@@ -822,6 +930,7 @@ export class ConsumetSearchService {
         if (!rawEvents.length) return [];
 
         const matches: FastEventMatch[] = [];
+        const seenEventKeys = new Set<string>();
 
         for (const ev of rawEvents) {
             const titleLower = (ev.title || '').toLowerCase();
@@ -840,6 +949,10 @@ export class ConsumetSearchService {
             if (ev.isLive) score += 150;
 
             if (score > 100) {
+                const dedupeKey = titleLower.replace(/[^a-z0-9]/g, '');
+                if (dedupeKey && seenEventKeys.has(dedupeKey)) continue;
+                if (dedupeKey) seenEventKeys.add(dedupeKey);
+
                 const playUrl = ev.playUrl || (ev.channels && ev.channels[0]?.playUrl) || `/play_consumet.php?name=${encodeURIComponent(ev.title)}&source=sports_scraper`;
                 const channelName = ev.channelName || (ev.channels && ev.channels[0]?.name) || 'Live Sports';
                 const thumb = ev.homeLogo || ev.channels?.[0]?.logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80';

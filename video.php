@@ -945,12 +945,23 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                     srv: serverId
                 };
 
-                const res = await fetch('/api/bingr/stream', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
+                const fetchCtrl = new AbortController();
+                const fetchTimer = setTimeout(() => {
+                    try { fetchCtrl.abort(); } catch(_) {}
+                }, 16000);
+
+                let data;
+                try {
+                    const res = await fetch('/api/bingr/stream', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: fetchCtrl.signal
+                    });
+                    data = await res.json();
+                } finally {
+                    clearTimeout(fetchTimer);
+                }
 
                 const streamUrl = data.primaryM3u8 || (data.sources && data.sources.length > 0 ? data.sources[0].url : null);
                 if (streamUrl) {
@@ -977,7 +988,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
 
         function cascadeFallback(failedServerId) {
             failedServers.add(failedServerId);
-            const fallbackOrder = ['s40', 's62', 'm4u', 's61', 's3', 's70', 's30', 's31', 's4k', 's60'];
+            const fallbackOrder = ['vidlink', 'vidrift', 'filmu', 's40', 's62', 'm4u', 's61', 's3', 's70', 's30', 's31', 's4k', 's60'];
             const nextServer = fallbackOrder.find(srv => !failedServers.has(srv));
             if (nextServer) {
                 fetchAndPlayStream(nextServer);
@@ -987,7 +998,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                     console.log("[Fallback] Direct stream not found on initial pass. Initiating double-check verification on primary clusters...");
                     failedServers.clear();
                     showToast('Verifying alternative clusters (double-check)...');
-                    fetchAndPlayStream('s40');
+                    fetchAndPlayStream('vidlink');
                     return;
                 }
 
@@ -1024,6 +1035,33 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
             }
 
             const playableUrl = preparePlayableHlsUrl(streamUrl);
+
+            // Direct progressive video playback (MP4 / MKV / WebM)
+            const isDirectVideo = playableUrl.toLowerCase().includes('.mp4') ||
+                                  playableUrl.toLowerCase().includes('.mkv') ||
+                                  playableUrl.toLowerCase().includes('.webm') ||
+                                  playableUrl.includes('streamrip.fun/f/') ||
+                                  (window.bingrSources && window.bingrSources[0] && (window.bingrSources[0].type === 'video/mp4' || window.bingrSources[0].type === 'video/x-matroska'));
+
+            if (isDirectVideo) {
+                mainVideo.src = playableUrl;
+                mainVideo.onerror = () => {
+                    console.warn('[Video Player] Direct video stream load error. Cascading...');
+                    mainVideo.onerror = null;
+                    cascadeFallback(CURRENT_SERVER);
+                };
+                mainVideo.onloadedmetadata = () => {
+                    if (previousVideoTime > 0) {
+                        mainVideo.currentTime = previousVideoTime;
+                        previousVideoTime = 0;
+                    }
+                };
+                mainVideo.play().catch(() => {
+                    mainVideo.muted = true;
+                    mainVideo.play().catch(() => {});
+                });
+                return;
+            }
 
             if (Hls.isSupported()) {
                 hlsInstance = new Hls({

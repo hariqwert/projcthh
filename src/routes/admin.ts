@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { requireAdmin, JWT_SECRET, getClientIp, isAdminAuthenticated } from '../middleware/auth';
 import { SecurityGateKeeper } from '../services/securityGateKeeper';
+import { PerimeterDefenseShield } from '../services/perimeterDefense';
 import { StalkerAPI } from '../stalkerAPI';
 import { activeSessions, refreshBlacklist, systemState, systemStatus as globalSystemStatus, notifyVideoBroadcastChanged, clearUnlockedIps } from '../../server';
 import * as server from '../../server';
@@ -21,17 +22,17 @@ import { ChannelJsonService } from '../services/channelJsonService';
 import { streamHealthService } from '../services/streamHealthService';
 import { generateContainerWithWebSearch, queryAiBroadcastAssistant, getGeminiClient } from '../services/aiService';
 import { scrapeEmbedToM3u8, testM3u8Connectivity, inferChannelMetadata } from '../services/embedScraperService';
-import { scrapeBingrStream, BINGR_SERVERS, verifyStreamReachable, scrapeMovie, scrapeTvEpisode } from '../services/bingrScraperService';
-import { fetchFanCodeEvents } from '../services/fancodeService';
+import { scrapeBingrStream, BINGR_SERVERS, verifyStreamReachable, scrapeMovie, scrapeTvEpisode, scrapeVidlinkStream, scrapeVidriftStream, scrapeFilmuStream } from '../services/bingrScraperService';
+import { fetchFanCodeEvents, getFanCodeSources, saveFanCodeSources, getFanCodeM3u, writeActiveFanCodeM3u } from '../services/fancodeService';
 import { syncZeeChannels } from '../services/zeeChannelsService';
 import { getAllSportsHighlights } from '../services/sportsHighlightsService';
 import { getBiggBossEpisodes, getBiggBossSeasons } from '../services/biggBossService';
 import { getTimChannels, getAllTimStreams, getSportCategoryName, getTimLiveEvents, resolveTimChannel } from '../services/timstreamsService';
-import { JtvService } from '../services/jtvService';
+import { JtvService, getJtvSources, saveJtvSources } from '../services/jtvService';
 import { logServerEvent, queryServerLogs, clearAllLogs, exportLogsAsText, getAllDetailedSessions, endUserStreamSession } from '../services/loggerService';
 import { fetchWillowEvents } from '../services/willowService';
 import { fetchPrimeEvents } from '../services/primeService';
-import { fetchSonyLivEvents } from '../services/sonylivService';
+import { fetchSonyLivEvents, getSonyLivSources, saveSonyLivSources, getSonyLivM3u, writeActiveSonyLivM3u } from '../services/sonylivService';
 import { discoverAndPromoteMovies4uMirrors, scrapeMovies4uCluster } from '../services/movies4uService';
 import { searchSmMovies, findSmMovieStream, getSmMovieData } from '../services/smMovieHubService';
 import { scrapeFrameXStream } from '../services/framexService';
@@ -135,7 +136,16 @@ export interface SportsSection {
     icon: string;
     url: string;
     bgUrl?: string;
+    playerPng?: string;
+    badge?: string;
+    subtitle?: string;
+    category?: string;
     containerId?: string;
+    inHomeSpotlight?: boolean;
+    inLiveNowHome?: boolean;
+    isMainHomeSpotlight?: boolean;
+    isLiveNowSpotlight?: boolean;
+    isSportsSpotlight?: boolean;
     addedAt: string;
 }
 
@@ -151,6 +161,7 @@ export interface SportsContainer {
     cardBg?: string;
     enabled?: boolean;
     order?: number;
+    section?: 'sports' | 'livenow' | 'liveevents';
     createdAt?: string;
 }
 
@@ -171,13 +182,52 @@ export interface SportsHubConfig {
     displayMode?: 'shelf' | 'grid' | 'glass_cards' | 'compact_chips' | 'spotlight';
 }
 
+export interface SpotlightHeroOverride {
+    enabled: boolean;
+    title: string;
+    subtitle?: string;
+    badge?: string;
+    category?: string;
+    url: string;
+    bgUrl?: string;
+    playerPng?: string;
+    icon?: string;
+    gridStyle?: 'shelf' | 'grid' | 'glass_cards' | 'compact_chips' | 'spotlight';
+    gridBgUrl?: string;
+    eventId?: string;
+    updatedAt?: string;
+}
+
+export interface SpotlightStudioConfig {
+    mainHomeSpotlight?: SpotlightHeroOverride;
+    liveNowSpotlight?: SpotlightHeroOverride;
+    liveEventsSpotlight?: SpotlightHeroOverride;
+    sportsSpotlight?: SpotlightHeroOverride;
+}
+
 interface AdminDB {
     backgrounds?: {
         hero?: { type: string, url: string };
         consumet?: { type: string, url: string };
         music?: { type: string, url: string };
         index?: { type: string, url: string };
-        globalAudio?: { type: string, url: string, title?: string, artist?: string, thumbnail?: string };
+        globalAudio?: {
+            type: string;
+            url: string;
+            title?: string;
+            artist?: string;
+            thumbnail?: string;
+            target?: string;
+            playlist?: Array<{
+                id?: string;
+                title: string;
+                artist?: string;
+                url: string;
+                type?: string;
+                thumbnail?: string;
+                img?: string;
+            }>;
+        };
         musicUseSongVideo?: boolean;
     };
     portals: Portal[];
@@ -188,7 +238,12 @@ interface AdminDB {
     sportsHubConfig?: SportsHubConfig;
     customScrapedChannels?: any[];
     liveEvents?: SportsSection[];
+    liveEventsContainers?: SportsContainer[];
+    liveNowChannels?: SportsSection[];
+    liveNowContainers?: SportsContainer[];
+    spotlightStudio?: SpotlightStudioConfig;
     maintenanceMode: boolean;
+    deadKill?: boolean;
     maintenanceAdminBypass?: boolean;
     maintenanceSchedule?: {
         enabled: boolean;
@@ -378,7 +433,8 @@ function scanExistingStalkerPortals(): Portal[] {
                     isDefault: host === activeHost
                 });
             }
-        } catch (e) {}
+        }
+ catch (e) {}
     }
     return portals;
 }
@@ -461,6 +517,7 @@ router.post('/backgrounds', requireAdmin, (req: Request, res: Response) => {
     if (req.body.music !== undefined) db.backgrounds.music = req.body.music;
     if (req.body.index !== undefined) db.backgrounds.index = req.body.index;
     if (req.body.globalAudio !== undefined) db.backgrounds.globalAudio = req.body.globalAudio;
+    if (req.body.youtube !== undefined) (db.backgrounds as any).youtube = req.body.youtube;
     if (req.body.musicUseSongVideo !== undefined) db.backgrounds.musicUseSongVideo = !!req.body.musicUseSongVideo;
     
     saveDB(db);
@@ -774,12 +831,96 @@ router.post('/hero-config', requireAdmin, (req: Request, res: Response) => {
     }
 });
 
+// Configure dedicated Multer storage for Hero & Acoustics media (videos, images, audio)
+const heroMediaStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        if (!fs.existsSync(VIDEO_UPLOADS)) {
+            fs.mkdirSync(VIDEO_UPLOADS, { recursive: true });
+        }
+        cb(null, VIDEO_UPLOADS);
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase() || '.mp4';
+        const cleanBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+        cb(null, `hero_${Date.now()}_${cleanBase}${ext}`);
+    }
+});
+
+const uploadHeroMediaMiddleware = multer({
+    storage: heroMediaStorage,
+    limits: { fileSize: 500 * 1024 * 1024 }
+});
+
+// POST /hero/upload-media - Upload any video, image, or audio for Hero Page & Acoustics
+router.post('/hero/upload-media', requireAdmin, (req: Request, res: Response) => {
+    uploadHeroMediaMiddleware.single('mediaFile')(req, res, (err: any) => {
+        if (err) {
+            console.error('[HERO MEDIA] Upload error:', err);
+            return res.status(400).json({ status: 'error', message: err.message || 'File upload error' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ status: 'error', message: 'No media file provided.' });
+        }
+        const fileUrl = `/uploads/${req.file.filename}`;
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        let mediaType = 'video';
+        if (['.jpg', '.jpeg', '.png', '.webp', '.svg', '.gif'].includes(ext)) {
+            mediaType = 'image';
+        } else if (['.mp3', '.m4a', '.wav', '.aac', '.flac', '.ogg'].includes(ext)) {
+            mediaType = 'audio';
+        }
+        return res.json({
+            status: 'success',
+            message: `${mediaType.toUpperCase()} file uploaded successfully!`,
+            fileUrl,
+            fileName: req.file.originalname,
+            fileSize: req.file.size,
+            mediaType
+        });
+    });
+});
+
+// GET /hero/available-assets - Scan and return all local repository videos, images, and audio
+router.get('/hero/available-assets', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const assetsDir = path.join(process.cwd(), 'assets');
+        const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+        const results: { videos: string[]; images: string[]; audio: string[] } = {
+            videos: [],
+            images: [],
+            audio: []
+        };
+        const scan = (dir: string, prefix: string) => {
+            if (!fs.existsSync(dir)) return;
+            const files = fs.readdirSync(dir);
+            for (const file of files) {
+                const ext = path.extname(file).toLowerCase();
+                const filePath = `${prefix}/${file}`;
+                if (['.mp4', '.webm', '.ogg', '.mov', '.mkv'].includes(ext)) {
+                    if (!results.videos.includes(filePath)) results.videos.push(filePath);
+                } else if (['.jpg', '.jpeg', '.png', '.webp', '.svg'].includes(ext)) {
+                    if (!results.images.includes(filePath)) results.images.push(filePath);
+                } else if (['.mp3', '.m4a', '.wav', '.aac', '.flac'].includes(ext)) {
+                    if (!results.audio.includes(filePath)) results.audio.push(filePath);
+                }
+            }
+        };
+        scan(assetsDir, '/assets');
+        scan(uploadsDir, '/uploads');
+        return res.json({ status: 'success', assets: results });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e.message || 'Failed to scan assets' });
+    }
+});
+
+
 // GET /maintenance - Maintenance Mode
 router.get('/maintenance', requireAdmin, (req: Request, res: Response) => {
     const db = getDB();
     res.json({
         status: "success",
         maintenanceMode: db.maintenanceMode || false,
+        deadKill: !!db.deadKill,
         maintenanceAdminBypass: db.maintenanceAdminBypass || false,
         consumetMaintenance: db.consumetMaintenance || false,
         playMaintenance: db.playMaintenance || false,
@@ -807,6 +948,54 @@ router.get('/maintenance', requireAdmin, (req: Request, res: Response) => {
             autoActivate: true
         }
     });
+});
+
+// POST /maintenance/dead-kill - Instant Dead Kill Lockdown (HTTP 403 White Page)
+router.post('/maintenance/dead-kill', requireAdmin, (req: Request, res: Response) => {
+    const db = getDB();
+    const enable = req.body.enabled !== undefined ? !!req.body.enabled : !systemState.deadKill;
+    db.deadKill = enable;
+    systemState.deadKill = enable;
+    saveDB(db);
+
+    if (enable) {
+        killAllActiveStreams();
+        console.warn('[DEAD KILL] 🔥 Server placed into DEAD KILL state by administrator. All public traffic will receive a bare white HTTP 403 page.');
+    } else {
+        console.log('[DEAD KILL] 🟢 Server revived from DEAD KILL state.');
+    }
+
+    return res.json({
+        status: "success",
+        deadKill: enable,
+        message: enable 
+            ? "DEAD KILL ENGAGED: Server is now in prohibited state. All public requests will receive a bare white page HTTP 403."
+            : "DEAD KILL DEACTIVATED: Server revived to normal operation."
+    });
+});
+
+// GET /maintenance/dead-kill - Check Dead Kill status
+router.get('/maintenance/dead-kill', requireAdmin, (req: Request, res: Response) => {
+    res.json({
+        status: "success",
+        deadKill: !!systemState.deadKill
+    });
+});
+
+// GET /perimeter/status - Live Perimeter Defense Telemetry & Threat Monitor
+router.get('/perimeter/status', requireAdmin, (req: Request, res: Response) => {
+    res.json({
+        status: "success",
+        data: PerimeterDefenseShield.getStatus()
+    });
+});
+
+// POST /perimeter/unban - Unban an IP from dynamic firewall
+router.post('/perimeter/unban', requireAdmin, (req: Request, res: Response) => {
+    const { ip } = req.body || {};
+    if (!ip) return res.status(400).json({ status: "error", message: "ip is required" });
+    const ok = PerimeterDefenseShield.unbanIp(String(ip));
+    return res.json({ status: "success", unbanned: ok, ip });
 });
 
 // POST /maintenance - Update Maintenance Mode
@@ -846,6 +1035,11 @@ router.post('/maintenance', requireAdmin, (req: Request, res: Response) => {
     db.playConsumetMaintenance = !!playConsumetMaintenance;
     
     if (req.body.maintenanceAdminBypass !== undefined) db.maintenanceAdminBypass = !!req.body.maintenanceAdminBypass;
+    if (req.body.deadKill !== undefined) {
+        db.deadKill = !!req.body.deadKill;
+        systemState.deadKill = db.deadKill;
+        if (db.deadKill) killAllActiveStreams();
+    }
 
     db.maintenanceMode = maintenanceMode !== undefined ? !!maintenanceMode : (req.body.enabled !== undefined ? !!req.body.enabled : db.maintenanceMode);
     
@@ -2341,7 +2535,7 @@ router.get('/sports', requireAdmin, (req: Request, res: Response) => {
 });
 
 router.post('/sports', requireAdmin, (req: Request, res: Response) => {
-    const { title, icon, url, bgUrl, containerId, isLive } = req.body;
+    const { title, icon, url, bgUrl, playerPng, badge, subtitle, category, containerId, inHomeSpotlight, inLiveNowHome, isMainHomeSpotlight, isLiveNowSpotlight, isSportsSpotlight } = req.body;
     if (!title || !url) {
         return res.status(400).json({ status: "error", message: "Missing required parameters: title and url are required." });
     }
@@ -2358,17 +2552,45 @@ router.post('/sports', requireAdmin, (req: Request, res: Response) => {
     const targetContainerId = containerId && containerId.trim() ? containerId.trim() : (db.sportsContainers?.[0]?.id || 'default_showcase');
     const itemId = 'sports_' + Date.now().toString();
 
+    const flagHomeSpotlight = !!(inHomeSpotlight || isMainHomeSpotlight);
+    const flagLiveNow = !!(inLiveNowHome || isLiveNowSpotlight);
+
     const newItem: SportsSection = {
         id: itemId,
         title: title.trim(),
         icon: (icon || 'trophy').trim(),
         url: url.trim(),
         bgUrl: bgUrl ? bgUrl.trim() : undefined,
+        playerPng: playerPng ? playerPng.trim() : undefined,
+        badge: badge ? badge.trim() : '🔴 LIVE SPORTS',
+        subtitle: subtitle ? subtitle.trim() : undefined,
+        category: category ? category.trim() : 'Live Sports',
         containerId: targetContainerId,
+        inHomeSpotlight: flagHomeSpotlight,
+        inLiveNowHome: flagLiveNow,
+        isMainHomeSpotlight: flagHomeSpotlight,
+        isLiveNowSpotlight: flagLiveNow,
+        isSportsSpotlight: !!isSportsSpotlight,
         addedAt: new Date().toISOString()
     };
 
     db.sports.push(newItem);
+
+    // If ticked for Live Now Home or Home Spotlight, also sync into liveEvents so Live Now shelves pick it up
+    if (flagHomeSpotlight || flagLiveNow) {
+        const existingEvIdx = db.liveEvents.findIndex((e: any) => e.id === itemId || e.url === newItem.url);
+        if (existingEvIdx === -1) {
+            db.liveEvents.unshift({ ...newItem });
+        } else {
+            db.liveEvents[existingEvIdx] = {
+                ...db.liveEvents[existingEvIdx],
+                inHomeSpotlight: flagHomeSpotlight,
+                inLiveNowHome: flagLiveNow,
+                isMainHomeSpotlight: flagHomeSpotlight,
+                isLiveNowSpotlight: flagLiveNow
+            };
+        }
+    }
 
     saveDB(db);
 
@@ -2377,7 +2599,7 @@ router.post('/sports', requireAdmin, (req: Request, res: Response) => {
 
 router.put('/sports/:id', requireAdmin, (req: Request, res: Response) => {
     const { id } = req.params;
-    const { title, icon, url, bgUrl, containerId } = req.body;
+    const { title, icon, url, bgUrl, playerPng, badge, subtitle, category, containerId, inHomeSpotlight, inLiveNowHome, isMainHomeSpotlight, isLiveNowSpotlight, isSportsSpotlight } = req.body;
     if (!title || !url) {
         return res.status(400).json({ status: "error", message: "Missing required parameters: title and url are required." });
     }
@@ -2391,18 +2613,103 @@ router.put('/sports/:id', requireAdmin, (req: Request, res: Response) => {
         return res.status(404).json({ status: "error", message: "Sports item not found" });
     }
 
+    const prev = db.sports[itemIdx];
+    const flagHomeSpotlight = inHomeSpotlight !== undefined ? !!inHomeSpotlight : (isMainHomeSpotlight !== undefined ? !!isMainHomeSpotlight : !!prev.inHomeSpotlight);
+    const flagLiveNow = inLiveNowHome !== undefined ? !!inLiveNowHome : (isLiveNowSpotlight !== undefined ? !!isLiveNowSpotlight : !!prev.inLiveNowHome);
+
     db.sports[itemIdx] = {
-        ...db.sports[itemIdx],
+        ...prev,
         title: title.trim(),
         icon: (icon || 'trophy').trim(),
         url: url.trim(),
-        bgUrl: bgUrl !== undefined ? (bgUrl ? bgUrl.trim() : undefined) : db.sports[itemIdx].bgUrl,
-        containerId: containerId !== undefined ? (containerId ? containerId.trim() : undefined) : db.sports[itemIdx].containerId
+        bgUrl: bgUrl !== undefined ? (bgUrl ? bgUrl.trim() : undefined) : prev.bgUrl,
+        playerPng: playerPng !== undefined ? (playerPng ? playerPng.trim() : undefined) : prev.playerPng,
+        badge: badge !== undefined ? (badge ? badge.trim() : undefined) : prev.badge,
+        subtitle: subtitle !== undefined ? (subtitle ? subtitle.trim() : undefined) : prev.subtitle,
+        category: category !== undefined ? (category ? category.trim() : undefined) : prev.category,
+        containerId: containerId !== undefined ? (containerId ? containerId.trim() : undefined) : prev.containerId,
+        inHomeSpotlight: flagHomeSpotlight,
+        inLiveNowHome: flagLiveNow,
+        isMainHomeSpotlight: flagHomeSpotlight,
+        isLiveNowSpotlight: flagLiveNow,
+        isSportsSpotlight: isSportsSpotlight !== undefined ? !!isSportsSpotlight : !!prev.isSportsSpotlight
     };
+
+    const updatedItem = db.sports[itemIdx];
+    const existingEvIdx = db.liveEvents.findIndex((e: any) => e.id === id || e.url === updatedItem.url);
+    if (flagHomeSpotlight || flagLiveNow) {
+        if (existingEvIdx === -1) {
+            db.liveEvents.unshift({ ...updatedItem });
+        } else {
+            db.liveEvents[existingEvIdx] = {
+                ...db.liveEvents[existingEvIdx],
+                title: updatedItem.title,
+                url: updatedItem.url,
+                icon: updatedItem.icon,
+                bgUrl: updatedItem.bgUrl || db.liveEvents[existingEvIdx].bgUrl,
+                inHomeSpotlight: flagHomeSpotlight,
+                inLiveNowHome: flagLiveNow,
+                isMainHomeSpotlight: flagHomeSpotlight,
+                isLiveNowSpotlight: flagLiveNow
+            };
+        }
+    } else if (existingEvIdx !== -1) {
+        db.liveEvents[existingEvIdx].inHomeSpotlight = false;
+        db.liveEvents[existingEvIdx].inLiveNowHome = false;
+        db.liveEvents[existingEvIdx].isMainHomeSpotlight = false;
+        db.liveEvents[existingEvIdx].isLiveNowSpotlight = false;
+    }
 
     saveDB(db);
 
     return res.json({ status: "success", message: "Sports item updated successfully", item: db.sports[itemIdx] });
+});
+
+router.post('/sports/:id/placement', requireAdmin, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { inHomeSpotlight, inLiveNowHome } = req.body || {};
+    const db = getDB();
+    if (!db.sports) db.sports = [];
+    if (!db.liveEvents) db.liveEvents = [];
+
+    const idx = db.sports.findIndex((s: any) => s.id === id);
+    if (idx === -1) {
+        return res.status(404).json({ status: "error", message: "Sports stream not found" });
+    }
+
+    if (inHomeSpotlight !== undefined) {
+        db.sports[idx].inHomeSpotlight = !!inHomeSpotlight;
+        db.sports[idx].isMainHomeSpotlight = !!inHomeSpotlight;
+    }
+    if (inLiveNowHome !== undefined) {
+        db.sports[idx].inLiveNowHome = !!inLiveNowHome;
+        db.sports[idx].isLiveNowSpotlight = !!inLiveNowHome;
+    }
+
+    const item = db.sports[idx];
+    const evIdx = db.liveEvents.findIndex((e: any) => e.id === id || e.url === item.url);
+    if (item.inHomeSpotlight || item.inLiveNowHome) {
+        if (evIdx === -1) {
+            db.liveEvents.unshift({
+                ...item,
+                badge: item.badge || '🔴 LIVE NOW',
+                category: item.category || 'Live Sports'
+            });
+        } else {
+            db.liveEvents[evIdx].inHomeSpotlight = !!item.inHomeSpotlight;
+            db.liveEvents[evIdx].inLiveNowHome = !!item.inLiveNowHome;
+            db.liveEvents[evIdx].isMainHomeSpotlight = !!item.inHomeSpotlight;
+            db.liveEvents[evIdx].isLiveNowSpotlight = !!item.inLiveNowHome;
+        }
+    } else if (evIdx !== -1) {
+        db.liveEvents[evIdx].inHomeSpotlight = false;
+        db.liveEvents[evIdx].inLiveNowHome = false;
+        db.liveEvents[evIdx].isMainHomeSpotlight = false;
+        db.liveEvents[evIdx].isLiveNowSpotlight = false;
+    }
+
+    saveDB(db);
+    return res.json({ status: "success", message: "Channel placement updated!", item: db.sports[idx] });
 });
 
 router.delete('/sports/:id', requireAdmin, (req: Request, res: Response) => {
@@ -3262,34 +3569,63 @@ router.put('/embed-scraper/channels/:id', requireAdmin, (req: Request, res: Resp
 router.get('/live_events', requireAdmin, (req: Request, res: Response) => {
     const db = getDB();
     const liveEvents = db.liveEvents || [];
-    return res.json({ status: "success", liveEvents });
+    const containers = db.liveEventsContainers || [];
+    const spotlightStudio = db.spotlightStudio || {};
+    return res.json({ status: "success", liveEvents, containers, spotlightStudio });
 });
 
 router.post('/live_events', requireAdmin, (req: Request, res: Response) => {
-    const { title, icon, url, bgUrl } = req.body;
+    const { title, icon, url, bgUrl, playerPng, badge, subtitle, category, containerId, inHomeSpotlight, inLiveNowHome, isMainHomeSpotlight, isLiveNowSpotlight, isSportsSpotlight } = req.body;
     if (!title || !url) {
         return res.status(400).json({ status: "error", message: "Missing required parameters: title and url are required." });
     }
     const db = getDB();
     if (!db.liveEvents) db.liveEvents = [];
+    const flagHome = !!(inHomeSpotlight || isMainHomeSpotlight);
+    const flagLiveNow = !!(inLiveNowHome || isLiveNowSpotlight);
+
     const newItem: SportsSection = {
         id: 'event_' + Date.now().toString(),
         title: title.trim(),
         icon: (icon || 'zap').trim(),
         url: url.trim(),
         bgUrl: bgUrl ? bgUrl.trim() : undefined,
-        
-        
+        playerPng: playerPng ? playerPng.trim() : undefined,
+        badge: badge ? badge.trim() : '🔴 LIVE EVENT',
+        subtitle: subtitle ? subtitle.trim() : undefined,
+        category: category ? category.trim() : 'Live Sports',
+        containerId: containerId ? String(containerId).trim() : '',
+        inHomeSpotlight: flagHome,
+        inLiveNowHome: flagLiveNow,
+        isMainHomeSpotlight: flagHome,
+        isLiveNowSpotlight: flagLiveNow,
+        isSportsSpotlight: !!isSportsSpotlight,
         addedAt: new Date().toISOString()
     };
+    if (isMainHomeSpotlight) {
+        if (!db.spotlightStudio) db.spotlightStudio = {};
+        db.spotlightStudio.mainHomeSpotlight = {
+            enabled: true,
+            title: newItem.title,
+            subtitle: newItem.subtitle || 'Exclusive Live Event Broadcast in 4K Ultra HD.',
+            badge: newItem.badge || '🔴 MAIN LIVE EVENT',
+            category: newItem.category || 'Live Sports',
+            url: newItem.url,
+            bgUrl: newItem.bgUrl || '',
+            playerPng: newItem.playerPng || '',
+            icon: newItem.icon,
+            eventId: newItem.id,
+            updatedAt: new Date().toISOString()
+        };
+    }
     db.liveEvents.push(newItem);
     saveDB(db);
-    return res.json({ status: "success", message: "Live Event added successfully", item: newItem });
+    return res.json({ status: "success", message: "Live Event added successfully", item: newItem, spotlightStudio: db.spotlightStudio });
 });
 
 router.put('/live_events/:id', requireAdmin, (req: Request, res: Response) => {
     const { id } = req.params;
-    const { title, icon, url, bgUrl } = req.body;
+    const { title, icon, url, bgUrl, playerPng, badge, subtitle, category, containerId, inHomeSpotlight, inLiveNowHome, isMainHomeSpotlight, isLiveNowSpotlight, isSportsSpotlight } = req.body;
     if (!title || !url) {
         return res.status(400).json({ status: "error", message: "Missing required parameters: title and url are required." });
     }
@@ -3299,15 +3635,70 @@ router.put('/live_events/:id', requireAdmin, (req: Request, res: Response) => {
     if (itemIdx === -1) {
         return res.status(404).json({ status: "error", message: "Live Event not found" });
     }
-    db.liveEvents[itemIdx] = {
-        ...db.liveEvents[itemIdx],
+    const prev = db.liveEvents[itemIdx];
+    const flagHome = inHomeSpotlight !== undefined ? !!inHomeSpotlight : (isMainHomeSpotlight !== undefined ? !!isMainHomeSpotlight : !!(prev.inHomeSpotlight || prev.isMainHomeSpotlight));
+    const flagLiveNow = inLiveNowHome !== undefined ? !!inLiveNowHome : (isLiveNowSpotlight !== undefined ? !!isLiveNowSpotlight : !!(prev.inLiveNowHome || prev.isLiveNowSpotlight));
+
+    const updated: SportsSection = {
+        ...prev,
         title: title.trim(),
         icon: (icon || 'zap').trim(),
         url: url.trim(),
-        bgUrl: bgUrl !== undefined ? (bgUrl ? bgUrl.trim() : undefined) : db.liveEvents[itemIdx].bgUrl
+        bgUrl: bgUrl !== undefined ? (bgUrl ? bgUrl.trim() : undefined) : prev.bgUrl,
+        playerPng: playerPng !== undefined ? (playerPng ? playerPng.trim() : undefined) : prev.playerPng,
+        badge: badge !== undefined ? (badge ? badge.trim() : '🔴 LIVE EVENT') : prev.badge,
+        subtitle: subtitle !== undefined ? (subtitle ? subtitle.trim() : undefined) : prev.subtitle,
+        category: category !== undefined ? (category ? category.trim() : 'Live Sports') : prev.category,
+        containerId: containerId !== undefined ? String(containerId).trim() : prev.containerId,
+        inHomeSpotlight: flagHome,
+        inLiveNowHome: flagLiveNow,
+        isMainHomeSpotlight: flagHome,
+        isLiveNowSpotlight: flagLiveNow,
+        isSportsSpotlight: isSportsSpotlight !== undefined ? !!isSportsSpotlight : prev.isSportsSpotlight
     };
+    db.liveEvents[itemIdx] = updated;
+    if (flagHome) {
+        if (!db.spotlightStudio) db.spotlightStudio = {};
+        db.spotlightStudio.mainHomeSpotlight = {
+            enabled: true,
+            title: updated.title,
+            subtitle: updated.subtitle || 'Exclusive Live Event Broadcast in 4K Ultra HD.',
+            badge: updated.badge || '🔴 MAIN LIVE EVENT',
+            category: updated.category || 'Live Sports',
+            url: updated.url,
+            bgUrl: updated.bgUrl || '',
+            playerPng: updated.playerPng || '',
+            icon: updated.icon,
+            eventId: updated.id,
+            updatedAt: new Date().toISOString()
+        };
+    }
     saveDB(db);
-    return res.json({ status: "success", message: "Live Event updated successfully", item: db.liveEvents[itemIdx] });
+    return res.json({ status: "success", message: "Live Event updated successfully", item: db.liveEvents[itemIdx], spotlightStudio: db.spotlightStudio });
+});
+
+router.post('/live_events/:id/placement', requireAdmin, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { inHomeSpotlight, inLiveNowHome, isSportsSpotlight } = req.body || {};
+    const db = getDB();
+    if (!db.liveEvents) db.liveEvents = [];
+    const idx = db.liveEvents.findIndex((s: any) => s.id === id);
+    if (idx === -1) {
+        return res.status(404).json({ status: "error", message: "Live Event not found" });
+    }
+    if (inHomeSpotlight !== undefined) {
+        db.liveEvents[idx].inHomeSpotlight = !!inHomeSpotlight;
+        db.liveEvents[idx].isMainHomeSpotlight = !!inHomeSpotlight;
+    }
+    if (inLiveNowHome !== undefined) {
+        db.liveEvents[idx].inLiveNowHome = !!inLiveNowHome;
+        db.liveEvents[idx].isLiveNowSpotlight = !!inLiveNowHome;
+    }
+    if (isSportsSpotlight !== undefined) {
+        db.liveEvents[idx].isSportsSpotlight = !!isSportsSpotlight;
+    }
+    saveDB(db);
+    return res.json({ status: "success", message: "Event placement updated!", item: db.liveEvents[idx] });
 });
 
 router.delete('/live_events/:id', requireAdmin, (req: Request, res: Response) => {
@@ -3318,10 +3709,360 @@ router.delete('/live_events/:id', requireAdmin, (req: Request, res: Response) =>
     if (itemIdx === -1) {
         return res.status(404).json({ status: "error", message: "Live Event not found" });
     }
+    const removed = db.liveEvents[itemIdx];
     db.liveEvents.splice(itemIdx, 1);
+    if (db.spotlightStudio?.mainHomeSpotlight?.eventId === removed.id) {
+        db.spotlightStudio.mainHomeSpotlight.enabled = false;
+    }
     saveDB(db);
     return res.json({ status: "success", message: "Live Event deleted successfully" });
 });
+
+/**
+ * Spotlight & Multi-Container Showcase Studio Endpoints
+ * Controls:
+ * 1. Main Home Spotlight Event Override (shown in Home Spotlight #heroSliderContainer)
+ * 2. Live Now Spotlight & Multi-Container Showcase Studio
+ * 3. Live Events Spotlight & Multi-Container Showcase Studio
+ * 4. Sports Section Spotlight & Multi-Container Showcase Studio
+ */
+function ensureSpotlightStudioDefaults(db: AdminDB) {
+    if (!db.spotlightStudio) db.spotlightStudio = {};
+    if (!db.spotlightStudio.mainHomeSpotlight) {
+        db.spotlightStudio.mainHomeSpotlight = {
+            enabled: false,
+            title: '',
+            subtitle: '',
+            badge: '🔴 MAIN LIVE EVENT',
+            category: 'Live Event Broadcast',
+            url: '',
+            bgUrl: '',
+            playerPng: '',
+            icon: 'zap'
+        };
+    }
+    if (!db.spotlightStudio.liveNowSpotlight) {
+        db.spotlightStudio.liveNowSpotlight = {
+            enabled: false,
+            title: '',
+            subtitle: '',
+            badge: '🔴 LIVE NOW SPOTLIGHT',
+            category: 'Live Television',
+            url: '',
+            bgUrl: '',
+            playerPng: '',
+            icon: 'radio',
+            gridStyle: 'shelf',
+            gridBgUrl: ''
+        };
+    }
+    if (!db.spotlightStudio.liveEventsSpotlight) {
+        db.spotlightStudio.liveEventsSpotlight = {
+            enabled: false,
+            title: '',
+            subtitle: '',
+            badge: '⚡ LIVE EVENT SHOWCASE',
+            category: 'Special Broadcast',
+            url: '',
+            bgUrl: '',
+            playerPng: '',
+            icon: 'flame',
+            gridStyle: 'shelf',
+            gridBgUrl: ''
+        };
+    }
+    if (!db.spotlightStudio.sportsSpotlight) {
+        db.spotlightStudio.sportsSpotlight = {
+            enabled: false,
+            title: '',
+            subtitle: '',
+            badge: '🏆 SPORTS SPOTLIGHT',
+            category: 'Live Sports',
+            url: '',
+            bgUrl: '',
+            playerPng: '',
+            icon: 'trophy',
+            gridStyle: 'shelf',
+            gridBgUrl: ''
+        };
+    }
+    if (!Array.isArray(db.liveNowContainers)) db.liveNowContainers = [];
+    if (!Array.isArray(db.liveNowChannels)) db.liveNowChannels = [];
+    if (!Array.isArray(db.liveEventsContainers)) db.liveEventsContainers = [];
+    if (!Array.isArray(db.liveEvents)) db.liveEvents = [];
+    if (!Array.isArray(db.sportsContainers)) db.sportsContainers = [];
+    if (!Array.isArray(db.sports)) db.sports = [];
+}
+
+router.get('/spotlight-studio', requireAdmin, (req: Request, res: Response) => {
+    const db = getDB();
+    ensureSpotlightStudioDefaults(db);
+    return res.json({
+        status: "success",
+        spotlightStudio: db.spotlightStudio,
+        liveNowContainers: db.liveNowContainers,
+        liveNowChannels: db.liveNowChannels,
+        liveEventsContainers: db.liveEventsContainers,
+        liveEvents: db.liveEvents,
+        sportsContainers: db.sportsContainers,
+        sports: db.sports,
+        sportsHubConfig: db.sportsHubConfig || {}
+    });
+});
+
+router.post('/spotlight-studio/config', requireAdmin, (req: Request, res: Response) => {
+    const db = getDB();
+    ensureSpotlightStudioDefaults(db);
+    const { section, config, mainHomeSpotlight, liveNowSpotlight, liveEventsSpotlight, sportsSpotlight } = req.body || {};
+
+    if (section && config && typeof config === 'object') {
+        const keyMap: Record<string, keyof SpotlightStudioConfig> = {
+            home: 'mainHomeSpotlight',
+            mainHomeSpotlight: 'mainHomeSpotlight',
+            livenow: 'liveNowSpotlight',
+            liveNowSpotlight: 'liveNowSpotlight',
+            liveevents: 'liveEventsSpotlight',
+            liveEventsSpotlight: 'liveEventsSpotlight',
+            sports: 'sportsSpotlight',
+            sportsSpotlight: 'sportsSpotlight'
+        };
+        const targetKey = keyMap[section];
+        if (targetKey && db.spotlightStudio) {
+            db.spotlightStudio[targetKey] = {
+                ...(db.spotlightStudio[targetKey] as any),
+                ...config,
+                enabled: config.enabled !== undefined ? !!config.enabled : true,
+                updatedAt: new Date().toISOString()
+            };
+        }
+    } else {
+        if (mainHomeSpotlight && db.spotlightStudio) {
+            db.spotlightStudio.mainHomeSpotlight = { ...db.spotlightStudio.mainHomeSpotlight, ...mainHomeSpotlight, updatedAt: new Date().toISOString() };
+        }
+        if (liveNowSpotlight && db.spotlightStudio) {
+            db.spotlightStudio.liveNowSpotlight = { ...db.spotlightStudio.liveNowSpotlight, ...liveNowSpotlight, updatedAt: new Date().toISOString() };
+        }
+        if (liveEventsSpotlight && db.spotlightStudio) {
+            db.spotlightStudio.liveEventsSpotlight = { ...db.spotlightStudio.liveEventsSpotlight, ...liveEventsSpotlight, updatedAt: new Date().toISOString() };
+        }
+        if (sportsSpotlight && db.spotlightStudio) {
+            db.spotlightStudio.sportsSpotlight = { ...db.spotlightStudio.sportsSpotlight, ...sportsSpotlight, updatedAt: new Date().toISOString() };
+        }
+    }
+
+    // If sportsSpotlight is updated, also sync sportsHubConfig for seamless compatibility
+    if (db.spotlightStudio?.sportsSpotlight && (section === 'sports' || section === 'sportsSpotlight' || sportsSpotlight)) {
+        const sp = db.spotlightStudio.sportsSpotlight;
+        db.sportsHubConfig = {
+            ...(db.sportsHubConfig || {}),
+            title: sp.title || db.sportsHubConfig?.title,
+            subtitle: sp.subtitle || db.sportsHubConfig?.subtitle,
+            badge: sp.badge || db.sportsHubConfig?.badge,
+            bgUrl: sp.bgUrl || db.sportsHubConfig?.bgUrl,
+            playerPng: sp.playerPng || db.sportsHubConfig?.playerPng,
+            gridBgUrl: sp.gridBgUrl || db.sportsHubConfig?.gridBgUrl,
+            displayMode: sp.gridStyle || db.sportsHubConfig?.displayMode || 'shelf'
+        };
+    }
+
+    saveDB(db);
+    return res.json({
+        status: "success",
+        message: "Spotlight configuration saved & synced!",
+        spotlightStudio: db.spotlightStudio
+    });
+});
+
+// 1-Click Promote any Event or Channel to Home Main Spotlight / Live Now Spotlight / Sports Spotlight
+router.post('/spotlight-studio/promote', requireAdmin, (req: Request, res: Response) => {
+    const db = getDB();
+    ensureSpotlightStudioDefaults(db);
+    const { targetSpotlight, item } = req.body || {};
+    if (!item || !(item.title || item.name) || !(item.url || item.streamUrl)) {
+        return res.status(400).json({ status: "error", message: "Item title and stream URL are required to promote to Spotlight." });
+    }
+
+    const payload: SpotlightHeroOverride = {
+        enabled: item.enabled !== undefined ? !!item.enabled : true,
+        title: String(item.title || item.name).trim(),
+        subtitle: String(item.subtitle || item.description || `${item.category || 'Live Broadcast'} streaming in 4K Ultra HD with zero latency.`).trim(),
+        badge: String(item.badge || '🔴 LIVE EVENT SPOTLIGHT').trim(),
+        category: String(item.category || item.genre || 'Live Event').trim(),
+        url: String(item.url || item.streamUrl).trim(),
+        bgUrl: String(item.bgUrl || item.backdrop || '').trim(),
+        playerPng: String(item.playerPng || '').trim(),
+        icon: String(item.icon || item.logo || 'zap').trim(),
+        gridStyle: item.gridStyle || 'shelf',
+        gridBgUrl: item.gridBgUrl || '',
+        eventId: item.id ? String(item.id) : undefined,
+        updatedAt: new Date().toISOString()
+    };
+
+    const target = String(targetSpotlight || 'home').toLowerCase();
+    if (!db.spotlightStudio) db.spotlightStudio = {};
+    if (target === 'home' || target === 'mainhomespotlight') {
+        db.spotlightStudio.mainHomeSpotlight = payload;
+        (db.liveEvents || []).forEach((ev: any) => {
+            ev.isMainHomeSpotlight = (ev.id === payload.eventId || ev.url === payload.url);
+        });
+    } else if (target === 'livenow' || target === 'livenowspotlight') {
+        db.spotlightStudio.liveNowSpotlight = payload;
+    } else if (target === 'liveevents' || target === 'liveeventsspotlight') {
+        db.spotlightStudio.liveEventsSpotlight = payload;
+    } else if (target === 'sports' || target === 'sportsspotlight') {
+        db.spotlightStudio.sportsSpotlight = payload;
+    }
+
+    saveDB(db);
+    return res.json({
+        status: "success",
+        message: `"${payload.title}" set as ${target.toUpperCase()} Spotlight!`,
+        spotlightStudio: db.spotlightStudio
+    });
+});
+
+// Multi-Container Showcase Studio CRUD for Live Now, Live Events, and Sports
+router.post('/spotlight-studio/containers/:section', requireAdmin, (req: Request, res: Response) => {
+    const section = String(req.params.section || 'livenow').toLowerCase();
+    const { id, title, subtitle, badge, bgUrl, playerPng, gridBgUrl, gridStyle, cardBg, enabled } = req.body || {};
+    if (!title || !String(title).trim()) {
+        return res.status(400).json({ status: "error", message: "Container title is required." });
+    }
+    const db = getDB();
+    ensureSpotlightStudioDefaults(db);
+
+    const listKey = section === 'sports' ? 'sportsContainers' : (section === 'liveevents' ? 'liveEventsContainers' : 'liveNowContainers');
+    const containers: SportsContainer[] = (db as any)[listKey] || [];
+    const cleanId = id ? String(id).trim() : `${section}_cont_${Date.now()}`;
+    const existingIdx = containers.findIndex(c => c.id === cleanId);
+
+    const containerObj: SportsContainer = {
+        id: cleanId,
+        title: String(title).trim(),
+        subtitle: subtitle ? String(subtitle).trim() : '',
+        badge: badge ? String(badge).trim() : (section === 'livenow' ? '🔴 LIVE NOW' : (section === 'liveevents' ? '⚡ LIVE EVENT' : '🏆 LIVE SPORTS')),
+        bgUrl: bgUrl ? String(bgUrl).trim() : '',
+        playerPng: playerPng ? String(playerPng).trim() : '',
+        gridBgUrl: gridBgUrl ? String(gridBgUrl).trim() : '',
+        gridStyle: (['shelf', 'grid', 'glass_cards', 'compact_chips', 'spotlight'].includes(gridStyle) ? gridStyle : 'shelf') as any,
+        cardBg: cardBg ? String(cardBg).trim() : '',
+        enabled: enabled !== undefined ? Boolean(enabled) : true,
+        section: section as any,
+        order: existingIdx >= 0 ? containers[existingIdx].order : containers.length,
+        createdAt: existingIdx >= 0 ? containers[existingIdx].createdAt : new Date().toISOString()
+    };
+
+    if (existingIdx >= 0) {
+        containers[existingIdx] = containerObj;
+    } else {
+        containers.push(containerObj);
+    }
+    (db as any)[listKey] = containers;
+    saveDB(db);
+    return res.json({ status: "success", message: "Showcase Container saved!", container: containerObj, containers });
+});
+
+router.delete('/spotlight-studio/containers/:section/:id', requireAdmin, (req: Request, res: Response) => {
+    const section = String(req.params.section || 'livenow').toLowerCase();
+    const id = String(req.params.id || '');
+    const db = getDB();
+    ensureSpotlightStudioDefaults(db);
+
+    const listKey = section === 'sports' ? 'sportsContainers' : (section === 'liveevents' ? 'liveEventsContainers' : 'liveNowContainers');
+    const channelKey = section === 'sports' ? 'sports' : (section === 'liveevents' ? 'liveEvents' : 'liveNowChannels');
+
+    const containers: SportsContainer[] = (db as any)[listKey] || [];
+    const idx = containers.findIndex(c => c.id === id);
+    if (idx === -1) {
+        return res.status(404).json({ status: "error", message: "Container not found" });
+    }
+    containers.splice(idx, 1);
+    (db as any)[listKey] = containers;
+
+    if (Array.isArray((db as any)[channelKey])) {
+        (db as any)[channelKey].forEach((ch: any) => {
+            if (ch.containerId === id) ch.containerId = '';
+        });
+    }
+    saveDB(db);
+    return res.json({ status: "success", message: "Container deleted", containers });
+});
+
+// Channel / Event Item CRUD per section ('livenow' | 'liveevents' | 'sports')
+router.post('/spotlight-studio/channels/:section', requireAdmin, (req: Request, res: Response) => {
+    const section = String(req.params.section || 'livenow').toLowerCase();
+    const { id, title, icon, url, bgUrl, playerPng, badge, subtitle, category, containerId, isMainHomeSpotlight } = req.body || {};
+    if (!title || !url) {
+        return res.status(400).json({ status: "error", message: "Channel/Event title and stream URL are required." });
+    }
+    const db = getDB();
+    ensureSpotlightStudioDefaults(db);
+
+    const channelKey = section === 'sports' ? 'sports' : (section === 'liveevents' ? 'liveEvents' : 'liveNowChannels');
+    const list: SportsSection[] = (db as any)[channelKey] || [];
+    const cleanId = id ? String(id).trim() : `${section}_ch_${Date.now()}`;
+    const existingIdx = list.findIndex(c => c.id === cleanId);
+
+    const itemObj: SportsSection = {
+        id: cleanId,
+        title: String(title).trim(),
+        icon: String(icon || 'tv').trim(),
+        url: String(url).trim(),
+        bgUrl: bgUrl ? String(bgUrl).trim() : undefined,
+        playerPng: playerPng ? String(playerPng).trim() : undefined,
+        badge: badge ? String(badge).trim() : undefined,
+        subtitle: subtitle ? String(subtitle).trim() : undefined,
+        category: category ? String(category).trim() : (section === 'livenow' ? 'Live Now' : (section === 'liveevents' ? 'Live Events' : 'Live Sports')),
+        containerId: containerId !== undefined ? String(containerId).trim() : '',
+        isMainHomeSpotlight: !!isMainHomeSpotlight,
+        addedAt: existingIdx >= 0 ? list[existingIdx].addedAt : new Date().toISOString()
+    };
+
+    if (existingIdx >= 0) {
+        list[existingIdx] = itemObj;
+    } else {
+        list.push(itemObj);
+    }
+    (db as any)[channelKey] = list;
+
+    if (isMainHomeSpotlight && db.spotlightStudio) {
+        db.spotlightStudio.mainHomeSpotlight = {
+            enabled: true,
+            title: itemObj.title,
+            subtitle: itemObj.subtitle || `${itemObj.category || 'Live Event'} broadcasting in Ultra HD.`,
+            badge: itemObj.badge || '🔴 MAIN LIVE EVENT',
+            category: itemObj.category || 'Live Event',
+            url: itemObj.url,
+            bgUrl: itemObj.bgUrl || '',
+            playerPng: itemObj.playerPng || '',
+            icon: itemObj.icon,
+            eventId: itemObj.id,
+            updatedAt: new Date().toISOString()
+        };
+    }
+
+    saveDB(db);
+    return res.json({ status: "success", message: "Channel/Event saved!", item: itemObj, channels: list, spotlightStudio: db.spotlightStudio });
+});
+
+router.delete('/spotlight-studio/channels/:section/:id', requireAdmin, (req: Request, res: Response) => {
+    const section = String(req.params.section || 'livenow').toLowerCase();
+    const id = String(req.params.id || '');
+    const db = getDB();
+    ensureSpotlightStudioDefaults(db);
+
+    const channelKey = section === 'sports' ? 'sports' : (section === 'liveevents' ? 'liveEvents' : 'liveNowChannels');
+    const list: SportsSection[] = (db as any)[channelKey] || [];
+    const idx = list.findIndex(c => c.id === id);
+    if (idx === -1) {
+        return res.status(404).json({ status: "error", message: "Item not found" });
+    }
+    list.splice(idx, 1);
+    (db as any)[channelKey] = list;
+    saveDB(db);
+    return res.json({ status: "success", message: "Item removed", channels: list });
+});
+
 
 
 // POST /consumet/builder - Advanced UI Builder for Consumet
@@ -4024,7 +4765,8 @@ const handleFixLogosStream = async (req: Request, res: Response) => {
                     engine: info.engine
                 });
             }
-        });
+        }
+);
 
         getOrUpdatePlaylist(true).catch(() => {});
 
@@ -4317,33 +5059,84 @@ router.get('/scrapers/status', requireAdmin, async (req: Request, res: Response)
         const { live: fancodeLive, all: fancodeAll } = await fetchFanCodeEvents();
 
         // Movie clusters
+        const seenMovieIds = new Set<string>();
         const movieScrapers = [
+            {
+                id: 'vidlink',
+                name: 'VidLink Pro (Decrypted 1080p / Direct CDN & Multi-Audio Dubs)',
+                type: 'movie_tv',
+                region: 'US',
+                priority: 1,
+                status: 'online',
+                protocol: 'Direct HLS / DASH Multi-Audio',
+                note: 'Native 1080p/720p streams with 11+ multi-language international audio dubs'
+            },
+            {
+                id: 'prism',
+                name: 'Prism (Bingr NextGen Multi-Audio 1080p)',
+                type: 'movie_tv',
+                region: 'GL',
+                priority: 1,
+                status: 'online',
+                protocol: 'NextGen Direct HLS',
+                note: 'Primary Bingr multi-bitrate HLS cluster (Nova, Aphelion, Orion, Polaris)'
+            },
+            {
+                id: 'citadel',
+                name: 'Citadel (Bingr NextGen Fast Direct)',
+                type: 'movie_tv',
+                region: 'US',
+                priority: 2,
+                status: 'online',
+                protocol: 'StreamRip Direct HLS',
+                note: 'High-speed secondary cluster (Bastion, Moscow, Novo)'
+            },
             {
                 id: 'm4u',
                 name: 'Movies4u Mirror Engine',
                 type: 'movie_tv',
                 region: 'GL',
-                priority: 1,
+                priority: 3,
                 status: 'online',
                 protocol: 'Acek CDN HLS',
                 note: 'Movies4u dynamic mirror discovery with unpacked Acek master playlist'
             },
             {
                 id: 'sm_hub',
-                name: 'SM Movie Hub (Fibwatch)',
+                name: 'SM Movie Hub Pro (GitHub Index)',
                 type: 'movie_tv',
                 region: 'IN',
-                priority: 2,
+                priority: 4,
                 status: 'online',
-                protocol: 'Direct MP4 / MKV High Bitrate',
-                note: '36,000+ Verified Movies Catalog with multi-category indexing'
+                protocol: 'Direct MKV / MP4 BDIX Stream',
+                note: '37,000+ verified movie catalog auto-updating from Monirul Islam GitHub repository'
+            },
+            {
+                id: 'vidrift',
+                name: 'Vidrift (Decrypted Multi-Provider HLS)',
+                type: 'movie_tv',
+                region: 'IN',
+                priority: 5,
+                status: 'online',
+                protocol: 'Adaptive Direct HLS',
+                note: 'Multi-host aggregator with low latency & dual audio'
+            },
+            {
+                id: 'filmu',
+                name: 'Filmu / Vidly (Native HLS / Decrypted Stream)',
+                type: 'movie_tv',
+                region: 'IN',
+                priority: 6,
+                status: 'online',
+                protocol: 'Decrypted Fast Stream',
+                note: 'Fast 1080p streaming with low buffer latency'
             },
             {
                 id: 'framex',
                 name: 'FrameX Multi-Provider Direct',
                 type: 'movie_tv',
                 region: 'GL',
-                priority: 3,
+                priority: 7,
                 status: 'online',
                 protocol: 'Adaptive Direct HLS',
                 note: 'Multi-host aggregator with low latency & dual audio'
@@ -4351,10 +5144,10 @@ router.get('/scrapers/status', requireAdmin, async (req: Request, res: Response)
             ...BINGR_SERVERS.map(srv => {
                 let protocol = 'HLS (m3u8)';
                 let note = 'Direct stream';
-                if (srv.id === 's40') { protocol = 'Direct HLS'; note = '#1 Priority Cluster · Fast 1080p Direct'; }
-                else if (srv.id === 's62') { protocol = 'Multi-Audio HLS'; note = 'Dual Audio & Dubs (KNOCW/NXOCW)'; }
+                if (srv.id === 's40') { protocol = 'Prism Direct HLS'; note = '#1 Priority Cluster · Fast 1080p Direct'; }
+                else if (srv.id === 's62') { protocol = 'Citadel Multi-Audio'; note = 'Dual Audio & Dubs (StreamRip)'; }
                 else if (srv.id === 's61') { protocol = 'Multi-Source Hub'; note = 'Aggregated mirrors'; }
-                else if (srv.id === 's70') { protocol = 'HLS v7'; note = 'Multi-Language Dubs'; }
+                else if (srv.id === 's70') { protocol = 'Prism HLS v7'; note = 'Multi-Language Dubs'; }
                 else if (srv.id === 's4k') { protocol = '4K Ultra HD HLS'; note = 'PeakStream 4K Master Feeds'; }
 
                 return {
@@ -4368,7 +5161,11 @@ router.get('/scrapers/status', requireAdmin, async (req: Request, res: Response)
                     note
                 };
             })
-        ];
+        ].filter(srv => {
+            if (seenMovieIds.has(srv.id)) return false;
+            seenMovieIds.add(srv.id);
+            return true;
+        });
 
         // Sports scrapers
         const sportsScrapers = [
@@ -4490,11 +5287,51 @@ router.get('/scrapers/status', requireAdmin, async (req: Request, res: Response)
         // Anime & Asian Drama scrapers
         const animeScrapers = [
             {
+                id: 'bing_anime',
+                name: 'Bing Anime (Multi-Audio HLS / Ravok & Zoko Direct)',
+                type: 'anime',
+                region: 'JP',
+                priority: 1,
+                status: 'online',
+                protocol: 'Direct HLS (Sub & Dub)',
+                note: 'Direct anime scraper powered by AnimeSalt Ravok and HiAnime ZokoAnime decoders'
+            },
+            {
+                id: 'hianime',
+                name: 'HiAnime (ZokoAnime Direct Engine)',
+                type: 'anime',
+                region: 'JP',
+                priority: 2,
+                status: 'online',
+                protocol: 'ZokoAnime HLS (otaku-embed-v1)',
+                note: 'Native Japanese Sub and English Dub direct master m3u8 streams'
+            },
+            {
+                id: 'animesalt',
+                name: 'AnimeSalt (Ravok Multi-Audio 1080p)',
+                type: 'anime',
+                region: 'JP',
+                priority: 3,
+                status: 'online',
+                protocol: 'Ravok CDN HLS Multi-Audio',
+                note: 'English, Japanese, Hindi audio streams with AniSkip auto-skip'
+            },
+            {
+                id: 'aniembed',
+                name: 'AniEmbed (Dual Audio JP/EN HLS)',
+                type: 'anime',
+                region: 'JP',
+                priority: 4,
+                status: 'online',
+                protocol: 'Dual Audio HLS',
+                note: 'High-speed dual-audio Japanese/English anime streams'
+            },
+            {
                 id: 'asiaflix',
                 name: 'AsiaFlix K-Drama & Drama Hub',
                 type: 'anime',
                 region: 'KR',
-                priority: 1,
+                priority: 5,
                 status: 'online',
                 protocol: 'Direct HLS / Multi-Server',
                 note: 'Korean Dramas, C-Dramas, and Asian series with English subs'
@@ -4504,27 +5341,17 @@ router.get('/scrapers/status', requireAdmin, async (req: Request, res: Response)
                 name: 'KissKH Asian Drama Engine',
                 type: 'anime',
                 region: 'GL',
-                priority: 2,
+                priority: 6,
                 status: 'online',
                 protocol: 'Encrypted HLS Streams',
                 note: 'High-speed Asian drama streams, movies, and subtitles'
-            },
-            {
-                id: 'animesalt',
-                name: 'AnimeSalt & HiAnime Multi-Dub',
-                type: 'anime',
-                region: 'JP',
-                priority: 3,
-                status: 'online',
-                protocol: 'Multi-Audio HLS (Sub/Dub)',
-                note: 'English, Japanese, Hindi audio tracks with AniSkip auto-skip'
             },
             {
                 id: 'rareanimes',
                 name: 'RareAnimes Hindi Dub Engine',
                 type: 'anime',
                 region: 'IN',
-                priority: 4,
+                priority: 7,
                 status: 'online',
                 protocol: 'Multi-Host Unpacked HLS',
                 note: 'Rare anime series dubbed in Hindi, Tamil, Telugu, and English'
@@ -4585,6 +5412,7 @@ router.post('/scrapers/test', requireAdmin, async (req: Request, res: Response) 
                 });
             }
         }
+
 
         if (scraperId === 'willow') {
             const events = await fetchWillowEvents(false);
@@ -4817,6 +5645,78 @@ router.post('/scrapers/test', requireAdmin, async (req: Request, res: Response) 
             }
         }
 
+        if (scraperId === 'vidlink' || scraperId === 'vidlinkpro') {
+            const vlRes = await scrapeVidlinkStream({
+                tmdbId: tmdbId ? Number(tmdbId) : 603,
+                type: isTv ? 'tv' : 'movie',
+                season: isTv ? Number(season) : 1,
+                episode: isTv ? Number(episode) : 1
+            });
+            const latencyMs = Date.now() - startTime;
+            if (vlRes && vlRes.success && vlRes.sources && vlRes.sources.length > 0) {
+                const primary = vlRes.sources[0];
+                return res.json({
+                    status: 'success',
+                    scraperId: 'vidlinkpro',
+                    latencyMs,
+                    title: title || 'The Matrix',
+                    streamUrl: primary.url,
+                    quality: primary.quality || '1080p',
+                    audioTracks: vlRes.audioTracks || [],
+                    subtitles: vlRes.subtitles || [],
+                    totalSources: vlRes.sources.length,
+                    note: 'VidLink Pro Native Decrypted Stream (1080p CDN Online)'
+                });
+            }
+        }
+
+        if (scraperId === 'vidrift') {
+            const vdRes = await scrapeVidriftStream({
+                tmdbId: tmdbId ? Number(tmdbId) : 603,
+                type: isTv ? 'tv' : 'movie',
+                season: isTv ? Number(season) : 1,
+                episode: isTv ? Number(episode) : 1
+            });
+            const latencyMs = Date.now() - startTime;
+            if (vdRes && vdRes.success && vdRes.sources && vdRes.sources.length > 0) {
+                const primary = vdRes.sources[0];
+                return res.json({
+                    status: 'success',
+                    scraperId: 'vidrift',
+                    latencyMs,
+                    title: title || 'The Matrix',
+                    streamUrl: primary.url,
+                    quality: primary.quality || '1080p',
+                    subtitles: vdRes.subtitles || [],
+                    totalSources: vdRes.sources.length,
+                    note: 'Vidrift Multi-Provider Decrypted HLS Stream'
+                });
+            }
+        }
+
+        if (scraperId === 'filmu' || scraperId === 'vidly') {
+            const flRes = await scrapeFilmuStream({
+                tmdbId: tmdbId ? Number(tmdbId) : 603,
+                type: isTv ? 'tv' : 'movie',
+                season: isTv ? Number(season) : 1,
+                episode: isTv ? Number(episode) : 1
+            });
+            const latencyMs = Date.now() - startTime;
+            if (flRes && flRes.success && flRes.sources && flRes.sources.length > 0) {
+                const primary = flRes.sources[0];
+                return res.json({
+                    status: 'success',
+                    scraperId: 'filmu',
+                    latencyMs,
+                    title: title || 'The Matrix',
+                    streamUrl: primary.url,
+                    quality: primary.quality || '1080p',
+                    totalSources: flRes.sources.length,
+                    note: 'Filmu / Vidly Fast Decrypted Stream'
+                });
+            }
+        }
+
         // 3. ANIME & ASIAN DRAMA SCRAPERS
         if (scraperId === 'asiaflix') {
             const results = await searchAsiaflix(title || 'Queen of Tears');
@@ -4940,62 +5840,96 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
             details?: string;
         }> = [];
 
+        const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> => {
+            return Promise.race([
+                promise,
+                new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+            ]);
+        };
+
         // 1. Movie Scrapers
-        const moviePromises = ['s40', 's62', 'm4u', 'sm_hub', 'framex'].map(async (srvId) => {
+        const movieScrapersConfig = [
+            { id: 'prism', name: 'Bingr Prism NextGen' },
+            { id: 'citadel', name: 'Bingr Citadel (StreamRip)' },
+            { id: 'vidlink', name: 'VidLink Pro (Multi-Audio)' },
+            { id: 'vidrift', name: 'VidRift Multi-Cluster' },
+            { id: 'filmu', name: 'Filmu Native Multi-Audio' },
+            { id: 'm4u', name: 'Movies4u Mirror Engine' },
+            { id: 's40', name: 'Aphelion (s40)' },
+            { id: 's62', name: 'Bastion (s62)' },
+            { id: 'sm_hub', name: 'SM Movie Hub (36k Movies)' },
+            { id: 'framex', name: 'FrameX Ultra-Fast' }
+        ];
+
+        const moviePromises = movieScrapersConfig.map(async (item) => {
+            const srvId = item.id;
             const t0 = Date.now();
-            try {
-                if (srvId === 'sm_hub') {
-                    const sm = await getSmMovieData(false);
-                    return {
-                        id: 'sm_hub',
-                        name: 'SM Movie Hub (36k Movies)',
-                        type: 'movie' as const,
-                        status: 'online' as const,
-                        latencyMs: Date.now() - t0,
-                        details: `${sm.items.length} movies indexed`
-                    };
-                }
-                if (srvId === 'm4u') {
-                    const m = await discoverAndPromoteMovies4uMirrors(false);
-                    return {
-                        id: 'm4u',
-                        name: 'Movies4u Mirror Engine',
-                        type: 'movie' as const,
-                        status: 'online' as const,
-                        latencyMs: Date.now() - t0,
-                        details: `${m.mirrors.length} mirrors active (${m.primary})`
-                    };
-                }
-                const r = await scrapeBingrStream({
-                    type: 'movie',
-                    id: 603,
-                    title: 'The Matrix',
-                    srv: srvId,
-                    strictSrv: true
-                });
-                return {
+            return withTimeout(
+                (async () => {
+                    try {
+                        if (srvId === 'sm_hub') {
+                            const sm = await getSmMovieData(false);
+                            return {
+                                id: 'sm_hub',
+                                name: item.name,
+                                type: 'movie' as const,
+                                status: 'online' as const,
+                                latencyMs: Date.now() - t0,
+                                details: `${sm.items.length} movies indexed`
+                            };
+                        }
+                        if (srvId === 'm4u') {
+                            const m = await discoverAndPromoteMovies4uMirrors(false);
+                            return {
+                                id: 'm4u',
+                                name: item.name,
+                                type: 'movie' as const,
+                                status: 'online' as const,
+                                latencyMs: Date.now() - t0,
+                                details: `${m.mirrors.length} mirrors active (${m.primary})`
+                            };
+                        }
+                        const r = await scrapeBingrStream({
+                            type: 'movie',
+                            id: 603,
+                            title: 'The Matrix',
+                            srv: srvId,
+                            strictSrv: true
+                        });
+                        return {
+                            id: srvId,
+                            name: item.name,
+                            type: 'movie' as const,
+                            status: (r.success && r.sources && r.sources.length > 0) ? ('online' as const) : ('degraded' as const),
+                            latencyMs: Date.now() - t0,
+                            details: r.success ? `${r.sources.length} sources resolved` : (r.error || 'No source')
+                        };
+                    } catch (err: any) {
+                        return {
+                            id: srvId,
+                            name: item.name,
+                            type: 'movie' as const,
+                            status: 'offline' as const,
+                            latencyMs: Date.now() - t0,
+                            details: err?.message || 'Request failed'
+                        };
+                    }
+                })(),
+                5500,
+                {
                     id: srvId,
-                    name: srvId === 's40' ? 'Aphelion (s40)' : (srvId === 's62' ? 'Bastion (s62)' : srvId),
-                    type: 'movie' as const,
-                    status: (r.success && r.sources && r.sources.length > 0) ? ('online' as const) : ('degraded' as const),
-                    latencyMs: Date.now() - t0,
-                    details: r.success ? `${r.sources.length} sources resolved` : (r.error || 'No source')
-                };
-            } catch (err: any) {
-                return {
-                    id: srvId,
-                    name: srvId,
+                    name: item.name,
                     type: 'movie' as const,
                     status: 'offline' as const,
-                    latencyMs: Date.now() - t0,
-                    details: err?.message || 'Request failed'
-                };
-            }
+                    latencyMs: 5500,
+                    details: 'Probe timed out after 5500ms'
+                }
+            );
         });
 
         // 2. Sports Scrapers
         const sportsPromises = [
-            (async () => {
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const { live } = await fetchFanCodeEvents(false);
@@ -5010,8 +5944,8 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'fancode', name: 'FanCode', type: 'sports' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })(),
-            (async () => {
+            })(), 5000, { id: 'fancode', name: 'FanCode', type: 'sports' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' }),
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const pl = await getOrUpdatePlaylist();
@@ -5027,8 +5961,8 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'mdtv', name: 'MDTV Sports', type: 'sports' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })(),
-            (async () => {
+            })(), 5000, { id: 'mdtv', name: 'MDTV Sports', type: 'sports' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' }),
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const events = await fetchWillowEvents(false);
@@ -5043,8 +5977,8 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'willow', name: 'Willow Cricket', type: 'sports' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })(),
-            (async () => {
+            })(), 5000, { id: 'willow', name: 'Willow Cricket', type: 'sports' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' }),
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const { live, all } = await fetchSonyLivEvents(false);
@@ -5059,8 +5993,8 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'sonyliv', name: 'SonyLIV', type: 'sports' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })(),
-            (async () => {
+            })(), 5000, { id: 'sonyliv', name: 'SonyLIV', type: 'sports' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' }),
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const events = await fetchPrimeEvents(false);
@@ -5075,12 +6009,12 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'prime', name: 'Amazon Prime', type: 'sports' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })()
+            })(), 5000, { id: 'prime', name: 'Amazon Prime', type: 'sports' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' })
         ];
 
         // 3. Anime Scrapers
         const animePromises = [
-            (async () => {
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const res = await searchAsiaflix('Queen of Tears');
@@ -5095,8 +6029,8 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'asiaflix', name: 'AsiaFlix', type: 'anime' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })(),
-            (async () => {
+            })(), 5000, { id: 'asiaflix', name: 'AsiaFlix', type: 'anime' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' }),
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const res = await searchKissKh('Doctor Slump');
@@ -5111,8 +6045,8 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'kisskh', name: 'KissKH', type: 'anime' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })(),
-            (async () => {
+            })(), 5000, { id: 'kisskh', name: 'KissKH', type: 'anime' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' }),
+            withTimeout((async () => {
                 const t0 = Date.now();
                 try {
                     const res = await searchAnimeSalt('Solo Leveling');
@@ -5127,7 +6061,23 @@ router.post('/scrapers/benchmark-all', requireAdmin, async (req: Request, res: R
                 } catch (err: any) {
                     return { id: 'animesalt', name: 'AnimeSalt', type: 'anime' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
                 }
-            })()
+            })(), 5000, { id: 'animesalt', name: 'AnimeSalt', type: 'anime' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' }),
+            withTimeout((async () => {
+                const t0 = Date.now();
+                try {
+                    const res = await scrapeAnimeEpisode('one-piece', 21, 1091);
+                    return {
+                        id: 'bing_anime',
+                        name: 'HiAnime / Zoko Direct Multi-Audio',
+                        type: 'anime' as const,
+                        status: (res.success && res.sources && res.sources.length > 0) ? ('online' as const) : ('degraded' as const),
+                        latencyMs: Date.now() - t0,
+                        details: res.success ? `${res.sources.length} sources resolved (Sub & Dub)` : (res.error || 'No source')
+                    };
+                } catch (err: any) {
+                    return { id: 'bing_anime', name: 'HiAnime / Zoko Direct', type: 'anime' as const, status: 'offline' as const, latencyMs: Date.now() - t0, details: err?.message };
+                }
+            })(), 5000, { id: 'bing_anime', name: 'HiAnime / Zoko Direct', type: 'anime' as const, status: 'offline' as const, latencyMs: 5000, details: 'Timed out' })
         ];
 
         const results = await Promise.all([...moviePromises, ...sportsPromises, ...animePromises]);
@@ -5307,5 +6257,216 @@ router.get('/github-sources/status', requireAdmin, async (req: Request, res: Res
     }
 });
 
+// ============================================================================
+// MULTI-SOURCE STREAM MANAGER & JIOTV KEY REFRESH (SONYLIV, FANCODE, JIOTV)
+// ============================================================================
+
+function getActiveFileStats(filename: string) {
+    try {
+        const filePath = path.join(process.cwd(), 'assets', filename);
+        if (fs.existsSync(filePath)) {
+            const stat = fs.statSync(filePath);
+            return {
+                exists: true,
+                filename,
+                sizeBytes: stat.size,
+                updatedAt: stat.mtime.toISOString()
+            };
+        }
+    } catch (_) {}
+    return { exists: false, filename, sizeBytes: 0, updatedAt: null };
+}
+
+// GET /api/admin/stream-sources - Get all configured sources for SonyLIV, FanCode, and JioTV + active M3U file stats
+router.get('/stream-sources', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const sonyliv = getSonyLivSources();
+        const fancode = getFanCodeSources();
+        const jtv = getJtvSources();
+
+        return res.json({
+            status: 'success',
+            sonyliv,
+            fancode,
+            jtv,
+            activeFiles: {
+                sonyliv: getActiveFileStats('sonyliv_active.m3u'),
+                fancode: getActiveFileStats('fancode_active.m3u'),
+                jtv: getActiveFileStats('jtv_active.m3u'),
+                sports: getActiveFileStats('sports.m3u'),
+                jtvJson: getActiveFileStats('jtv2.json')
+            }
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to load stream sources' });
+    }
+});
+
+// POST /api/admin/stream-sources/update - Update sources (set primary, toggle enabled, edit URL, or add new source)
+router.post('/stream-sources/update', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const { provider, action, sourceId, sourceData, sources } = req.body || {};
+        if (!provider || !['sonyliv', 'fancode', 'jtv'].includes(provider)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid provider. Expected sonyliv, fancode, or jtv.' });
+        }
+
+        let currentList: any[] = provider === 'sonyliv'
+            ? getSonyLivSources()
+            : (provider === 'fancode' ? getFanCodeSources() : getJtvSources());
+
+        if (Array.isArray(sources)) {
+            currentList = sources;
+        } else if (action === 'set_primary' && sourceId) {
+            currentList = currentList.map((s) => ({
+                ...s,
+                isPrimary: s.id === sourceId,
+                enabled: s.id === sourceId ? true : s.enabled,
+                priority: s.id === sourceId ? 0 : (s.priority || 10) + 1
+            }));
+            currentList.sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : a.priority - b.priority));
+            currentList.forEach((s, idx) => { s.priority = idx + 1; });
+        } else if (action === 'toggle_enabled' && sourceId) {
+            currentList = currentList.map((s) => s.id === sourceId ? { ...s, enabled: !s.enabled } : s);
+            if (!currentList.some((s) => s.enabled)) {
+                currentList[0].enabled = true;
+            }
+            if (!currentList.some((s) => s.isPrimary && s.enabled)) {
+                const firstEnabled = currentList.find((s) => s.enabled);
+                if (firstEnabled) firstEnabled.isPrimary = true;
+            }
+        } else if (action === 'add_source' && sourceData && sourceData.url) {
+            const newId = sourceData.id || `${provider}_custom_${Date.now()}`;
+            const makePrimary = Boolean(sourceData.isPrimary);
+            if (makePrimary) {
+                currentList.forEach((s) => { s.isPrimary = false; });
+            }
+            currentList.push({
+                id: newId,
+                name: (sourceData.name || `Custom ${provider.toUpperCase()} Source`).trim(),
+                url: sourceData.url.trim(),
+                type: sourceData.type || (sourceData.url.includes('.json') ? 'json' : 'm3u'),
+                isPrimary: makePrimary,
+                enabled: true,
+                priority: makePrimary ? 1 : currentList.length + 1,
+                status: 'online'
+            });
+            currentList.sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : a.priority - b.priority));
+            currentList.forEach((s, idx) => { s.priority = idx + 1; });
+        } else if (action === 'delete_source' && sourceId) {
+            currentList = currentList.filter((s) => s.id !== sourceId);
+            if (currentList.length > 0 && !currentList.some((s) => s.isPrimary)) {
+                currentList[0].isPrimary = true;
+                currentList[0].enabled = true;
+            }
+        } else if (action === 'edit_source' && sourceId && sourceData) {
+            currentList = currentList.map((s) => s.id === sourceId ? {
+                ...s,
+                name: sourceData.name ? sourceData.name.trim() : s.name,
+                url: sourceData.url ? sourceData.url.trim() : s.url,
+                type: sourceData.type || s.type
+            } : s);
+        }
+
+        if (provider === 'sonyliv') {
+            const saved = saveSonyLivSources(currentList);
+            await fetchSonyLivEvents(true);
+            await writeActiveSonyLivM3u();
+            await getOrUpdatePlaylist(true).catch(() => {});
+            return res.json({ status: 'success', message: 'SonyLIV sources updated & active M3U rewritten!', sources: saved });
+        } else if (provider === 'fancode') {
+            const saved = saveFanCodeSources(currentList);
+            await fetchFanCodeEvents(true);
+            await writeActiveFanCodeM3u();
+            await getOrUpdatePlaylist(true).catch(() => {});
+            return res.json({ status: 'success', message: 'FanCode sources updated & active M3U rewritten!', sources: saved });
+        } else {
+            const saved = saveJtvSources(currentList);
+            await JtvService.refreshKeysAndSources();
+            await getOrUpdatePlaylist(true).catch(() => {});
+            return res.json({ status: 'success', message: 'JioTV sources & ClearKey DRM keys updated and active files rewritten!', sources: saved });
+        }
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to update stream sources' });
+    }
+});
+
+// POST /api/admin/stream-sources/refresh - Force refresh provider feeds, DRM keys, and rewrite active files + Firestore
+router.post('/stream-sources/refresh', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const { provider } = req.body || {};
+        const startMs = Date.now();
+        const results: any = {};
+
+        if (!provider || provider === 'sonyliv' || provider === 'all') {
+            const sl = await fetchSonyLivEvents(true);
+            await writeActiveSonyLivM3u();
+            results.sonyliv = { liveCount: sl.live.length, upcomingCount: sl.upcoming.length };
+        }
+        if (!provider || provider === 'fancode' || provider === 'all') {
+            const fc = await fetchFanCodeEvents(true);
+            await writeActiveFanCodeM3u();
+            results.fancode = { liveCount: Array.isArray(fc) ? fc.length : (fc?.live?.length || 0) };
+        }
+        if (!provider || provider === 'jtv' || provider === 'all') {
+            const jtvRefresh = await JtvService.refreshKeysAndSources();
+            results.jtv = jtvRefresh;
+        }
+
+        await JtvService.fetchLiveEvents(true).catch(() => {});
+        await getOrUpdatePlaylist(true).catch(() => {});
+
+        return res.json({
+            status: 'success',
+            message: `Refreshed ${provider ? provider.toUpperCase() : 'ALL'} sources, updated ClearKey tokens, and rewrote active M3U files in ${Date.now() - startMs}ms!`,
+            results,
+            sonyliv: getSonyLivSources(),
+            fancode: getFanCodeSources(),
+            jtv: getJtvSources(),
+            activeFiles: {
+                sonyliv: getActiveFileStats('sonyliv_active.m3u'),
+                fancode: getActiveFileStats('fancode_active.m3u'),
+                jtv: getActiveFileStats('jtv_active.m3u'),
+                sports: getActiveFileStats('sports.m3u'),
+                jtvJson: getActiveFileStats('jtv2.json')
+            }
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to refresh stream sources' });
+    }
+});
+
+// GET /api/admin/stream-sources/download-m3u - Download active M3U file for sonyliv, fancode, jtv, or sports
+router.get('/stream-sources/download-m3u', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const provider = String(req.query.provider || 'sports').toLowerCase();
+        let content = '';
+        let filename = 'sports_active.m3u';
+
+        if (provider === 'sonyliv') {
+            filename = 'sonyliv_active.m3u';
+            const localPath = path.join(process.cwd(), 'assets', filename);
+            content = fs.existsSync(localPath) ? fs.readFileSync(localPath, 'utf8') : await getSonyLivM3u();
+        } else if (provider === 'fancode') {
+            filename = 'fancode_active.m3u';
+            const localPath = path.join(process.cwd(), 'assets', filename);
+            content = fs.existsSync(localPath) ? fs.readFileSync(localPath, 'utf8') : await getFanCodeM3u();
+        } else if (provider === 'jtv') {
+            filename = 'jtv_active.m3u';
+            content = await JtvService.getActiveJtvM3u();
+        } else {
+            filename = 'sports.m3u';
+            const localPath = path.join(process.cwd(), 'assets', 'sports.m3u');
+            content = fs.existsSync(localPath) ? fs.readFileSync(localPath, 'utf8') : await getOrUpdatePlaylist(false);
+        }
+
+        res.setHeader('Content-Type', 'audio/x-mpegurl; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.send(content);
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to download active M3U' });
+    }
+});
+
 export default router;
+
 

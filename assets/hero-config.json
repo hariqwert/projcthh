@@ -3,19 +3,62 @@
     "type": "local",
     "url": "/assets/hero_man_vr.mp4"
   },
+  "heroImage": {
+    "type": "local",
+    "url": "/assets/hero_man_vr.jpg"
+  },
+  "serverVideo": {
+    "type": "local",
+    "url": "/assets/server_room_smoke.mp4"
+  },
+  "serverImage": {
+    "type": "local",
+    "url": "/assets/datacenter_cables.jpg"
+  },
+  "telemetryVideo": {
+    "type": "local",
+    "url": "/assets/holographic_dashboard.mp4"
+  },
   "musicMedia": {
-    "sourceType": "jiosaavn",
-    "title": "Jailer Theme (Instrumental)",
-    "artist": "Anirudh Ravichander",
-    "audioUrl": "/api/music/proxy?url=https%3A%2F%2Fweb.saavncdn.com%2F484%2Fcb19a0b8bfa60dbc9415598b5f1422b4_320.mp4%3FExpires%3D1792930536%26Signature%3DZ9y-042wYoyl6GNdUHiH2W73TxP5OGAgGyyufdcgU8X-6gUfhxRyJQaYpe4SBt2KIbaBwkBHHYt7-vntAD8GooA0tLKPhXNd8TrdwfEVhL27Ls2XDfYbaehk-vwTr4BNBD1Sr4~fsoRJQGWkqZPYpqr-2L4hGX0RbNo6ko4Fr1m2OfXDUax42WyLJTuYnU-Jtfgj0A~6RdBn-QbEddBTKQbkkLyBJzTJaCq8L7W6bAH55MBrobBn2Xeg~vzNSfIs5bd1C88O~1YpUrU3w6Y2uCMvKo74W9mb8sa5OmDS47q26FvmvzrjGwMrxbfVRLeSncQEnYYrwgjSXx1DNQKoIQ__%26Key-Pair-Id%3DAPKAJB334VX63D3WJ5ZQ",
+    "sourceType": "local",
+    "title": "Studio Fidelity Continuum",
+    "artist": "Aetheris Acoustics",
+    "artworkUrl": "/assets/aetheris_logo.png",
+    "audioUrl": "/assets/music_cinematic_macro.mp4",
     "videoBgUrl": "/assets/music_cinematic_macro.mp4",
     "autoplay": true,
     "mutedByDefault": true,
-    "volume": 0.95
+    "volume": 0.9,
+    "playlist": [
+      {
+        "title": "Studio Fidelity Continuum",
+        "artist": "Aetheris Acoustics",
+        "audioUrl": "/assets/music_cinematic_macro.mp4",
+        "sourceType": "local"
+      },
+      {
+        "title": "Lofi Hip Hop Radio — Beats to Relax/Study",
+        "artist": "Lofi Girl (YouTube Live)",
+        "audioUrl": "/api/v1/youtube/stream?v=jfKfPfyJRdk&type=audio",
+        "ytId": "jfKfPfyJRdk",
+        "sourceType": "youtube"
+      },
+      {
+        "title": "Synthwave Radio — ChillSynth FM",
+        "artist": "Lofi Girl Synthwave (YouTube)",
+        "audioUrl": "/api/v1/youtube/stream?v=4xDzrJKXOOY&type=audio",
+        "ytId": "4xDzrJKXOOY",
+        "sourceType": "youtube"
+      }
+    ]
   },
   "tvVideo": {
     "type": "local",
     "url": "/assets/floating_glass_hud.mp4"
+  },
+  "tvImage": {
+    "type": "local",
+    "url": "/assets/television_living_room.jpg"
   },
   "lastUpdated": 1792930376229
 }

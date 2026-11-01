@@ -16,6 +16,8 @@ if (!file_exists($DARK_SIDE . "/login.stalker") && !$has_playlists) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="robots" content="noindex">
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
@@ -23,7 +25,7 @@ if (!file_exists($DARK_SIDE . "/login.stalker") && !$has_playlists) {
     <meta name="theme-color" content="#dc2626">
     <meta name="description" content="Stalker Pro & Aetheris - Next-generation entertainment, IPTV, VOD, and Watch Together platform">
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
     <title>AETHERIS | Quantum Live Broadcast Nexus</title>
     <script>
         (function() {
@@ -251,7 +253,7 @@ if (!file_exists($DARK_SIDE . "/login.stalker") && !$has_playlists) {
         outline: none !important;
     }
 </style>
-    <link rel="icon" type="image/png" href="stalker_pro_infinity.svg">
+    
     <!-- Global Ambient Background & Audio Stream Injector -->
     <script src="/bg-inject.js"></script>
 </head>

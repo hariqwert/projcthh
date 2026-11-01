@@ -14,6 +14,12 @@ import {
     resolveMalIdFromTitle,
     fetchAniListEpisodes
 } from '../services/animeScraperService';
+import {
+    resolveTokyoInsiderStream,
+    verifyTokyoInsiderUrl,
+    registerTokyoInsiderStream,
+    extractTokyoInsiderStreamsFromHtml
+} from '../services/tokyoInsiderService';
 
 const router = Router();
 
@@ -330,6 +336,64 @@ router.get('/anilist/info', async (req: Request, res: Response) => {
         }
 
         return res.json({ success: true, data });
+    } catch (err: any) {
+        return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+// --- 15. TokyoInsider Direct Stream Resolvers ---
+router.get('/tokyoinsider/resolve', async (req: Request, res: Response) => {
+    const title = (req.query.title || req.query.q || '').toString().trim();
+    const season = parseInt((req.query.season || req.query.s || '1').toString(), 10) || 1;
+    const episode = parseInt((req.query.episode || req.query.e || req.query.ep || '1').toString(), 10) || 1;
+    const url = (req.query.url || '').toString().trim();
+
+    try {
+        const result = await resolveTokyoInsiderStream({ title, season, episode, url });
+        return res.status(result.success ? 200 : 404).json(result);
+    } catch (err: any) {
+        return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+router.post('/tokyoinsider/register', async (req: Request, res: Response) => {
+    const { url, title } = req.body || {};
+    if (!url) {
+        return res.status(400).json({ success: false, error: 'URL is required' });
+    }
+    try {
+        const result = registerTokyoInsiderStream(url, title);
+        return res.json(result);
+    } catch (err: any) {
+        return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+router.get('/tokyoinsider/verify', async (req: Request, res: Response) => {
+    const url = (req.query.url || '').toString().trim();
+    if (!url) {
+        return res.status(400).json({ error: 'url parameter is required' });
+    }
+    try {
+        const verification = await verifyTokyoInsiderUrl(url);
+        return res.json(verification);
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message });
+    }
+});
+
+router.post('/tokyoinsider/parse-html', async (req: Request, res: Response) => {
+    const { html, title, season = 1, episode = 1 } = req.body || {};
+    if (!html) {
+        return res.status(400).json({ success: false, error: 'HTML string is required' });
+    }
+    try {
+        const sources = extractTokyoInsiderStreamsFromHtml(html, title, Number(season) || 1, Number(episode) || 1);
+        return res.json({
+            success: sources.length > 0,
+            count: sources.length,
+            sources
+        });
     } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message });
     }

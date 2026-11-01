@@ -715,6 +715,24 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
             try { decodedLowerSrc = decodeURIComponent(lowerSrc); } catch(e) {}
             window.lowerSrc = lowerSrc;
             window.decodedLowerSrc = decodedLowerSrc;
+
+            // Dynamically update browser tab favicon with content thumbnail (poster / logo)
+            function updateBrowserTabFavicon(iconUrl) {
+                if (!iconUrl || typeof iconUrl !== 'string') return;
+                try {
+                    let link = document.querySelector("link[rel*='icon']");
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'shortcut icon';
+                        document.head.appendChild(link);
+                    }
+                    link.type = 'image/x-icon';
+                    link.href = iconUrl;
+                } catch(e) {}
+            }
+            window.updateBrowserTabFavicon = updateBrowserTabFavicon;
+            const initialThumb = urlParams.get('poster') || urlParams.get('thumb') || urlParams.get('thumbnail') || urlParams.get('logo') || urlParams.get('banner') || '';
+            if (initialThumb) updateBrowserTabFavicon(initialThumb);
             const video = document.getElementById('player');
             const loading = document.getElementById('loading');
             const zoomIndicator = document.getElementById('zoom-indicator');
@@ -1062,10 +1080,34 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                     rotateBtn.innerHTML = '<i data-lucide="smartphone" class="w-5 h-5"></i>';
                     rotateBtn.onclick = (e) => { e.stopPropagation(); window.toggleRotation(); };
                     leftGroup.appendChild(rotateBtn);
-                    // Title pill
+                    // Title pill with Dynamic Thumbnail Icon
+                    const urlP = (typeof urlParamsForMedia !== 'undefined') ? urlParamsForMedia : new URLSearchParams(window.location.search);
+                    const poster = urlP.get('poster') || urlP.get('thumb') || urlP.get('thumbnail') || urlP.get('logo') || urlP.get('banner') || '';
+                    const mediaType = (urlP.get('type') || urlP.get('media_type') || '').toLowerCase();
+                    const isMovie = (mediaType === 'movie' || mediaType === 'tv' || mediaType === 'film' || mediaType === 'cinema');
+                    const fallbackSvg = isMovie
+                        ? `<svg class="w-3.5 h-3.5 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>`
+                        : `<svg class="w-3.5 h-3.5 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
+
+                    let thumbHtml = '';
+                    if (poster && poster.trim()) {
+                        thumbHtml = `
+                            <div class="relative w-6 h-6 rounded-lg overflow-hidden bg-white/10 border border-white/20 shrink-0 flex items-center justify-center shadow-md">
+                                <img src="${encodeURI(poster)}" alt="Thumbnail" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+                                <div class="hidden w-full h-full items-center justify-center bg-white/5">${fallbackSvg}</div>
+                            </div>
+                        `;
+                    } else {
+                        thumbHtml = `
+                            <div class="relative w-6 h-6 rounded-lg overflow-hidden bg-white/10 border border-white/20 shrink-0 flex items-center justify-center shadow-md">
+                                ${fallbackSvg}
+                            </div>
+                        `;
+                    }
+
                     const titlePill = document.createElement('div');
-                    titlePill.className = 'flex items-center gap-2 bg-black/60 border border-white/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-md max-w-[120px] xs:max-w-[180px] sm:max-w-xs md:max-w-md truncate';
-                    titlePill.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span><span class="text-[10px] sm:text-xs md:text-sm font-bold text-white truncate">${name}</span>`;
+                    titlePill.className = 'flex items-center gap-2 bg-black/60 border border-white/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-md max-w-[140px] xs:max-w-[200px] sm:max-w-xs md:max-w-md truncate';
+                    titlePill.innerHTML = `${thumbHtml}<span class="text-[10px] sm:text-xs md:text-sm font-bold text-white truncate">${name}</span>`;
                     leftGroup.appendChild(titlePill);
                     topControls.appendChild(leftGroup);
                     // Right controls group
@@ -2500,6 +2542,75 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                     }
                 }
 
+                function sanitizeMultiKeyPairs(pairsList) {
+                    const deduped = [];
+                    for (const item of pairsList) {
+                        if (!item || !item.cId || !item.cVal) continue;
+                        if (item.cId.length === 32 && item.cVal.length === 32 && !deduped.some(p => p.cId === item.cId)) {
+                            deduped.push({ cId: item.cId, cVal: item.cVal });
+                        }
+                    }
+                    const distinctVals = new Set(deduped.map(p => p.cVal));
+                    const seenVals = new Set();
+                    const cleanMap = {};
+                    for (const { cId, cVal } of deduped) {
+                        if (distinctVals.size > 1 && seenVals.has(cVal)) {
+                            console.warn("[ClearKey Filter] Dropping duplicate fallback key mapping for KID:", cId);
+                            continue;
+                        }
+                        seenVals.add(cVal);
+                        cleanMap[cId] = cVal;
+                    }
+                    return cleanMap;
+                }
+
+                function pruneUnmatchedKidTracks(mpdXml, validKeysObj) {
+                    if (!mpdXml || !validKeysObj || Object.keys(validKeysObj).length === 0) return mpdXml;
+                    const allKids = [...mpdXml.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                        .filter(k => k.length === 32);
+                    const uniqueKids = [...new Set(allKids)];
+                    const matchedKids = uniqueKids.filter(k => Boolean(validKeysObj[k]));
+                    const unmatchedKids = uniqueKids.filter(k => !validKeysObj[k]);
+                    if (matchedKids.length === 0 || unmatchedKids.length === 0) return mpdXml;
+
+                    let cleaned = mpdXml.replace(/<AdaptationSet\b[^>]*>[\s\S]*?<\/AdaptationSet>/gi, (adaptationBlock) => {
+                        const repMatches = [...adaptationBlock.matchAll(/<Representation\b[^>]*>[\s\S]*?<\/Representation>/gi)].map(m => m[0]);
+                        if (repMatches.length > 1) {
+                            const keptReps = repMatches.filter(rep => {
+                                const repKids = [...rep.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                                    .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                    .filter(k => k.length === 32);
+                                if (repKids.length === 0) return true;
+                                return repKids.every(k => Boolean(validKeysObj[k]));
+                            });
+                            if (keptReps.length > 0 && keptReps.length < repMatches.length) {
+                                let updated = adaptationBlock;
+                                for (const rep of repMatches) {
+                                    if (!keptReps.includes(rep)) {
+                                        updated = updated.replace(rep, '');
+                                    }
+                                }
+                                return updated;
+                            }
+                        }
+                        return adaptationBlock;
+                    });
+
+                    const adaptationBlocks = [...cleaned.matchAll(/<AdaptationSet\b[^>]*>[\s\S]*?<\/AdaptationSet>/gi)].map(m => m[0]);
+                    if (adaptationBlocks.length > 1) {
+                        for (const block of adaptationBlocks) {
+                            const blockKids = [...block.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                                .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                .filter(k => k.length === 32);
+                            if (blockKids.length > 0 && blockKids.every(k => !validKeysObj[k])) {
+                                cleaned = cleaned.replace(block, '');
+                            }
+                        }
+                    }
+                    return cleaned;
+                }
+
                 async function loadShaka(streamUrl, keyId, key) {
                     try {
                         streamUrl = new URL(streamUrl, window.location.origin).href;
@@ -2516,13 +2627,14 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         return;
                     }
 
+                    let shakaHandedOff = false;
                     try {
                         shaka.polyfill.installAll();
                         shakaPlayer = new shaka.Player(video);
                         window.shakaPlayer = shakaPlayer;
 
                         // Configure ClearKey DRM for ALL key pairs (multi-key tracks)
-                        const clearKeysMap = {};
+                        const rawPairsList = [];
                         const rawClearkey = (window._activeClearKeyString || (typeof urlParamsForMedia !== 'undefined' ? urlParamsForMedia.get('clearkey') : '') || '').trim();
                         if (rawClearkey) {
                             const pairs = rawClearkey.split(',');
@@ -2532,7 +2644,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                     const cId = kId.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     const cVal = kVal.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     if (cId.length === 32 && cVal.length === 32) {
-                                        clearKeysMap[cId] = cVal;
+                                        rawPairsList.push({ cId, cVal });
                                     }
                                 }
                             }
@@ -2543,24 +2655,28 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         const cleanKeyId = rawKeyId.toLowerCase().replace(/[^0-9a-f]/g, '');
                         const cleanKey = rawKey.toLowerCase().replace(/[^0-9a-f]/g, '');
                         if (cleanKeyId.length === 32 && cleanKey.length === 32) {
-                            clearKeysMap[cleanKeyId] = cleanKey;
+                            rawPairsList.push({ cId: cleanKeyId, cVal: cleanKey });
                         }
 
-                        // Auto-scan MPD manifest for any default_KID attributes and associate the key
+                        const clearKeysMap = sanitizeMultiKeyPairs(rawPairsList);
+
+                        // Auto-scan MPD manifest for default_KID attributes (only map unknown KIDs when channel has a single key and zero matched KIDs)
                         if (streamUrl.includes('.mpd') && (Object.keys(clearKeysMap).length > 0 || cleanKey)) {
                             try {
                                 const mpdRes = await fetch(streamUrl, { method: 'GET' });
                                 if (mpdRes.ok) {
                                     const mpdText = await mpdRes.text();
                                     const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
-                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                        .filter(k => k.length === 32);
                                     const uniqueKids = [...new Set(manifestKids)];
+                                    const matchedKids = uniqueKids.filter(k => Boolean(clearKeysMap[k]));
                                     const fallbackKeyVal = cleanKey || Object.values(clearKeysMap)[0];
-                                    if (fallbackKeyVal) {
+                                    if (matchedKids.length === 0 && Object.keys(clearKeysMap).length <= 1 && fallbackKeyVal) {
                                         for (const singleKid of uniqueKids) {
                                             if (singleKid && singleKid.length === 32 && !clearKeysMap[singleKid]) {
                                                 clearKeysMap[singleKid] = fallbackKeyVal;
-                                                console.log("[Shaka Engine] Associated manifest KID to key:", singleKid, fallbackKeyVal);
+                                                console.log("[Shaka Engine] Associated single-key manifest KID to key:", singleKid, fallbackKeyVal);
                                             }
                                         }
                                     }
@@ -2570,9 +2686,9 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             }
                         }
 
-                        // Sync to global active state so any subsequent engine (Dash.js, SecurityGuard, etc.) has all discovered KIDs
+                        // Sync to global active state so any subsequent engine (Dash.js, SecurityGuard, etc.) has clean KIDs
                         if (Object.keys(clearKeysMap).length > 0) {
-                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                            window._activeClearKeysMap = Object.assign({}, clearKeysMap);
                             window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                         }
 
@@ -2663,12 +2779,14 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             }
                         });
 
-                        // Configure Response Filter to inject ClearKey UUID into raw DASH manifests and filter unsupported ec-3 audio
+                        // Configure Response Filter to inject ClearKey UUID, prune un-decryptable KID representations, and filter unsupported ec-3 audio
                         shakaPlayer.getNetworkingEngine().registerResponseFilter((type, response) => {
                             if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST && response.data && Object.keys(clearKeysMap).length > 0) {
                                 try {
                                     let str = new TextDecoder('utf-8').decode(response.data);
                                     if (str && str.includes('<MPD')) {
+                                        // Prune any Representation/AdaptationSet whose cenc:default_KID is missing from our multi-key map
+                                        str = pruneUnmatchedKidTracks(str, clearKeysMap);
                                         // If manifest lacks W3C ClearKey UUID, inject it into AdaptationSet so Shaka negotiates ClearKey
                                         if (!str.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
                                             const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:1077efec-c0b2-4d02-ace3-3c1e52e2fb4b" value="ClearKey1.0"/>';
@@ -2710,9 +2828,10 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             // Fatal decoding pipeline errors (3016 PIPELINE_ERROR_DECODE, 3015 MSE failure): immediately switch to Dash.js
                             if (detail.code === 3016 || detail.code === 3015) {
                                 console.warn("[Shaka Decode Error " + detail.code + "] Browser media decoder failure. Immediately switching to Dash.js...");
+                                shakaHandedOff = true;
                                 destroyShakaPlayer();
                                 if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
-                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeysMap = Object.assign({}, clearKeysMap);
                                     window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                                 }
                                 loadDash(streamUrl, keyId, key);
@@ -2721,9 +2840,10 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             // DRM Key Restrictions cannot be met (4012/4014): Immediately switch to Dash.js
                             if (detail.code === 4012 || detail.code === 4014) {
                                 console.warn("[Shaka DRM Error " + detail.code + "] Key restrictions not met in browser CDM. Switching to Dash.js engine...");
+                                shakaHandedOff = true;
                                 destroyShakaPlayer();
                                 if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
-                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeysMap = Object.assign({}, clearKeysMap);
                                     window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                                 }
                                 loadDash(streamUrl, keyId, key);
@@ -2735,9 +2855,10 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                             }
                             if (detail.code === 4038 || detail.code === 4000 || detail.code === 4012 || detail.code === 6006 || detail.code === 6007 || detail.severity === 2) {
                                 console.warn("[Shaka Error " + detail.code + "] Restrictions or playback error. Retrying via Dash.js / fallback...");
+                                shakaHandedOff = true;
                                 destroyShakaPlayer();
                                 if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
-                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeysMap = Object.assign({}, clearKeysMap);
                                     window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                                 }
                                 if (streamUrl.includes('.mpd')) {
@@ -2751,6 +2872,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         });
 
                         await shakaPlayer.load(streamUrl);
+                        if (shakaHandedOff || !shakaPlayer) return;
                         console.log("[Shaka Engine] Stream loaded successfully.");
                         video.style.opacity = '1';
                         loading.style.display = 'none';
@@ -2770,7 +2892,9 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         initAdvancedGestures(player, video);
                         startWatchdog();
                     } catch (err) {
+                        if (shakaHandedOff) return;
                         console.warn("[Shaka Engine Init Failed] Error:", err, "Falling back to Dash.js...");
+                        shakaHandedOff = true;
                         destroyShakaPlayer();
                         loadDash(streamUrl, keyId, key);
                     }
@@ -2816,13 +2940,13 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         }
 
                         // Configure ClearKey DRM for ALL key pairs (multi-key tracks)
-                        const dashKeysMap = {};
+                        const rawDashPairs = [];
 
-                        // 1. Inherit from active global ClearKeys map (including any discovered by Shaka or previous scans)
+                        // 1. Inherit from active global ClearKeys map
                         if (window._activeClearKeysMap && typeof window._activeClearKeysMap === 'object') {
                             for (const [kId, kVal] of Object.entries(window._activeClearKeysMap)) {
                                 if (kId && kVal && kId.length === 32 && kVal.length === 32) {
-                                    dashKeysMap[kId.toLowerCase()] = kVal.toLowerCase();
+                                    rawDashPairs.push({ cId: kId.toLowerCase(), cVal: String(kVal).toLowerCase() });
                                 }
                             }
                         }
@@ -2837,7 +2961,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                     const cId = kId.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     const cVal = kVal.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     if (cId.length === 32 && cVal.length === 32) {
-                                        dashKeysMap[cId] = cVal;
+                                        rawDashPairs.push({ cId, cVal });
                                     }
                                 }
                             }
@@ -2848,10 +2972,12 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                         const cleanDashKeyId = rawDashKeyId.toLowerCase().replace(/[^0-9a-f]/g, '');
                         const cleanDashKey = rawDashKey.toLowerCase().replace(/[^0-9a-f]/g, '');
                         if (cleanDashKeyId.length === 32 && cleanDashKey.length === 32) {
-                            dashKeysMap[cleanDashKeyId] = cleanDashKey;
+                            rawDashPairs.push({ cId: cleanDashKeyId, cVal: cleanDashKey });
                         }
 
-                        // 3. Pre-scan MPD manifest for any default_KID attributes, rewrite manifest with ClearKey UUID and absolute BaseURL
+                        const dashKeysMap = sanitizeMultiKeyPairs(rawDashPairs);
+
+                        // 3. Pre-scan MPD manifest, prune un-decryptable KID tracks, rewrite manifest with DASH-IF ClearKey UUID and absolute BaseURL
                         let effectiveStreamUrl = streamUrl;
                         if (streamUrl.includes('.mpd') && (Object.keys(dashKeysMap).length > 0 || cleanDashKey)) {
                             try {
@@ -2859,28 +2985,35 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                 if (mpdRes.ok) {
                                     let mpdText = await mpdRes.text();
                                     const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
-                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                        .filter(k => k.length === 32);
                                     const uniqueKids = [...new Set(manifestKids)];
+                                    const matchedKids = uniqueKids.filter(k => Boolean(dashKeysMap[k]));
                                     const fallbackKeyVal = cleanDashKey || Object.values(dashKeysMap)[0];
-                                    if (fallbackKeyVal) {
+                                    if (matchedKids.length === 0 && Object.keys(dashKeysMap).length <= 1 && fallbackKeyVal) {
                                         for (const singleKid of uniqueKids) {
                                             if (singleKid && singleKid.length === 32 && !dashKeysMap[singleKid]) {
                                                 dashKeysMap[singleKid] = fallbackKeyVal;
-                                                console.log("[DASH Engine] Associated manifest KID to key:", singleKid, fallbackKeyVal);
+                                                console.log("[DASH Engine] Associated single-key manifest KID to key:", singleKid, fallbackKeyVal);
                                             }
                                         }
                                     }
+
+                                    // Prune any Representation/AdaptationSet whose cenc:default_KID is missing from dashKeysMap
+                                    mpdText = pruneUnmatchedKidTracks(mpdText, dashKeysMap);
 
                                     // Determine absolute CDN base directory
                                     const finalMpdUrl = mpdRes.url || streamUrl;
                                     const lastSlash = finalMpdUrl.lastIndexOf('/');
                                     const cdnDir = lastSlash !== -1 ? finalMpdUrl.substring(0, lastSlash + 1) : finalMpdUrl;
 
-                                    // Inject W3C ClearKey UUID into AdaptationSets if missing (stops Dash.js Error 111 No license server specified)
-                                    if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
-                                        const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:1077efec-c0b2-4d02-ace3-3c1e52e2fb4b" value="ClearKey1.0"/>';
+                                    // Use DASH-IF ClearKey schemeIdUri (e2719d58-a985-b3c9-781a-b030af78d30e) for Dash.js to avoid Warning 303 & Error 111
+                                    if (mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                        mpdText = mpdText.replace(/1077efec-c0b2-4d02-ace3-3c1e52e2fb4b/gi, 'e2719d58-a985-b3c9-781a-b030af78d30e');
+                                    } else if (!mpdText.includes('e2719d58-a985-b3c9-781a-b030af78d30e')) {
+                                        const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:e2719d58-a985-b3c9-781a-b030af78d30e" value="ClearKey1.0"/>';
                                         mpdText = mpdText.replace(/(<ContentProtection[^>]*cenc[^>]*\/>)/gi, `${clearKeyProtection}\n      $1`);
-                                        if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                        if (!mpdText.includes('e2719d58-a985-b3c9-781a-b030af78d30e')) {
                                             mpdText = mpdText.replace(/(<ContentProtection[^>]*>)/i, `${clearKeyProtection}\n      $1`);
                                         }
                                     }
@@ -2928,7 +3061,7 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
 
                         if (Object.keys(dashKeysMap).length > 0) {
                             console.log("[DASH Engine] Configuring ClearKey DRM protection map:", dashKeysMap);
-                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, dashKeysMap);
+                            window._activeClearKeysMap = Object.assign({}, dashKeysMap);
                             window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
 
                             const dashClearkeys = {};
@@ -2938,9 +3071,8 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
                                 if (b64KeyId && b64Key) {
                                     dashClearkeys[b64KeyId] = b64Key;
                                 }
-                                dashClearkeys[cId] = cVal;
                             }
-                            // Exclusively configure org.w3.clearkey (NO empty Widevine/Playready entries that cause Error 111)
+                            // Exclusively configure org.w3.clearkey with strict Base64URL keys required by W3C EME MediaKeySession.update()
                             dashPlayer.setProtectionData({
                                 "org.w3.clearkey": {
                                     "clearkeys": dashClearkeys,

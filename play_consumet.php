@@ -2,10 +2,12 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="robots" content="noindex">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
-    <title><?php echo htmlspecialchars($name); ?> </title>
+    <title>{{NAME}}</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -29,7 +31,7 @@
             let fromTab = '';
             try {
                 const p = new URLSearchParams(window.location.search);
-                s = p.get('source') || '<?php echo htmlspecialchars($source); ?>' || '';
+                s = p.get('source') || '{{SOURCE}}' || '';
                 fromTab = p.get('from_tab') || p.get('tab') || '';
             } catch(e) {}
             if (!fromTab) {
@@ -1102,7 +1104,7 @@
             background-color: rgba(255, 255, 255, 0.15) !important;
         }
     </style>
-    <link rel="icon" type="image/png" href="stalker_pro_infinity.svg">
+    
     <link rel="stylesheet" href="assets/local-ai.css?v=2.0">
 </head>
 <body>
@@ -1164,6 +1166,9 @@
                     </div>
                 </div>
                 <h4 id="stop-overlay-title" class="text-xs sm:text-sm font-extrabold text-white tracking-wide truncate max-w-[280px] drop-shadow leading-snug">Live Stream</h4>
+                <div id="stop-overlay-thumb-box" class="hidden relative w-12 h-16 sm:w-16 sm:h-22 rounded-xl overflow-hidden border border-white/20 shadow-2xl my-1 bg-black/60 shrink-0">
+                    <img id="stop-overlay-thumb-img" src="" alt="Thumbnail" class="w-full h-full object-cover" onerror="this.parentElement.classList.add('hidden')" />
+                </div>
                 <p class="text-[10px] text-zinc-400 font-semibold tracking-wider flex items-center gap-1 group-hover:text-white transition-colors">
                     <span>Tap screen or press Space to resume</span>
                     <svg class="w-3 h-3 text-red-400 fill-current ml-0.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -1466,6 +1471,18 @@
                 </button>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs">
+                <!-- Switch Stream Source (Primary / Backups) -->
+                <button type="button" onclick="window.closeConsumetMoreMenu(); if (typeof window.togglePlayerSourcesModal === 'function') window.togglePlayerSourcesModal();" class="p-3 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all text-emerald-200 hover:text-white active:scale-95 col-span-2">
+                    <i data-lucide="layers" class="w-5 h-5 text-emerald-400"></i>
+                    <span class="font-bold">Switch Stream Source</span>
+                    <span class="text-[10px] text-emerald-300/80">Change Primary / Backup Feed</span>
+                </button>
+                <!-- Proxying / Direct Play Toggle -->
+                <button type="button" id="btn-proxying-modal" onclick="window.closeConsumetMoreMenu(); if (typeof window.toggleDirectNoProxyMode === 'function') window.toggleDirectNoProxyMode();" class="p-3 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all text-amber-200 hover:text-white active:scale-95 col-span-2">
+                    <i data-lucide="zap" class="w-5 h-5 text-amber-400"></i>
+                    <span id="btn-proxying-modal-title" class="font-bold">Proxying: Remove Proxy (Direct Play)</span>
+                    <span id="btn-proxying-modal-sub" class="text-[10px] text-amber-300/80">Bypass all proxies & play raw stream directly</span>
+                </button>
                 <!-- Engine -->
                 <button type="button" onclick="window.closeConsumetMoreMenu(); window.toggleEngineModal();" class="p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700/80 border border-zinc-700/60 flex flex-col items-center justify-center text-center gap-1.5 transition-all text-zinc-200 hover:text-white active:scale-95">
                     <i data-lucide="cpu" class="w-5 h-5 text-blue-400"></i>
@@ -1730,31 +1747,111 @@
             });
             if (typeof lucide !== 'undefined') lucide.createIcons();
             const urlParams = new URLSearchParams(window.location.search);
-            let src = urlParams.get('url') || urlParams.get('stream') || urlParams.get('channel_id') || urlParams.get('id') || "<?php echo htmlspecialchars($stream_url); ?>";
-            if (!src || src.startsWith('<?php') || src.startsWith('{{')) {
+            let src = urlParams.get('url') || urlParams.get('stream') || urlParams.get('channel_id') || urlParams.get('id') || "{{STREAM_URL}}" || "";
+            if (!src || src.startsWith('{{') || src === '""' || src === "''") {
                 src = "/stream_proxy.php?url=https%3A%2F%2Fsonymtmnew-akamaized.pages.dev%2Fhls%2Flive%2F2094588%2FFootlive0510%2FENG%2Fmaster.m3u8";
             }
-            let name = urlParams.get('name') || urlParams.get('title') || "<?php echo htmlspecialchars($name); ?>";
-            if (!name || name.startsWith('<?php') || name.startsWith('{{')) {
+            let name = urlParams.get('name') || urlParams.get('title') || "{{NAME}}" || "";
+            if (!name || name.startsWith('{{')) {
                 name = "ENG | France vs Belgium - 6 Oct 2026";
             }
-            let source = urlParams.get('source') || "<?php echo htmlspecialchars($source); ?>";
-            if (!source || source.startsWith('<?php') || source.startsWith('{{')) {
+            let source = urlParams.get('source') || "{{SOURCE}}" || "";
+            if (!source || source.startsWith('{{')) {
                 source = "sonyliv";
             }
             window.currentStreamId = urlParams.get('id') || urlParams.get('stream_id') || urlParams.get('streamId') || urlParams.get('channel') || '';
+            window._directNoProxyMode = urlParams.get('direct') === '1' || urlParams.get('raw') === '1' || urlParams.get('noproxy') === '1';
+
+            // Extract movie / series / sports thumbnail
+            let poster = urlParams.get('poster') || urlParams.get('thumb') || urlParams.get('thumbnail') || urlParams.get('logo') || urlParams.get('banner') || urlParams.get('image') || "{{POSTER}}" || "";
+            if (poster.startsWith('{{')) poster = '';
+            let mediaType = (urlParams.get('type') || urlParams.get('media_type') || '').toLowerCase();
+            if (!poster && window.currentStreamId && window.currentStreamId.startsWith('mdtv-')) {
+                const cleanId = window.currentStreamId.replace('mdtv-', '');
+                poster = `https://raw.githubusercontent.com/sportlive18/jio-tv-auto-update-playlist/refs/heads/main/logos/${cleanId}.png`;
+            }
+
+            // Dynamically update browser tab icon (favicon) to match content thumbnail (movie poster, sports badge, channel logo)
+            function updateBrowserTabFavicon(iconUrl) {
+                if (!iconUrl || typeof iconUrl !== 'string') return;
+                try {
+                    let link = document.querySelector("link[rel*='icon']");
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'shortcut icon';
+                        document.head.appendChild(link);
+                    }
+                    link.type = 'image/x-icon';
+                    link.href = iconUrl;
+                } catch(e) {}
+            }
+            if (poster) {
+                updateBrowserTabFavicon(poster);
+            }
+            window.updateBrowserTabFavicon = updateBrowserTabFavicon;
+
+            // Anti-Ad / Popup & Redirection Restrictions Guard for PWA
+            try {
+                window.open = function() { return null; };
+                Object.defineProperty(window, 'onbeforeunload', {
+                    configurable: false,
+                    get: function() { return null; },
+                    set: function() {}
+                });
+            } catch(e) {}
+
+            function unwrapStreamProxyUrl(u) {
+                if (!u || typeof u !== 'string') return u;
+                let cur = u.trim();
+                for (let i = 0; i < 4; i++) {
+                    const isProxyWrapper = cur.includes('stream_proxy.php') ||
+                                           cur.includes('/api/proxy/') ||
+                                           cur.includes('/api/stream-proxy') ||
+                                           cur.includes('live.php?url=') ||
+                                           cur.includes('live.php?id=http');
+                    if (!isProxyWrapper) break;
+                    try {
+                        const parsed = new URL(cur, window.location.origin);
+                        const inner = parsed.searchParams.get('url') || parsed.searchParams.get('id') || '';
+                        if (inner && (inner.startsWith('http://') || inner.startsWith('https://') || inner.startsWith('/'))) {
+                            cur = inner;
+                            continue;
+                        }
+                    } catch (e) {}
+                    const m = cur.match(/[?&](?:url|id)=([^&]+)/i);
+                    if (m && m[1]) {
+                        try {
+                            const dec = decodeURIComponent(m[1]);
+                            if (dec.startsWith('http://') || dec.startsWith('https://') || dec.startsWith('/')) {
+                                cur = dec;
+                                continue;
+                            }
+                        } catch (e) {}
+                    }
+                    break;
+                }
+                return cur;
+            }
+            window.unwrapStreamProxyUrl = unwrapStreamProxyUrl;
+
+            // Preserve original raw URL before any proxying
+            const initialRawCandidate = urlParams.get('url') || src || urlParams.get('id') || urlParams.get('stream') || '';
+            window._rawUnproxiedStreamUrl = unwrapStreamProxyUrl(initialRawCandidate);
+
             function ensureProxiedSportsUrl(u) {
-                if (urlParams.get('direct') === '1' || urlParams.get('raw') === '1') return u;
                 if (!u) return u;
-                if (typeof u === 'string' && u.includes('ellamoonu.ai.studio')) return u;
+                if (urlParams.get('direct') === '1' || urlParams.get('raw') === '1' || window._directNoProxyMode) {
+                    return unwrapStreamProxyUrl(u);
+                }
+                if (typeof u === 'string' && (u.includes('ellamoonu.ai.studio') || u.includes('proxy-web-sage.vercel.app'))) return u;
                 if (u.startsWith('/api/proxy/') || u.startsWith('/stream_proxy.php') || u.includes('stream_proxy.php') || u.startsWith('/live.php') || u.includes('live.php')) return u;
                 const lower = u.toLowerCase();
                 if (lower.includes('sonydaimenew') || lower.includes('sonymtmnew') || lower.includes('akamaized.net') || 
                     lower.includes('sonyliv') || lower.includes('slivcdn') || lower.includes('dishmt')) {
                     return `/stream_proxy.php?url=${encodeURIComponent(u)}`;
                 }
-                if (lower.includes('fancode.com') || lower.includes('in-mc-flive') || lower.includes('in-ak-flive') || lower.includes('dai-fancode')) {
-                    return `/api/proxy/fancode?url=${encodeURIComponent(u)}`;
+                if (lower.includes('fancode.com') || lower.includes('in-mc-flive') || lower.includes('in-ak-flive') || lower.includes('dai-fancode') || lower.includes('fancode')) {
+                    return `https://proxy-web-sage.vercel.app/api/live-proxy?url=${encodeURIComponent(u)}`;
                 }
                 if (lower.includes('junksonus.party') || lower.includes('justkidding') || lower.includes('tiktokcdn') || lower.includes('exmxbxe') || lower.includes('timst')) {
                     return `/stream_proxy.php?url=${encodeURIComponent(u)}`;
@@ -1777,6 +1874,7 @@
             if (!src) {
                 src = urlParams.get('url') || urlParams.get('id') || urlParams.get('stream') || '';
             }
+            window._rawUnproxiedStreamUrl = unwrapStreamProxyUrl(src);
             src = ensureProxiedSportsUrl(src);
             if (!name || name === 'Live Stream' || name === 'Live Channel') {
                 name = urlParams.get('name') || urlParams.get('title') || name;
@@ -2057,7 +2155,18 @@
                             if (typeof lucide !== 'undefined') lucide.createIcons();
                             closeAudioModal();
 
-                            src = srcObj.url;
+                            const targetMaster = srcObj.masterUrl || srcObj.url;
+                            window._pendingAudioTrackIdx = srcObj.audioTrackIndex;
+
+                            if (window.hls && src === targetMaster && typeof window._pendingAudioTrackIdx === 'number') {
+                                try { window.hls.audioTrack = window._pendingAudioTrackIdx; } catch(e){}
+                                showIndicator(`<i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i> Switched audio track to ${labelText}`);
+                                if (typeof lucide !== 'undefined') lucide.createIcons();
+                                closeAudioModal();
+                                return;
+                            }
+
+                            src = targetMaster;
                             if (window.hls) {
                                 try { window.hls.destroy(); video.src = ''; video.load(); } catch(e){}
                                 window.hls = null;
@@ -2661,16 +2770,48 @@
             }
             window.getDirectVlcStreamUrl = getDirectVlcStreamUrl;
 
-            window.copyVlcStreamLink = function() {
-                const link = getDirectVlcStreamUrl();
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(link).then(() => {
-                        showIndicator('✅ VLC Stream URL Copied!');
-                    }).catch(() => {
-                        prompt("Copy this direct stream URL into VLC / TiviMate:", link);
-                    });
+            window.copyRawM3u8Link = function() {
+                let raw = window._rawM3u8Url || '';
+                if (!raw && typeof src === 'string') {
+                    if (src.includes('live.php?url=')) {
+                        try { raw = decodeURIComponent(src.split('live.php?url=')[1].split('&')[0]); } catch(_) {}
+                    } else if (src.includes('id=http')) {
+                        try { raw = decodeURIComponent(src.split('id=')[1].split('&')[0]); } catch(_) {}
+                    } else if (src.startsWith('http') && !src.includes('live.php')) {
+                        raw = src;
+                    }
+                }
+                if (!raw) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const chId = urlParams.get('channel_id') || urlParams.get('id') || '';
+                    if (chId) {
+                        fetch(`/api/resolve_stream/${encodeURIComponent(chId)}`).then(r => r.json()).then(d => {
+                            if (d && d.raw_url) {
+                                window._rawM3u8Url = d.raw_url;
+                                if (navigator.clipboard) {
+                                    navigator.clipboard.writeText(d.raw_url).then(() => showIndicator('✅ Raw M3U8 Copied!')).catch(() => prompt('Copy Raw M3U8:', d.raw_url));
+                                } else {
+                                    prompt('Copy Raw M3U8:', d.raw_url);
+                                }
+                            } else {
+                                showIndicator('⚠️ Raw M3U8 unavailable');
+                            }
+                        }).catch(() => showIndicator('⚠️ Failed to resolve raw M3U8'));
+                        return;
+                    }
+                }
+                if (raw) {
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(raw).then(() => {
+                            showIndicator('✅ Direct Raw M3U8 Copied!');
+                        }).catch(() => {
+                            prompt("Copy Raw Upstream M3U8:", raw);
+                        });
+                    } else {
+                        prompt("Copy Raw Upstream M3U8:", raw);
+                    }
                 } else {
-                    prompt("Copy this direct stream URL into VLC / TiviMate:", link);
+                    showIndicator('⚠️ Direct M3U8 only routed via Stalker Proxy');
                 }
             };
 
@@ -2749,18 +2890,26 @@
             // Embed HLS Engine (Direct Video Screen Only without external website clutter, preserving all controls except timeline)
             window.loadHlsDemoEmbed = function(targetStreamUrl) {
                 const croppedContainer = document.getElementById('hls-cropped-container');
+                const scaler = document.getElementById('hls-viewport-scaler');
                 const frame = document.getElementById('hls-demo-embed-frame');
                 const container = document.getElementById('player-container');
                 const plyrEl = document.querySelector('.plyr');
+                const embedTopBtn = document.getElementById('btn-embed-top');
 
-                // Toggle OFF if Embed is currently active
-                if (window.isEmbedActive || (croppedContainer && !croppedContainer.classList.contains('hidden'))) {
+                // Toggle OFF if Embed is currently active and no explicit new URL was passed
+                if (!targetStreamUrl && (window.isEmbedActive || (croppedContainer && !croppedContainer.classList.contains('hidden')))) {
                     console.log("[HLS Demo Embed] Toggling OFF embed player and restoring main player...");
                     window.isEmbedActive = false;
+                    window._isHtmlEmbedPageActive = false;
                     if (croppedContainer) croppedContainer.classList.add('hidden');
                     if (frame) frame.src = 'about:blank';
                     if (container) container.classList.remove('hls-embed-active');
                     if (plyrEl) plyrEl.classList.remove('hls-embed-active');
+                    if (embedTopBtn) {
+                        embedTopBtn.style.background = '';
+                        embedTopBtn.style.borderColor = '';
+                        embedTopBtn.style.color = '';
+                    }
 
                     // Resume native video stream
                     if (typeof src === 'string' && src) {
@@ -2774,14 +2923,21 @@
                 }
 
                 window.isEmbedActive = true;
+                if (embedTopBtn) {
+                    embedTopBtn.style.background = 'rgba(16, 185, 129, 0.35)';
+                    embedTopBtn.style.borderColor = 'rgba(52, 211, 153, 0.75)';
+                    embedTopBtn.style.color = '#6ee7b7';
+                }
 
                 // Check all possible sources for channel / stream ID
                 const searchParams = new URLSearchParams(window.location.search);
+                const mediaTypeParam = (searchParams.get('type') || searchParams.get('media_type') || '').toLowerCase();
+                const engineParam = (searchParams.get('engine') || searchParams.get('player') || '').toLowerCase();
                 let streamId = window.currentStreamId || searchParams.get('id') || searchParams.get('stream_id') || searchParams.get('streamId') || searchParams.get('channel') || searchParams.get('channel_id');
 
-                const raw = targetStreamUrl || src;
+                const raw = targetStreamUrl || src || window._lastRawConsumetStreamUrl || searchParams.get('url') || '';
 
-                if (!streamId && targetStreamUrl) {
+                if (!streamId && targetStreamUrl && typeof targetStreamUrl === 'string') {
                     if (targetStreamUrl.includes('id=')) {
                         const match = targetStreamUrl.match(/[?&]id=([^&]+)/);
                         if (match) streamId = decodeURIComponent(match[1]);
@@ -2807,9 +2963,9 @@
                     }
                 }
 
-                const ELLAMOONU_DOMAIN = 'https://ellamoonu.ai.studio';
+                const CURRENT_ORIGIN = window.location.origin;
 
-                // Extract pure direct stream URL (unwrapping any internal proxy wrapping)
+                // Extract pure direct stream URL (unwrapping any internal proxy wrapping, while preserving proxy-web-sage.vercel.app)
                 let directStreamUrl = raw;
                 if (typeof directStreamUrl === 'string') {
                     if (directStreamUrl.includes('stream_proxy.php?url=') || 
@@ -2823,25 +2979,51 @@
                     }
                 }
 
+                const isHtmlEmbedPage = typeof directStreamUrl === 'string' && (
+                    mediaTypeParam === 'embed' ||
+                    engineParam === 'embed' ||
+                    (/^(https?:\/\/)/i.test(directStreamUrl) &&
+                     !directStreamUrl.includes('.m3u8') &&
+                     !directStreamUrl.includes('.mpd') &&
+                     !directStreamUrl.includes('.ts') &&
+                     !directStreamUrl.includes('live-proxy') &&
+                     !directStreamUrl.includes('live.php') &&
+                     !directStreamUrl.includes('stream_proxy.php') &&
+                     !directStreamUrl.includes('play_stream') &&
+                     (/\/embed|player|iframe|\.html(\?|$)/i.test(directStreamUrl)))
+                );
+                window._isHtmlEmbedPageActive = isHtmlEmbedPage;
+
                 let streamToPlay = '';
-                if (typeof directStreamUrl === 'string' && (directStreamUrl.startsWith('http://') || directStreamUrl.startsWith('https://'))) {
-                    if (directStreamUrl.includes('ellamoonu.ai.studio')) {
+                if (isHtmlEmbedPage) {
+                    streamToPlay = directStreamUrl;
+                } else if (typeof directStreamUrl === 'string' && directStreamUrl.includes('proxy-web-sage.vercel.app')) {
+                    // FanCode / CORS-enabled Vercel proxy URLs work directly inside HLS.js Demo without wrapping
+                    streamToPlay = directStreamUrl;
+                } else if (typeof directStreamUrl === 'string' && (
+                    directStreamUrl.toLowerCase().includes('fancode') ||
+                    directStreamUrl.toLowerCase().includes('in-mc-flive') ||
+                    directStreamUrl.toLowerCase().includes('in-ak-flive') ||
+                    directStreamUrl.toLowerCase().includes('dai-fancode')
+                )) {
+                    streamToPlay = `https://proxy-web-sage.vercel.app/api/live-proxy?url=${encodeURIComponent(directStreamUrl)}`;
+                } else if (typeof directStreamUrl === 'string' && (directStreamUrl.startsWith('http://') || directStreamUrl.startsWith('https://'))) {
+                    if (directStreamUrl.startsWith(CURRENT_ORIGIN)) {
                         streamToPlay = directStreamUrl;
                     } else {
-                        // Direct URL pasting into ellamoonu.ai.studio /live.php?url=
-                        streamToPlay = `${ELLAMOONU_DOMAIN}/live.php?url=${encodeURIComponent(directStreamUrl)}`;
+                        streamToPlay = `${CURRENT_ORIGIN}/live.php?url=${encodeURIComponent(directStreamUrl)}`;
                     }
                 } else if (streamId) {
-                    streamToPlay = `${ELLAMOONU_DOMAIN}/live.php?token=STALKER_PRO&id=${encodeURIComponent(streamId)}&m3u=1`;
+                    streamToPlay = `${CURRENT_ORIGIN}/live.php?token=STALKER_PRO&id=${encodeURIComponent(streamId)}&m3u=1`;
                 } else if (directStreamUrl && directStreamUrl.startsWith('/')) {
-                    streamToPlay = `${ELLAMOONU_DOMAIN}${directStreamUrl}`;
+                    streamToPlay = `${CURRENT_ORIGIN}${directStreamUrl}`;
                 } else if (directStreamUrl) {
-                    streamToPlay = `${ELLAMOONU_DOMAIN}/live.php?url=${encodeURIComponent(directStreamUrl)}`;
+                    streamToPlay = `${CURRENT_ORIGIN}/live.php?url=${encodeURIComponent(directStreamUrl)}`;
                 } else {
-                    streamToPlay = `${ELLAMOONU_DOMAIN}/sports.m3u`;
+                    streamToPlay = `${CURRENT_ORIGIN}/sports.m3u`;
                 }
 
-                console.log("[HLS Demo Embed] Activating official web HLS embed via ellamoonu.ai.studio with stream URL:", streamToPlay);
+                console.log("[HLS Demo Embed] Activating web HLS embed with stream URL:", streamToPlay);
 
                 // Stop other playback engines on native video element
                 try {
@@ -2852,12 +3034,13 @@
                     if (video) { video.pause(); video.src = ''; }
                 } catch (e) {}
 
-                // Hide error modal & loading
-                document.getElementById('player-error').classList.add('hidden');
-                loading.style.display = 'none';
+                // Hide error modal & loading safely
+                const errModal = document.getElementById('player-error');
+                if (errModal) errModal.classList.add('hidden');
+                if (typeof loading !== 'undefined' && loading) loading.style.display = 'none';
 
                 // Ensure Plyr instance exists so our rich controls are built
-                if (!player) {
+                if (!player && typeof Plyr !== 'undefined' && video) {
                     player = new Plyr(video, {
                         controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                         autoplay: true,
@@ -2885,13 +3068,30 @@
                     }
                     croppedContainer.classList.remove('hidden');
 
-                    // Load official HLS.js demo cleanly without invalid Base64 configs
-                    const embedUrl = `https://hlsjs.video-dev.org/demo/?src=${encodeURIComponent(streamToPlay)}`;
+                    if (isHtmlEmbedPage) {
+                        if (scaler) {
+                            scaler.style.width = '100%';
+                            scaler.style.height = '100%';
+                            scaler.style.transform = 'none';
+                        }
+                        frame.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; overflow: hidden;';
+                    } else {
+                        if (scaler) {
+                            scaler.style.width = '784px';
+                            scaler.style.height = '441px';
+                        }
+                        frame.style.cssText = 'position: absolute; top: -757px; left: -98px; width: 980px; height: 1400px; border: 0; overflow: hidden;';
+                    }
+
+                    // Load either direct HTML embed or official HLS.js demo with clean stream URL
+                    const embedUrl = isHtmlEmbedPage
+                        ? streamToPlay
+                        : `https://hlsjs.video-dev.org/demo/?src=${encodeURIComponent(streamToPlay)}`;
                     if (frame.src !== embedUrl) {
                         frame.src = embedUrl;
                     }
 
-                    // 3-Second Seamless Black Curtain for Instant Embed Transition
+                    // Seamless Black Curtain for Instant Embed Transition
                     const curtain = document.getElementById('hls-embed-curtain');
                     if (curtain) {
                         curtain.classList.remove('hidden');
@@ -2899,12 +3099,12 @@
                         curtain.style.display = 'flex';
                     }
 
-                    if (window.resizeHlsViewport) {
+                    if (!isHtmlEmbedPage && window.resizeHlsViewport) {
                         window.resizeHlsViewport();
                     }
 
                     setTimeout(() => {
-                        if (window.resizeHlsViewport) {
+                        if (!isHtmlEmbedPage && window.resizeHlsViewport) {
                             window.resizeHlsViewport();
                         }
                         if (curtain) {
@@ -2912,9 +3112,9 @@
                             setTimeout(() => {
                                 curtain.classList.add('hidden');
                                 curtain.style.display = 'none';
-                            }, 700);
+                            }, 500);
                         }
-                    }, 3000);
+                    }, 1800);
 
                     // Bind control events to forward to iframe
                     const playBtns = document.querySelectorAll('.plyr__controls button[data-plyr="play"], button.plyr__control--overlaid');
@@ -2952,11 +3152,15 @@
                         });
                     }
 
-                    showIndicator('<i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Pure HLS Video Stream Connected');
-                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                    if (typeof showIndicator === 'function') {
+                        showIndicator('<i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Pure HLS Video Stream Connected');
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    }
 
                     // Ensure top controls overlay is initialized with Back, Title, Reconnect & Aspect
-                    initTopControls(player);
+                    if (typeof initTopControls === 'function') {
+                        initTopControls(player);
+                    }
                 }
             };
 
@@ -3135,10 +3339,31 @@
                     backBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>';
                     leftGroup.appendChild(backBtn);
 
-                    // Title pill (Clean flexible title with auto-truncation)
+                    // Title pill (Clean flexible title with auto-truncation & media thumbnail icon)
                     const titlePill = document.createElement('div');
                     titlePill.className = 'title-pill';
-                    titlePill.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span><span class="truncate">${name}</span>`;
+
+                    const isMovie = (mediaType === 'movie' || mediaType === 'tv' || mediaType === 'film' || mediaType === 'cinema');
+                    const fallbackSvg = isMovie
+                        ? `<svg class="w-3.5 h-3.5 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>`
+                        : `<svg class="w-3.5 h-3.5 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
+
+                    let thumbHtml = '';
+                    if (poster && poster.trim()) {
+                        thumbHtml = `
+                            <div class="relative w-6 h-6 sm:w-7 sm:h-7 rounded-lg overflow-hidden bg-white/10 border border-white/20 shrink-0 flex items-center justify-center shadow-md">
+                                <img src="${encodeURI(poster)}" alt="Thumbnail" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+                                <div class="hidden w-full h-full items-center justify-center bg-white/5">${fallbackSvg}</div>
+                            </div>
+                        `;
+                    } else {
+                        thumbHtml = `
+                            <div class="relative w-6 h-6 sm:w-7 sm:h-7 rounded-lg overflow-hidden bg-white/10 border border-white/20 shrink-0 flex items-center justify-center shadow-md">
+                                ${fallbackSvg}
+                            </div>
+                        `;
+                    }
+                    titlePill.innerHTML = `${thumbHtml}<span class="truncate">${name}</span>`;
                     leftGroup.appendChild(titlePill);
 
                     // Rotate View Button (Moved to Left Group)
@@ -3187,6 +3412,167 @@
                     qualityBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>';
                     qualityBtn.onclick = (e) => { e.stopPropagation(); window.toggleQualityModal(); };
                     rightGroup.appendChild(qualityBtn);
+
+                    // 3B. Multi-Source Backup Switcher Button (For SonyLIV, FanCode & Multi-Source Matches)
+                    const sourcesBtn = document.createElement('button');
+                    sourcesBtn.type = 'button';
+                    sourcesBtn.id = 'btn-sources-top';
+                    sourcesBtn.title = "Switch Stream Source (Primary / Backup M3U Feeds)";
+                    sourcesBtn.style.cssText = 'display:none;align-items:center;gap:5px;padding:0 10px;width:auto;border:1px solid rgba(52,211,153,0.4);background:rgba(6,78,59,0.55);color:#6ee7b7;font-size:11px;font-weight:800;border-radius:999px;';
+                    sourcesBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg><span id="btn-sources-top-label">Sources</span>';
+                    sourcesBtn.onclick = (e) => { e.stopPropagation(); if (typeof window.togglePlayerSourcesModal === 'function') window.togglePlayerSourcesModal(); };
+                    rightGroup.appendChild(sourcesBtn);
+
+                    // 3C. Proxying / Direct Play Toggle Button ("when it on remove all proxying just direct play")
+                    const proxyingBtn = document.createElement('button');
+                    proxyingBtn.type = 'button';
+                    proxyingBtn.id = 'btn-proxying-top';
+                    proxyingBtn.title = "Toggle Proxying (When ON: removes all proxying and plays raw stream directly)";
+                    const syncProxyingBtnUI = () => {
+                        const isDirect = Boolean(window._directNoProxyMode);
+                        proxyingBtn.style.cssText = isDirect
+                            ? 'display:inline-flex;align-items:center;gap:5px;padding:0 10px;width:auto;border:1px solid rgba(251,191,36,0.75);background:rgba(180,83,9,0.75);color:#fef3c7;font-size:11px;font-weight:800;border-radius:999px;cursor:pointer;'
+                            : 'display:inline-flex;align-items:center;gap:5px;padding:0 10px;width:auto;border:1px solid rgba(255,255,255,0.2);background:rgba(24,24,27,0.75);color:#e4e4e7;font-size:11px;font-weight:700;border-radius:999px;cursor:pointer;';
+                        proxyingBtn.innerHTML = isDirect
+                            ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fde68a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Proxying: Direct</span>'
+                            : '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Proxying</span>';
+                        const modalTitle = document.getElementById('btn-proxying-modal-title');
+                        const modalSub = document.getElementById('btn-proxying-modal-sub');
+                        if (modalTitle) modalTitle.textContent = isDirect ? 'Proxying: ON (Direct Play Active)' : 'Proxying: Remove Proxy (Direct Play)';
+                        if (modalSub) modalSub.textContent = isDirect ? 'Playing raw stream directly without any proxy' : 'Click to remove all proxying & play directly';
+                    };
+                    window.syncProxyingBtnUI = syncProxyingBtnUI;
+                    syncProxyingBtnUI();
+                    proxyingBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (typeof window.toggleDirectNoProxyMode === 'function') {
+                            window.toggleDirectNoProxyMode();
+                        }
+                    };
+                    rightGroup.appendChild(proxyingBtn);
+
+                    // Auto-hydrate backup sources from sessionStorage, localStorage, or live APIs
+                    (async function initPlayerBackupSources() {
+                        try {
+                            let eventSources = [];
+                            let storedEventId = new URLSearchParams(window.location.search).get('event_id') || '';
+                            const storedRaw = sessionStorage.getItem('active_event_sources') || localStorage.getItem('active_event_sources_backup');
+                            if (storedRaw) {
+                                const parsed = JSON.parse(storedRaw);
+                                if (parsed && Array.isArray(parsed.sources) && parsed.sources.length > 0) {
+                                    eventSources = parsed.sources;
+                                    if (!storedEventId && parsed.eventId) storedEventId = parsed.eventId;
+                                }
+                            }
+                            if (eventSources.length <= 1) {
+                                const curTitle = (name || '').toLowerCase().trim();
+                                const [slRes, fcRes, schedRes] = await Promise.allSettled([
+                                    fetch('/api/sonyliv/live').then(r => r.json()),
+                                    fetch('/api/fancode/live').then(r => r.json()),
+                                    fetch('/api/sports/live-schedule').then(r => r.json())
+                                ]);
+                                const allMatches = [];
+                                if (slRes.status === 'fulfilled' && Array.isArray(slRes.value?.events)) allMatches.push(...slRes.value.events);
+                                if (fcRes.status === 'fulfilled' && Array.isArray(fcRes.value?.events)) allMatches.push(...fcRes.value.events);
+                                if (schedRes.status === 'fulfilled' && Array.isArray(schedRes.value?.events)) allMatches.push(...schedRes.value.events);
+                                const found = allMatches.find(m => m && (
+                                    (storedEventId && String(m.id) === String(storedEventId)) ||
+                                    (m.title && (m.title.toLowerCase() === curTitle || curTitle.includes(m.title.toLowerCase().slice(0, 18))))
+                                ));
+                                if (found) {
+                                    if (Array.isArray(found.sources) && found.sources.length > 0) {
+                                        eventSources = found.sources;
+                                    } else if (Array.isArray(found.myConvertedChannels) && found.myConvertedChannels.length > 0) {
+                                        eventSources = found.myConvertedChannels.map((c, i) => ({
+                                            sourceId: c.sourceId || `src_${i + 1}`,
+                                            sourceName: c.channelName || `Source ${i + 1}`,
+                                            streamUrl: c.m3u8Url || c.url || '',
+                                            playUrl: c.playUrl || found.primaryPlayUrl,
+                                            quality: c.quality || '1080p FHD'
+                                        }));
+                                    }
+                                }
+                            }
+                            // Always ensure current stream is included if no sources were found
+                            if (eventSources.length === 0 && rawUrl) {
+                                eventSources = [{
+                                    sourceId: 'current_1',
+                                    sourceName: name || 'Primary M3U Stream',
+                                    streamUrl: rawUrl,
+                                    playUrl: window.location.pathname + window.location.search,
+                                    quality: '1080p FHD'
+                                }];
+                            }
+                            window._activePlayerBackupSources = eventSources;
+                            if (eventSources.length > 0) {
+                                sourcesBtn.style.display = 'inline-flex';
+                                const lbl = document.getElementById('btn-sources-top-label');
+                                if (lbl) lbl.textContent = `Sources (${eventSources.length})`;
+                            }
+                            window.switchPlayerToBackupSource = function(idx) {
+                                const list = window._activePlayerBackupSources || [];
+                                const chosen = list[idx];
+                                if (!chosen || !chosen.playUrl) return;
+                                try {
+                                    const payload = JSON.stringify({
+                                        eventId: storedEventId,
+                                        title: name,
+                                        activePlayUrl: chosen.playUrl,
+                                        sources: list,
+                                        savedAt: Date.now()
+                                    });
+                                    sessionStorage.setItem('active_event_sources', payload);
+                                    localStorage.setItem('active_event_sources_backup', payload);
+                                } catch (_) {}
+                                let target = chosen.playUrl;
+                                if (storedEventId && target.startsWith('/play_consumet.php') && !target.includes('event_id=')) {
+                                    target += (target.includes('?') ? '&' : '?') + 'event_id=' + encodeURIComponent(storedEventId);
+                                }
+                                window.location.replace(target);
+                            };
+                            window.togglePlayerSourcesModal = function() {
+                                let modal = document.getElementById('playerBackupSourcesModal');
+                                if (modal) {
+                                    modal.remove();
+                                    return;
+                                }
+                                const list = window._activePlayerBackupSources || [];
+                                modal = document.createElement('div');
+                                modal.id = 'playerBackupSourcesModal';
+                                modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.82);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:16px;';
+                                modal.onclick = (ev) => { if (ev.target === modal) modal.remove(); };
+                                const currentFullUrl = window.location.pathname + window.location.search;
+                                modal.innerHTML = `
+                                    <div style="background:#090d16;border:1px solid rgba(255,255,255,0.15);border-radius:20px;max-width:460px;width:100%;padding:20px;color:#fff;box-shadow:0 25px 60px rgba(0,0,0,0.9);">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;">
+                                            <div>
+                                                <div style="font-size:13px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#34d399;">Available Sources (${list.length})</div>
+                                                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Select Primary or Backup feed for this match</div>
+                                            </div>
+                                            <button type="button" onclick="document.getElementById('playerBackupSourcesModal')?.remove()" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-weight:bold;">✕</button>
+                                        </div>
+                                        <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;">
+                                            ${list.map((src, idx) => {
+                                                const isCur = currentFullUrl === src.playUrl || (src.streamUrl && window.location.search.includes(encodeURIComponent(src.streamUrl)));
+                                                return `
+                                                    <div onclick="window.switchPlayerToBackupSource(${idx})" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:12px;border:1px solid ${isCur ? '#10b981' : 'rgba(255,255,255,0.1)'};background:${isCur ? 'rgba(16,185,129,0.16)' : 'rgba(255,255,255,0.04)'};color:#fff;cursor:pointer;text-align:left;width:100%;">
+                                                        <div style="min-width:0;flex:1;">
+                                                            <div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">S${idx + 1}: ${src.sourceName || (idx === 0 ? 'Primary Stream' : 'Backup Stream')}</div>
+                                                            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">${src.quality || '1080p FHD'} • ${idx === 0 ? 'Primary Active Feed' : 'Backup Mirror'}</div>
+                                                        </div>
+                                                        <div style="display:flex;align-items:center;gap:6px;shrink:0;">
+                                                            <span style="font-size:10px;font-weight:800;padding:5px 9px;border-radius:6px;background:${isCur ? '#10b981' : 'rgba(255,255,255,0.14)'};color:${isCur ? '#000' : '#fff'};">${isCur ? 'ACTIVE' : 'SWITCH'}</span>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                                document.body.appendChild(modal);
+                            };
+                        } catch (_) {}
+                    })();
 
                     // 4. Reconnect Button (Desktop/Landscape, in More menu on mobile)
                     const reconnectBtn = document.createElement('button');
@@ -3918,6 +4304,13 @@
                         titleEl.textContent = name || document.title.replace(/\s*\|\s*Live.*$/i, '');
                     }
 
+                    const stopThumbBox = document.getElementById('stop-overlay-thumb-box');
+                    const stopThumbImg = document.getElementById('stop-overlay-thumb-img');
+                    if (stopThumbBox && stopThumbImg && poster && poster.trim()) {
+                        stopThumbImg.src = poster;
+                        stopThumbBox.classList.remove('hidden');
+                    }
+
                     overlay.classList.remove('resuming');
                     overlay.classList.add('active');
                 };
@@ -4352,10 +4745,15 @@
                     } catch(e) {}
                 }
 
-                const isDirectRequested = urlParams.get('direct') === '1' || urlParams.get('raw') === '1' || urlParams.get('noproxy') === '1';
-                // Check for live sporting event
+                const isDirectRequested = Boolean(window._directNoProxyMode || urlParams.get('direct') === '1' || urlParams.get('raw') === '1' || urlParams.get('noproxy') === '1');
+                if (isDirectRequested && src) {
+                    src = unwrapStreamProxyUrl(src);
+                    resolvedSrc = src;
+                }
+                // Check for live sporting event (keep explicit url query parameter if user selected a specific source/backup!)
+                const hasExplicitStreamUrl = Boolean(src && src !== 'null' && src !== 'undefined' && src !== '#');
                 const isEvent = !isDirectRequested && (eventIdParam || channelIdParam.startsWith('live-event-') || channelIdParam.startsWith('cric-event-') || channelIdParam.startsWith('fancode-') || channelIdParam.startsWith('prime-') || channelIdParam.startsWith('sonyliv-') || channelIdParam.startsWith('sports_'));
-                if (isEvent) {
+                if (isEvent && !hasExplicitStreamUrl) {
                     const eventId = eventIdParam || channelIdParam;
                     try {
                         const statusEl = document.getElementById('apple-loading-status');
@@ -4364,14 +4762,15 @@
                         if (res.ok) {
                             const ev = await res.json();
                             if (ev && ev.stream_url) {
+                                window._rawUnproxiedStreamUrl = unwrapStreamProxyUrl(ev.stream_url);
                                 src = ev.stream_url;
                                 resolvedSrc = src;
-                                if (!src.startsWith('/api/proxy/') && !src.startsWith('/stream_proxy.php')) {
+                                if (!window._directNoProxyMode && !src.startsWith('/api/proxy/') && !src.startsWith('/stream_proxy.php') && !src.includes('proxy-web-sage.vercel.app')) {
                                     if (ev.source === 'sonyliv' || src.includes('sonyliv') || src.includes('akamaized.net') || src.includes('sonymtmnew') || src.includes('slivcdn') || src.includes('dishmt')) {
                                         src = `/stream_proxy.php?url=${encodeURIComponent(src)}`;
                                         resolvedSrc = src;
                                     } else if (ev.source === 'fancode' || ev.badge === 'FANCODE' || src.includes('fancode') || src.includes('in-mc-flive') || src.includes('dai-fancode')) {
-                                        src = `/live.php?url=${encodeURIComponent(src)}`;
+                                        src = `https://proxy-web-sage.vercel.app/api/live-proxy?url=${encodeURIComponent(src)}`;
                                         resolvedSrc = src;
                                     }
                                 }
@@ -4417,10 +4816,16 @@
                             const resolveRes = await fetch(`/api/resolve_stream/${encodeURIComponent(lookupId)}`);
                             if (resolveRes.ok) {
                                 const resolveData = await resolveRes.json();
-                                if (resolveData && resolveData.url) {
-                                    src = ensureProxiedSportsUrl(resolveData.url);
-                                    resolvedSrc = src;
-                                    console.log("[Player] Resolved TimStream URL:", src);
+                                if (resolveData) {
+                                    if (resolveData.raw_url) {
+                                        window._rawM3u8Url = resolveData.raw_url;
+                                        console.log("[Player] Captured Direct Raw Upstream M3U8:", resolveData.raw_url);
+                                    }
+                                    if (resolveData.url) {
+                                        src = ensureProxiedSportsUrl(resolveData.url);
+                                        resolvedSrc = src;
+                                        console.log("[Player] Resolved TimStream URL:", src);
+                                    }
                                 }
                             }
                         }
@@ -4531,15 +4936,18 @@
                     window._activeAkamaiToken = tokenMatch[1];
                 }
 
-                // Auto-route FanCode and SonyLIV protected HLS through local proxy if not already wrapped (never wrap DASH .mpd)
-                if (!isDirectRequested && src && !src.includes('/api/proxy/') && !src.includes('/proxy?') && !src.includes('stream_proxy.php')) {
+                // Auto-route FanCode and SonyLIV protected HLS through proxy if not already wrapped (never wrap DASH .mpd or proxy-web-sage.vercel.app)
+                if (!isDirectRequested && src && !src.includes('/api/proxy/') && !src.includes('/proxy?') && !src.includes('stream_proxy.php') && !src.includes('proxy-web-sage.vercel.app')) {
                     const sLower = src.toLowerCase();
                     const isMpdManifest = sLower.includes('.mpd') || sLower.includes('manifest');
                     if (!isMpdManifest) {
                         if (sLower.includes('sonydaimenew') || sLower.includes('sonymtmnew') || sLower.includes('akamaized.net') || sLower.includes('sonyliv') || sLower.includes('slivcdn')) {
                             src = `/stream_proxy.php?url=${encodeURIComponent(src)}`;
                             resolvedSrc = src;
-                        } else if (sLower.includes('fancode') || sLower.includes('in-mc-flive') || sLower.includes('dai-fancode') || sLower.includes('livetv.hotstar.com') || sLower.includes('live09p.hotstar.com') || sLower.includes('dishmt')) {
+                        } else if (sLower.includes('fancode') || sLower.includes('in-mc-flive') || sLower.includes('in-ak-flive') || sLower.includes('dai-fancode')) {
+                            src = `https://proxy-web-sage.vercel.app/api/live-proxy?url=${encodeURIComponent(src)}`;
+                            resolvedSrc = src;
+                        } else if (sLower.includes('livetv.hotstar.com') || sLower.includes('live09p.hotstar.com') || sLower.includes('dishmt')) {
                             src = `/live.php?url=${encodeURIComponent(src)}`;
                             resolvedSrc = src;
                         }
@@ -4620,7 +5028,16 @@
                     mediaTypeParam === 'mpegts'
                 );
 
-                const isDirectVideoFile = lowerSrc.endsWith('.mp4') || lowerSrc.endsWith('.webm') || lowerSrc.endsWith('.m4v') || lowerSrc.endsWith('.mov') || lowerSrc.endsWith('.mp3');
+                const isDirectVideoFile = lowerSrc.includes('.mp4') || 
+                                          lowerSrc.includes('.webm') || 
+                                          lowerSrc.includes('.m4v') || 
+                                          lowerSrc.includes('.mov') || 
+                                          lowerSrc.includes('.mp3') ||
+                                          lowerSrc.includes('hakunaymatata') ||
+                                          lowerSrc.includes('hakunamatata') ||
+                                          lowerSrc.includes('format=mp4') ||
+                                          lowerSrc.includes('type=mp4') ||
+                                          lowerSrc.endsWith('.mp4');
                 const isDirectMedia = !isMkv && !isExplicitDash && !isForceHls && isDirectVideoFile;
                 const isFromBingrSources = (window.bingrSources || []).some(s => s && s.url && (s.url === src || src.startsWith(s.url) || s.url.startsWith(src)));
                 
@@ -4658,7 +5075,10 @@
                 const curName = urlParamsForMedia.get('name') || '';
                 const isAirtelChannel = (curChannelId && (curChannelId.startsWith('airtel-') || curChannelId.startsWith('airtel_'))) || (urlParamsForMedia.get('source') === 'airtel') || lowerSrc.includes('yolomax.pro');
 
-                if (isAirtelChannel) {
+                if (window._directNoProxyMode) {
+                    src = unwrapStreamProxyUrl(src || window._rawUnproxiedStreamUrl || '');
+                    resolvedSrc = src;
+                } else if (isAirtelChannel) {
                     // Pure direct HLS stream for Airtel channels (works seamlessly in Hls.js without Stalker VR proxying)
                     if (src && (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/api/proxy'))) {
                         resolvedSrc = src;
@@ -4678,10 +5098,12 @@
                         resolvedSrc = `/live.php?id=${encodeURIComponent(src)}&m3u=1${curChannelId ? `&channel_id=${encodeURIComponent(curChannelId)}` : ''}${curName ? `&name=${encodeURIComponent(curName)}` : ''}`;
                     }
                 }
-                try {
-                    resolvedSrc = new URL(resolvedSrc, window.location.origin).href;
-                } catch(e) {
-                    console.warn("URL resolution error:", e);
+                if (!window._directNoProxyMode) {
+                    try {
+                        resolvedSrc = new URL(resolvedSrc, window.location.origin).href;
+                    } catch(e) {
+                        console.warn("URL resolution error:", e);
+                    }
                 }
                 window.currentStreamUrl = resolvedSrc;
                 window._activeResolvedSrc = resolvedSrc;
@@ -4891,6 +5313,34 @@
                     try {
                         streamUrl = new URL(streamUrl, window.location.origin).href;
                     } catch(e){}
+                    const lowerCheck = (streamUrl || '').toLowerCase();
+                    if (lowerCheck.includes('.mp4') || lowerCheck.includes('.webm') || lowerCheck.includes('.m4v') || lowerCheck.includes('hakunaymatata') || lowerCheck.includes('hakunamatata') || lowerCheck.includes('format=mp4') || lowerCheck.includes('type=mp4')) {
+                        console.log("[HLS Engine] Stream is progressive MP4 video. Routing directly to HTML5 video playback:", streamUrl);
+                        if (hls) {
+                            try { hls.destroy(); } catch(e){}
+                            hls = null;
+                        }
+                        video.src = streamUrl;
+                        video.load();
+                        triggerSafePlayback('MP4-Native');
+                        if (!player) {
+                            player = new Plyr(video, {
+                                controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'download', 'fullscreen'],
+                                autoplay: true,
+                                muted: false,
+                                clickToPlay: false,
+                                fullscreen: { enabled: true, fallback: true, iosNative: true }
+                            });
+                            window.plyrPlayer = player;
+                            window.player = player;
+                        }
+                        video.style.opacity = '1';
+                        hideLoadingScreen();
+                        initTopControls(player);
+                        initAdvancedGestures(player, video);
+                        startWatchdog();
+                        return;
+                    }
                     console.log("[HLS Engine] Initializing Hls.js for stream:", streamUrl);
                     if (hls) {
                         try { hls.destroy(); const v = document.getElementById('player'); if(v){ v.src = ''; v.load(); } } catch(e){}
@@ -4929,6 +5379,13 @@
                     hls.attachMedia(video);
                     hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
                         console.log(`[HLS] Manifest parsed. Quality levels: ${data.levels.length}`);
+                        if (typeof window._pendingAudioTrackIdx === 'number' && hls.audioTracks && hls.audioTracks.length > window._pendingAudioTrackIdx) {
+                            try {
+                                console.log(`[HLS] Applying pending audio track index: ${window._pendingAudioTrackIdx}`);
+                                hls.audioTrack = window._pendingAudioTrackIdx;
+                            } catch(e){}
+                            window._pendingAudioTrackIdx = undefined;
+                        }
                         reconnectAttempts = 0;
                         levelRecoveryAttempts = 0;
                         video.style.opacity = '1';
@@ -5022,7 +5479,7 @@
                         }
                         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                             if (data.details === 'manifestLoadError' || data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || (data.response && (data.response.code === 404 || data.response.code === 403 || data.response.code === 451 || data.response.code === 0))) {
-                                if (streamUrl && (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
+                                if (!window._directNoProxyMode && streamUrl && (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
                                     console.warn('[HLS Network Error] Direct manifest failed to load. Retrying via stream proxy...');
                                     const proxied = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
                                     loadHls(proxied);
@@ -5063,7 +5520,7 @@
                                 }
                                 return;
                             }
-                            if (streamUrl && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
+                            if (!window._directNoProxyMode && streamUrl && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
                                 console.warn('[HLS Fallback] Manifest error on direct stream. Retrying through master stream proxy...');
                                 const proxied = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
                                 loadHls(proxied);
@@ -5266,6 +5723,75 @@
                     }
                 }
 
+                function sanitizeMultiKeyPairs(pairsList) {
+                    const deduped = [];
+                    for (const item of pairsList) {
+                        if (!item || !item.cId || !item.cVal) continue;
+                        if (item.cId.length === 32 && item.cVal.length === 32 && !deduped.some(p => p.cId === item.cId)) {
+                            deduped.push({ cId: item.cId, cVal: item.cVal });
+                        }
+                    }
+                    const distinctVals = new Set(deduped.map(p => p.cVal));
+                    const seenVals = new Set();
+                    const cleanMap = {};
+                    for (const { cId, cVal } of deduped) {
+                        if (distinctVals.size > 1 && seenVals.has(cVal)) {
+                            console.warn("[ClearKey Filter] Dropping duplicate fallback key mapping for KID:", cId);
+                            continue;
+                        }
+                        seenVals.add(cVal);
+                        cleanMap[cId] = cVal;
+                    }
+                    return cleanMap;
+                }
+
+                function pruneUnmatchedKidTracks(mpdXml, validKeysObj) {
+                    if (!mpdXml || !validKeysObj || Object.keys(validKeysObj).length === 0) return mpdXml;
+                    const allKids = [...mpdXml.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                        .filter(k => k.length === 32);
+                    const uniqueKids = [...new Set(allKids)];
+                    const matchedKids = uniqueKids.filter(k => Boolean(validKeysObj[k]));
+                    const unmatchedKids = uniqueKids.filter(k => !validKeysObj[k]);
+                    if (matchedKids.length === 0 || unmatchedKids.length === 0) return mpdXml;
+
+                    let cleaned = mpdXml.replace(/<AdaptationSet\b[^>]*>[\s\S]*?<\/AdaptationSet>/gi, (adaptationBlock) => {
+                        const repMatches = [...adaptationBlock.matchAll(/<Representation\b[^>]*>[\s\S]*?<\/Representation>/gi)].map(m => m[0]);
+                        if (repMatches.length > 1) {
+                            const keptReps = repMatches.filter(rep => {
+                                const repKids = [...rep.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                                    .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                    .filter(k => k.length === 32);
+                                if (repKids.length === 0) return true;
+                                return repKids.every(k => Boolean(validKeysObj[k]));
+                            });
+                            if (keptReps.length > 0 && keptReps.length < repMatches.length) {
+                                let updated = adaptationBlock;
+                                for (const rep of repMatches) {
+                                    if (!keptReps.includes(rep)) {
+                                        updated = updated.replace(rep, '');
+                                    }
+                                }
+                                return updated;
+                            }
+                        }
+                        return adaptationBlock;
+                    });
+
+                    const adaptationBlocks = [...cleaned.matchAll(/<AdaptationSet\b[^>]*>[\s\S]*?<\/AdaptationSet>/gi)].map(m => m[0]);
+                    if (adaptationBlocks.length > 1) {
+                        for (const block of adaptationBlocks) {
+                            const blockKids = [...block.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                                .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                .filter(k => k.length === 32);
+                            if (blockKids.length > 0 && blockKids.every(k => !validKeysObj[k])) {
+                                cleaned = cleaned.replace(block, '');
+                            }
+                        }
+                    }
+                    return cleaned;
+                }
+
                 async function loadShaka(streamUrl, keyId, key) {
                     try {
                         streamUrl = new URL(streamUrl, window.location.origin).href;
@@ -5282,6 +5808,7 @@
                         return;
                     }
 
+                    let shakaHandedOff = false;
                     try {
                         shaka.polyfill.installAll();
                         shakaPlayer = new shaka.Player();
@@ -5289,7 +5816,7 @@
                         window.shakaPlayer = shakaPlayer;
 
                         // Configure ClearKey DRM for ALL key pairs (multi-key tracks)
-                        const clearKeysMap = {};
+                        const rawPairsList = [];
                         const rawClearkey = (window._activeClearKeyString || clearkeyParam || (typeof urlParamsForMedia !== 'undefined' ? urlParamsForMedia.get('clearkey') : '') || '').trim();
                         if (rawClearkey) {
                             const pairs = rawClearkey.split(',');
@@ -5299,7 +5826,7 @@
                                     const cId = kId.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     const cVal = kVal.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     if (cId.length === 32 && cVal.length === 32) {
-                                        clearKeysMap[cId] = cVal;
+                                        rawPairsList.push({ cId, cVal });
                                     }
                                 }
                             }
@@ -5310,24 +5837,28 @@
                         const cleanKeyId = rawKeyId.toLowerCase().replace(/[^0-9a-f]/g, '');
                         const cleanKey = rawKey.toLowerCase().replace(/[^0-9a-f]/g, '');
                         if (cleanKeyId.length === 32 && cleanKey.length === 32) {
-                            clearKeysMap[cleanKeyId] = cleanKey;
+                            rawPairsList.push({ cId: cleanKeyId, cVal: cleanKey });
                         }
 
-                        // Auto-scan MPD manifest for any default_KID attributes and associate the key
+                        const clearKeysMap = sanitizeMultiKeyPairs(rawPairsList);
+
+                        // Auto-scan MPD manifest for default_KID attributes (only map unknown KIDs when channel has a single key and zero matched KIDs)
                         if (streamUrl.includes('.mpd') && (Object.keys(clearKeysMap).length > 0 || cleanKey)) {
                             try {
                                 const mpdRes = await fetch(streamUrl, { method: 'GET' });
                                 if (mpdRes.ok) {
                                     const mpdText = await mpdRes.text();
                                     const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
-                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                        .filter(k => k.length === 32);
                                     const uniqueKids = [...new Set(manifestKids)];
+                                    const matchedKids = uniqueKids.filter(k => Boolean(clearKeysMap[k]));
                                     const fallbackKeyVal = cleanKey || Object.values(clearKeysMap)[0];
-                                    if (fallbackKeyVal) {
+                                    if (matchedKids.length === 0 && Object.keys(clearKeysMap).length <= 1 && fallbackKeyVal) {
                                         for (const singleKid of uniqueKids) {
                                             if (singleKid && singleKid.length === 32 && !clearKeysMap[singleKid]) {
                                                 clearKeysMap[singleKid] = fallbackKeyVal;
-                                                console.log("[Shaka Engine] Associated manifest KID to key:", singleKid, fallbackKeyVal);
+                                                console.log("[Shaka Engine] Associated single-key manifest KID to key:", singleKid, fallbackKeyVal);
                                             }
                                         }
                                     }
@@ -5337,9 +5868,9 @@
                             }
                         }
 
-                        // Sync to global active state so any subsequent engine (Dash.js, SecurityGuard, etc.) has all discovered KIDs
+                        // Sync to global active state so any subsequent engine (Dash.js, SecurityGuard, etc.) has clean KIDs
                         if (Object.keys(clearKeysMap).length > 0) {
-                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                            window._activeClearKeysMap = Object.assign({}, clearKeysMap);
                             window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                         }
 
@@ -5433,12 +5964,14 @@
                             }
                         });
 
-                        // Configure Response Filter to inject ClearKey UUID into raw DASH manifests and filter unsupported ec-3 audio
+                        // Configure Response Filter to inject ClearKey UUID, prune un-decryptable KID representations, and filter unsupported ec-3 audio
                         shakaPlayer.getNetworkingEngine().registerResponseFilter((type, response) => {
                             if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST && response.data && Object.keys(clearKeysMap).length > 0) {
                                 try {
                                     let str = new TextDecoder('utf-8').decode(response.data);
                                     if (str && str.includes('<MPD')) {
+                                        // Prune any Representation/AdaptationSet whose cenc:default_KID is missing from our multi-key map
+                                        str = pruneUnmatchedKidTracks(str, clearKeysMap);
                                         // If manifest lacks W3C ClearKey UUID, inject it into AdaptationSet so Shaka negotiates ClearKey
                                         if (!str.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
                                             const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:1077efec-c0b2-4d02-ace3-3c1e52e2fb4b" value="ClearKey1.0"/>';
@@ -5480,9 +6013,10 @@
                             // Fatal decoding pipeline errors (3016 PIPELINE_ERROR_DECODE, 3015 MSE failure): immediately switch to Dash.js
                             if (detail.code === 3016 || detail.code === 3015) {
                                 console.warn("[Shaka Decode Error " + detail.code + "] Browser media decoder failure. Immediately switching to Dash.js...");
+                                shakaHandedOff = true;
                                 destroyShakaPlayer();
                                 if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
-                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeysMap = Object.assign({}, clearKeysMap);
                                     window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                                 }
                                 loadDash(streamUrl, keyId, key);
@@ -5491,9 +6025,10 @@
                             // DRM Key Restrictions cannot be met (4012/4014): Immediately switch to Dash.js
                             if (detail.code === 4012 || detail.code === 4014) {
                                 console.warn("[Shaka DRM Error " + detail.code + "] Key restrictions not met in browser CDM. Switching to Dash.js engine...");
+                                shakaHandedOff = true;
                                 destroyShakaPlayer();
                                 if (typeof clearKeysMap !== 'undefined' && Object.keys(clearKeysMap).length > 0) {
-                                    window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, clearKeysMap);
+                                    window._activeClearKeysMap = Object.assign({}, clearKeysMap);
                                     window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
                                 }
                                 loadDash(streamUrl, keyId, key);
@@ -5505,6 +6040,7 @@
                             }
                             if (detail.code === 4038 || detail.code === 4000 || detail.code === 4012 || detail.code === 6006 || detail.code === 6007 || detail.severity === 2) {
                                 console.warn("[Shaka Error " + detail.code + "] Restrictions or playback error. Retrying via Dash.js / fallback...");
+                                shakaHandedOff = true;
                                 destroyShakaPlayer();
                                 if (streamUrl.includes('.mpd')) {
                                     loadDash(streamUrl, keyId, key);
@@ -5517,6 +6053,7 @@
                         });
 
                         await shakaPlayer.load(streamUrl);
+                        if (shakaHandedOff || !shakaPlayer) return;
                         console.log("[Shaka Engine] Stream loaded successfully.");
                         video.style.opacity = '1';
                         hideLoadingScreen();
@@ -5536,7 +6073,9 @@
                         initAdvancedGestures(player, video);
                         startWatchdog();
                     } catch (err) {
+                        if (shakaHandedOff) return;
                         console.warn("[Shaka Engine Init Failed] Error:", err);
+                        shakaHandedOff = true;
                         destroyShakaPlayer();
                         const isNonDash = streamUrl.includes('.m3u8') || streamUrl.includes('willow') || streamUrl.includes('fancode') || streamUrl.includes('sonyliv') || streamUrl.includes('tim') || streamUrl.includes('dlhd') || !streamUrl.includes('.mpd');
                         if (isNonDash) {
@@ -5594,13 +6133,13 @@
                         }
 
                         // Configure ClearKey DRM for ALL key pairs (multi-key tracks)
-                        const dashKeysMap = {};
+                        const rawDashPairs = [];
 
-                        // 1. Inherit from active global ClearKeys map (including any discovered by Shaka or previous scans)
+                        // 1. Inherit from active global ClearKeys map
                         if (window._activeClearKeysMap && typeof window._activeClearKeysMap === 'object') {
                             for (const [kId, kVal] of Object.entries(window._activeClearKeysMap)) {
                                 if (kId && kVal && kId.length === 32 && kVal.length === 32) {
-                                    dashKeysMap[kId.toLowerCase()] = kVal.toLowerCase();
+                                    rawDashPairs.push({ cId: kId.toLowerCase(), cVal: String(kVal).toLowerCase() });
                                 }
                             }
                         }
@@ -5615,7 +6154,7 @@
                                     const cId = kId.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     const cVal = kVal.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
                                     if (cId.length === 32 && cVal.length === 32) {
-                                        dashKeysMap[cId] = cVal;
+                                        rawDashPairs.push({ cId, cVal });
                                     }
                                 }
                             }
@@ -5626,10 +6165,12 @@
                         const cleanDashKeyId = rawDashKeyId.toLowerCase().replace(/[^0-9a-f]/g, '');
                         const cleanDashKey = rawDashKey.toLowerCase().replace(/[^0-9a-f]/g, '');
                         if (cleanDashKeyId.length === 32 && cleanDashKey.length === 32) {
-                            dashKeysMap[cleanDashKeyId] = cleanDashKey;
+                            rawDashPairs.push({ cId: cleanDashKeyId, cVal: cleanDashKey });
                         }
 
-                        // 3. Pre-scan MPD manifest for any default_KID attributes, rewrite manifest with ClearKey UUID and absolute BaseURL
+                        const dashKeysMap = sanitizeMultiKeyPairs(rawDashPairs);
+
+                        // 3. Pre-scan MPD manifest, prune un-decryptable KID tracks, rewrite manifest with DASH-IF ClearKey UUID and absolute BaseURL
                         let effectiveStreamUrl = streamUrl;
                         if (streamUrl.includes('.mpd') && (Object.keys(dashKeysMap).length > 0 || cleanDashKey)) {
                             try {
@@ -5637,28 +6178,35 @@
                                 if (mpdRes.ok) {
                                     let mpdText = await mpdRes.text();
                                     const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
-                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase());
+                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                        .filter(k => k.length === 32);
                                     const uniqueKids = [...new Set(manifestKids)];
+                                    const matchedKids = uniqueKids.filter(k => Boolean(dashKeysMap[k]));
                                     const fallbackKeyVal = cleanDashKey || Object.values(dashKeysMap)[0];
-                                    if (fallbackKeyVal) {
+                                    if (matchedKids.length === 0 && Object.keys(dashKeysMap).length <= 1 && fallbackKeyVal) {
                                         for (const singleKid of uniqueKids) {
                                             if (singleKid && singleKid.length === 32 && !dashKeysMap[singleKid]) {
                                                 dashKeysMap[singleKid] = fallbackKeyVal;
-                                                console.log("[DASH Engine] Associated manifest KID to key:", singleKid, fallbackKeyVal);
+                                                console.log("[DASH Engine] Associated single-key manifest KID to key:", singleKid, fallbackKeyVal);
                                             }
                                         }
                                     }
+
+                                    // Prune any Representation/AdaptationSet whose cenc:default_KID is missing from dashKeysMap
+                                    mpdText = pruneUnmatchedKidTracks(mpdText, dashKeysMap);
 
                                     // Determine absolute CDN base directory
                                     const finalMpdUrl = mpdRes.url || streamUrl;
                                     const lastSlash = finalMpdUrl.lastIndexOf('/');
                                     const cdnDir = lastSlash !== -1 ? finalMpdUrl.substring(0, lastSlash + 1) : finalMpdUrl;
 
-                                    // Inject W3C ClearKey UUID into AdaptationSets if missing (stops Dash.js Error 111 No license server specified)
-                                    if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
-                                        const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:1077efec-c0b2-4d02-ace3-3c1e52e2fb4b" value="ClearKey1.0"/>';
+                                    // Use DASH-IF ClearKey schemeIdUri (e2719d58-a985-b3c9-781a-b030af78d30e) for Dash.js to avoid Warning 303 & Error 111
+                                    if (mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                        mpdText = mpdText.replace(/1077efec-c0b2-4d02-ace3-3c1e52e2fb4b/gi, 'e2719d58-a985-b3c9-781a-b030af78d30e');
+                                    } else if (!mpdText.includes('e2719d58-a985-b3c9-781a-b030af78d30e')) {
+                                        const clearKeyProtection = '<ContentProtection schemeIdUri="urn:uuid:e2719d58-a985-b3c9-781a-b030af78d30e" value="ClearKey1.0"/>';
                                         mpdText = mpdText.replace(/(<ContentProtection[^>]*cenc[^>]*\/>)/gi, `${clearKeyProtection}\n      $1`);
-                                        if (!mpdText.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {
+                                        if (!mpdText.includes('e2719d58-a985-b3c9-781a-b030af78d30e')) {
                                             mpdText = mpdText.replace(/(<ContentProtection[^>]*>)/i, `${clearKeyProtection}\n      $1`);
                                         }
                                     }
@@ -5706,7 +6254,7 @@
 
                         if (Object.keys(dashKeysMap).length > 0) {
                             console.log("[DASH Engine] Configuring ClearKey DRM protection map:", dashKeysMap);
-                            window._activeClearKeysMap = Object.assign(window._activeClearKeysMap || {}, dashKeysMap);
+                            window._activeClearKeysMap = Object.assign({}, dashKeysMap);
                             window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
 
                             const dashClearkeys = {};
@@ -5716,9 +6264,8 @@
                                 if (b64KeyId && b64Key) {
                                     dashClearkeys[b64KeyId] = b64Key;
                                 }
-                                dashClearkeys[cId] = cVal;
                             }
-                            // Exclusively configure org.w3.clearkey (NO empty Widevine/Playready entries that cause Error 111)
+                            // Exclusively configure org.w3.clearkey with strict Base64URL keys required by W3C EME MediaKeySession.update()
                             dashPlayer.setProtectionData({
                                 "org.w3.clearkey": {
                                     "clearkeys": dashClearkeys,
@@ -5813,8 +6360,11 @@
                 }
                 const engineParam = (urlParams.get('engine') || urlParams.get('player') || '').toLowerCase();
                 const isVideoJsForced = engineParam === 'videojs' || engineParam === 'vjs' || urlParams.get('vjs') === '1';
+                const isEmbedForced = engineParam === 'embed' || engineParam === 'hlsdemo' || mediaTypeParam === 'embed';
 
-                if (isVideoJsForced) {
+                if (isEmbedForced) {
+                    window.loadHlsDemoEmbed(resolvedSrc);
+                } else if (isVideoJsForced) {
                     loadVideoJs(resolvedSrc);
                 } else if (isDirectMedia) {
                     video.src = resolvedSrc;
@@ -5858,6 +6408,38 @@
                     video.load();
                     triggerSafePlayback('Native-Fallback');
                 }
+
+                window.toggleDirectNoProxyMode = function() {
+                    window._directNoProxyMode = !window._directNoProxyMode;
+                    if (typeof window.syncProxyingBtnUI === 'function') {
+                        window.syncProxyingBtnUI();
+                    }
+                    const baseRaw = unwrapStreamProxyUrl(window._rawUnproxiedStreamUrl || resolvedSrc || src || '');
+                    const nextUrl = window._directNoProxyMode ? baseRaw : ensureProxiedSportsUrl(baseRaw);
+                    src = nextUrl;
+                    resolvedSrc = nextUrl;
+                    window.currentStreamUrl = nextUrl;
+                    window._activeResolvedSrc = nextUrl;
+                    const errModal = document.getElementById('player-error');
+                    if (errModal) errModal.classList.add('hidden');
+                    console.log(`[Proxying Toggle] Direct No-Proxy Mode = ${window._directNoProxyMode} -> Playing URL:`, nextUrl);
+                    if (typeof showIndicator === 'function') {
+                        showIndicator(window._directNoProxyMode ? '⚡ Direct Play Enabled (All Proxying Removed)' : '🛡️ Stream Proxy Re-Enabled');
+                    }
+                    if (isExplicitDash || nextUrl.includes('.mpd')) {
+                        if (typeof shaka !== 'undefined') {
+                            loadShaka(nextUrl, drmKeyId, drmKey);
+                        } else if (typeof dashjs !== 'undefined') {
+                            loadDash(nextUrl, drmKeyId, drmKey);
+                        }
+                    } else if (Hls.isSupported() && !nextUrl.includes('.mpd')) {
+                        loadHls(nextUrl);
+                    } else {
+                        video.src = nextUrl;
+                        video.load();
+                        triggerSafePlayback('Direct-NoProxy-Switch');
+                    }
+                };
             }
 
             async function resolveStreamAndInit() {

@@ -112,7 +112,8 @@ const tabContents = {
     builder: document.getElementById('tabContent-builder'),
     analytics: document.getElementById('tabContent-analytics'),
     scrapers: document.getElementById('tabContent-scrapers'),
-    herocontrol: document.getElementById('tabContent-herocontrol')
+    herocontrol: document.getElementById('tabContent-herocontrol'),
+    spotlightstudio: document.getElementById('tabContent-spotlightstudio')
 };
 
 // Dashboard Elements
@@ -595,7 +596,7 @@ window.switchTab = switchTab;
     if (mainViewport) mainViewport.scrollTop = 0;
     
     // Update active tab styles
-    ['harichat', 'overview', 'portals', 'm3u', 'channelsjson', 'quarantine', 'reorganize', 'monitor', 'system', 'sports', 'embedscraper', 'liveevents', 'builder', 'analytics', 'scrapers', 'herocontrol'].forEach(id => {
+    ['harichat', 'overview', 'portals', 'm3u', 'channelsjson', 'quarantine', 'reorganize', 'monitor', 'system', 'sports', 'embedscraper', 'liveevents', 'builder', 'analytics', 'scrapers', 'herocontrol', 'spotlightstudio'].forEach(id => {
         const btn = document.getElementById(`tabBtn-${id}`);
         if (!btn) return;
         if (id === tabId) {
@@ -645,6 +646,18 @@ window.switchTab = switchTab;
         loadActivity();
         loadBlacklist();
         loadIncidents();
+        if (typeof loadLiveMonitorOverview === 'function') loadLiveMonitorOverview();
+        if (!window.__monitorPollingTimer) {
+            window.__monitorPollingTimer = setInterval(() => {
+                if (typeof loadLiveMonitorOverview === 'function') loadLiveMonitorOverview();
+                loadActivity();
+            }, 3000);
+        }
+    } else {
+        if (window.__monitorPollingTimer) {
+            clearInterval(window.__monitorPollingTimer);
+            window.__monitorPollingTimer = null;
+        }
     }
     if (tabId === 'analytics') {
         fetchAnalytics();
@@ -670,9 +683,16 @@ window.switchTab = switchTab;
     if (tabId === 'sports') {
         loadSportsStreams();
         loadSportsM3uFiles();
+        if (typeof loadStreamSourcesManager === 'function') loadStreamSourcesManager();
+    }
+    if (tabId === 'liveevents') {
+        fetchLiveEvents();
     }
     if (tabId === 'herocontrol') {
         loadHeroConfig();
+    }
+    if (tabId === 'spotlightstudio') {
+        if (typeof loadSpotlightStudioAll === 'function') loadSpotlightStudioAll();
     }
 
     lucide.createIcons();
@@ -726,9 +746,9 @@ async function fetchAnalytics() {
                         <div class="flex items-center justify-between p-2.5 rounded-xl bg-gray-900/60 border border-gray-800/60">
                             <div class="flex items-center gap-2.5 min-w-0">
                                 <span class="w-5 h-5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold flex items-center justify-center shrink-0">#${idx + 1}</span>
-                                <span class="text-xs font-bold text-white truncate">${item.title}</span>
+                                <span class="text-xs font-bold text-white truncate">${escapeHtml(item.title)}</span>
                             </div>
-                            <span class="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-mono font-bold shrink-0">${item.count} plays</span>
+                            <span class="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-mono font-bold shrink-0">${Number(item.count) || 0} plays</span>
                         </div>
                     `).join('');
                 }
@@ -971,6 +991,9 @@ let maintenanceScheduleInterval = null;
 // --- API HELPER FOR SECURE REQUESTS ---
 async function secureFetch(url, options = {}) {
     options.headers = options.headers || {};
+    options.credentials = options.credentials || 'same-origin';
+    options.headers['X-Requested-With'] = 'XMLHttpRequest';
+    options.headers['X-Citadel-Shield'] = '1';
     if (token) {
         options.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -986,10 +1009,12 @@ async function secureFetch(url, options = {}) {
         }
         return res;
     } catch (err) {
-        if (err.message.includes('Session expired') || err.message.includes('Session hijacked')) {
+        if (err.message && (err.message.includes('Session expired') || err.message.includes('Session hijacked'))) {
             token = '';
             showLogin();
-            alert(`Access Revoked: ${err.message}`);
+            if (typeof showToast === 'function') {
+                showToast('Session Expired', err.message, 'error');
+            }
         }
         throw err;
     }
@@ -1093,10 +1118,348 @@ function updatePowerUI(status) {
     if (window.lucide && window.lucide.createIcons) lucide.createIcons();
 }
 
+async function loadLiveMonitorOverview() {
+    try {
+        const res = await secureFetch('/api/admin/live-monitor/overview?_t=' + Date.now());
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || data.status !== 'success') return;
+
+        const sum = data.summary || {};
+        const setElText = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = String(val);
+        };
+        setElText('monStatOnlineUsers', sum.onlineUsersCount ?? (data.visitors || []).length);
+        setElText('monStatActiveStreams', sum.activeStreamsCount ?? 0);
+        setElText('monStatPasswordUsers', sum.passwordSessionsCount ?? (data.passwordSessions || []).length);
+        setElText('monStatBoundDevices', sum.boundDevicesCount ?? (data.boundDevices || []).length);
+        setElText('monStatBlacklisted', sum.blacklistedCount ?? (data.blacklist || []).length);
+
+        renderLiveWebsiteUsers(data.visitors || []);
+        renderPasswordSessionsLedger(data.passwordSessions || []);
+    } catch (e) {
+        console.warn('Live Monitor overview sync error:', e);
+    }
+}
+window.loadLiveMonitorOverview = loadLiveMonitorOverview;
+
+function renderLiveWebsiteUsers(visitors) {
+    const countBadge = document.getElementById('liveWebsiteUsersCount');
+    if (countBadge) countBadge.textContent = `${visitors.length} ACTIVE NOW`;
+
+    const tbody = document.getElementById('liveWebsiteUsersList');
+    if (!tbody) return;
+
+    if (!visitors || visitors.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-10 text-center text-gray-500 text-xs">
+                    <div class="flex flex-col items-center gap-2 opacity-60">
+                        <i data-lucide="radar" class="w-7 h-7 text-cyan-400"></i>
+                        <span>No active website visitors detected in the last 90 seconds. Open any portal page to see real-time tracking.</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    tbody.innerHTML = visitors.map(v => {
+        const safeIp = escapeJsString(v.ip || '');
+        const safeDev = escapeJsString(v.deviceId || '');
+        const streamBadge = v.isStreaming
+            ? `<div class="flex items-center gap-2">
+                   <span class="relative flex h-2 w-2 shrink-0">
+                       <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                       <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                   </span>
+                   <div class="min-w-0">
+                       <div class="text-xs font-bold text-emerald-300 truncate max-w-[220px]" title="${escapeHtml(v.playingStream)}">${escapeHtml(v.playingStream)}</div>
+                       ${v.playingUrl ? `<div class="text-[9px] font-mono text-gray-500 truncate max-w-[200px]" title="${escapeHtml(v.playingUrl)}">${escapeHtml(v.playingUrl)}</div>` : ''}
+                   </div>
+               </div>`
+            : `<span class="text-xs text-gray-400 italic">Browsing Page (Idle)</span>`;
+
+        const passBadge = v.isUnlocked
+            ? `<span class="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold inline-flex items-center gap-1">
+                   <i data-lucide="key-round" class="w-3 h-3"></i>
+                   <span>${escapeHtml(v.passwordRemainingFormatted)} left</span>
+               </span>`
+            : `<span class="px-2 py-0.5 rounded bg-gray-800 text-gray-400 text-[10px] font-mono">${escapeHtml(v.passwordRemainingFormatted || 'Public')}</span>`;
+
+        return `
+            <tr class="hover:bg-gray-900/40 transition-colors">
+                <td class="px-5 py-3.5">
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                            <span class="font-mono font-bold text-white text-xs">${escapeHtml(v.ip)}</span>
+                            ${v.deviceId ? `<span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30" title="Hardware ID: ${escapeHtml(v.deviceId)}">${escapeHtml(v.deviceId.slice(0, 8))}</span>` : ''}
+                        </div>
+                        <span class="text-[10px] text-gray-400 mt-0.5">${escapeHtml(v.deviceLabel || v.browserName || 'Web Browser')}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-cyan-300">${escapeHtml(v.pageLabel || v.currentPage || '/')}</span>
+                        <span class="text-[10px] font-mono text-gray-500 truncate max-w-[210px]" title="${escapeHtml(v.currentPage || '/')}">${escapeHtml(v.currentPage || '/')}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5">
+                    ${streamBadge}
+                </td>
+                <td class="px-5 py-3.5">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-mono font-bold text-white">${escapeHtml(v.onlineDurationFormatted || 'Active')}</span>
+                        <span class="text-[9px] text-emerald-400">${v.secondsAgo <= 3 ? 'Live now' : `${v.secondsAgo}s ago`}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5">
+                    ${passBadge}
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="instantKickUser('${safeIp}', '${safeDev}')" class="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow" title="Instant Kick User (Drops stream & locks session)">
+                            <i data-lucide="zap-off" class="w-3 h-3"></i>
+                            <span>Kick</span>
+                        </button>
+                        <button onclick="instantBanUser('${safeIp}', '${safeDev}')" class="px-2.5 py-1.5 rounded-lg bg-rose-600/25 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow" title="Instant Ban User (Blacklists IP & revokes hardware device)">
+                            <i data-lucide="ban" class="w-3 h-3"></i>
+                            <span>Ban</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+function renderPasswordSessionsLedger(sessions) {
+    const countBadge = document.getElementById('passwordSessionsCount');
+    if (countBadge) countBadge.textContent = `${sessions.length} UNLOCKED`;
+
+    const tbody = document.getElementById('passwordSessionsList');
+    if (!tbody) return;
+
+    if (!sessions || sessions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-10 text-center text-gray-500 text-xs">
+                    <div class="flex flex-col items-center gap-2 opacity-60">
+                        <i data-lucide="lock" class="w-7 h-7 text-amber-400"></i>
+                        <span>No active password-unlocked sessions right now. When a user enters the site PIN/Passcode, their IP, device, and remaining hours appear here.</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    tbody.innerHTML = sessions.map(s => {
+        const safeIp = escapeJsString(s.ip || '');
+        const safeDev = escapeJsString(s.deviceId || '');
+        const pct = Math.min(100, Math.max(4, Number(s.percentRemaining) || 50));
+        const barColor = pct > 35 ? 'from-amber-500 to-emerald-400' : 'from-rose-500 to-amber-500';
+
+        return `
+            <tr class="hover:bg-gray-900/40 transition-colors">
+                <td class="px-5 py-3.5">
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full ${s.isOnlineNow ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}"></span>
+                            <span class="font-mono font-bold text-white text-xs">${escapeHtml(s.ip)}</span>
+                            <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold uppercase">${escapeHtml(s.authMethod || 'Master PIN')}</span>
+                        </div>
+                        <span class="text-[11px] font-semibold text-gray-300 mt-0.5">${escapeHtml(s.deviceLabel || 'Authorized Device')}</span>
+                        ${s.currentPage ? `<span class="text-[9px] text-cyan-400 mt-0.5">Active on: ${escapeHtml(s.currentPage)}</span>` : ''}
+                    </div>
+                </td>
+                <td class="px-5 py-3.5">
+                    <div class="flex flex-col">
+                        ${s.deviceId
+                            ? `<span class="font-mono text-[10px] text-purple-300 bg-purple-950/50 border border-purple-700/40 px-2 py-0.5 rounded w-fit" title="${escapeHtml(s.deviceId)}">${escapeHtml(s.deviceId.slice(0, 14))}...</span>`
+                            : `<span class="text-[10px] text-gray-500 italic">IP Whitelist Session</span>`
+                        }
+                        <span class="text-[10px] text-gray-400 mt-1 truncate max-w-[180px]" title="${escapeHtml(s.userAgent || '')}">${escapeHtml(s.browserName || s.userAgent || 'Browser')}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5">
+                    <div class="flex flex-col text-xs font-mono text-gray-300">
+                        <span>${new Date(s.enteredAt).toLocaleTimeString()}</span>
+                        <span class="text-[10px] text-gray-500">${new Date(s.enteredAt).toLocaleDateString()}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5">
+                    <div class="flex flex-col gap-1.5 min-w-[140px]">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-black text-amber-300">${escapeHtml(s.remainingFormatted)} left</span>
+                            <span class="text-[10px] font-mono text-gray-400">(${s.remainingHours}h)</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r ${barColor} rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                        </div>
+                        <span class="text-[9px] text-gray-500 font-mono">Expires: ${new Date(s.expiresAt).toLocaleTimeString()}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-1 flex-wrap">
+                        <button onclick="extendUserPasswordSession('${safeIp}', '${safeDev}', 2, 'add')" class="px-2 py-1 rounded-lg bg-gray-800 hover:bg-amber-500/20 text-gray-200 hover:text-amber-300 border border-gray-700 hover:border-amber-500/40 text-[10px] font-mono font-bold transition-all cursor-pointer" title="Add 2 Hours">+2h</button>
+                        <button onclick="extendUserPasswordSession('${safeIp}', '${safeDev}', 12, 'add')" class="px-2 py-1 rounded-lg bg-gray-800 hover:bg-amber-500/20 text-gray-200 hover:text-amber-300 border border-gray-700 hover:border-amber-500/40 text-[10px] font-mono font-bold transition-all cursor-pointer" title="Add 12 Hours">+12h</button>
+                        <button onclick="extendUserPasswordSession('${safeIp}', '${safeDev}', 24, 'add')" class="px-2 py-1 rounded-lg bg-gray-800 hover:bg-amber-500/20 text-gray-200 hover:text-amber-300 border border-gray-700 hover:border-amber-500/40 text-[10px] font-mono font-bold transition-all cursor-pointer" title="Add 24 Hours">+24h</button>
+                        <button onclick="promptCustomPasswordHours('${safeIp}', '${safeDev}')" class="px-2 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold transition-all cursor-pointer" title="Set exact custom hours">Custom</button>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="revokeUserPasswordSession('${safeIp}', '${safeDev}')" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/30 text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer" title="Revoke Password & Relock Immediately">
+                            <i data-lucide="key-round" class="w-3 h-3"></i>
+                            <span>Revoke</span>
+                        </button>
+                        <button onclick="instantKickUser('${safeIp}', '${safeDev}')" class="px-2 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-[10px] font-black uppercase transition-all cursor-pointer" title="Instant Kick">
+                            ⚡ Kick
+                        </button>
+                        <button onclick="instantBanUser('${safeIp}', '${safeDev}')" class="px-2 py-1.5 rounded-lg bg-red-600/25 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 text-[10px] font-black uppercase transition-all cursor-pointer" title="Instant Ban">
+                            🚫 Ban
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+async function revokeUserPasswordSession(ip, deviceId) {
+    try {
+        const res = await secureFetch('/api/admin/live-monitor/password-revoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, deviceId })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            showToast('Password Access Revoked', data.message, 'success');
+            loadLiveMonitorOverview();
+            loadBoundDevices();
+        } else {
+            showToast('Error', data.message || 'Failed to revoke password session', 'error');
+        }
+    } catch (e) {
+        showToast('Error', 'Failed to revoke password session', 'error');
+    }
+}
+window.revokeUserPasswordSession = revokeUserPasswordSession;
+
+async function extendUserPasswordSession(ip, deviceId, hours, mode = 'add') {
+    try {
+        const res = await secureFetch('/api/admin/live-monitor/password-extend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, deviceId, hours: Number(hours), mode })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            showToast('Password Timer Updated', data.message, 'success');
+            loadLiveMonitorOverview();
+        } else {
+            showToast('Error', data.message || 'Failed to update password hours', 'error');
+        }
+    } catch (e) {
+        showToast('Error', 'Failed to update password hours', 'error');
+    }
+}
+window.extendUserPasswordSession = extendUserPasswordSession;
+
+function promptCustomPasswordHours(ip, deviceId) {
+    const input = prompt(`Enter exact number of hours for password expiry for ${ip || deviceId} (e.g. 1, 4.5, 12, 48):`, '6');
+    if (!input) return;
+    const hours = parseFloat(input);
+    if (isNaN(hours) || hours <= 0) {
+        showToast('Invalid Hours', 'Please enter a valid positive number of hours.', 'error');
+        return;
+    }
+    extendUserPasswordSession(ip, deviceId, hours, 'set');
+}
+window.promptCustomPasswordHours = promptCustomPasswordHours;
+
+async function clearAllUnlockedSessionsConfirm() {
+    if (!confirm('Revoke password access for ALL currently unlocked IPs and devices? Every user will have to re-enter the PIN.')) return;
+    try {
+        const res = await secureFetch('/api/admin/unlocked-ips/clear', { method: 'POST' });
+        const d = await res.json();
+        if (res.ok && d.status === 'success') {
+            showToast('All Passwords Revoked', d.message, 'success');
+            loadLiveMonitorOverview();
+        }
+    } catch (e) {
+        showToast('Error', 'Failed to clear unlocked sessions', 'error');
+    }
+}
+window.clearAllUnlockedSessionsConfirm = clearAllUnlockedSessionsConfirm;
+
+async function instantKickUser(ip, deviceId) {
+    try {
+        const res = await secureFetch('/api/admin/live-monitor/kick', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ip,
+                deviceId,
+                reason: 'Your active stream and portal session were terminated by the Administrator.'
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            showToast('⚡ User Kicked Instantly', data.message, 'success');
+            loadLiveMonitorOverview();
+            loadActivity();
+            loadBoundDevices();
+        } else {
+            showToast('Error', data.message || 'Failed to kick user', 'error');
+        }
+    } catch (e) {
+        showToast('Error', 'Failed to execute instant kick', 'error');
+    }
+}
+window.instantKickUser = instantKickUser;
+
+async function instantBanUser(ip, deviceId) {
+    if (!confirm(`🚫 INSTANT BAN: Permanently blacklist IP ${ip || 'N/A'} and revoke device ${deviceId || 'N/A'}?`)) return;
+    try {
+        const res = await secureFetch('/api/admin/live-monitor/ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ip,
+                deviceId,
+                reason: 'Your IP address and hardware device have been permanently banned by the Citadel Administrator.'
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            showToast('🚫 User Banned & Blacklisted', data.message, 'success');
+            loadLiveMonitorOverview();
+            loadActivity();
+            loadBlacklist();
+            loadBoundDevices();
+        } else {
+            showToast('Error', data.message || 'Failed to ban user', 'error');
+        }
+    } catch (e) {
+        showToast('Error', 'Failed to execute instant ban', 'error');
+    }
+}
+window.instantBanUser = instantBanUser;
+
 async function loadActivity() {
     fetchSystemStatus(); // Update power switch state too
     loadServerLogs();    // Update live 36h server console
     loadBoundDevices();  // Update hardware bound devices
+    loadLiveMonitorOverview(); // Update live visitors & password ledger
 
     try {
         const res = await secureFetch('/api/admin/sessions');
@@ -1159,14 +1522,12 @@ async function loadActivity() {
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    <button onclick="terminateSession('${escapeJsString(s.ip)}')" class="px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-[10px] font-bold transition-all" title="Disconnect Session">
-                                        Disconnect
+                                    <button onclick="instantKickUser('${escapeJsString(s.ip)}', '')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/30 text-[10px] font-black transition-all cursor-pointer" title="Instant Kick User">
+                                        ⚡ Kick
                                     </button>
-                                    ${!isLoopback ? `
-                                        <button onclick="blockAndTerminateSession('${escapeJsString(s.ip)}')" class="px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-[10px] font-bold transition-all" title="Blacklist IP & Disconnect">
-                                            Block IP
-                                        </button>
-                                    ` : ''}
+                                    <button onclick="instantBanUser('${escapeJsString(s.ip)}', '')" class="px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-[10px] font-black transition-all cursor-pointer" title="Instant Ban IP">
+                                        🚫 Ban
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -1181,40 +1542,12 @@ async function loadActivity() {
 }
 
 async function terminateSession(ip) {
-    try {
-        const res = await secureFetch('/api/admin/sessions/terminate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip })
-        });
-        const d = await res.json();
-        if (res.ok && d.status === 'success') {
-            showToast('Session Terminated', d.message, 'success');
-            loadActivity();
-        }
-    } catch (e) {
-        showToast('Error', 'Failed to terminate session', 'error');
-    }
+    return instantKickUser(ip, '');
 }
 window.terminateSession = terminateSession;
 
 async function blockAndTerminateSession(ip) {
-    if (!confirm(`Are you sure you want to drop connection and blacklist IP ${ip}?`)) return;
-    try {
-        const res = await secureFetch('/api/admin/sessions/block-and-terminate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip })
-        });
-        const d = await res.json();
-        if (res.ok && d.status === 'success') {
-            showToast('IP Blacklisted', d.message, 'success');
-            loadActivity();
-            loadBlacklist();
-        }
-    } catch (e) {
-        showToast('Error', 'Failed to block IP', 'error');
-    }
+    return instantBanUser(ip, '');
 }
 window.blockAndTerminateSession = blockAndTerminateSession;
 
@@ -1350,7 +1683,7 @@ async function loadBoundDevices() {
                 list.innerHTML = `
                     <tr>
                         <td colspan="7" class="px-6 py-8 text-center text-gray-500 text-xs italic">
-                            No hardware devices currently bound. Unlock using Master PIN 2325 / 232512 to bind your device.
+                            No hardware devices currently bound. Unlock using your authorized Master PIN to bind your device.
                         </td>
                     </tr>
                 `;
@@ -1859,15 +2192,13 @@ async function submitM3U(name, url, file_content) {
             action: 'm3u_save',
             name: name,
             url: url,
-            file_content: file_content,
-            password: '2008' // Use the fallback or verify bypass
+            file_content: file_content
         };
 
-        const res = await fetch('/stalker_api.php?action=m3u_save', {
+        const res = await secureFetch('/stalker_api.php?action=m3u_save', {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         });
@@ -2093,7 +2424,7 @@ async function fetchSiteLockSettings() {
         const quickBadge = document.getElementById('quickLockBadge');
 
         if (toggle && !isLockUpdating) toggle.checked = !!data.siteLockMode;
-        if (passInput && document.activeElement !== passInput) passInput.value = data.siteLockPassword || '202012';
+        if (passInput && document.activeElement !== passInput) passInput.value = data.siteLockPassword || '';
         if (titleInput && document.activeElement !== titleInput) titleInput.value = data.siteLockTitle || '';
         if (msgInput && document.activeElement !== msgInput) msgInput.value = data.siteLockMessage || '';
         if (hintInput && document.activeElement !== hintInput) hintInput.value = data.siteLockHint || '';
@@ -2131,7 +2462,7 @@ async function saveSiteLockSettings(event) {
     const msgInput = document.getElementById('siteLockMessageInput');
     const hintInput = document.getElementById('siteLockHintInput');
 
-    const password = passInput ? passInput.value.trim() : '202012';
+    const password = passInput ? passInput.value.trim() : '';
     if (!password) {
         showToast('Password Required', 'Please provide a passcode to enable Site Lock.', 'error');
         return;
@@ -4647,26 +4978,74 @@ function getAdminAudio() {
     return audio;
 }
 
+window._adminYtPlayerReady = false;
+window._pendingAdminYtVid = null;
+window._adminYtProgressTimer = null;
+window._activeAdminIsYoutube = false;
+
+function startAdminYtProgressSync() {
+    if (window._adminYtProgressTimer) clearInterval(window._adminYtProgressTimer);
+    window._adminYtProgressTimer = setInterval(() => {
+        if (!window._activeAdminIsYoutube || !adminYtPlayer || typeof adminYtPlayer.getCurrentTime !== 'function') return;
+        try {
+            const cur = adminYtPlayer.getCurrentTime() || 0;
+            const dur = adminYtPlayer.getDuration() || 0;
+            const pct = dur > 0 ? (cur / dur) * 100 : 0;
+            const fmt = (sec) => {
+                const m = Math.floor(sec / 60);
+                const s = Math.floor(sec % 60);
+                return `${m}:${s < 10 ? '0' : ''}${s}`;
+            };
+            ['power', 'admin'].forEach(t => {
+                const bar = document.getElementById(`${t}ProgressBar`);
+                if (bar) bar.style.width = `${pct}%`;
+                const curEl = document.getElementById(`${t}CurTime`);
+                if (curEl) curEl.textContent = fmt(cur);
+                const durEl = document.getElementById(`${t}TotDur`);
+                if (durEl && dur > 0) durEl.textContent = fmt(dur);
+            });
+        } catch (e) {}
+    }, 1000);
+}
+
 window.initAdminYtPlayer = function() {
     if (adminYtPlayer) return;
+    if (!window.YT || !window.YT.Player) return;
     try {
         adminYtPlayer = new YT.Player('adminYtPlayer', {
-            height: '1',
-            width: '1',
-            videoId: '',
+            height: '200',
+            width: '200',
+            videoId: window._pendingAdminYtVid || 'jfKfPfyJRdk',
             playerVars: {
                 autoplay: 0,
                 controls: 0,
                 disablekb: 1,
                 fs: 0,
                 modestbranding: 1,
+                rel: 0,
                 playsinline: 1,
-                enablejsapi: 1
+                enablejsapi: 1,
+                origin: window.location.origin
             },
             events: {
-                onReady: () => { console.log('[Admin YT Player] Ready'); },
+                onReady: () => {
+                    window._adminYtPlayerReady = true;
+                    console.log('[Admin YT Player] Ready (music.html engine)');
+                    if (window._pendingAdminYtVid) {
+                        const vidToPlay = window._pendingAdminYtVid;
+                        window._pendingAdminYtVid = null;
+                        window.playYoutubeInAdmin(vidToPlay);
+                    }
+                },
                 onStateChange: (e) => {
-                    if (e.data === YT.PlayerState.ENDED) {
+                    if (window.YT && e.data === YT.PlayerState.PLAYING) {
+                        ['admin', 'power'].forEach(t => {
+                            const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
+                            const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
+                            if (playIcon) playIcon.classList.add('hidden');
+                            if (pauseIcon) pauseIcon.classList.remove('hidden');
+                        });
+                    } else if (window.YT && e.data === YT.PlayerState.ENDED) {
                         if (typeof window.playNextAdminTrack === 'function') window.playNextAdminTrack();
                     }
                 }
@@ -4675,8 +5054,52 @@ window.initAdminYtPlayer = function() {
     } catch(e) { console.warn("YT Player init warn:", e); }
 };
 
+window.playYoutubeInAdmin = function(ytVid, volumePct = 100) {
+    if (!ytVid) return;
+    window._activeAdminIsYoutube = true;
+    const audio = getAdminAudio();
+    if (audio) {
+        try { audio.pause(); audio.removeAttribute('src'); audio.load(); } catch(e) {}
+    }
+    const heroAud = document.getElementById('heroAdminPreviewAudio');
+    if (heroAud) {
+        try { heroAud.pause(); } catch(e) {}
+    }
+    const bgAud = document.getElementById('bgAudioPreview');
+    if (bgAud) {
+        try { bgAud.pause(); } catch(e) {}
+    }
+
+    if (adminYtPlayer && window._adminYtPlayerReady && typeof adminYtPlayer.loadVideoById === 'function') {
+        adminYtPlayer.loadVideoById(ytVid);
+        adminYtPlayer.unMute();
+        adminYtPlayer.setVolume(volumePct);
+        adminYtPlayer.playVideo();
+        startAdminYtProgressSync();
+        ['admin', 'power'].forEach(t => {
+            const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
+            const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
+            if (playIcon) playIcon.classList.add('hidden');
+            if (pauseIcon) pauseIcon.classList.remove('hidden');
+        });
+        console.log('[Admin YT Player] Playing pure YouTube via IFrame API:', ytVid);
+    } else {
+        window._pendingAdminYtVid = ytVid;
+        if (window.YT && window.YT.Player) {
+            window.initAdminYtPlayer();
+        }
+        setTimeout(() => {
+            if (window._pendingAdminYtVid === ytVid && adminYtPlayer && typeof adminYtPlayer.loadVideoById === 'function') {
+                window._adminYtPlayerReady = true;
+                window._pendingAdminYtVid = null;
+                window.playYoutubeInAdmin(ytVid, volumePct);
+            }
+        }, 900);
+    }
+};
+
 // Auto-init if shim already detected API was ready
-if (window._ytApiReady) {
+if (window._ytApiReady || (window.YT && window.YT.Player)) {
     window.initAdminYtPlayer();
 }
 
@@ -4690,7 +5113,7 @@ function extractYoutubeVideoId(urlOrId) {
         const raw = str.replace(/^(youtube_|yt_|yt-)/, '');
         if (raw.length === 11) return raw;
     }
-    if (str.includes('v=')) return str.split('v=')[1].split('&')[0];
+    if (str.includes('v=')) return decodeURIComponent(str.split('v=')[1].split('&')[0]);
     if (str.includes('youtu.be/')) return str.split('youtu.be/')[1].split('?')[0].split('&')[0];
     if (str.includes('embed/')) return str.split('embed/')[1].split('?')[0].split('&')[0];
     if (str.includes('shorts/')) return str.split('shorts/')[1].split('?')[0].split('&')[0];
@@ -4709,32 +5132,14 @@ function playAdminTrackObject(track, target = 'maintenance') {
     });
 
     const ytVid = extractYoutubeVideoId(track.videoId || track.id || track.url);
-    const isYoutube = !!ytVid || (track.url && (track.url.includes('youtube.com') || track.url.includes('youtu.be')));
+    const isYoutube = track.source === 'youtube' || !!ytVid || (track.url && (track.url.includes('youtube.com') || track.url.includes('youtu.be') || track.url.includes('/api/v1/youtube/stream')));
 
     if (isYoutube && ytVid) {
-        if (audio) {
-            try { audio.pause(); audio.src = ''; } catch(e) {}
-        }
-        if (adminYtPlayer && typeof adminYtPlayer.loadVideoById === 'function') {
-            adminYtPlayer.loadVideoById(ytVid);
-            adminYtPlayer.unMute();
-            adminYtPlayer.setVolume(100);
-            adminYtPlayer.playVideo();
-            ['admin', 'power'].forEach(t => {
-                const playIcon = document.getElementById(t === 'power' ? 'powerPlayIcon' : 'adminPlayIcon');
-                const pauseIcon = document.getElementById(t === 'power' ? 'powerPauseIcon' : 'adminPauseIcon');
-                if (playIcon) playIcon.classList.add('hidden');
-                if (pauseIcon) pauseIcon.classList.remove('hidden');
-            });
-            console.log('[Admin YT Player] Playing via IFrame API:', ytVid);
-        } else {
-            console.warn('[Admin YT Player] IFrame API not ready, attempting playback via stream proxy');
-            if (audio) {
-                audio.src = `/api/v1/youtube/stream?v=${encodeURIComponent(ytVid)}&type=audio`;
-                audio.play().catch(e => console.error("Fallback play failed:", e));
-            }
-        }
+        window.playYoutubeInAdmin(ytVid, 100);
+        return;
     } else if (audio) {
+        window._activeAdminIsYoutube = false;
+        if (window._adminYtProgressTimer) clearInterval(window._adminYtProgressTimer);
         if (adminYtPlayer && typeof adminYtPlayer.stopVideo === 'function') {
             try { adminYtPlayer.stopVideo(); } catch(e) {}
         }
@@ -4921,20 +5326,34 @@ window.clickAdminTag = function(tag, target = 'power') {
 };
 
 window.seekAdminAudio = function(event, target = 'power') {
-    const audio = getAdminAudio();
-    if (!audio || !audio.duration || !event || !event.currentTarget) return;
+    if (!event || !event.currentTarget) return;
     const rect = event.currentTarget.getBoundingClientRect();
     if (!rect || !rect.width) return;
-    const pos = (event.clientX - rect.left) / rect.width;
+    const pos = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+
+    if (window._activeAdminIsYoutube && adminYtPlayer && typeof adminYtPlayer.getDuration === 'function') {
+        const dur = adminYtPlayer.getDuration() || 0;
+        if (dur > 0) adminYtPlayer.seekTo(pos * dur, true);
+        return;
+    }
+    const audio = getAdminAudio();
+    if (!audio || !audio.duration) return;
     audio.currentTime = pos * audio.duration;
 };
 
 window.setAdminVolume = function(val, target = 'power') {
+    const numVal = parseFloat(val);
     const audio = getAdminAudio();
-    if (audio) audio.volume = parseFloat(val);
+    if (audio) audio.volume = numVal;
+    if (adminYtPlayer && typeof adminYtPlayer.setVolume === 'function') {
+        try {
+            adminYtPlayer.setVolume(Math.round(numVal * 100));
+            if (numVal > 0 && typeof adminYtPlayer.unMute === 'function') adminYtPlayer.unMute();
+        } catch (e) {}
+    }
     const icon = document.getElementById(target === 'power' ? 'powerVolIcon' : 'adminVolIcon');
     if (icon) {
-        if (parseFloat(val) === 0) icon.setAttribute('data-lucide', 'volume-x');
+        if (numVal === 0) icon.setAttribute('data-lucide', 'volume-x');
         else icon.setAttribute('data-lucide', 'volume-2');
         try { lucide.createIcons(); } catch(e) {}
     }
@@ -5088,7 +5507,7 @@ const CURATED_MUSIC_CATALOG = [
 
 window.searchAdminMusic = async function(target = 'maintenance') {
     if (window._adminActiveMusicSource === 'upload') {
-        const fileInput = document.getElementById(target === 'power' ? 'powerAudioUpload' : 'maintenanceAudioUpload');
+        const fileInput = document.getElementById(target === 'power' ? 'powerAudioUpload' : (target === 'bgAudio' ? 'bgAudioUpload' : 'maintenanceAudioUpload'));
         if (fileInput) fileInput.click();
         return;
     }
@@ -5098,11 +5517,11 @@ window.searchAdminMusic = async function(target = 'maintenance') {
     if (!resultsDiv) return;
 
     if (!query && window._adminActiveMusicSource !== 'curated') {
-        showToast('Info', 'Please enter a search query or track URL first', 'info');
+        showToast('Info', 'Please enter a search query, YouTube link/ID, or track URL first', 'info');
         return;
     }
 
-    resultsDiv.innerHTML = '<div class="text-center py-2 text-slate-400 animate-pulse text-xs font-semibold">Searching high-fidelity audio streams...</div>';
+    resultsDiv.innerHTML = '<div class="text-center py-2 text-slate-400 animate-pulse text-xs font-semibold">Searching high-fidelity audio & YouTube streams...</div>';
     resultsDiv.classList.remove('hidden');
 
     try {
@@ -5110,16 +5529,28 @@ window.searchAdminMusic = async function(target = 'maintenance') {
         let fetchedSuccess = false;
         const source = window._adminActiveMusicSource || 'saavn';
 
+        // Check if a bare 11-char YouTube Video ID was pasted directly
+        if (/^[a-zA-Z0-9_-]{11}$/.test(query)) {
+            adminTracksQueue = [{
+                id: 'youtube_' + query,
+                title: 'YouTube Audio (' + query + ')',
+                artist: 'YouTube Video ID',
+                img: `https://i.ytimg.com/vi/${query}/hqdefault.jpg`,
+                url: `/api/v1/youtube/stream?v=${encodeURIComponent(query)}&type=audio`
+            }];
+            fetchedSuccess = true;
+        }
         // Check if direct audio stream URL or service link was provided
-        if (query.startsWith('http://') || query.startsWith('https://')) {
+        else if (query.startsWith('http://') || query.startsWith('https://')) {
             if (query.includes('youtube.com') || query.includes('youtu.be')) {
                 let vid = '';
                 if (query.includes('v=')) vid = query.split('v=')[1].split('&')[0];
                 else if (query.includes('youtu.be/')) vid = query.split('youtu.be/')[1].split('?')[0].split('&')[0];
+                else if (query.includes('shorts/')) vid = query.split('shorts/')[1].split('?')[0].split('&')[0];
                 else if (query.includes('embed/')) vid = query.split('embed/')[1].split('?')[0].split('&')[0];
                 adminTracksQueue = [{
                     id: 'youtube_' + (vid || Math.random().toString(36).substr(2, 9)),
-                    title: 'YouTube Audio Stream',
+                    title: vid ? `YouTube Audio (${vid})` : 'YouTube Audio Stream',
                     artist: 'YouTube',
                     img: vid ? `https://i.ytimg.com/vi/${vid}/hqdefault.jpg` : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150',
                     url: `/api/v1/youtube/stream?v=${encodeURIComponent(vid || query)}&type=audio`
@@ -5236,18 +5667,22 @@ window.searchAdminMusic = async function(target = 'maintenance') {
 
         // Source 4: Local Multi-Provider API /api/music/search
         
-        // Source 5: YouTube API
+        // Source 5: YouTube API (same endpoint & format as music.html)
         if (!fetchedSuccess && source === 'youtube') {
             try {
-                const searchRes = await fetch(`/api/v1/youtube/search?q=${encodeURIComponent(query)}`);
+                const searchRes = await fetch(`/api/music/yt-search-full?q=${encodeURIComponent(query)}`);
                 const responseJson = await searchRes.json();
-                if (responseJson && responseJson.results && responseJson.results.length > 0) {
-                    adminTracksQueue = responseJson.results.map(item => ({
-                        id: 'youtube_' + item.videoId,
+                const ytList = (responseJson && responseJson.results) ? responseJson.results : [];
+                if (ytList.length > 0) {
+                    adminTracksQueue = ytList.map(item => ({
+                        id: 'yt_' + item.videoId,
+                        videoId: item.videoId,
                         title: item.title || 'YouTube Audio',
-                        artist: item.author || 'YouTube Channel',
-                        img: item.thumbnail || 'https://images.unsplash.com/photo-1614680376593-902f74fa0d41?w=100',
-                        url: '/api/v1/youtube/stream?v=' + encodeURIComponent(item.videoId) + '&type=audio&title=' + encodeURIComponent(item.title || '') + '&artist=' + encodeURIComponent(item.author || '')
+                        artist: (item.author && item.author.name) ? item.author.name : (item.author || 'YouTube Channel'),
+                        img: item.thumbnail || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+                        duration: item.timestamp || '',
+                        source: 'youtube',
+                        url: `https://www.youtube.com/watch?v=${item.videoId}`
                     }));
                     fetchedSuccess = true;
                 }
@@ -5363,9 +5798,13 @@ window.searchAdminMusic = async function(target = 'maintenance') {
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
                     ${target === 'bgAudio' ? `
-                    <button type="button" onclick="selectAdminTrack(${idx}, 'bgAudio')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/30">
-                        <svg class="w-3.5 h-3.5 fill-none stroke-currentColor stroke-[3]" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-                        <span>Select Track</span>
+                    <button type="button" onclick="selectAdminTrack(${idx}, 'bgAudio')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px] cursor-pointer flex items-center gap-1 transition-all shadow-md shadow-indigo-600/30" title="Set as Primary & Add to Playlist">
+                        <svg class="w-3 h-3 fill-none stroke-currentColor stroke-[3]" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                        <span>Select</span>
+                    </button>
+                    <button type="button" onclick="addTrackToBgAudioPlaylist(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px] cursor-pointer flex items-center gap-1 transition-all shadow-md shadow-emerald-600/30" title="Add Song to Multi-Song Queue">
+                        <svg class="w-3.5 h-3.5 fill-currentColor" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <span>+ Playlist</span>
                     </button>
                     ` : `
                     <button type="button" onclick="selectAdminTrack(${idx}, '${target}')" class="bg-pink-600/30 hover:bg-pink-600 text-pink-300 hover:text-white font-bold px-2.5 py-1 rounded-lg text-[10px] cursor-pointer flex items-center gap-1 transition-all" title="Preview Play">
@@ -5410,20 +5849,35 @@ window.selectAdminTrack = function(idx, target = 'maintenance') {
         const imgEl = document.getElementById('bgAudioSelectedImg');
         const preview = document.getElementById('bgAudioPreview');
 
-        if (urlEl) urlEl.value = track.url;
-        if (typeEl) typeEl.value = 'audio';
+        const ytVid = extractYoutubeVideoId(track.videoId || track.id || track.url);
+        const isYt = track.source === 'youtube' || !!ytVid || String(track.url || '').includes('/api/v1/youtube/stream') || String(track.url || '').includes('youtube.com') || String(track.url || '').includes('youtu.be');
+        if (urlEl) urlEl.value = isYt && ytVid ? `https://www.youtube.com/watch?v=${ytVid}` : track.url;
+        if (typeEl) typeEl.value = isYt ? 'youtube' : 'audio';
         if (titleEl) titleEl.innerText = track.title;
         if (artistEl) artistEl.innerText = track.artist;
         if (imgEl) imgEl.src = track.img || '/assets/vinyl_placeholder.png';
-        if (preview) {
-            preview.src = track.url;
+        if (isYt && ytVid) {
+            if (preview) {
+                try { preview.pause(); preview.removeAttribute('src'); } catch (e) {}
+                preview.classList.add('hidden');
+            }
+            window.playYoutubeInAdmin(ytVid, 100);
+        } else if (preview) {
+            window._activeAdminIsYoutube = false;
+            if (adminYtPlayer && typeof adminYtPlayer.stopVideo === 'function') {
+                try { adminYtPlayer.stopVideo(); } catch (e) {}
+            }
+            preview.src = track.url && track.url.startsWith('http') ? '/api/music/proxy?url=' + encodeURIComponent(track.url) : track.url;
             preview.classList.remove('hidden');
             preview.play().catch(() => {});
+        }
+        if (typeof window.addTrackToBgAudioPlaylist === 'function') {
+            window.addTrackToBgAudioPlaylist(idx, true);
         }
         const resultsDiv = document.getElementById('bgAudioResults');
         if (resultsDiv) resultsDiv.classList.add('hidden');
         if (typeof showToast === 'function') {
-            showToast('Success', `Selected "${track.title}" for Global Ambient Audio! Click "Save Global Audio Configuration" to apply live.`, 'success');
+            showToast('Success', `Selected "${track.title}" & playing preview! Click "Save Global Audio Configuration" to apply live.`, 'success');
         }
         return;
     }
@@ -6208,8 +6662,11 @@ function renderSportsStreams(sports) {
         const currentContainer = adminSportsContainers.find(c => c.id === (s.containerId || 'default_showcase'));
         const containerName = currentContainer ? currentContainer.title : 'Showcase Container';
         
+        const isHomeSpotlight = Boolean(s.inHomeSpotlight || s.isMainHomeSpotlight);
+        const isLiveNow = Boolean(s.inLiveNowHome || s.isLiveNowSpotlight);
+
         return `
-        <div class="p-5 rounded-2xl border border-gray-800 bg-gray-950/60 hover:bg-gray-900/50 transition-all flex flex-col justify-between gap-4 text-left relative overflow-hidden group shadow-lg">
+        <div class="p-5 rounded-2xl border ${isHomeSpotlight ? 'border-amber-500/50 ring-1 ring-amber-500/20' : 'border-gray-800'} bg-gray-950/60 hover:bg-gray-900/50 transition-all flex flex-col justify-between gap-3.5 text-left relative overflow-hidden group shadow-lg">
             ${hasBg ? `
                 <div class="absolute inset-0 bg-cover bg-center opacity-15 group-hover:opacity-25 transition-opacity pointer-events-none" style="background-image: url('${s.bgUrl}');"></div>
             ` : ''}
@@ -6244,6 +6701,18 @@ function renderSportsStreams(sports) {
                     `).join('')}
                 </select>
             </div>
+
+            <!-- 1-Click Tick Marks: Set in Home Spotlight & Set in Live Now Home -->
+            <div class="relative z-10 grid grid-cols-2 gap-2 bg-black/50 p-2 rounded-xl border border-gray-800/80">
+                <label class="flex items-center gap-2 cursor-pointer text-[10px] font-bold ${isHomeSpotlight ? 'text-amber-300' : 'text-gray-400'} hover:text-amber-300 transition-colors">
+                    <input type="checkbox" ${isHomeSpotlight ? 'checked' : ''} onchange="toggleSportsPlacementTick('${s.id}', 'inHomeSpotlight', this.checked)" class="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer">
+                    <span class="truncate">Home Spotlight</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-[10px] font-bold ${isLiveNow ? 'text-red-300' : 'text-gray-400'} hover:text-red-300 transition-colors">
+                    <input type="checkbox" ${isLiveNow ? 'checked' : ''} onchange="toggleSportsPlacementTick('${s.id}', 'inLiveNowHome', this.checked)" class="w-3.5 h-3.5 accent-red-500 rounded cursor-pointer">
+                    <span class="truncate">Live Now Home</span>
+                </label>
+            </div>
             
             <div class="flex items-center justify-between border-t border-gray-800/60 pt-3 mt-0.5 relative z-10">
                 <div class="flex items-center gap-2">
@@ -6253,9 +6722,12 @@ function renderSportsStreams(sports) {
                     <button onclick="playSportsStream('${s.url}', '${(s.title || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1.5 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-[9px] font-bold uppercase tracking-wider text-red-400 rounded-lg transition-all flex items-center gap-1">
                         <i data-lucide="play" class="w-3 h-3"></i> Play
                     </button>
+                    <button onclick="promoteItemToSpotlight('home', '${(s.title || '').replace(/'/g, "\\'")}', '${(s.url || '').replace(/'/g, "\\'")}', '${(s.bgUrl || '').replace(/'/g, "\\'")}', '${(s.playerPng || '').replace(/'/g, "\\'")}')" class="px-2 py-1.5 bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/30 text-[9px] font-bold uppercase tracking-wider text-amber-300 rounded-lg transition-all flex items-center gap-1" title="Set as Main Home Spotlight Event">
+                        <i data-lucide="crown" class="w-3 h-3"></i> Main Hero
+                    </button>
                 </div>
                 <div class="flex items-center gap-1">
-                    <button onclick="openEditSportsModal('${s.id}', '${(s.title || '').replace(/'/g, "\\'")}', '${(s.icon || '').replace(/'/g, "\\'")}', '${(s.url || '').replace(/'/g, "\\'")}', '${(s.bgUrl || '').replace(/'/g, "\\'")}', '${s.containerId || 'default_showcase'}')" class="p-1.5 hover:bg-gray-900 rounded-lg text-gray-400 hover:text-white transition-colors" title="Edit Stream">
+                    <button onclick="openEditSportsModal('${s.id}', '${(s.title || '').replace(/'/g, "\\'")}', '${(s.icon || '').replace(/'/g, "\\'")}', '${(s.url || '').replace(/'/g, "\\'")}', '${(s.bgUrl || '').replace(/'/g, "\\'")}', '${s.containerId || 'default_showcase'}', ${isHomeSpotlight}, ${isLiveNow})" class="p-1.5 hover:bg-gray-900 rounded-lg text-gray-400 hover:text-white transition-colors" title="Edit Stream">
                         <i data-lucide="edit-3" class="w-4 h-4"></i>
                     </button>
                     <button onclick="deleteSportsStream('${s.id}')" class="p-1.5 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors" title="Delete Stream">
@@ -6269,6 +6741,26 @@ function renderSportsStreams(sports) {
     lucide.createIcons();
 }
 window.renderSportsStreams = renderSportsStreams;
+
+async function toggleSportsPlacementTick(id, field, checked) {
+    try {
+        const res = await secureFetch(`/api/admin/sports/${id}/placement`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [field]: Boolean(checked) })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            showToast('Channel Placement Updated', `${field === 'inHomeSpotlight' ? 'Home Spotlight' : 'Live Now Home'} ${checked ? 'enabled' : 'disabled'}!`, 'success');
+            loadSportsStreams();
+        } else {
+            showToast('Error', data.message || 'Failed to update placement', 'error');
+        }
+    } catch (e) {
+        showToast('Error', 'Failed to update channel placement', 'error');
+    }
+}
+window.toggleSportsPlacementTick = toggleSportsPlacementTick;
 
 function toggleSportsModal(show) {
     document.getElementById('sportsModal').classList.toggle('hidden', !show);
@@ -6318,6 +6810,8 @@ function openNewSportsModal() {
     document.getElementById('sportsIcon').value = "trophy";
     document.getElementById('sportsUrl').value = "";
     if (document.getElementById('sportsBgUrl')) document.getElementById('sportsBgUrl').value = "";
+    if (document.getElementById('sportsInHomeSpotlight')) document.getElementById('sportsInHomeSpotlight').checked = false;
+    if (document.getElementById('sportsInLiveNowHome')) document.getElementById('sportsInLiveNowHome').checked = true;
     
     const containerSelect = document.getElementById('sportsContainerSelect');
     if (containerSelect) {
@@ -6328,7 +6822,7 @@ function openNewSportsModal() {
 }
 window.openNewSportsModal = openNewSportsModal;
 
-function openEditSportsModal(id, title, icon, url, bgUrl, containerId) {
+function openEditSportsModal(id, title, icon, url, bgUrl, containerId, inHomeSpotlight = false, inLiveNowHome = false) {
     const searchInp = document.getElementById('sportsQuickSearchInput');
     if (searchInp) searchInp.value = '';
     const clearBtn = document.getElementById('btnClearSportsQuickSearch');
@@ -6347,6 +6841,12 @@ function openEditSportsModal(id, title, icon, url, bgUrl, containerId) {
     if (document.getElementById('sportsBgUrl')) {
         document.getElementById('sportsBgUrl').value = bgUrl || '';
     }
+    if (document.getElementById('sportsInHomeSpotlight')) {
+        document.getElementById('sportsInHomeSpotlight').checked = Boolean(inHomeSpotlight);
+    }
+    if (document.getElementById('sportsInLiveNowHome')) {
+        document.getElementById('sportsInLiveNowHome').checked = Boolean(inLiveNowHome);
+    }
     const containerSelect = document.getElementById('sportsContainerSelect');
     if (containerSelect) {
         containerSelect.value = containerId || 'default_showcase';
@@ -6364,6 +6864,8 @@ async function saveSportsStream(e) {
     const url = document.getElementById('sportsUrl').value;
     const bgUrl = (document.getElementById('sportsBgUrl') ? document.getElementById('sportsBgUrl').value : '');
     const containerId = (document.getElementById('sportsContainerSelect') ? document.getElementById('sportsContainerSelect').value : 'default_showcase');
+    const inHomeSpotlight = document.getElementById('sportsInHomeSpotlight') ? document.getElementById('sportsInHomeSpotlight').checked : false;
+    const inLiveNowHome = document.getElementById('sportsInLiveNowHome') ? document.getElementById('sportsInLiveNowHome').checked : false;
 
     const method = id ? 'PUT' : 'POST';
     const endpoint = id ? `/api/admin/sports/${id}` : '/api/admin/sports';
@@ -6371,7 +6873,7 @@ async function saveSportsStream(e) {
     try {
         const res = await secureFetch(endpoint, {
             method: method,
-            body: JSON.stringify({ title, icon, url, bgUrl, containerId })
+            body: JSON.stringify({ title, icon, url, bgUrl, containerId, inHomeSpotlight, inLiveNowHome })
         });
         const result = await res.json();
         if (result.status === 'success') {
@@ -6556,45 +7058,70 @@ function renderLiveEventsList() {
         const bgStyle = hasBg 
             ? `background-image: url('${evt.bgUrl}'); background-size: cover; background-position: center;` 
             : 'background: #09090b;';
+        const isMainHome = Boolean(evt.isMainHomeSpotlight || evt.inHomeSpotlight);
+        const isLiveNow = evt.inLiveNowHome !== undefined ? Boolean(evt.inLiveNowHome) : true;
+        const safeTitle = (evt.title || '').replace(/'/g, "\\'");
+        const safeUrl = (evt.url || '').replace(/'/g, "\\'");
+        const safeBg = (evt.bgUrl || '').replace(/'/g, "\\'");
+        const safePng = (evt.playerPng || '').replace(/'/g, "\\'");
         
-        card.className = "relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl transition-all hover:scale-[1.02] hover:border-red-500/40 flex flex-col justify-between group h-64 bg-zinc-950 text-left";
+        card.className = `relative overflow-hidden rounded-3xl border ${isMainHome ? 'border-amber-400 shadow-amber-500/20 ring-1 ring-amber-400/50' : 'border-white/10'} shadow-2xl transition-all hover:scale-[1.02] hover:border-red-500/40 flex flex-col justify-between group h-80 bg-zinc-950 text-left`;
         card.innerHTML = `
-            <!-- Pure Background Image (No Blue Embed) -->
             <div class="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105" style="${bgStyle}"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent z-0 pointer-events-none"></div>
             <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent z-0 pointer-events-none"></div>
+            ${evt.playerPng ? `<img src="${evt.playerPng}" class="absolute right-1 bottom-12 h-36 w-auto object-contain pointer-events-none opacity-90 z-0 drop-shadow-2xl" onerror="this.style.display='none'">` : ''}
             
-            <div class="relative z-10 p-6 flex flex-col h-full justify-between">
-                <div class="flex items-center gap-4">
-                    ${iconHtml}
-                    <div class="min-w-0">
-                        <h4 class="text-white font-black text-xl drop-shadow-md truncate" title="${evt.title}">${evt.title}</h4>
-                        <p class="text-[10px] text-red-400 font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5 drop-shadow">
-                            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                            <span>LIVE EVENT</span>
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="my-auto">
-                    <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 border border-white/10 overflow-hidden relative group/url">
-                        <p class="text-xs text-gray-300 font-mono truncate cursor-pointer hover:text-white transition-colors" title="${evt.url}" onclick="copyText('${evt.url}')">${evt.url}</p>
-                        <div class="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/url:opacity-100 transition-opacity">
-                            <i data-lucide="copy" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <div class="relative z-10 p-5 flex flex-col h-full justify-between">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        ${iconHtml}
+                        <div class="min-w-0">
+                            <h4 class="text-white font-black text-lg drop-shadow-md truncate" title="${evt.title}">${evt.title}</h4>
+                            <div class="flex items-center gap-1.5 flex-wrap mt-1">
+                                <span class="text-[10px] text-red-400 font-bold uppercase tracking-widest flex items-center gap-1 drop-shadow">
+                                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    <span>${evt.badge || 'LIVE EVENT'}</span>
+                                </span>
+                                ${isMainHome ? `<span class="px-2 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow"><i data-lucide="crown" class="w-2.5 h-2.5"></i> HOME SPOTLIGHT</span>` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="flex items-center gap-2 pt-2">
-                    <button onclick="playSportsStream('${evt.url}', '${encodeURIComponent(evt.title)}')" class="flex-1 py-2.5 bg-red-600/30 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border border-red-500/40 shadow-lg">
-                        <i data-lucide="play" class="w-4 h-4 text-white fill-white"></i> Preview
-                    </button>
-                    <button onclick="editLiveEvent('${evt.id}')" class="px-4 py-2.5 bg-zinc-900/80 hover:bg-amber-500/20 text-gray-300 hover:text-amber-300 rounded-xl transition-colors border border-white/10 hover:border-amber-500/40 backdrop-blur-sm" title="Edit Event">
-                        <i data-lucide="edit" class="w-4 h-4"></i>
-                    </button>
-                    <button onclick="deleteLiveEvent('${evt.id}')" class="px-4 py-2.5 bg-zinc-900/80 hover:bg-red-500/20 text-gray-300 hover:text-red-400 rounded-xl transition-colors border border-white/10 hover:border-red-500/40 backdrop-blur-sm" title="Delete Event">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
+                <div class="my-auto space-y-2">
+                    <div class="bg-black/60 backdrop-blur-md rounded-xl p-2 border border-white/10 overflow-hidden relative group/url">
+                        <p class="text-[11px] text-gray-300 font-mono truncate cursor-pointer hover:text-white transition-colors" title="${evt.url}" onclick="copyText('${safeUrl}')">${evt.url}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 bg-black/70 backdrop-blur-md p-2 rounded-xl border border-white/10">
+                        <label class="flex items-center gap-2 cursor-pointer text-[10px] font-bold ${isMainHome ? 'text-amber-300' : 'text-gray-300'} hover:text-amber-300">
+                            <input type="checkbox" ${isMainHome ? 'checked' : ''} onchange="toggleLiveEventPlacementTick('${evt.id}', 'inHomeSpotlight', this.checked)" class="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer">
+                            <span class="truncate">Home Spotlight</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer text-[10px] font-bold ${isLiveNow ? 'text-red-300' : 'text-gray-300'} hover:text-red-300">
+                            <input type="checkbox" ${isLiveNow ? 'checked' : ''} onchange="toggleLiveEventPlacementTick('${evt.id}', 'inLiveNowHome', this.checked)" class="w-3.5 h-3.5 accent-red-500 rounded cursor-pointer">
+                            <span class="truncate">Live Now Home</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="space-y-2 pt-1">
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="promoteItemToSpotlight('home', '${safeTitle}', '${safeUrl}', '${safeBg}', '${safePng}', '${evt.id}')" class="flex-1 py-1.5 px-2.5 ${isMainHome ? 'bg-amber-500 text-black font-black' : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black font-bold'} rounded-xl text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 border border-amber-500/40 shadow">
+                            <i data-lucide="crown" class="w-3 h-3"></i> ${isMainHome ? 'Active Home Spotlight' : 'Set as Home Main Spotlight'}
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="playSportsStream('${safeUrl}', '${encodeURIComponent(evt.title)}')" class="flex-1 py-2 bg-red-600/30 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border border-red-500/40 shadow-lg">
+                            <i data-lucide="play" class="w-3.5 h-3.5 text-white fill-white"></i> Preview
+                        </button>
+                        <button onclick="editLiveEvent('${evt.id}')" class="px-3.5 py-2 bg-zinc-900/80 hover:bg-amber-500/20 text-gray-300 hover:text-amber-300 rounded-xl transition-colors border border-white/10 hover:border-amber-500/40 backdrop-blur-sm" title="Edit Event">
+                            <i data-lucide="edit" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteLiveEvent('${evt.id}')" class="px-3.5 py-2 bg-zinc-900/80 hover:bg-red-500/20 text-gray-300 hover:text-red-400 rounded-xl transition-colors border border-white/10 hover:border-red-500/40 backdrop-blur-sm" title="Delete Event">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -6602,6 +7129,26 @@ function renderLiveEventsList() {
     });
     lucide.createIcons();
 }
+
+async function toggleLiveEventPlacementTick(id, field, checked) {
+    try {
+        const res = await secureFetch(`/api/admin/live_events/${id}/placement`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [field]: Boolean(checked) })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            showToast('Event Placement Updated', `${field === 'inHomeSpotlight' ? 'Home Spotlight' : 'Live Now Home'} ${checked ? 'enabled' : 'disabled'}!`, 'success');
+            fetchLiveEvents();
+        } else {
+            showToast('Error', data.message || 'Failed to update placement', 'error');
+        }
+    } catch (e) {
+        showToast('Error', 'Failed to update event placement', 'error');
+    }
+}
+window.toggleLiveEventPlacementTick = toggleLiveEventPlacementTick;
 
 window.toggleLiveEventsModal = toggleLiveEventsModal;
 window.openNewLiveEventModal = openNewLiveEventModal;
@@ -6614,13 +7161,26 @@ function toggleLiveEventsModal(show) {
     else modal.classList.add('hidden');
 }
 
+function populateLiveEventsContainerDropdown() {
+    const sel = document.getElementById('liveEventsContainerSelect');
+    if (!sel) return;
+    const containers = (window.ssState && Array.isArray(window.ssState.liveEventsContainers) && window.ssState.liveEventsContainers.length > 0)
+        ? window.ssState.liveEventsContainers
+        : [{ id: 'liveevents_main', title: 'LIVE EVENTS & PAY-PER-VIEW' }];
+    sel.innerHTML = containers.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+}
+
 function openNewLiveEventModal() {
+    populateLiveEventsContainerDropdown();
     document.getElementById('liveEventsModalTitle').innerHTML = '<i data-lucide="zap" class="w-5 h-5 text-red-500"></i> Add Live Event';
     document.getElementById('liveEventsId').value = '';
     document.getElementById('liveEventsTitle').value = '';
     document.getElementById('liveEventsIcon').value = '';
     document.getElementById('liveEventsUrl').value = '';
     if(document.getElementById('liveEventsBgUrl')) document.getElementById('liveEventsBgUrl').value = '';
+    if(document.getElementById('liveEventsPlayerPng')) document.getElementById('liveEventsPlayerPng').value = '';
+    if(document.getElementById('liveEventsIsMainHomeSpotlight')) document.getElementById('liveEventsIsMainHomeSpotlight').checked = false;
+    if(document.getElementById('liveEventsInLiveNowHome')) document.getElementById('liveEventsInLiveNowHome').checked = true;
     toggleLiveEventsModal(true);
     lucide.createIcons();
 }
@@ -6628,6 +7188,7 @@ function openNewLiveEventModal() {
 function editLiveEvent(id) {
     const evt = adminLiveEvents.find(s => s.id === id);
     if (!evt) return;
+    populateLiveEventsContainerDropdown();
     document.getElementById('liveEventsModalTitle').innerHTML = '<i data-lucide="edit" class="w-5 h-5 text-amber-500"></i> Edit Live Event';
     document.getElementById('liveEventsId').value = evt.id;
     document.getElementById('liveEventsTitle').value = evt.title || '';
@@ -6635,6 +7196,18 @@ function editLiveEvent(id) {
     document.getElementById('liveEventsUrl').value = evt.url || '';
     if (document.getElementById('liveEventsBgUrl')) {
         document.getElementById('liveEventsBgUrl').value = evt.bgUrl || '';
+    }
+    if (document.getElementById('liveEventsPlayerPng')) {
+        document.getElementById('liveEventsPlayerPng').value = evt.playerPng || '';
+    }
+    if (document.getElementById('liveEventsContainerSelect')) {
+        document.getElementById('liveEventsContainerSelect').value = evt.containerId || 'liveevents_main';
+    }
+    if (document.getElementById('liveEventsIsMainHomeSpotlight')) {
+        document.getElementById('liveEventsIsMainHomeSpotlight').checked = Boolean(evt.isMainHomeSpotlight || evt.inHomeSpotlight);
+    }
+    if (document.getElementById('liveEventsInLiveNowHome')) {
+        document.getElementById('liveEventsInLiveNowHome').checked = evt.inLiveNowHome !== undefined ? Boolean(evt.inLiveNowHome) : true;
     }
     toggleLiveEventsModal(true);
     lucide.createIcons();
@@ -6647,8 +7220,12 @@ async function saveLiveEventStream(e) {
     const icon = document.getElementById('liveEventsIcon').value;
     const url = document.getElementById('liveEventsUrl').value;
     const bgUrl = document.getElementById('liveEventsBgUrl') ? document.getElementById('liveEventsBgUrl').value : '';
+    const playerPng = document.getElementById('liveEventsPlayerPng') ? document.getElementById('liveEventsPlayerPng').value : '';
+    const containerId = document.getElementById('liveEventsContainerSelect') ? document.getElementById('liveEventsContainerSelect').value : 'liveevents_main';
+    const isMainHomeSpotlight = document.getElementById('liveEventsIsMainHomeSpotlight') ? document.getElementById('liveEventsIsMainHomeSpotlight').checked : false;
+    const inLiveNowHome = document.getElementById('liveEventsInLiveNowHome') ? document.getElementById('liveEventsInLiveNowHome').checked : true;
     
-    const payload = { title, icon, url, bgUrl };
+    const payload = { title, icon, url, bgUrl, playerPng, containerId, isMainHomeSpotlight, inHomeSpotlight: isMainHomeSpotlight, inLiveNowHome };
     const method = id ? 'PUT' : 'POST';
     const endpoint = id ? `/api/admin/live_events/${id}` : '/api/admin/live_events';
     
@@ -6660,9 +7237,10 @@ async function saveLiveEventStream(e) {
         const data = await res.json();
         
         if (data.status === 'success') {
-            showToast('Success', id ? 'Live Event updated.' : 'Live Event added.', 'success');
+            showToast('Success', isMainHomeSpotlight ? 'Live Event saved & promoted to Main Home Spotlight!' : (id ? 'Live Event updated.' : 'Live Event added.'), 'success');
             toggleLiveEventsModal(false);
             fetchLiveEvents();
+            if (typeof loadSpotlightStudioAll === 'function') loadSpotlightStudioAll();
         } else {
             showToast('Error', data.message || 'Failed to save', 'error');
         }
@@ -9859,22 +10437,47 @@ async function loadGlobalBackgroundConfig() {
                 document.getElementById('bgHeroType').value = typeof data.backgrounds.hero === 'object' ? (data.backgrounds.hero.type || 'auto') : 'auto';
                 document.getElementById('bgHero').value = typeof data.backgrounds.hero === 'object' ? (data.backgrounds.hero.url || '') : data.backgrounds.hero;
             }
+            if (data.backgrounds.youtube && document.getElementById('bgYoutubeType')) {
+                document.getElementById('bgYoutubeType').value = typeof data.backgrounds.youtube === 'object' ? (data.backgrounds.youtube.type || 'auto') : 'auto';
+                document.getElementById('bgYoutube').value = typeof data.backgrounds.youtube === 'object' ? (data.backgrounds.youtube.url || '') : data.backgrounds.youtube;
+            }
             
-            if (data.backgrounds.globalAudio && data.backgrounds.globalAudio.url) {
+            if (data.backgrounds.globalAudio && (data.backgrounds.globalAudio.url || (Array.isArray(data.backgrounds.globalAudio.playlist) && data.backgrounds.globalAudio.playlist.length > 0))) {
+                const ga = data.backgrounds.globalAudio;
+                window.bgAudioPlaylist = Array.isArray(ga.playlist) && ga.playlist.length > 0
+                    ? ga.playlist.map(item => ({
+                        url: item.url || '',
+                        title: item.title || 'Ambient Track',
+                        artist: item.artist || '',
+                        thumbnail: item.thumbnail || item.img || '/assets/vinyl_placeholder.png',
+                        type: item.type || (String(item.url || '').includes('youtube') ? 'youtube' : 'audio')
+                    })).filter(item => item.url)
+                    : (ga.url ? [{
+                        url: ga.url,
+                        title: ga.title || 'Selected Audio',
+                        artist: ga.artist || '',
+                        thumbnail: ga.thumbnail || '/assets/vinyl_placeholder.png',
+                        type: ga.type || 'audio'
+                    }] : []);
+
+                const primaryTrack = window.bgAudioPlaylist[0] || ga;
                 if(document.getElementById('bgAudioUrl')) {
-                    document.getElementById('bgAudioUrl').value = data.backgrounds.globalAudio.url;
-                    document.getElementById('bgAudioType').value = data.backgrounds.globalAudio.type || 'audio';
-                    document.getElementById('bgAudioSelectedTitle').innerText = data.backgrounds.globalAudio.title || 'Selected Audio';
-                    document.getElementById('bgAudioSelectedArtist').innerText = data.backgrounds.globalAudio.artist || '';
-                    if(data.backgrounds.globalAudio.thumbnail) document.getElementById('bgAudioSelectedImg').src = data.backgrounds.globalAudio.thumbnail;
-                    if(document.getElementById('bgAudioTarget') && data.backgrounds.globalAudio.target) {
-                        document.getElementById('bgAudioTarget').value = data.backgrounds.globalAudio.target;
+                    document.getElementById('bgAudioUrl').value = primaryTrack.url || '';
+                    document.getElementById('bgAudioType').value = primaryTrack.type || 'audio';
+                    document.getElementById('bgAudioSelectedTitle').innerText = primaryTrack.title || 'Selected Audio';
+                    document.getElementById('bgAudioSelectedArtist').innerText = primaryTrack.artist || '';
+                    if(primaryTrack.thumbnail) document.getElementById('bgAudioSelectedImg').src = primaryTrack.thumbnail;
+                    if(document.getElementById('bgAudioTarget') && ga.target) {
+                        document.getElementById('bgAudioTarget').value = ga.target;
                     }
                     const preview = document.getElementById('bgAudioPreview');
-                    if (preview) {
-                        preview.src = data.backgrounds.globalAudio.url;
+                    if (preview && primaryTrack.url) {
+                        preview.src = primaryTrack.url;
                         preview.classList.remove('hidden');
                     }
+                }
+                if (typeof window.renderBgAudioPlaylist === 'function') {
+                    window.renderBgAudioPlaylist();
                 }
             }
             if (document.getElementById('bgMusicUseSongVideo')) {
@@ -9902,6 +10505,7 @@ document.getElementById('backgroundConfigForm')?.addEventListener('submit', asyn
         consumet: { type: document.getElementById('bgConsumetType').value, url: document.getElementById('bgConsumet').value },
         music: { type: document.getElementById('bgMusicType').value, url: document.getElementById('bgMusic').value },
         hero: { type: document.getElementById('bgHeroType').value, url: document.getElementById('bgHero').value },
+        youtube: { type: document.getElementById('bgYoutubeType')?.value || 'auto', url: document.getElementById('bgYoutube')?.value || '' },
         musicUseSongVideo: document.getElementById('bgMusicUseSongVideo').checked
     };
     
@@ -9923,6 +10527,154 @@ document.getElementById('backgroundConfigForm')?.addEventListener('submit', asyn
     }
 });
 
+window.bgAudioPlaylist = window.bgAudioPlaylist || [];
+
+window.renderBgAudioPlaylist = function() {
+    const listEl = document.getElementById('bgAudioPlaylistList');
+    const badgeEl = document.getElementById('bgAudioPlaylistCountBadge');
+    const qList = Array.isArray(window.bgAudioPlaylist) ? window.bgAudioPlaylist : [];
+    if (badgeEl) {
+        badgeEl.innerText = `${qList.length} ${qList.length === 1 ? 'Song' : 'Songs'}`;
+    }
+    if (!listEl) return;
+    if (qList.length === 0) {
+        listEl.innerHTML = '<div class="text-[11px] text-slate-500 italic text-center py-2">No songs in playlist yet. Search & click "+ Playlist" or paste a YouTube/audio link above.</div>';
+        return;
+    }
+    const activeUrl = document.getElementById('bgAudioUrl')?.value || '';
+    listEl.innerHTML = qList.map((track, idx) => {
+        const isYt = String(track.type || '').toLowerCase() === 'youtube' || String(track.url || '').includes('youtube');
+        const isCurrent = activeUrl && track.url === activeUrl;
+        return `
+        <div class="flex items-center justify-between gap-2 p-2 rounded-lg border ${isCurrent ? 'bg-indigo-600/20 border-indigo-500/40' : 'bg-slate-800/70 border-slate-700/60'} transition-all">
+            <div onclick="playBgAudioPlaylistTrack(${idx})" class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer">
+                <span class="text-[10px] font-mono font-bold ${isCurrent ? 'text-indigo-300' : 'text-slate-400'} w-4 text-center">${idx + 1}</span>
+                <img src="${track.thumbnail || track.img || '/assets/vinyl_placeholder.png'}" class="w-8 h-8 rounded object-cover flex-shrink-0" onerror="this.src='/assets/vinyl_placeholder.png'">
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                        <span>${typeof escapeHtml === 'function' ? escapeHtml(track.title || 'Track ' + (idx + 1)) : (track.title || 'Track')}</span>
+                        ${isYt ? '<span class="px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 rounded">YT</span>' : ''}
+                    </div>
+                    <div class="text-[10px] text-slate-400 truncate">${typeof escapeHtml === 'function' ? escapeHtml(track.artist || 'Ambient Stream') : (track.artist || '')}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+                <button type="button" onclick="playBgAudioPlaylistTrack(${idx})" class="px-2 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white text-[10px] font-bold transition-all" title="Preview / Set Primary">Play</button>
+                <button type="button" onclick="removeTrackFromBgAudioPlaylist(${idx})" class="px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 text-[10px] font-bold transition-all" title="Remove Song">&times;</button>
+            </div>
+        </div>`;
+    }).join('');
+};
+
+window.playBgAudioPlaylistTrack = function(idx) {
+    const track = (window.bgAudioPlaylist || [])[idx];
+    if (!track) return;
+    const urlEl = document.getElementById('bgAudioUrl');
+    const typeEl = document.getElementById('bgAudioType');
+    const titleEl = document.getElementById('bgAudioSelectedTitle');
+    const artistEl = document.getElementById('bgAudioSelectedArtist');
+    const imgEl = document.getElementById('bgAudioSelectedImg');
+    const preview = document.getElementById('bgAudioPreview');
+    if (urlEl) urlEl.value = track.url;
+    if (typeEl) typeEl.value = track.type || 'audio';
+    if (titleEl) titleEl.innerText = track.title || 'Selected Audio';
+    if (artistEl) artistEl.innerText = track.artist || '';
+    if (imgEl) imgEl.src = track.thumbnail || track.img || '/assets/vinyl_placeholder.png';
+    if (preview) {
+        preview.src = track.url;
+        preview.classList.remove('hidden');
+        preview.play().catch(() => {});
+    }
+    window.renderBgAudioPlaylist();
+};
+
+window.addTrackToBgAudioPlaylist = function(idx, silent = false) {
+    const track = adminTracksQueue[idx];
+    if (!track || !track.url) return;
+    window.bgAudioPlaylist = Array.isArray(window.bgAudioPlaylist) ? window.bgAudioPlaylist : [];
+    const isYt = String(track.url).includes('/api/v1/youtube/stream') || String(track.url).includes('youtube.com') || String(track.url).includes('youtu.be');
+    const exists = window.bgAudioPlaylist.some(item => item.url === track.url);
+    if (!exists) {
+        window.bgAudioPlaylist.push({
+            url: track.url,
+            title: track.title || 'Ambient Track',
+            artist: track.artist || 'Global Audio',
+            thumbnail: track.img || '/assets/vinyl_placeholder.png',
+            type: isYt ? 'youtube' : 'audio'
+        });
+    }
+    // If no primary track is set yet, also populate primary display
+    const urlEl = document.getElementById('bgAudioUrl');
+    if (urlEl && !urlEl.value) {
+        window.playBgAudioPlaylistTrack(window.bgAudioPlaylist.length - 1);
+    } else {
+        window.renderBgAudioPlaylist();
+    }
+    if (!silent && typeof showToast === 'function') {
+        showToast('Added to Playlist', `"${track.title}" added (${window.bgAudioPlaylist.length} songs in queue).`, 'success');
+    }
+};
+
+window.addDirectUrlToBgAudioPlaylist = function() {
+    const inputEl = document.getElementById('bgAudioDirectInput');
+    const raw = (inputEl ? inputEl.value : '').trim();
+    if (!raw) {
+        if (typeof showToast === 'function') showToast('Info', 'Paste a YouTube link, YouTube Video ID, or direct audio URL first', 'info');
+        return;
+    }
+    let finalUrl = raw;
+    let title = 'Custom Audio Stream';
+    let artist = 'Direct Stream';
+    let thumbnail = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150';
+    let type = 'audio';
+
+    // Check YouTube URL or 11-char ID
+    let ytId = '';
+    if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) {
+        ytId = raw;
+    } else if (raw.includes('youtube.com') || raw.includes('youtu.be')) {
+        if (raw.includes('v=')) ytId = raw.split('v=')[1].split('&')[0];
+        else if (raw.includes('youtu.be/')) ytId = raw.split('youtu.be/')[1].split('?')[0].split('&')[0];
+        else if (raw.includes('shorts/')) ytId = raw.split('shorts/')[1].split('?')[0].split('&')[0];
+        else if (raw.includes('embed/')) ytId = raw.split('embed/')[1].split('?')[0].split('&')[0];
+    }
+
+    if (ytId) {
+        finalUrl = `/api/v1/youtube/stream?v=${encodeURIComponent(ytId)}&type=audio`;
+        title = `YouTube Audio (${ytId})`;
+        artist = 'YouTube Stream';
+        thumbnail = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+        type = 'youtube';
+    } else {
+        const cleanName = raw.split('/').pop()?.split('?')[0] || '';
+        if (cleanName) title = decodeURIComponent(cleanName);
+    }
+
+    window.bgAudioPlaylist = Array.isArray(window.bgAudioPlaylist) ? window.bgAudioPlaylist : [];
+    window.bgAudioPlaylist.push({ url: finalUrl, title, artist, thumbnail, type });
+    if (inputEl) inputEl.value = '';
+    window.playBgAudioPlaylistTrack(window.bgAudioPlaylist.length - 1);
+    if (typeof showToast === 'function') {
+        showToast('Added Song', `Added "${title}" to playlist (${window.bgAudioPlaylist.length} songs total)`, 'success');
+    }
+};
+
+window.removeTrackFromBgAudioPlaylist = function(idx) {
+    if (!Array.isArray(window.bgAudioPlaylist)) return;
+    window.bgAudioPlaylist.splice(idx, 1);
+    if (window.bgAudioPlaylist.length > 0) {
+        window.playBgAudioPlaylistTrack(0);
+    } else {
+        window.clearBgAudio();
+    }
+    window.renderBgAudioPlaylist();
+};
+
+window.clearBgAudioPlaylist = function() {
+    window.bgAudioPlaylist = [];
+    window.clearBgAudio();
+    window.renderBgAudioPlaylist();
+};
 
 window.clearBgAudio = function() {
     const urlEl = document.getElementById('bgAudioUrl');
@@ -9941,19 +10693,36 @@ window.clearBgAudio = function() {
 
 window.saveBgAudio = async function() {
     const adminToken = localStorage.getItem('adminToken') || (typeof getAdminToken === 'function' ? getAdminToken() : '') || (typeof token !== 'undefined' ? token : '');
-    const audioUrl = (document.getElementById('bgAudioUrl')?.value || '').trim();
-    if (!audioUrl) {
-        showToast('Error', 'Please select or search an audio stream track first', 'error');
+    let playlist = Array.isArray(window.bgAudioPlaylist) ? window.bgAudioPlaylist.filter(t => t && t.url) : [];
+    let audioUrl = (document.getElementById('bgAudioUrl')?.value || '').trim();
+    if (!audioUrl && playlist.length > 0) {
+        audioUrl = playlist[0].url;
+    }
+    if (!audioUrl && playlist.length === 0) {
+        showToast('Error', 'Please select, search, or add at least one song or YouTube track first', 'error');
         return;
+    }
+    const currentTrack = {
+        url: audioUrl,
+        title: document.getElementById('bgAudioSelectedTitle')?.innerText || 'Global Ambient Audio',
+        artist: document.getElementById('bgAudioSelectedArtist')?.innerText || '',
+        thumbnail: document.getElementById('bgAudioSelectedImg')?.src || '',
+        type: document.getElementById('bgAudioType')?.value || (audioUrl.includes('youtube') ? 'youtube' : 'audio')
+    };
+    if (playlist.length === 0 && audioUrl) {
+        playlist = [currentTrack];
+        window.bgAudioPlaylist = playlist;
+        window.renderBgAudioPlaylist();
     }
     const payload = {
         globalAudio: {
-            type: document.getElementById('bgAudioType')?.value || 'auto',
+            type: currentTrack.type || 'auto',
             url: audioUrl,
-            title: document.getElementById('bgAudioSelectedTitle')?.innerText || 'Global Ambient Audio',
-            artist: document.getElementById('bgAudioSelectedArtist')?.innerText || '',
-            thumbnail: document.getElementById('bgAudioSelectedImg')?.src || '',
-            target: document.getElementById('bgAudioTarget') ? document.getElementById('bgAudioTarget').value : 'global'
+            title: currentTrack.title,
+            artist: currentTrack.artist,
+            thumbnail: currentTrack.thumbnail,
+            target: document.getElementById('bgAudioTarget') ? document.getElementById('bgAudioTarget').value : 'global',
+            playlist: playlist
         }
     };
     try {
@@ -9967,7 +10736,7 @@ window.saveBgAudio = async function() {
         });
         const data = await res.json();
         if (data.status === 'success') {
-            showToast('Success', data.message || 'Global ambient audio updated successfully live!', 'success');
+            showToast('Success', `Saved Global Audio Playlist (${playlist.length} ${playlist.length === 1 ? 'song' : 'songs'}) live!`, 'success');
         } else {
             showToast('Error', data.message || 'Failed to save global audio: ' + (data.message || 'Error'), 'error');
         }
@@ -9980,7 +10749,7 @@ window.handleAdminAudioUpload = async function(event, target = 'maintenance') {
     const file = event.target.files[0];
     if (!file) return;
     
-    const resultsDiv = document.getElementById(target === 'power' ? 'powerMusicResults' : 'adminMusicResults');
+    const resultsDiv = document.getElementById(target === 'power' ? 'powerMusicResults' : (target === 'bgAudio' ? 'bgAudioResults' : 'adminMusicResults'));
     if (resultsDiv) {
         resultsDiv.innerHTML = '<div class="text-center py-2 text-slate-400 animate-pulse text-xs font-semibold">Uploading audio file...</div>';
         resultsDiv.classList.remove('hidden');
@@ -10008,9 +10777,9 @@ window.handleAdminAudioUpload = async function(event, target = 'maintenance') {
             }];
             window.selectAdminTrack(0, target);
             if (resultsDiv) {
-                resultsDiv.innerHTML = '<div class="text-center py-2 text-emerald-400 text-xs font-semibold">Upload complete! Track loaded.</div>';
+                resultsDiv.innerHTML = '<div class="text-center py-2 text-emerald-400 text-xs font-semibold">Upload complete! Track loaded & added to playlist.</div>';
             }
-            const queryInput = document.getElementById(target === 'power' ? 'powerMusicQuery' : 'maintenanceMusicQuery');
+            const queryInput = document.getElementById(target === 'power' ? 'powerMusicQuery' : (target === 'bgAudio' ? 'bgAudioQuery' : 'maintenanceMusicQuery'));
             if (queryInput) queryInput.value = result.fileUrl;
         } else {
             showToast('Error', result.message || 'Upload failed', 'error');
@@ -12371,6 +13140,10 @@ function renderMarkdownSafely(text) {
    ========================================================================== */
 let activeHeroConfig = null;
 let currentHeroMusicSourceType = 'jiosaavn';
+let heroAssetTargetField = null;
+let heroAssetTargetPreview = null;
+let heroAssetTargetType = null;
+let cachedHeroAssets = null;
 
 async function loadHeroConfig() {
     try {
@@ -12389,23 +13162,38 @@ async function loadHeroConfig() {
 function renderHeroConfigUI(cfg) {
     if (!cfg) return;
     
-    // Stage 1
-    const s1Input = document.getElementById('heroStage1Url');
-    if (s1Input && cfg.heroVideo?.url) {
-        s1Input.value = cfg.heroVideo.url;
-        const prev = document.getElementById('heroAdminStage1Preview');
-        if (prev) prev.src = cfg.heroVideo.url;
+    // Stage 1: Hero Video & Poster Image
+    const s1Video = document.getElementById('heroStage1Url');
+    if (s1Video && cfg.heroVideo?.url) {
+        s1Video.value = cfg.heroVideo.url;
+        previewMediaElement('heroStage1Url', 'video', 'heroAdminStage1Preview');
+    }
+    const s1Img = document.getElementById('heroStage1ImageUrl');
+    if (s1Img) {
+        s1Img.value = cfg.heroImage?.url || '/assets/hero_man_vr.jpg';
+        previewMediaElement('heroStage1ImageUrl', 'image', 'heroAdminStage1ImagePreview');
     }
 
-    // Stage 5 TV
-    const s5Input = document.getElementById('heroStage5Url');
-    if (s5Input && cfg.tvVideo?.url) {
-        s5Input.value = cfg.tvVideo.url;
-        const prev = document.getElementById('heroAdminStage5Preview');
-        if (prev) prev.src = cfg.tvVideo.url;
+    // Stage 2: Server Room Smoke Video & Cables Image
+    const s2Video = document.getElementById('heroStage2Url');
+    if (s2Video) {
+        s2Video.value = cfg.serverVideo?.url || '/assets/server_room_smoke.mp4';
+        previewMediaElement('heroStage2Url', 'video', 'heroAdminStage2Preview');
+    }
+    const s2Img = document.getElementById('heroStage2ImageUrl');
+    if (s2Img) {
+        s2Img.value = cfg.serverImage?.url || '/assets/datacenter_cables.jpg';
+        previewMediaElement('heroStage2ImageUrl', 'image', 'heroAdminStage2ImagePreview');
     }
 
-    // Stage 4 Music
+    // Stage 3: Telemetry Holographic HUD Video
+    const s3Video = document.getElementById('heroStage3Url');
+    if (s3Video) {
+        s3Video.value = cfg.telemetryVideo?.url || '/assets/holographic_dashboard.mp4';
+        previewMediaElement('heroStage3Url', 'video', 'heroAdminStage3Preview');
+    }
+
+    // Stage 4: Music Media Deck
     const m = cfg.musicMedia || {};
     currentHeroMusicSourceType = m.sourceType || 'jiosaavn';
     setHeroMusicSourceType(currentHeroMusicSourceType, false);
@@ -12414,24 +13202,203 @@ function renderHeroConfigUI(cfg) {
     const artistEl = document.getElementById('heroMusicArtist');
     const audioUrlEl = document.getElementById('heroMusicAudioUrl');
     const videoBgUrlEl = document.getElementById('heroMusicVideoBgUrl');
+    const artworkUrlEl = document.getElementById('heroMusicArtworkUrl');
     const autoplayEl = document.getElementById('heroMusicAutoplay');
     const mutedEl = document.getElementById('heroMusicMuted');
     const volumeEl = document.getElementById('heroMusicVolume');
 
-    if (titleEl) titleEl.value = m.title || '';
-    if (artistEl) artistEl.value = m.artist || '';
-    if (audioUrlEl) audioUrlEl.value = m.audioUrl || '';
-    if (videoBgUrlEl) videoBgUrlEl.value = m.videoBgUrl || '';
+    if (titleEl) titleEl.value = m.title || 'Studio Fidelity Continuum';
+    if (artistEl) artistEl.value = m.artist || 'Aetheris Acoustics';
+    if (audioUrlEl) audioUrlEl.value = m.audioUrl || '/assets/music_cinematic_macro.mp4';
+    if (videoBgUrlEl) videoBgUrlEl.value = m.videoBgUrl || '/assets/music_cinematic_macro.mp4';
+    if (artworkUrlEl) artworkUrlEl.value = m.artworkUrl || '/assets/aetheris_logo.png';
     if (autoplayEl) autoplayEl.checked = m.autoplay !== false;
     if (mutedEl) mutedEl.checked = m.mutedByDefault !== false;
     if (volumeEl) {
-        volumeEl.value = Math.round((m.volume ?? 0.85) * 100);
+        volumeEl.value = Math.round((m.volume ?? 0.9) * 100);
         const valDisp = document.getElementById('heroMusicVolumeVal');
         if (valDisp) valDisp.textContent = volumeEl.value + '%';
     }
 
-    testHeroMediaPreview();
+    // Stage 5: TV Video & Lounge Image
+    const s5Video = document.getElementById('heroStage5Url');
+    if (s5Video) {
+        s5Video.value = cfg.tvVideo?.url || '/assets/floating_glass_hud.mp4';
+        previewMediaElement('heroStage5Url', 'video', 'heroAdminStage5Preview');
+    }
+    const s5Img = document.getElementById('heroStage5ImageUrl');
+    if (s5Img) {
+        s5Img.value = cfg.tvImage?.url || '/assets/television_living_room.jpg';
+        previewMediaElement('heroStage5ImageUrl', 'image', 'heroAdminStage5ImagePreview');
+    }
+
+    testHeroMediaPreview(false);
     if (window.lucide) lucide.createIcons();
+}
+
+function previewMediaElement(inputId, type, previewElId) {
+    const input = document.getElementById(inputId);
+    const prev = document.getElementById(previewElId);
+    if (!input || !prev) return;
+    const val = input.value.trim();
+    if (!val) return;
+    if (type === 'video') {
+        if (prev.src !== val) {
+            prev.src = val;
+            prev.load();
+        }
+    } else if (type === 'image') {
+        prev.src = val;
+    } else if (type === 'audio') {
+        prev.src = val;
+    }
+}
+
+function setHeroPreset(inputId, url, type, previewElId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.value = url;
+        previewMediaElement(inputId, type, previewElId);
+        showToast('Preset Selected', `Applied ${url.split('/').pop()}`, 'info');
+    }
+}
+
+async function uploadHeroMedia(fileInput, targetInputId, mediaType, previewElId) {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('mediaFile', file);
+    showToast('Uploading', `Uploading ${file.name}...`, 'info');
+
+    try {
+        const res = await fetch('/api/admin/hero/upload-media', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': token ? `Bearer ${token}` : ''
+            }
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.fileUrl) {
+            const target = document.getElementById(targetInputId);
+            if (target) {
+                target.value = data.fileUrl;
+                previewMediaElement(targetInputId, mediaType, previewElId);
+            }
+            showToast('Uploaded Successfully', `${file.name} saved and linked!`, 'success');
+        } else {
+            showToast('Upload Failed', data.message || 'Error uploading media file', 'error');
+        }
+    } catch (err) {
+        showToast('Upload Error', err.message, 'error');
+    } finally {
+        fileInput.value = '';
+    }
+}
+
+async function openHeroAssetBrowserModal(filter = 'all', targetFieldId = null, previewType = null, previewElId = null) {
+    heroAssetTargetField = targetFieldId;
+    heroAssetTargetType = previewType;
+    heroAssetTargetPreview = previewElId;
+
+    const modal = document.getElementById('heroAssetBrowserModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    try {
+        const res = await secureFetch('/api/admin/hero/available-assets');
+        const data = await res.json();
+        if (data.status === 'success' && data.assets) {
+            cachedHeroAssets = data.assets;
+            renderHeroAssetList(filter);
+        }
+    } catch (e) {
+        console.error('Failed to load assets:', e);
+    }
+}
+
+function closeHeroAssetBrowserModal() {
+    const modal = document.getElementById('heroAssetBrowserModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function filterHeroAssets(cat) {
+    ['all', 'videos', 'images', 'audio'].forEach(c => {
+        const btn = document.getElementById(`assetTab-${c}`);
+        if (!btn) return;
+        if (c === cat) {
+            btn.className = 'px-3 py-1 rounded-lg bg-amber-400 text-black font-bold text-xs font-mono';
+        } else {
+            btn.className = 'px-3 py-1 rounded-lg bg-zinc-900 text-zinc-400 hover:text-white font-bold text-xs font-mono';
+        }
+    });
+    renderHeroAssetList(cat);
+}
+
+function renderHeroAssetList(cat) {
+    const listEl = document.getElementById('heroAssetBrowserList');
+    if (!listEl || !cachedHeroAssets) return;
+
+    let items = [];
+    if (cat === 'all' || cat === 'videos') {
+        (cachedHeroAssets.videos || []).forEach(v => items.push({ url: v, type: 'video' }));
+    }
+    if (cat === 'all' || cat === 'images') {
+        (cachedHeroAssets.images || []).forEach(i => items.push({ url: i, type: 'image' }));
+    }
+    if (cat === 'all' || cat === 'audio') {
+        (cachedHeroAssets.audio || []).forEach(a => items.push({ url: a, type: 'audio' }));
+    }
+
+    if (items.length === 0) {
+        listEl.innerHTML = '<div class="p-8 text-center text-xs font-mono text-zinc-500">No assets found for this category.</div>';
+        return;
+    }
+
+    let html = '';
+    items.forEach(item => {
+        const name = item.url.split('/').pop();
+        const badgeColor = item.type === 'video' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
+                           item.type === 'image' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
+                           'bg-amber-500/20 text-amber-300 border-amber-500/30';
+        html += `
+            <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-amber-400/40 transition-all">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${badgeColor}">${item.type}</span>
+                    <span class="text-xs font-mono text-white truncate max-w-md">${name}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="selectHeroAssetForStage('${item.url}', '${item.type}')" class="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-black text-xs font-mono font-bold">Use File</button>
+                </div>
+            </div>
+        `;
+    });
+    listEl.innerHTML = html;
+}
+
+function selectHeroAssetForStage(url, type) {
+    if (heroAssetTargetField) {
+        const input = document.getElementById(heroAssetTargetField);
+        if (input) {
+            input.value = url;
+            if (heroAssetTargetPreview && heroAssetTargetType) {
+                previewMediaElement(heroAssetTargetField, heroAssetTargetType, heroAssetTargetPreview);
+            }
+        }
+    } else {
+        if (type === 'video') {
+            const s1 = document.getElementById('heroStage1Url');
+            if (s1) s1.value = url;
+        } else if (type === 'image') {
+            const s1Img = document.getElementById('heroStage1ImageUrl');
+            if (s1Img) s1Img.value = url;
+        } else if (type === 'audio') {
+            const aUrl = document.getElementById('heroMusicAudioUrl');
+            if (aUrl) aUrl.value = url;
+        }
+    }
+    showToast('Asset Selected', `Loaded ${url.split('/').pop()}`, 'success');
+    closeHeroAssetBrowserModal();
 }
 
 function setHeroMusicSourceType(type, updateInput = true) {
@@ -12450,7 +13417,7 @@ function setHeroMusicSourceType(type, updateInput = true) {
         const audioUrlEl = document.getElementById('heroMusicAudioUrl');
         if (audioUrlEl) {
             if (type === 'local' && (!audioUrlEl.value || audioUrlEl.value.includes('saavn') || audioUrlEl.value.includes('youtube'))) {
-                audioUrlEl.value = '/assets/x_video_music_bg.mp4';
+                audioUrlEl.value = '/assets/music_cinematic_macro.mp4';
             }
         }
     }
@@ -12490,15 +13457,16 @@ async function searchHeroMusic(engine) {
         let html = '';
         items.slice(0, 10).forEach(item => {
             const title = item.title || item.name || 'Unknown Track';
-            const artist = item.artist || item.channel || item.author || 'Artist';
-            const artwork = item.artwork || item.image || item.thumbnail || item.img || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';
-            const streamUrl = item.streamUrl || item.url || (item.id && engine === 'youtube' ? `/api/v1/youtube/stream?v=${encodeURIComponent(item.id)}&type=audio` : '');
-            const encoded = encodeURIComponent(JSON.stringify({ title, artist, artwork, streamUrl, engine, id: item.id || '' }));
+            const artist = item.artist || item.channel || item.author || (item.author?.name) || 'Artist';
+            const artwork = item.artwork || item.image || item.thumbnail || item.img || '/assets/aetheris_logo.png';
+            const vidId = item.videoId || item.id || '';
+            const streamUrl = engine === 'youtube' ? `https://www.youtube.com/watch?v=${vidId}` : (item.streamUrl || item.url || '');
+            const encoded = encodeURIComponent(JSON.stringify({ title, artist, artwork, streamUrl, engine, id: vidId }));
 
             html += `
                 <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/40 transition-all">
                     <div class="flex items-center gap-3 min-w-0">
-                        <img src="${artwork}" class="w-10 h-10 rounded-lg object-cover bg-zinc-800 shrink-0" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'">
+                        <img src="${artwork}" class="w-10 h-10 rounded-lg object-cover bg-zinc-800 shrink-0" onerror="this.src='/assets/aetheris_logo.png'">
                         <div class="min-w-0">
                             <div class="text-xs font-bold font-mono text-white truncate">${title}</div>
                             <div class="text-[10px] font-mono text-zinc-400 truncate">${artist}</div>
@@ -12528,63 +13496,159 @@ function setHeroMusicTrack(rawJson) {
         const titleEl = document.getElementById('heroMusicTitle');
         const artistEl = document.getElementById('heroMusicArtist');
         const audioUrlEl = document.getElementById('heroMusicAudioUrl');
+        const artworkUrlEl = document.getElementById('heroMusicArtworkUrl');
         
         if (titleEl) titleEl.value = item.title || '';
         if (artistEl) artistEl.value = item.artist || '';
         if (audioUrlEl) audioUrlEl.value = item.streamUrl || '';
+        if (artworkUrlEl && item.artwork) artworkUrlEl.value = item.artwork;
+
+        const artPrev = document.getElementById('heroAdminArtworkPreview');
+        if (artPrev && item.artwork) artPrev.src = item.artwork;
+
+        const titlePrev = document.getElementById('heroAdminPreviewTitle');
+        if (titlePrev && item.title) titlePrev.textContent = item.title;
 
         setHeroMusicSourceType(item.engine || 'jiosaavn');
-        testHeroMediaPreview();
-        showToast(`Selected "${item.title}" as Hero Music! Click "Save & Apply Live" to publish.`);
+        testHeroMediaPreview(true);
+        showToast('Track Selected', `"${item.title}" loaded! Click "Save & Apply Live" to publish.`, 'success');
     } catch (e) {
         console.error('Failed to set track:', e);
     }
 }
 
-function testHeroMediaPreview() {
+function testHeroMediaPreview(forcePlay = false) {
     const audioUrl = document.getElementById('heroMusicAudioUrl')?.value?.trim();
     const videoBgUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim();
+    const artworkUrl = document.getElementById('heroMusicArtworkUrl')?.value?.trim();
+    const titleVal = document.getElementById('heroMusicTitle')?.value?.trim() || 'Preview';
+
     const vidPreview = document.getElementById('heroAdminPreviewVideo');
     const audPreview = document.getElementById('heroAdminPreviewAudio');
+    const artPreview = document.getElementById('heroAdminArtworkPreview');
+    const titlePreview = document.getElementById('heroAdminPreviewTitle');
 
-    if (!vidPreview || !audPreview) return;
+    if (artPreview && artworkUrl) artPreview.src = artworkUrl;
+    if (titlePreview) titlePreview.textContent = titleVal;
 
-    if (videoBgUrl && (videoBgUrl.endsWith('.mp4') || videoBgUrl.includes('video') || videoBgUrl.startsWith('/assets/'))) {
-        vidPreview.classList.remove('hidden');
-        vidPreview.src = videoBgUrl;
-        vidPreview.muted = true;
-        vidPreview.play().catch(() => {});
+    if (videoBgUrl && vidPreview) {
+        if (vidPreview.src !== videoBgUrl) {
+            vidPreview.src = videoBgUrl;
+            vidPreview.muted = true;
+            vidPreview.load();
+        }
+        if (forcePlay) {
+            vidPreview.play().catch(() => {});
+        }
     }
 
-    if (audioUrl && audioUrl !== videoBgUrl) {
-        audPreview.classList.remove('hidden');
-        audPreview.src = audioUrl;
-    } else {
-        audPreview.classList.add('hidden');
+    const targetAudio = audioUrl || videoBgUrl || '';
+    const ytVid = extractYoutubeVideoId(targetAudio);
+    const isYtAudio = !!ytVid || targetAudio.includes('youtube.com') || targetAudio.includes('youtu.be') || targetAudio.includes('/api/v1/youtube/stream');
+    const volPct = parseInt(document.getElementById('heroMusicVolume')?.value || '90', 10);
+
+    if (isYtAudio && ytVid) {
+        if (audPreview) {
+            try { audPreview.pause(); audPreview.removeAttribute('src'); audPreview.load(); } catch (e) {}
+        }
+        if (forcePlay) {
+            window.playYoutubeInAdmin(ytVid, volPct);
+        }
+        return;
+    }
+
+    if (audPreview) {
+        window._activeAdminIsYoutube = false;
+        if (adminYtPlayer && typeof adminYtPlayer.stopVideo === 'function') {
+            try { adminYtPlayer.stopVideo(); } catch (e) {}
+        }
+        const finalAudUrl = targetAudio.startsWith('http') ? '/api/music/proxy?url=' + encodeURIComponent(targetAudio) : targetAudio;
+        if (finalAudUrl && audPreview.src !== finalAudUrl) {
+            audPreview.src = finalAudUrl;
+            audPreview.load();
+        }
+        audPreview.volume = volPct / 100;
+        if (forcePlay && finalAudUrl) {
+            audPreview.play().catch(() => {});
+        }
+    }
+}
+
+function stopHeroMediaPreview() {
+    const vidPreview = document.getElementById('heroAdminPreviewVideo');
+    const audPreview = document.getElementById('heroAdminPreviewAudio');
+    if (vidPreview) vidPreview.pause();
+    if (audPreview) audPreview.pause();
+    window._activeAdminIsYoutube = false;
+    if (adminYtPlayer && typeof adminYtPlayer.pauseVideo === 'function') {
+        try { adminYtPlayer.pauseVideo(); } catch (e) {}
+    }
+}
+
+function copyVideoUrlToAudioUrl() {
+    const vUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim();
+    if (vUrl) {
+        const aInput = document.getElementById('heroMusicAudioUrl');
+        if (aInput) {
+            aInput.value = vUrl;
+            testHeroMediaPreview(true);
+            showToast('Audio Synced', 'Now using background video as soundtrack', 'info');
+        }
     }
 }
 
 async function saveHeroConfig() {
-    const s1Url = document.getElementById('heroStage1Url')?.value?.trim() || '/assets/hero-video.mp4';
-    const s5Url = document.getElementById('heroStage5Url')?.value?.trim() || '/assets/floating_glass_hud.mp4';
-    
+    // Stage 1
+    const s1Url = document.getElementById('heroStage1Url')?.value?.trim() || '/assets/hero_man_vr.mp4';
+    const s1ImgUrl = document.getElementById('heroStage1ImageUrl')?.value?.trim() || '/assets/hero_man_vr.jpg';
+
+    // Stage 2
+    const s2Url = document.getElementById('heroStage2Url')?.value?.trim() || '/assets/server_room_smoke.mp4';
+    const s2ImgUrl = document.getElementById('heroStage2ImageUrl')?.value?.trim() || '/assets/datacenter_cables.jpg';
+
+    // Stage 3
+    const s3Url = document.getElementById('heroStage3Url')?.value?.trim() || '/assets/holographic_dashboard.mp4';
+
+    // Stage 4
     const mTitle = document.getElementById('heroMusicTitle')?.value?.trim() || 'Studio Fidelity Continuum';
     const mArtist = document.getElementById('heroMusicArtist')?.value?.trim() || 'Aetheris Acoustics';
-    const mAudioUrl = document.getElementById('heroMusicAudioUrl')?.value?.trim() || '/assets/x_video_music_bg.mp4';
-    const mVideoBgUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim() || '/assets/x_video_music_bg.mp4';
+    const mAudioUrl = document.getElementById('heroMusicAudioUrl')?.value?.trim() || '/assets/music_cinematic_macro.mp4';
+    const mVideoBgUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim() || '/assets/music_cinematic_macro.mp4';
+    const mArtworkUrl = document.getElementById('heroMusicArtworkUrl')?.value?.trim() || '/assets/aetheris_logo.png';
     const mAutoplay = document.getElementById('heroMusicAutoplay')?.checked ?? true;
     const mMuted = document.getElementById('heroMusicMuted')?.checked ?? true;
-    const mVolume = (parseInt(document.getElementById('heroMusicVolume')?.value || '85', 10)) / 100;
+    const mVolume = (parseInt(document.getElementById('heroMusicVolume')?.value || '90', 10)) / 100;
+
+    // Stage 5
+    const s5Url = document.getElementById('heroStage5Url')?.value?.trim() || '/assets/floating_glass_hud.mp4';
+    const s5ImgUrl = document.getElementById('heroStage5ImageUrl')?.value?.trim() || '/assets/television_living_room.jpg';
 
     const payload = {
         heroVideo: {
             type: "local",
             url: s1Url
         },
+        heroImage: {
+            type: "local",
+            url: s1ImgUrl
+        },
+        serverVideo: {
+            type: "local",
+            url: s2Url
+        },
+        serverImage: {
+            type: "local",
+            url: s2ImgUrl
+        },
+        telemetryVideo: {
+            type: "local",
+            url: s3Url
+        },
         musicMedia: {
             sourceType: currentHeroMusicSourceType,
             title: mTitle,
             artist: mArtist,
+            artworkUrl: mArtworkUrl,
             audioUrl: mAudioUrl,
             videoBgUrl: mVideoBgUrl,
             autoplay: mAutoplay,
@@ -12594,6 +13658,10 @@ async function saveHeroConfig() {
         tvVideo: {
             type: "local",
             url: s5Url
+        },
+        tvImage: {
+            type: "local",
+            url: s5ImgUrl
         }
     };
 
@@ -12606,7 +13674,7 @@ async function saveHeroConfig() {
         const data = await res.json();
         if (data.status === 'success') {
             activeHeroConfig = payload;
-            showToast('Success', 'Hero page & music configuration updated successfully live!', 'success');
+            showToast('Success', 'Hero Page & Acoustics media synchronized successfully live!', 'success');
         } else {
             showToast('Error', data.message || 'Error saving configuration', 'error');
         }
@@ -12615,24 +13683,979 @@ async function saveHeroConfig() {
     }
 }
 
-window.setHeroMusicPresetVideo = function(url) {
-    const input = document.getElementById('heroMusicVideoBgUrl');
-    if (input) {
-        input.value = url;
-        testHeroMediaPreview();
-        showToast('Preset Applied', `Background video set to ${url.split('/').pop()}`, 'info');
-    }
-};
+// Window exports
+window.loadHeroConfig = loadHeroConfig;
+window.saveHeroConfig = saveHeroConfig;
+window.previewMediaElement = previewMediaElement;
+window.setHeroPreset = setHeroPreset;
+window.uploadHeroMedia = uploadHeroMedia;
+window.openHeroAssetBrowserModal = openHeroAssetBrowserModal;
+window.closeHeroAssetBrowserModal = closeHeroAssetBrowserModal;
+window.filterHeroAssets = filterHeroAssets;
+window.selectHeroAssetForStage = selectHeroAssetForStage;
+window.testHeroMediaPreview = testHeroMediaPreview;
+window.stopHeroMediaPreview = stopHeroMediaPreview;
+window.copyVideoUrlToAudioUrl = copyVideoUrlToAudioUrl;
+window.searchHeroMusic = searchHeroMusic;
+window.setHeroMusicTrack = setHeroMusicTrack;
+window.setHeroMusicSourceType = setHeroMusicSourceType;
 
-window.copyVideoUrlToAudioUrl = function() {
-    const vUrl = document.getElementById('heroMusicVideoBgUrl')?.value?.trim();
-    if (vUrl) {
-        const aInput = document.getElementById('heroMusicAudioUrl');
-        if (aInput) {
-            aInput.value = vUrl;
-            testHeroMediaPreview();
-            showToast('Audio Synced', 'Now using video soundtrack as audio', 'info');
+// ============================================================================
+// MULTI-SOURCE STREAM MANAGER & JIOTV KEY REFRESH (SONYLIV, FANCODE, JIOTV)
+// ============================================================================
+
+function renderProviderSourceList(provider, sources, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!Array.isArray(sources) || sources.length === 0) {
+        el.innerHTML = `<div class="text-xs text-gray-500 py-4 text-center">No sources configured.</div>`;
+        return;
+    }
+
+    el.innerHTML = sources.map((s, idx) => {
+        const isPrimary = Boolean(s.isPrimary);
+        const isEnabled = s.enabled !== false;
+        const statusOnline = s.status === 'online';
+        const statusColor = statusOnline ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : (s.status === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-gray-800 text-gray-400 border-gray-700');
+        const safeName = (s.name || s.id || 'Source').replace(/'/g, "\\'");
+        const safeUrl = (s.url || '').replace(/'/g, "\\'");
+
+        return `
+            <div class="p-3 rounded-xl border ${isPrimary ? 'border-emerald-500/50 bg-emerald-950/15' : 'border-gray-800 bg-gray-900/50'} space-y-2 transition-all">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            ${isPrimary ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500 text-black text-[9px] font-black uppercase">PRIMARY</span>` : `<span class="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-[9px] font-bold uppercase">BACKUP #${idx + 1}</span>`}
+                            <span class="px-1.5 py-0.5 rounded bg-white/5 text-gray-300 text-[9px] font-mono uppercase">${(s.type || 'm3u').toUpperCase()}</span>
+                            ${typeof s.itemCount === 'number' ? `<span class="px-1.5 py-0.5 rounded ${statusColor} border text-[9px] font-bold">${s.itemCount} items</span>` : ''}
+                        </div>
+                        <h4 class="text-xs font-bold text-white mt-1 truncate" title="${s.name}">${s.name}</h4>
+                        <p class="text-[10px] font-mono text-gray-400 truncate mt-0.5" title="${s.url}">${s.url}</p>
+                    </div>
+                    <button onclick="toggleStreamSourceEnabled('${provider}', '${s.id}')" class="px-2 py-1 rounded-lg text-[9px] font-black uppercase border transition-all shrink-0 ${isEnabled ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25' : 'bg-gray-800 text-gray-500 border-gray-700 hover:text-gray-300'}">
+                        ${isEnabled ? 'ENABLED' : 'DISABLED'}
+                    </button>
+                </div>
+                <div class="flex items-center justify-between gap-1.5 pt-2 border-t border-gray-800/70">
+                    <div class="flex items-center gap-1.5">
+                        ${!isPrimary ? `
+                            <button onclick="setPrimaryStreamSource('${provider}', '${s.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-[10px] font-bold transition-all">
+                                Make Primary
+                            </button>
+                        ` : `
+                            <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1">★ Active Primary</span>
+                        `}
+                        <button onclick="editStreamSourcePrompt('${provider}', '${s.id}', '${safeName}', '${safeUrl}')" class="px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] font-bold border border-gray-700 transition-all">
+                            Edit URL
+                        </button>
+                    </div>
+                    ${!isPrimary ? `
+                        <button onclick="deleteStreamSourceItem('${provider}', '${s.id}')" class="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold border border-red-500/20 transition-all">
+                            Remove
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+async function loadStreamSourcesManager() {
+    try {
+        const res = await secureFetch('/api/admin/stream-sources');
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            renderProviderSourceList('sonyliv', data.sonyliv || [], 'adminStreamSourcesSonyLiv');
+            renderProviderSourceList('fancode', data.fancode || [], 'adminStreamSourcesFanCode');
+            renderProviderSourceList('jtv', data.jtv || [], 'adminStreamSourcesJtv');
+
+            const syncEl = document.getElementById('adminStreamSourcesSyncStatus');
+            if (syncEl && data.activeFiles) {
+                const slCount = (data.sonyliv || []).filter(s => s.enabled !== false).length;
+                const fcCount = (data.fancode || []).filter(s => s.enabled !== false).length;
+                const jtvCount = (data.jtv || []).filter(s => s.enabled !== false).length;
+                syncEl.textContent = `Firestore Synced • Active Sources: SonyLIV (${slCount}), FanCode (${fcCount}), JioTV (${jtvCount})`;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load stream sources manager:', e);
+    }
+}
+
+async function setPrimaryStreamSource(provider, sourceId) {
+    try {
+        showToast('Updating Primary Source', `Setting primary source for ${provider.toUpperCase()} & rewriting active M3U...`, 'info');
+        const res = await secureFetch('/api/admin/stream-sources/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, action: 'set_primary', sourceId })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Primary Source Updated', data.message || 'Active M3U rewritten & synced to Firestore!', 'success');
+            await loadStreamSourcesManager();
+        } else {
+            showToast('Update Error', data.message || 'Failed to update primary source', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to set primary source', 'error');
+    }
+}
+
+async function toggleStreamSourceEnabled(provider, sourceId) {
+    try {
+        const res = await secureFetch('/api/admin/stream-sources/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, action: 'toggle_enabled', sourceId })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Source Updated', data.message || 'Source status updated & synced!', 'success');
+            await loadStreamSourcesManager();
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to toggle source', 'error');
+    }
+}
+
+async function editStreamSourcePrompt(provider, sourceId, currentName, currentUrl) {
+    const newUrl = prompt(`Edit ${provider.toUpperCase()} Source URL for "${currentName}":`, currentUrl);
+    if (!newUrl || newUrl.trim() === currentUrl) return;
+    const newName = prompt(`Edit Source Label:`, currentName) || currentName;
+    try {
+        const res = await secureFetch('/api/admin/stream-sources/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                provider,
+                action: 'edit_source',
+                sourceId,
+                sourceData: { name: newName.trim(), url: newUrl.trim() }
+            })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Source Saved', data.message || 'Source URL updated & active M3U rewritten!', 'success');
+            await loadStreamSourcesManager();
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to edit source', 'error');
+    }
+}
+
+async function deleteStreamSourceItem(provider, sourceId) {
+    try {
+        const res = await secureFetch('/api/admin/stream-sources/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, action: 'delete_source', sourceId })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Source Removed', data.message || 'Source removed & synced!', 'success');
+            await loadStreamSourcesManager();
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to delete source', 'error');
+    }
+}
+
+async function addCustomStreamSource(provider) {
+    const nameInputId = provider === 'sonyliv' ? 'newSonySourceName' : (provider === 'fancode' ? 'newFanCodeSourceName' : 'newJtvSourceName');
+    const urlInputId = provider === 'sonyliv' ? 'newSonySourceUrl' : (provider === 'fancode' ? 'newFanCodeSourceUrl' : 'newJtvSourceUrl');
+    const nameEl = document.getElementById(nameInputId);
+    const urlEl = document.getElementById(urlInputId);
+    const name = (nameEl?.value || '').trim() || `Custom ${provider.toUpperCase()} Feed`;
+    const url = (urlEl?.value || '').trim();
+    if (!url || !url.startsWith('http')) {
+        showToast('Validation Error', 'Please enter a valid http/https M3U or JSON URL', 'error');
+        return;
+    }
+    try {
+        showToast('Adding Source', `Adding ${name} & rewriting active files...`, 'info');
+        const res = await secureFetch('/api/admin/stream-sources/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                provider,
+                action: 'add_source',
+                sourceData: { name, url, type: url.includes('.json') ? 'json' : 'm3u', isPrimary: false }
+            })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            if (nameEl) nameEl.value = '';
+            if (urlEl) urlEl.value = '';
+            showToast('Source Added', data.message || 'Added & synced to Firestore!', 'success');
+            await loadStreamSourcesManager();
+        } else {
+            showToast('Error', data.message || 'Failed to add source', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to add source', 'error');
+    }
+}
+
+async function refreshStreamProvider(provider = 'all') {
+    try {
+        showToast('Refreshing Sources', `Refreshing ${provider.toUpperCase()} feeds & rewriting active M3U files...`, 'info');
+        const res = await secureFetch('/api/admin/stream-sources/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Refresh Complete', data.message || 'All sources refreshed & active M3U files rewritten!', 'success');
+            await loadStreamSourcesManager();
+        } else {
+            showToast('Refresh Failed', data.message || 'Failed to refresh sources', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Error refreshing provider', 'error');
+    }
+}
+
+async function refreshJioKeysNow() {
+    const btn = document.getElementById('btnRefreshJioKeys');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Refreshing Keys...`;
+        if (window.lucide) lucide.createIcons();
+    }
+    try {
+        showToast('JioTV Key Refresh', 'Fetching fresh ClearKey DRM keys, cookies & rewriting assets/jtv_active.m3u...', 'info');
+        const res = await secureFetch('/api/admin/stream-sources/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: 'jtv' })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            const jtvInfo = data.results?.jtv || {};
+            showToast('JioTV Keys Refreshed', `Updated ${jtvInfo.channelsCount || 0} JioTV channels (${jtvInfo.keysRefreshed || 0} ClearKeys) & synced to Firestore!`, 'success');
+            await loadStreamSourcesManager();
+        } else {
+            showToast('Error', data.message || 'Failed to refresh JioTV keys', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to refresh JioTV keys', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            if (window.lucide) lucide.createIcons();
         }
     }
+}
+
+async function downloadActiveProviderM3u(provider = 'sports') {
+    try {
+        showToast('Downloading Active M3U', `Preparing ${provider.toUpperCase()} active M3U playlist...`, 'info');
+        const res = await secureFetch(`/api/admin/stream-sources/download-m3u?provider=${encodeURIComponent(provider)}`);
+        if (!res.ok) throw new Error('Failed to download M3U file');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = provider === 'sports' ? 'sports.m3u' : `${provider}_active.m3u`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showToast('Download Ready', `Downloaded ${a.download} successfully!`, 'success');
+    } catch (e) {
+        showToast('Download Error', e.message || 'Failed to download active M3U', 'error');
+    }
+}
+
+window.loadStreamSourcesManager = loadStreamSourcesManager;
+window.setPrimaryStreamSource = setPrimaryStreamSource;
+window.toggleStreamSourceEnabled = toggleStreamSourceEnabled;
+window.editStreamSourcePrompt = editStreamSourcePrompt;
+window.deleteStreamSourceItem = deleteStreamSourceItem;
+window.addCustomStreamSource = addCustomStreamSource;
+window.refreshStreamProvider = refreshStreamProvider;
+window.refreshJioKeysNow = refreshJioKeysNow;
+window.downloadActiveProviderM3u = downloadActiveProviderM3u;
+
+// ============================================================================
+// SPOTLIGHT & MULTI-CONTAINER SHOWCASE STUDIO (HOME, LIVE NOW, LIVE EVENTS, SPORTS)
+// ============================================================================
+window.ssState = {
+    activeSection: 'livenow', // 'livenow' | 'liveevents' | 'sports'
+    activeContainerId: '',
+    filterContainerId: 'all',
+    spotlightStudio: null,
+    liveNowContainers: [],
+    liveNowChannels: [],
+    liveEventsContainers: [],
+    liveEvents: [],
+    sportsContainers: [],
+    sports: []
 };
+
+async function loadSpotlightStudioAll() {
+    try {
+        const res = await secureFetch('/api/admin/spotlight-studio?_t=' + Date.now());
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            window.ssState.spotlightStudio = data.spotlightStudio || {};
+            window.ssState.liveNowContainers = Array.isArray(data.liveNowContainers) ? data.liveNowContainers : [];
+            window.ssState.liveNowChannels = Array.isArray(data.liveNowChannels) ? data.liveNowChannels : [];
+            window.ssState.liveEventsContainers = Array.isArray(data.liveEventsContainers) ? data.liveEventsContainers : [];
+            window.ssState.liveEvents = Array.isArray(data.liveEvents) ? data.liveEvents : [];
+            window.ssState.sportsContainers = Array.isArray(data.sportsContainers) ? data.sportsContainers : [];
+            window.ssState.sports = Array.isArray(data.sports) ? data.sports : [];
+
+            populateSsHomeQuickEventSelect();
+            renderSsMainHomeSpotlightForm();
+            switchSpotlightStudioSection(window.ssState.activeSection || 'livenow');
+        }
+    } catch (e) {
+        console.error('[SpotlightStudio] Error loading studio:', e);
+        showToast('Error', 'Failed to load Spotlight & Showcase Studio', 'error');
+    }
+}
+
+function populateSsHomeQuickEventSelect() {
+    const sel = document.getElementById('ssHomeQuickEventSelect');
+    if (!sel) return;
+    const allItems = [];
+    (window.ssState.liveEvents || []).forEach(ev => {
+        allItems.push({ ...ev, sourceLabel: 'Live Event' });
+    });
+    (window.ssState.liveNowChannels || []).forEach(ch => {
+        allItems.push({ ...ch, sourceLabel: 'Live Now' });
+    });
+    (window.ssState.sports || []).forEach(sp => {
+        allItems.push({ ...sp, sourceLabel: 'Sports' });
+    });
+
+    sel.innerHTML = `<option value="">-- Custom Event / Manual Entry Below --</option>` +
+        allItems.map(item => {
+            const payload = encodeURIComponent(JSON.stringify({
+                id: item.id || '',
+                title: item.title || item.name || '',
+                url: item.url || '',
+                bgUrl: item.bgUrl || '',
+                playerPng: item.playerPng || '',
+                badge: item.badge || '🔴 LIVE EVENT',
+                category: item.category || item.sourceLabel || 'Live Broadcast',
+                subtitle: item.subtitle || ''
+            }));
+            return `<option value="${payload}">[${item.sourceLabel}] ${escapeHtml(item.title || item.name || 'Stream')}</option>`;
+        }).join('');
+}
+
+function onSelectHomeQuickEvent(encodedVal) {
+    if (!encodedVal) return;
+    try {
+        const item = JSON.parse(decodeURIComponent(encodedVal));
+        if (document.getElementById('ssHomeTitle')) document.getElementById('ssHomeTitle').value = item.title || '';
+        if (document.getElementById('ssHomeBadge')) document.getElementById('ssHomeBadge').value = item.badge || '🔴 MAIN EVENT LIVE';
+        if (document.getElementById('ssHomeCategory')) document.getElementById('ssHomeCategory').value = item.category || 'Live Sports Broadcast';
+        if (document.getElementById('ssHomeSubtitle')) document.getElementById('ssHomeSubtitle').value = item.subtitle || `${item.title} live in 4K Ultra HD with zero latency.`;
+        if (document.getElementById('ssHomeUrl')) document.getElementById('ssHomeUrl').value = item.url || '';
+        if (document.getElementById('ssHomeBgUrl') && item.bgUrl) document.getElementById('ssHomeBgUrl').value = item.bgUrl;
+        if (document.getElementById('ssHomePlayerPng') && item.playerPng) document.getElementById('ssHomePlayerPng').value = item.playerPng;
+        if (document.getElementById('ssHomeSpotlightEnabled')) document.getElementById('ssHomeSpotlightEnabled').checked = true;
+        updateSsHomePreview();
+        showToast('Event Loaded', `Loaded "${item.title}" into Main Home Spotlight editor`, 'info');
+    } catch (e) {}
+}
+
+function renderSsMainHomeSpotlightForm() {
+    const main = (window.ssState.spotlightStudio && window.ssState.spotlightStudio.mainHomeSpotlight) || {};
+    if (document.getElementById('ssHomeSpotlightEnabled')) document.getElementById('ssHomeSpotlightEnabled').checked = Boolean(main.enabled);
+    if (document.getElementById('ssHomeTitle')) document.getElementById('ssHomeTitle').value = main.title || '';
+    if (document.getElementById('ssHomeBadge')) document.getElementById('ssHomeBadge').value = main.badge || '🔴 MAIN EVENT LIVE';
+    if (document.getElementById('ssHomeCategory')) document.getElementById('ssHomeCategory').value = main.category || 'Live Sports Broadcast';
+    if (document.getElementById('ssHomeSubtitle')) document.getElementById('ssHomeSubtitle').value = main.subtitle || '';
+    if (document.getElementById('ssHomeUrl')) document.getElementById('ssHomeUrl').value = main.url || '';
+    if (document.getElementById('ssHomeBgUrl')) document.getElementById('ssHomeBgUrl').value = main.bgUrl || '';
+    if (document.getElementById('ssHomePlayerPng')) document.getElementById('ssHomePlayerPng').value = main.playerPng || '';
+    updateSsHomePreview();
+}
+
+function updateSsHomePreview() {
+    const title = document.getElementById('ssHomeTitle')?.value?.trim() || 'CHAMPIONS LEAGUE FINAL LIVE';
+    const badge = document.getElementById('ssHomeBadge')?.value?.trim() || '🔴 MAIN EVENT LIVE';
+    const cat = document.getElementById('ssHomeCategory')?.value?.trim() || 'Live Sports Broadcast';
+    const sub = document.getElementById('ssHomeSubtitle')?.value?.trim() || 'Experience ultra-low latency 4K HDR live broadcast directly in the Home Hero Spotlight.';
+    const bgUrl = document.getElementById('ssHomeBgUrl')?.value?.trim() || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1920';
+    const pngUrl = document.getElementById('ssHomePlayerPng')?.value?.trim() || '';
+
+    const tEl = document.getElementById('ssHomePreviewTitle');
+    if (tEl) tEl.textContent = title;
+    const bEl = document.getElementById('ssHomePreviewBadge');
+    if (bEl) bEl.textContent = badge;
+    const cEl = document.getElementById('ssHomePreviewCategory');
+    if (cEl) cEl.textContent = cat;
+    const sEl = document.getElementById('ssHomePreviewSubtitle');
+    if (sEl) sEl.textContent = sub;
+    const bgEl = document.getElementById('ssHomePreviewBg');
+    if (bgEl) bgEl.style.backgroundImage = `url('${bgUrl}')`;
+    const pEl = document.getElementById('ssHomePreviewPlayer');
+    if (pEl) {
+        if (pngUrl) {
+            pEl.src = pngUrl;
+            pEl.classList.remove('hidden');
+        } else {
+            pEl.classList.add('hidden');
+        }
+    }
+}
+
+async function saveSpotlightStudioHero(target) {
+    if (target === 'home') {
+        const mainHomeSpotlight = {
+            enabled: Boolean(document.getElementById('ssHomeSpotlightEnabled')?.checked),
+            title: document.getElementById('ssHomeTitle')?.value?.trim() || 'LIVE MAIN EVENT BROADCAST',
+            badge: document.getElementById('ssHomeBadge')?.value?.trim() || '🔴 MAIN EVENT LIVE',
+            category: document.getElementById('ssHomeCategory')?.value?.trim() || 'Live Sports Broadcast',
+            subtitle: document.getElementById('ssHomeSubtitle')?.value?.trim() || '',
+            url: document.getElementById('ssHomeUrl')?.value?.trim() || '',
+            bgUrl: document.getElementById('ssHomeBgUrl')?.value?.trim() || '',
+            playerPng: document.getElementById('ssHomePlayerPng')?.value?.trim() || ''
+        };
+        try {
+            const res = await secureFetch('/api/admin/spotlight-studio/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mainHomeSpotlight })
+            });
+            const data = await res.json();
+            if (data && data.status === 'success') {
+                window.ssState.spotlightStudio = data.spotlightStudio;
+                showToast('Main Home Spotlight Saved', mainHomeSpotlight.enabled ? 'Main Home Spotlight Event is now LIVE on the Home page!' : 'Main Home Spotlight override disabled.', 'success');
+                fetchLiveEvents();
+            } else {
+                showToast('Error', data.message || 'Failed to save Home Spotlight', 'error');
+            }
+        } catch (e) {
+            showToast('Error', e.message || 'Failed to save Home Spotlight', 'error');
+        }
+    }
+}
+
+function getSsSectionData(sec) {
+    if (sec === 'livenow') {
+        return {
+            label: 'Live Now',
+            heroKey: 'liveNowSpotlight',
+            containers: window.ssState.liveNowContainers || [],
+            channels: window.ssState.liveNowChannels || []
+        };
+    } else if (sec === 'liveevents') {
+        return {
+            label: 'Live Events',
+            heroKey: 'liveEventsSpotlight',
+            containers: window.ssState.liveEventsContainers || [],
+            channels: window.ssState.liveEvents || []
+        };
+    } else {
+        return {
+            label: 'Sports Hub',
+            heroKey: 'sportsSpotlight',
+            containers: window.ssState.sportsContainers || [],
+            channels: window.ssState.sports || []
+        };
+    }
+}
+
+function switchSpotlightStudioSection(sec) {
+    window.ssState.activeSection = sec;
+    ['livenow', 'liveevents', 'sports'].forEach(s => {
+        const btn = document.getElementById(`ssSecTab-${s}`);
+        if (!btn) return;
+        if (s === sec) {
+            btn.className = "px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 bg-rose-600 text-white shadow-lg shadow-rose-600/30";
+        } else {
+            btn.className = "px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 bg-gray-900 text-gray-400 hover:text-white border border-gray-800";
+        }
+    });
+
+    const secData = getSsSectionData(sec);
+    const heroCfg = (window.ssState.spotlightStudio && window.ssState.spotlightStudio[secData.heroKey]) || {};
+
+    const titleEl = document.getElementById('ssSectionHeroHeading');
+    if (titleEl) titleEl.textContent = `${secData.label} Hero Spotlight Override`;
+
+    if (document.getElementById('ssSecHeroEnabled')) document.getElementById('ssSecHeroEnabled').checked = Boolean(heroCfg.enabled);
+    if (document.getElementById('ssSecHeroTitle')) document.getElementById('ssSecHeroTitle').value = heroCfg.title || '';
+    if (document.getElementById('ssSecHeroSubtitle')) document.getElementById('ssSecHeroSubtitle').value = heroCfg.subtitle || '';
+    if (document.getElementById('ssSecHeroBadge')) document.getElementById('ssSecHeroBadge').value = heroCfg.badge || `🔴 ${secData.label.toUpperCase()} SPOTLIGHT`;
+    if (document.getElementById('ssSecHeroUrl')) document.getElementById('ssSecHeroUrl').value = heroCfg.url || '';
+    if (document.getElementById('ssSecHeroBgUrl')) document.getElementById('ssSecHeroBgUrl').value = heroCfg.bgUrl || '';
+    if (document.getElementById('ssSecHeroPlayerPng')) document.getElementById('ssSecHeroPlayerPng').value = heroCfg.playerPng || '';
+
+    const containers = secData.containers;
+    if (containers.length > 0) {
+        if (!containers.some(c => c.id === window.ssState.activeContainerId)) {
+            window.ssState.activeContainerId = containers[0].id;
+        }
+    } else {
+        window.ssState.activeContainerId = '';
+    }
+    window.ssState.filterContainerId = 'all';
+
+    renderSsContainerChips();
+    if (window.ssState.activeContainerId) {
+        selectActiveSsContainer(window.ssState.activeContainerId);
+    }
+    renderSsChannelsGrid();
+    if (window.lucide) lucide.createIcons();
+}
+
+async function saveSpotlightStudioSectionHero() {
+    const sec = window.ssState.activeSection || 'livenow';
+    const secData = getSsSectionData(sec);
+    const heroPayload = {
+        enabled: Boolean(document.getElementById('ssSecHeroEnabled')?.checked),
+        title: document.getElementById('ssSecHeroTitle')?.value?.trim() || `${secData.label} Featured Broadcast`,
+        subtitle: document.getElementById('ssSecHeroSubtitle')?.value?.trim() || '',
+        badge: document.getElementById('ssSecHeroBadge')?.value?.trim() || '🔴 LIVE SPOTLIGHT',
+        category: secData.label,
+        url: document.getElementById('ssSecHeroUrl')?.value?.trim() || '',
+        bgUrl: document.getElementById('ssSecHeroBgUrl')?.value?.trim() || '',
+        playerPng: document.getElementById('ssSecHeroPlayerPng')?.value?.trim() || ''
+    };
+
+    try {
+        const bodyObj = {};
+        bodyObj[secData.heroKey] = heroPayload;
+        const res = await secureFetch('/api/admin/spotlight-studio/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyObj)
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            window.ssState.spotlightStudio = data.spotlightStudio;
+            showToast(`${secData.label} Spotlight Saved`, heroPayload.enabled ? `${secData.label} Hero Spotlight is now active!` : `${secData.label} Hero Spotlight override disabled.`, 'success');
+        } else {
+            showToast('Error', data.message || 'Failed to save section spotlight', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to save section spotlight', 'error');
+    }
+}
+
+function renderSsContainerChips() {
+    const bar = document.getElementById('ssContainerChipsBar');
+    const filterBar = document.getElementById('ssChannelsContainerFilterBar');
+    if (!bar) return;
+    const secData = getSsSectionData(window.ssState.activeSection);
+    const containers = secData.containers || [];
+    const channels = secData.channels || [];
+
+    bar.innerHTML = containers.map(c => {
+        const isSel = c.id === window.ssState.activeContainerId;
+        const count = channels.filter(ch => (ch.containerId || containers[0]?.id) === c.id).length;
+        return `
+            <button type="button" onclick="selectActiveSsContainer('${c.id}')" class="px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${isSel ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/25' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800'}">
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                <span>${escapeHtml(c.title)}</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[9px] ${isSel ? 'bg-black/20 text-black' : 'bg-gray-800 text-amber-400'}">${count}</span>
+            </button>
+        `;
+    }).join('');
+
+    if (filterBar) {
+        const isAll = window.ssState.filterContainerId === 'all';
+        filterBar.innerHTML = `
+            <button type="button" onclick="filterSsChannelsByContainer('all')" class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${isAll ? 'bg-cyan-500 text-black' : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-800'}">
+                All Containers (${channels.length})
+            </button>
+            ${containers.map(c => {
+                const isF = window.ssState.filterContainerId === c.id;
+                const cCount = channels.filter(ch => (ch.containerId || containers[0]?.id) === c.id).length;
+                return `
+                    <button type="button" onclick="filterSsChannelsByContainer('${c.id}')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${isF ? 'bg-cyan-500 text-black font-black' : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-800'}">
+                        ${escapeHtml(c.title)} (${cCount})
+                    </button>
+                `;
+            }).join('')}
+        `;
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+function selectActiveSsContainer(containerId) {
+    window.ssState.activeContainerId = containerId;
+    const secData = getSsSectionData(window.ssState.activeSection);
+    const cont = (secData.containers || []).find(c => c.id === containerId);
+    if (!cont) return;
+
+    if (document.getElementById('ssContId')) document.getElementById('ssContId').value = cont.id;
+    if (document.getElementById('ssContTitle')) document.getElementById('ssContTitle').value = cont.title || '';
+    if (document.getElementById('ssContBadge')) document.getElementById('ssContBadge').value = cont.badge || 'LIVE SHOWCASE';
+    if (document.getElementById('ssContSubtitle')) document.getElementById('ssContSubtitle').value = cont.subtitle || '';
+    if (document.getElementById('ssContGridStyle')) document.getElementById('ssContGridStyle').value = cont.gridStyle || 'shelf';
+    if (document.getElementById('ssContPlayerPng')) document.getElementById('ssContPlayerPng').value = cont.playerPng || '';
+    if (document.getElementById('ssContBgUrl')) document.getElementById('ssContBgUrl').value = cont.bgUrl || '';
+    if (document.getElementById('ssContGridBgUrl')) document.getElementById('ssContGridBgUrl').value = cont.gridBgUrl || '';
+
+    renderSsContainerChips();
+    updateSsContainerPreview();
+}
+
+function updateSsContainerPreview() {
+    const title = document.getElementById('ssContTitle')?.value?.trim() || 'SHOWCASE CONTAINER';
+    const badge = document.getElementById('ssContBadge')?.value?.trim() || 'EXCLUSIVE FEEDS';
+    const sub = document.getElementById('ssContSubtitle')?.value?.trim() || 'High-speed live broadcasts, official network feeds, and direct streams.';
+    const style = document.getElementById('ssContGridStyle')?.value || 'shelf';
+    const bgUrl = document.getElementById('ssContBgUrl')?.value?.trim() || '';
+    const pngUrl = document.getElementById('ssContPlayerPng')?.value?.trim() || '';
+
+    const tEl = document.getElementById('ssContPreviewTitle');
+    if (tEl) tEl.textContent = title;
+    const bEl = document.getElementById('ssContPreviewBadge');
+    if (bEl) bEl.textContent = badge;
+    const sEl = document.getElementById('ssContPreviewSubtitle');
+    if (sEl) sEl.textContent = sub;
+    const stEl = document.getElementById('ssContPreviewStyleBadge');
+    if (stEl) stEl.textContent = `STYLE: ${style.toUpperCase()}`;
+
+    const bgEl = document.getElementById('ssContPreviewBg');
+    if (bgEl) {
+        bgEl.style.backgroundImage = bgUrl ? `url('${bgUrl}')` : 'none';
+    }
+    const pEl = document.getElementById('ssContPreviewPlayer');
+    if (pEl) {
+        if (pngUrl) {
+            pEl.src = pngUrl;
+            pEl.classList.remove('hidden');
+        } else {
+            pEl.classList.add('hidden');
+        }
+    }
+}
+
+function createNewSsContainer() {
+    const secData = getSsSectionData(window.ssState.activeSection);
+    const newId = `${window.ssState.activeSection}_showcase_${Date.now()}`;
+    if (document.getElementById('ssContId')) document.getElementById('ssContId').value = newId;
+    if (document.getElementById('ssContTitle')) document.getElementById('ssContTitle').value = `NEW ${secData.label.toUpperCase()} SHOWCASE`;
+    if (document.getElementById('ssContBadge')) document.getElementById('ssContBadge').value = 'FEATURED ARENA';
+    if (document.getElementById('ssContSubtitle')) document.getElementById('ssContSubtitle').value = 'Curated high-definition live broadcasts and stadium feeds.';
+    if (document.getElementById('ssContGridStyle')) document.getElementById('ssContGridStyle').value = 'shelf';
+    if (document.getElementById('ssContPlayerPng')) document.getElementById('ssContPlayerPng').value = 'https://www.thesportsdb.com/images/media/player/cutout/b9389r1701269231.png';
+    if (document.getElementById('ssContBgUrl')) document.getElementById('ssContBgUrl').value = 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1920';
+    if (document.getElementById('ssContGridBgUrl')) document.getElementById('ssContGridBgUrl').value = '';
+    updateSsContainerPreview();
+    showToast('New Container Ready', 'Configure title, cutout PNG & background, then click "Save Container Settings"', 'info');
+}
+
+async function saveActiveSsContainer() {
+    const sec = window.ssState.activeSection || 'livenow';
+    const payload = {
+        id: document.getElementById('ssContId')?.value?.trim() || `${sec}_showcase_${Date.now()}`,
+        title: document.getElementById('ssContTitle')?.value?.trim() || 'SHOWCASE CONTAINER',
+        badge: document.getElementById('ssContBadge')?.value?.trim() || 'EXCLUSIVE FEEDS',
+        subtitle: document.getElementById('ssContSubtitle')?.value?.trim() || '',
+        gridStyle: document.getElementById('ssContGridStyle')?.value || 'shelf',
+        playerPng: document.getElementById('ssContPlayerPng')?.value?.trim() || '',
+        bgUrl: document.getElementById('ssContBgUrl')?.value?.trim() || '',
+        gridBgUrl: document.getElementById('ssContGridBgUrl')?.value?.trim() || '',
+        enabled: true
+    };
+
+    try {
+        const res = await secureFetch(`/api/admin/spotlight-studio/containers/${sec}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            window.ssState.activeContainerId = payload.id;
+            showToast('Container Saved', `"${payload.title}" saved in ${sec.toUpperCase()} Showcase Studio!`, 'success');
+            await loadSpotlightStudioAll();
+        } else {
+            showToast('Error', data.message || 'Failed to save container', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to save container', 'error');
+    }
+}
+
+async function deleteActiveSsContainer() {
+    const sec = window.ssState.activeSection || 'livenow';
+    const id = document.getElementById('ssContId')?.value?.trim();
+    if (!id) return;
+    const confirmed = await showAppConfirmModal({
+        title: 'Delete Showcase Container',
+        message: 'Are you sure you want to delete this showcase container? Any channels inside it will be moved to your primary container.',
+        confirmText: 'Delete Container',
+        isDanger: true
+    });
+    if (!confirmed) return;
+
+    try {
+        const res = await secureFetch(`/api/admin/spotlight-studio/containers/${sec}/${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Container Deleted', 'Showcase container removed.', 'success');
+            window.ssState.activeContainerId = '';
+            await loadSpotlightStudioAll();
+        } else {
+            showToast('Cannot Delete', data.message || 'Failed to delete container', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to delete container', 'error');
+    }
+}
+
+function filterSsChannelsByContainer(cId) {
+    window.ssState.filterContainerId = cId;
+    renderSsContainerChips();
+    renderSsChannelsGrid();
+}
+
+function renderSsChannelsGrid() {
+    const grid = document.getElementById('ssChannelsGridList');
+    if (!grid) return;
+    const secData = getSsSectionData(window.ssState.activeSection);
+    const containers = secData.containers || [];
+    const defaultContId = containers[0]?.id || 'default_showcase';
+    let channels = secData.channels || [];
+
+    if (window.ssState.filterContainerId !== 'all') {
+        channels = channels.filter(ch => (ch.containerId || defaultContId) === window.ssState.filterContainerId);
+    }
+
+    if (channels.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full p-10 rounded-2xl border border-dashed border-gray-800 text-center text-gray-400">
+                <p class="font-bold text-sm text-white">No Channels or Events in this Container</p>
+                <p class="text-xs text-gray-500 mt-1">Click "Add Stream / Event to Container" to add a live broadcast with custom background & athlete PNG.</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = channels.map((ch, idx) => {
+        const cObj = containers.find(c => c.id === (ch.containerId || defaultContId)) || containers[0] || { title: 'Default Container' };
+        const safeTitle = (ch.title || ch.name || 'Live Stream').replace(/'/g, "\\'");
+        const safeUrl = (ch.url || '').replace(/'/g, "\\'");
+        const safeBg = (ch.bgUrl || '').replace(/'/g, "\\'");
+        const safePng = (ch.playerPng || '').replace(/'/g, "\\'");
+        const isMainHome = Boolean(ch.isMainHomeSpotlight);
+
+        return `
+            <div class="p-4 rounded-2xl border ${isMainHome ? 'border-amber-400 bg-amber-950/15' : 'border-gray-800 bg-gray-900/70'} relative overflow-hidden flex flex-col justify-between gap-3 group">
+                ${ch.bgUrl ? `<div class="absolute inset-0 bg-cover bg-center opacity-20 pointer-events-none" style="background-image:url('${ch.bgUrl}')"></div>` : ''}
+                ${ch.playerPng ? `<img src="${ch.playerPng}" class="absolute right-1 bottom-10 h-24 w-auto object-contain opacity-85 pointer-events-none z-0" onerror="this.style.display='none'">` : ''}
+                <div class="relative z-10 flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="px-2 py-0.5 rounded bg-rose-600/20 text-rose-300 border border-rose-500/30 text-[9px] font-black uppercase">${escapeHtml(ch.badge || 'LIVE')}</span>
+                            <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold truncate max-w-[140px]">${escapeHtml(cObj.title)}</span>
+                            ${isMainHome ? `<span class="px-2 py-0.5 rounded bg-amber-400 text-black text-[9px] font-black uppercase">★ HOME SPOTLIGHT</span>` : ''}
+                        </div>
+                        <h5 class="text-sm font-black text-white mt-1.5 truncate" title="${escapeHtml(ch.title || ch.name)}">${escapeHtml(ch.title || ch.name)}</h5>
+                        <p class="text-[10px] font-mono text-gray-400 truncate mt-0.5" title="${escapeHtml(ch.url)}">${escapeHtml(ch.url)}</p>
+                    </div>
+                </div>
+                <div class="relative z-10 flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-gray-800/80">
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="promoteItemToSpotlight('home', '${safeTitle}', '${safeUrl}', '${safeBg}', '${safePng}', '${ch.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black text-[10px] font-black uppercase border border-amber-500/30 transition-all flex items-center gap-1" title="Promote to Main Home Spotlight">
+                            <i data-lucide="crown" class="w-3 h-3"></i> Home Spotlight
+                        </button>
+                        <button type="button" onclick="promoteItemToSpotlight('${window.ssState.activeSection}', '${safeTitle}', '${safeUrl}', '${safeBg}', '${safePng}', '${ch.id}')" class="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white text-[10px] font-bold uppercase border border-rose-500/30 transition-all" title="Promote to Section Spotlight">
+                            Sec Spotlight
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="playSportsStream('${safeUrl}', '${safeTitle}')" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-emerald-400" title="Preview Stream">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button type="button" onclick="editSsChannel('${ch.id}')" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white" title="Edit">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button type="button" onclick="deleteSsChannel('${ch.id}')" class="p-1.5 rounded-lg bg-red-500/15 hover:bg-red-600 text-red-400 hover:text-white" title="Delete">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+function openSsChannelModal() {
+    const secData = getSsSectionData(window.ssState.activeSection);
+    const sel = document.getElementById('ssChModalContainerSelect');
+    if (sel) {
+        sel.innerHTML = (secData.containers || []).map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('');
+        if (window.ssState.activeContainerId) sel.value = window.ssState.activeContainerId;
+    }
+    if (document.getElementById('ssChModalId')) document.getElementById('ssChModalId').value = '';
+    if (document.getElementById('ssChModalTitle')) document.getElementById('ssChModalTitle').value = '';
+    if (document.getElementById('ssChModalBadge')) document.getElementById('ssChModalBadge').value = '🔴 LIVE';
+    if (document.getElementById('ssChModalIcon')) document.getElementById('ssChModalIcon').value = 'trophy';
+    if (document.getElementById('ssChModalUrl')) document.getElementById('ssChModalUrl').value = '';
+    if (document.getElementById('ssChModalBgUrl')) document.getElementById('ssChModalBgUrl').value = '';
+    if (document.getElementById('ssChModalPlayerPng')) document.getElementById('ssChModalPlayerPng').value = '';
+    if (document.getElementById('ssChModalIsHomeSpotlight')) document.getElementById('ssChModalIsHomeSpotlight').checked = false;
+
+    const modal = document.getElementById('ssChannelModal');
+    if (modal) modal.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeSsChannelModal() {
+    const modal = document.getElementById('ssChannelModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function editSsChannel(id) {
+    const secData = getSsSectionData(window.ssState.activeSection);
+    const ch = (secData.channels || []).find(item => item.id === id);
+    if (!ch) return;
+    openSsChannelModal();
+    if (document.getElementById('ssChModalId')) document.getElementById('ssChModalId').value = ch.id;
+    if (document.getElementById('ssChModalTitle')) document.getElementById('ssChModalTitle').value = ch.title || ch.name || '';
+    if (document.getElementById('ssChModalBadge')) document.getElementById('ssChModalBadge').value = ch.badge || '🔴 LIVE';
+    if (document.getElementById('ssChModalIcon')) document.getElementById('ssChModalIcon').value = ch.icon || 'trophy';
+    if (document.getElementById('ssChModalUrl')) document.getElementById('ssChModalUrl').value = ch.url || '';
+    if (document.getElementById('ssChModalBgUrl')) document.getElementById('ssChModalBgUrl').value = ch.bgUrl || '';
+    if (document.getElementById('ssChModalPlayerPng')) document.getElementById('ssChModalPlayerPng').value = ch.playerPng || '';
+    if (document.getElementById('ssChModalContainerSelect') && ch.containerId) {
+        document.getElementById('ssChModalContainerSelect').value = ch.containerId;
+    }
+    if (document.getElementById('ssChModalIsHomeSpotlight')) {
+        document.getElementById('ssChModalIsHomeSpotlight').checked = Boolean(ch.isMainHomeSpotlight);
+    }
+}
+
+async function saveSsChannelForm(e) {
+    e.preventDefault();
+    const sec = window.ssState.activeSection || 'livenow';
+    const payload = {
+        id: document.getElementById('ssChModalId')?.value?.trim() || '',
+        title: document.getElementById('ssChModalTitle')?.value?.trim() || '',
+        badge: document.getElementById('ssChModalBadge')?.value?.trim() || '🔴 LIVE',
+        icon: document.getElementById('ssChModalIcon')?.value?.trim() || 'trophy',
+        url: document.getElementById('ssChModalUrl')?.value?.trim() || '',
+        bgUrl: document.getElementById('ssChModalBgUrl')?.value?.trim() || '',
+        playerPng: document.getElementById('ssChModalPlayerPng')?.value?.trim() || '',
+        containerId: document.getElementById('ssChModalContainerSelect')?.value || window.ssState.activeContainerId,
+        isMainHomeSpotlight: Boolean(document.getElementById('ssChModalIsHomeSpotlight')?.checked)
+    };
+
+    try {
+        const res = await secureFetch(`/api/admin/spotlight-studio/channels/${sec}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            closeSsChannelModal();
+            showToast('Stream Saved', payload.isMainHomeSpotlight ? `"${payload.title}" saved & set as Main Home Spotlight!` : `"${payload.title}" saved to container!`, 'success');
+            await loadSpotlightStudioAll();
+            fetchLiveEvents();
+        } else {
+            showToast('Error', data.message || 'Failed to save channel', 'error');
+        }
+    } catch (err) {
+        showToast('Error', err.message || 'Failed to save channel', 'error');
+    }
+}
+
+async function deleteSsChannel(id) {
+    const sec = window.ssState.activeSection || 'livenow';
+    const confirmed = await showAppConfirmModal({
+        title: 'Remove Stream from Container',
+        message: 'Are you sure you want to remove this stream from the container?',
+        confirmText: 'Remove Stream',
+        isDanger: true
+    });
+    if (!confirmed) return;
+
+    try {
+        const res = await secureFetch(`/api/admin/spotlight-studio/channels/${sec}/${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Removed', 'Stream removed from container.', 'success');
+            await loadSpotlightStudioAll();
+            fetchLiveEvents();
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to remove stream', 'error');
+    }
+}
+
+async function promoteItemToSpotlight(target, title, url, bgUrl = '', playerPng = '', eventId = '') {
+    try {
+        const res = await secureFetch('/api/admin/spotlight-studio/promote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target,
+                eventId,
+                title,
+                url,
+                bgUrl,
+                playerPng,
+                badge: target === 'home' ? '🔴 MAIN EVENT LIVE' : '🔴 LIVE SPOTLIGHT',
+                category: 'Live Sports Broadcast',
+                subtitle: `${title} broadcasting live in 4K Ultra HD.`
+            })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('Spotlight Updated!', data.message || `"${title}" is now the active ${target.toUpperCase()} Spotlight!`, 'success');
+            if (typeof loadSpotlightStudioAll === 'function') loadSpotlightStudioAll();
+            if (typeof fetchLiveEvents === 'function') fetchLiveEvents();
+        } else {
+            showToast('Error', data.message || 'Failed to promote to spotlight', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to promote to spotlight', 'error');
+    }
+}
+
+function setSsCutoutPreset(inputId, url) {
+    const el = document.getElementById(inputId);
+    if (el) {
+        el.value = url;
+        updateSsHomePreview();
+        updateSsContainerPreview();
+        showToast('Athlete Cutout Applied', 'Transparent 3D player cutout PNG updated!', 'info');
+    }
+}
+
+window.loadSpotlightStudioAll = loadSpotlightStudioAll;
+window.onSelectHomeQuickEvent = onSelectHomeQuickEvent;
+window.updateSsHomePreview = updateSsHomePreview;
+window.saveSpotlightStudioHero = saveSpotlightStudioHero;
+window.switchSpotlightStudioSection = switchSpotlightStudioSection;
+window.saveSpotlightStudioSectionHero = saveSpotlightStudioSectionHero;
+window.selectActiveSsContainer = selectActiveSsContainer;
+window.updateSsContainerPreview = updateSsContainerPreview;
+window.createNewSsContainer = createNewSsContainer;
+window.saveActiveSsContainer = saveActiveSsContainer;
+window.deleteActiveSsContainer = deleteActiveSsContainer;
+window.filterSsChannelsByContainer = filterSsChannelsByContainer;
+window.openSsChannelModal = openSsChannelModal;
+window.closeSsChannelModal = closeSsChannelModal;
+window.editSsChannel = editSsChannel;
+window.saveSsChannelForm = saveSsChannelForm;
+window.deleteSsChannel = deleteSsChannel;
+window.promoteItemToSpotlight = promoteItemToSpotlight;
+window.setSsCutoutPreset = setSsCutoutPreset;
+
+
 

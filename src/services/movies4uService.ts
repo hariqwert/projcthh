@@ -2,17 +2,19 @@ import axios from 'axios';
 import { URL } from 'url';
 
 // Dynamic Movies4u Mirror Registry & Auto-Discovery Engine
-export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new3.movies4u.garden/';
+export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new4.movies4u.garden/';
 export const MOVIES4U_COMPANION_INDEXES = [
-    'https://new2.movies4u.garden',
-    'https://movies4u.garden',
+    'https://new4.movies4u.garden',
+    'https://new3.movies4u.garden',
+    'https://movies4u.cm',
+    'https://movies4u.ws',
     'https://movies4u.review',
-    'https://movies4u.band',
-    'https://new7.movies4u.clinic'
+    'https://new6.movies4u.clinic'
 ];
 
 export let movies4uActiveMirrors: string[] = [
-    'https://new3.movies4u.garden'
+    'https://new4.movies4u.garden',
+    'https://movies4u.cm'
 ];
 
 export let lastMirrorDiscoveryTime = 0;
@@ -37,12 +39,12 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
     }
 
     if (isDiscoveringMirrors) {
-        return { primary: movies4uActiveMirrors[0] || 'https://new3.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
+        return { primary: movies4uActiveMirrors[0] || 'https://new4.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
     }
 
     isDiscoveringMirrors = true;
     try {
-        const candidates = ['https://new3.movies4u.garden', 'https://new4.movies4u.garden', 'https://new2.movies4u.garden'];
+        const candidates = ['https://new4.movies4u.garden', 'https://movies4u.cm', 'https://new3.movies4u.garden', 'https://movies4u.ws'];
         const verified: string[] = [];
 
         await Promise.all(candidates.map(async (origin) => {
@@ -53,10 +55,22 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
                         'Accept': 'application/json, text/javascript, */*; q=0.01'
                     },
-                    timeout: 2000
+                    timeout: 3000,
+                    maxRedirects: 0,
+                    validateStatus: (status) => status === 200
                 });
                 if (res.data?.hits && Array.isArray(res.data.hits) && res.data.hits.length > 0) {
                     verified.push(origin);
+                } else if (origin.includes('movies4u.cm') || origin.includes('movies4u.ws')) {
+                    const sRes = await axios.get(`${origin}/?s=Inception`, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                        timeout: 3000,
+                        maxRedirects: 0,
+                        validateStatus: (status) => status === 200
+                    });
+                    if (sRes.status === 200 && sRes.data.includes('Inception')) {
+                        verified.push(origin);
+                    }
                 }
             } catch (_) {}
         }));
@@ -71,7 +85,7 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
         isDiscoveringMirrors = false;
     }
 
-    return { primary: movies4uActiveMirrors[0] || 'https://new3.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: false };
+    return { primary: movies4uActiveMirrors[0] || 'https://new4.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: false };
 }
 
 // Initial background startup discovery

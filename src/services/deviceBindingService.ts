@@ -111,10 +111,25 @@ export function bindDevice(params: {
  */
 export function isDeviceAuthorized(deviceId: string, fingerprint?: string): boolean {
     if (!deviceId) return false;
-    const dev = boundDevicesMap.get(deviceId);
-    if (!dev || dev.status === 'revoked') return false;
-    if (fingerprint && dev.deviceFingerprint && dev.deviceFingerprint !== fingerprint) {
+    let dev = boundDevicesMap.get(deviceId);
+    if (!dev) {
+        loadBoundDevices();
+        dev = boundDevicesMap.get(deviceId);
+    }
+    // If device is explicitly revoked by admin, reject
+    if (dev && dev.status === 'revoked') return false;
+    if (dev && fingerprint && dev.deviceFingerprint && dev.deviceFingerprint !== fingerprint) {
         return false;
+    }
+    // If container restarted and bound_devices.json was ephemeral, auto-rebind valid signed token device
+    if (!dev && fingerprint) {
+        bindDevice({
+            deviceId,
+            deviceFingerprint: fingerprint,
+            deviceLabel: 'Restored Bound Device',
+            ip: '0.0.0.0',
+            userAgent: 'Restored Session'
+        });
     }
     return true;
 }

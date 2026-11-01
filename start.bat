@@ -1,8 +1,11 @@
 @echo off
-title Stalker Pro OTT Player
+title Aetheris Server
+echo.
+echo  =====================================================
+echo    Aetheris Stalker Pro 2.0  -  http://localhost:3000
+echo  =====================================================
+echo.
+taskkill /f /im node.exe >nul 2>&1
 cd /d "%~dp0"
-echo ========================================================
-echo   Starting Stalker Pro OTT Server on http://localhost:3000
-echo ========================================================
-node ./node_modules/tsx/dist/cli.mjs server.ts
+node node_modules/tsx/dist/cli.mjs server.ts
 pause

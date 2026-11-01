@@ -241,7 +241,7 @@ export async function scrapeEmbedToM3u8(embedUrl: string, customHeaders?: Record
     }
 
     // 2. Check TimStreams / EpiEmbeds Embed
-    if (cleanUrl.includes('epiembeds.online') || cleanUrl.includes('exmxbxe.cfd') || cleanUrl.includes('timst.cfd')) {
+    if (cleanUrl.includes('epiembeds.online') || cleanUrl.includes('exmxbxe.cfd') || cleanUrl.includes('timstreams.co.rw') || cleanUrl.includes('timst.cfd') || cleanUrl.includes('timst.top')) {
         try {
             const m3u8 = await resolveEmbedUrl(cleanUrl, true);
             if (m3u8) {

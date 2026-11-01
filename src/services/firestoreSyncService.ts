@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, disableNetwork, enableNetwork, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, disableNetwork, enableNetwork, onSnapshot, setLogLevel } from 'firebase/firestore';
 
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
 let db: any = null;
@@ -10,6 +10,7 @@ let quotaResetTime = 0;
 
 if (fs.existsSync(configPath)) {
     try {
+        setLogLevel('silent');
         const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         const app = initializeApp(firebaseConfig);
         db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
@@ -110,7 +111,13 @@ export function startFirestoreListener(onUpdate?: (data: any) => void) {
         return onSnapshot(docRef, (docSnap: any) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                const currentLocal = fs.existsSync(ADMIN_DB_PATH) ? JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8')) : {};
+                let currentLocal: any = {};
+                try {
+                    if (fs.existsSync(ADMIN_DB_PATH)) {
+                        const rawContent = fs.readFileSync(ADMIN_DB_PATH, 'utf8').trim();
+                        if (rawContent) currentLocal = JSON.parse(rawContent);
+                    }
+                } catch (_) {}
                 
                 // Only write if there's a meaningful change to avoid infinite loops or unnecessary I/O
                 // Focus on core system state flags
@@ -173,11 +180,48 @@ export function saveAndSyncAdminDB(dbData: any) {
         fs.writeFileSync(tmpFile, JSON.stringify(dbData, null, 4), 'utf8');
         fs.renameSync(tmpFile, ADMIN_DB_PATH);
         syncToFirestore(dbData).catch(() => {});
+        if (dbData && dbData.streamSourcesConfig) {
+            syncStreamSourcesToFirestore(dbData.streamSourcesConfig).catch(() => {});
+        }
     } catch (err) {
         console.error('[AdminDB] Save failed:', err);
     }
 }
 
+/**
+ * Sync stream source configurations (SonyLIV, FanCode, JioTV) and active file details to Firestore
+ */
+export async function syncStreamSourcesToFirestore(streamSourcesConfig: any) {
+    if (!db || !streamSourcesConfig) return;
+    try {
+        const docRef = doc(db, 'system_config', 'stream_sources');
+        await setDoc(docRef, {
+            ...streamSourcesConfig,
+            updatedAt: new Date().toISOString(),
+            timestamp: Date.now()
+        });
+        console.log('[Firestore] Successfully synced stream_sources config & active file metadata to Firestore.');
+    } catch (e: any) {
+        console.warn('[Firestore] Failed to sync stream_sources:', e?.message || e);
+    }
+}
+
+/**
+ * Load stream source configurations from Firestore if available
+ */
+export async function getStreamSourcesFromFirestore(): Promise<any | null> {
+    if (!db) return null;
+    try {
+        const docRef = doc(db, 'system_config', 'stream_sources');
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+            return snap.data();
+        }
+    } catch (e: any) {
+        console.warn('[Firestore] Failed to read stream_sources:', e?.message || e);
+    }
+    return null;
+}
 
 const MAX_CHUNK_SIZE = 900000;
 

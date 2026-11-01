@@ -1,5 +1,5 @@
 /**
- * Stalker Pro - Chromecast, Apple AirPlay & PWA Install Engine
+ * Aetheris - Chromecast, Apple AirPlay & PWA Install Engine
  */
 (function() {
     // 1. PWA In-App Install Prompt Manager
@@ -24,15 +24,70 @@
             console.log('[PWA] Application successfully installed.');
         });
 
-        // Register Service Worker
+        // Register Service Worker & purge legacy HTML caches so UI updates appear immediately
+        if ('caches' in window) {
+            caches.keys().then((keys) => {
+                keys.forEach((key) => {
+                    if (key !== 'aetheris-pwa-v6') {
+                        caches.delete(key).catch(() => {});
+                    }
+                });
+            }).catch(() => {});
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then((reg) => {
+                navigator.serviceWorker.register('/sw.js?v=6', { updateViaCache: 'none' }).then((reg) => {
+                    reg.update().catch(() => {});
                     console.log('[PWA] Service Worker registered with scope:', reg.scope);
                 }).catch((err) => {
                     console.warn('[PWA] Service Worker registration failed:', err);
                 });
             });
+        }
+    }
+
+    // PWA External Navigation & Pop-up Redirection Shield
+    function initPwaNavigationShield() {
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (!link || !link.href) return;
+
+            try {
+                const targetUrl = new URL(link.href, window.location.href);
+                const isExternal = targetUrl.origin !== window.location.origin && 
+                                   !targetUrl.protocol.startsWith('javascript:') && 
+                                   !targetUrl.protocol.startsWith('vlc:') &&
+                                   !targetUrl.protocol.startsWith('intent:');
+
+                if (isExternal) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.warn('[PWA Shield] Restricted external website redirect to:', link.href);
+                    if (typeof showToast === 'function') {
+                        showToast('External website redirection restricted in PWA App Mode', 'warning');
+                    }
+                }
+            } catch (err) {}
+        }, true);
+
+        // Sanitize third-party embed iframes to block top-navigation hijacking
+        function shieldIframes() {
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                if (!iframe.dataset.pwaShielded) {
+                    iframe.dataset.pwaShielded = 'true';
+                    if (!iframe.hasAttribute('sandbox')) {
+                        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms font-src allow-presentation allow-media-playback');
+                    }
+                }
+            });
+        }
+
+        shieldIframes();
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(shieldIframes);
+            observer.observe(document.documentElement, { childList: true, subtree: true });
         }
     }
 
@@ -54,7 +109,7 @@
         }
 
         if (!deferredPrompt) {
-            alert("To install, tap your browser's menu (⋮) and select 'Install app' or 'Add to Home screen'.");
+            showIosInstallGuide();
             return;
         }
 
@@ -81,8 +136,8 @@
                     <h3 class="text-lg font-bold text-white">Install on iPhone / iPad</h3>
                     <p class="text-xs text-zinc-300 leading-relaxed">
                         1. Tap the <strong class="text-white">Share</strong> button <span class="inline-block p-1 bg-zinc-800 rounded">⎋</span> in Safari's bottom toolbar.<br>
-                        2. Scroll down and tap <strong class="text-red-400">Add to Home Screen ➕</strong>.<br>
-                        3. Open Stalker Pro from your home screen for full-screen playback!
+                        2. Scroll down and tap <strong class="text-cyan-400">Add to Home Screen ➕</strong>.<br>
+                        3. Open Aetheris from your home screen for full-screen playback!
                     </p>
                     <button onclick="document.getElementById('iosInstallModal').classList.add('hidden')" class="w-full py-3 bg-red-600 hover:bg-red-700 rounded-xl text-white font-bold text-xs uppercase tracking-wider transition-all">
                         Got It
@@ -154,7 +209,7 @@
     window.triggerChromeCast = function(streamUrl, streamTitle) {
         const video = document.querySelector('video');
         const urlToCast = streamUrl || (video ? video.src : window.location.href);
-        const titleToCast = streamTitle || document.title || 'Stalker Pro Stream';
+        const titleToCast = streamTitle || document.title || 'Aetheris Stream';
 
         // Check if Chrome Cast API session request is possible
         if (window.chrome && window.chrome.cast && chrome.cast.isAvailable) {
@@ -238,10 +293,12 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             initPwaInstall();
+            initPwaNavigationShield();
             initCasting();
         });
     } else {
         initPwaInstall();
+        initPwaNavigationShield();
         initCasting();
     }
 })();

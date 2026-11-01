@@ -20,6 +20,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="robots" content="noindex">
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
@@ -458,6 +460,43 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         /* ==========================================================================
+           MOBILE LANDSCAPE OPTIMIZATION FOR STREAM CONFIGURATION & MODALS
+           ========================================================================== */
+        @media (max-height: 540px) and (orientation: landscape) {
+            #qualityServerModal, #subtitlesModal, #aniSkipModal {
+                position: fixed !important;
+                top: 0 !important;
+                bottom: 0 !important;
+                left: auto !important;
+                right: 0 !important;
+                width: 100vw !important;
+                max-width: 480px !important;
+                height: 100vh !important;
+                height: 100dvh !important;
+                max-height: 100dvh !important;
+                border-radius: 0 !important;
+                padding: 12px 16px 24px 16px !important;
+                overflow-y: auto !important;
+                border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+                background: rgba(8, 11, 18, 0.96) !important;
+                backdrop-filter: blur(28px) !important;
+                -webkit-backdrop-filter: blur(28px) !important;
+                box-shadow: -10px 0 35px rgba(0, 0, 0, 0.9) !important;
+                z-index: 100 !important;
+            }
+            #qualityServerModal #qualityList, #qualityServerModal #serverList {
+                max-height: 100px !important;
+            }
+            #embedProvidersGrid {
+                gap: 6px !important;
+            }
+            .mobile-top-bar-landscape {
+                padding-top: 4px !important;
+                padding-bottom: 4px !important;
+            }
+        }
+
+        /* ==========================================================================
            MOBILE & TABLET ADAPTIVE CONTROLS SYSTEM
            ========================================================================== */
         .mobile-controls-cluster {
@@ -656,6 +695,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             50% { transform: scale(1.15); opacity: 1; }
             100% { transform: scale(1); opacity: 0.95; }
         }
+        /* Embed Player Mode: Clean Viewport & Zero Bottom Controls */
+        body.embed-active #bottomControlsBar,
+        body.embed-active #timelineContainer,
+        body.embed-active .timeline-container,
+        body.embed-active #timelineBackdrop,
+        body.embed-active #centerPlayBurst,
+        body.embed-active #seekIndicatorOverlay,
+        body.embed-active #mediaHudOverlay,
+        body.embed-active .hide-in-embed {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+        }
         /* Player Screen Lock Engine */
         body.player-screen-locked #topControlsBar,
         body.player-screen-locked #bottomControlsBar,
@@ -777,10 +830,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
     <!-- Main Player Canvas -->
     <div id="playerContainer" class="relative w-full h-full h-[100dvh] flex items-center justify-center bg-black">
-        <video id="mainVideo" class="w-full h-full object-contain cursor-pointer" playsinline preload="auto" crossorigin="anonymous"></video>
+        <video id="mainVideo" class="w-full h-full object-contain cursor-pointer" playsinline preload="auto"></video>
         
         <!-- Fallback Embed Iframe -->
-        <iframe id="embedFrame" class="w-full h-full border-0 hidden" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="origin"></iframe>
+        <iframe id="embedFrame" class="w-full h-full border-0 hidden" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="origin"></iframe>
 
         <!-- Embed Touch Sensor (For showing controls over iframe) -->
         <div id="embedTouchSensor" class="absolute inset-0 z-20 hidden" onmousemove="resetControlsTimer()" ontouchstart="resetControlsTimer()" onclick="resetControlsTimer()"></div>
@@ -926,11 +979,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
         <!-- TOP CONTROLS BAR -->
         <div id="topControlsBar" class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 sm:p-6 bg-gradient-to-b from-black/80 via-black/30 to-transparent transition-opacity duration-300">
-            <!-- Left Controls: Back + Title & Subtitle Pill (Rotate removed from left side to prevent confusion) -->
+            <!-- Left Controls: Back + Media Thumbnail + Title & Subtitle Pill (Rotate removed from left side to prevent confusion) -->
             <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 sm:flex-initial">
                 <button id="btnBack" onclick="handleGoBack()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full glass-btn hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white shrink-0 shadow-lg cursor-pointer active:scale-95 transition-all" title="Back">
                     <i data-lucide="arrow-left" class="w-4 h-4 sm:w-5 sm:h-5"></i>
                 </button>
+                <!-- Dynamic Player Thumbnail Icon (Movie / TV / Anime) -->
+                <div id="topBarThumbWrapper" class="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-white/10 border border-white/15 shrink-0 flex items-center justify-center shadow-lg">
+                    <img id="topBarThumbImg" src="" alt="Thumbnail" class="w-full h-full object-cover hidden" onerror="this.classList.add('hidden'); document.getElementById('topBarThumbFallback')?.classList.remove('hidden');" />
+                    <div id="topBarThumbFallback" class="w-full h-full flex items-center justify-center text-rose-400 bg-rose-500/10">
+                        <svg class="w-4 h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>
+                    </div>
+                </div>
                 <div class="flex flex-col min-w-0">
                     <h2 id="topBarTitle" class="text-xs sm:text-base font-bold text-white truncate drop-shadow max-w-[160px] xs:max-w-[220px] sm:max-w-md">
                         <?php echo htmlspecialchars($title); ?>
@@ -943,8 +1003,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             <!-- Mobile Quick Actions Cluster (Clean Glass OTT Pills - Floating Icon-Only Design) -->
             <div class="mobile-controls-cluster items-center gap-1 shrink-0 ml-2">
-                <!-- TV Episodes Drawer Toggle (If Series) -->
-                <button id="btnEpisodesDrawerMob" onclick="toggleEpisodesDrawer(); if(event) event.stopPropagation();" class="<?php echo $type === 'tv' ? 'flex' : 'hidden'; ?> ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Episodes Picker">
+                <!-- TV Episodes Drawer Toggle (If Series or Anime) -->
+                <button id="btnEpisodesDrawerMob" onclick="toggleEpisodesDrawer(); if(event) event.stopPropagation();" class="hidden ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Episodes Picker">
                     <i data-lucide="list-video" class="w-3.5 h-3.5 text-zinc-300"></i>
                     <span class="text-[11px] font-bold">Ep</span>
                 </button>
@@ -956,6 +1016,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 <!-- Quality & Server Pill -->
                 <button id="btnOpenQualityServerMob" onclick="toggleQualityServerModal(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Quality & Servers">
                     <span id="qualityButtonLabelMob" class="text-[11px] font-mono">1080p</span>
+                </button>
+                <!-- Proxying / Direct Play Quick Toggle -->
+                <button id="btnProxyingMob" onclick="toggleBingrDirectNoProxyMode(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Proxying (Click to Remove All Proxying & Direct Play)">
+                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span id="mobProxyingPill" class="text-[10px] font-mono">Proxying</span>
                 </button>
                 <!-- Aspect Ratio Quick Toggle -->
                 <button id="btnAspectMob" onclick="toggleAspectRatio(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Cycle Aspect Ratio">
@@ -982,8 +1047,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             <!-- Desktop Right Controls (Sleek Glassmorphic OTT Suite) -->
             <div class="desktop-controls-cluster items-center gap-1.5 min-w-0 justify-end">
-                <!-- TV Episodes Drawer Toggle (If Series) -->
-                <button id="btnEpisodesDrawer" onclick="toggleEpisodesDrawer()" class="<?php echo $type === 'tv' ? 'flex' : 'hidden'; ?> px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Episodes Picker">
+                <!-- TV Episodes Drawer Toggle (If Series or Anime) -->
+                <button id="btnEpisodesDrawer" onclick="toggleEpisodesDrawer()" class="hidden px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Episodes Picker">
                     <i data-lucide="list-video" class="w-3.5 h-3.5 text-zinc-300"></i>
                     <span>Episodes</span>
                 </button>
@@ -1010,6 +1075,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 <button id="btnOpenQualityServer" onclick="toggleQualityServerModal()" class="px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Quality & Servers">
                     <span id="qualityButtonLabel" class="hidden xs:inline">Auto &bull; 1080p</span>
                     <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-zinc-400"></i>
+                </button>
+
+                <!-- Proxying / Direct Play Toggle Button -->
+                <button id="btnProxyingDesktop" onclick="toggleBingrDirectNoProxyMode()" class="px-2.5 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Toggle Proxying (When ON: removes all proxying and plays raw stream directly)">
+                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span id="topProxyingBadge" class="text-[11px] font-mono">Proxying</span>
                 </button>
 
                 <!-- Aspect Ratio Quick Toggle -->
@@ -1175,6 +1246,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 </button>
             </div>
             <div class="grid grid-cols-2 gap-2.5">
+                <!-- Proxying / Direct Play Toggle -->
+                <button onclick="toggleBingrDirectNoProxyMode(); toggleMobileMoreMenu(false);" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-amber-400/40 text-left active:scale-95 transition-all cursor-pointer col-span-2">
+                    <div class="flex items-center justify-between w-full text-zinc-400">
+                        <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+                        <span id="sheetProxyingBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Standard</span>
+                    </div>
+                    <span class="text-xs font-bold text-white mt-1">Proxying (Direct Play)</span>
+                    <span class="text-[10px] text-zinc-400">When ON, removes all proxying and plays raw stream directly</span>
+                </button>
                 <!-- Aspect Ratio (Fit, Cover, 16:9, Zoom) -->
                 <button onclick="toggleAspectRatio(); updateMobileStatusBadges();" class="p-3 rounded-2xl glass-sub-panel flex flex-col items-start gap-1 hover:border-white/30 text-left active:scale-95 transition-all cursor-pointer">
                     <div class="flex items-center justify-between w-full text-zinc-400">
@@ -1563,7 +1643,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 <div class="col-span-full py-8 text-center text-xs text-zinc-500">Loading episodes...</div>
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- MORE LIKE THIS SLIDE-UP TRAY (TRANSPARENT GLASS & CINEMATIC REDESIGN) -->
         <div id="moreLikeThisTray" class="absolute bottom-0 left-0 right-0 z-40 max-h-[78vh] glass-panel border-t border-white/10 rounded-t-3xl p-5 sm:p-7 shadow-[0_-25px_60px_rgba(0,0,0,0.85)] transform translate-y-full transition-transform duration-400 ease-out flex flex-col">
@@ -1706,10 +1785,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         window.toggleEpisodesDrawer = function(force) {
             const drawer = document.getElementById('episodesDrawer');
             if (!drawer) return;
-            const isHidden = drawer.classList.contains('hidden');
-            const target = force !== undefined ? !force : !isHidden;
-            if (target) drawer.classList.add('hidden');
-            else drawer.classList.remove('hidden');
+            const isClosed = drawer.classList.contains('translate-y-full') || drawer.classList.contains('hidden');
+            const shouldOpen = force !== undefined ? force : isClosed;
+            if (shouldOpen) {
+                drawer.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    drawer.classList.remove('translate-y-full');
+                });
+                const moreLikeThisTray = document.getElementById('moreLikeThisTray');
+                const moreLikeThisChevron = document.getElementById('moreLikeThisChevron');
+                if (moreLikeThisTray) moreLikeThisTray.classList.add('translate-y-full');
+                if (moreLikeThisChevron) moreLikeThisChevron.classList.remove('rotate-180');
+            } else {
+                drawer.classList.add('translate-y-full');
+            }
         };
         window.toggleMobileMoreMenu = function(force) {
             const menu = document.getElementById('mobileMoreMenuSheet') || document.getElementById('mobileMoreMenu');
@@ -1742,6 +1831,16 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         if (DIRECT_STREAM_URL === '{{URL}}') DIRECT_STREAM_URL = '';
         const SOURCE_ORIGIN = urlParams.get('source') || '<?php echo addslashes($source); ?>' || 'consumet.html';
         let IMDB_ID = urlParams.get('imdb') || urlParams.get('imdbId') || urlParams.get('imdb_id') || '<?php echo addslashes($imdbId); ?>';
+        const POSTER_URL = urlParams.get('poster') || urlParams.get('thumb') || urlParams.get('thumbnail') || urlParams.get('logo') || urlParams.get('banner') || urlParams.get('image') || '';
+        if (POSTER_URL) {
+            const thumbImg = document.getElementById('topBarThumbImg');
+            const thumbFallback = document.getElementById('topBarThumbFallback');
+            if (thumbImg) {
+                thumbImg.src = POSTER_URL;
+                thumbImg.classList.remove('hidden');
+                if (thumbFallback) thumbFallback.classList.add('hidden');
+            }
+        }
 
         if (!MEDIA_ID || MEDIA_ID === '{{ID}}') {
             if (DIRECT_STREAM_URL) {
@@ -1929,15 +2028,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let externalSubtitlesLoaded = [];
 
         const isAnimeContent = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || 
-                               (MEDIA_TYPE !== 'movie' && (Boolean(MAL_ID) || Boolean(ANILIST_ID)));
+                               Boolean(MAL_ID) || Boolean(ANILIST_ID) ||
+                               (typeof window.location !== 'undefined' && (window.location.search.includes('type=anime') || window.location.search.includes('srv=tokyoinsider') || window.location.search.includes('srv=bing_anime') || window.location.search.includes('srv=zanix') || window.location.search.includes('srv=aniembed')));
         const ANIME_SPECIAL_SERVERS = [
+            { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP' },
+            { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP' },
+            { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP' },
+            { id: 'animesalt', name: 'AnimeSalt (Special Anime Scraper / Multi-Audio)', cc: 'JP' },
+            { id: 'aniembed', name: 'AniEmbed (Dual Audio JP/EN Embed)', cc: 'JP' },
             { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US' },
             { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN' },
             { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted)', cc: 'IN' },
             { id: 'vidsrc', name: 'VidSrc (Universal Multi-Source VIP)', cc: 'US' },
-            { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP' },
-            { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP' },
-            { id: 'animesalt', name: 'AnimeSalt (Special Anime Scraper / Multi-Audio)', cc: 'JP' },
+            { id: 'zanix', name: 'Zanix Anime (VidSrc & AniEmbed)', cc: 'TR' },
+            { id: 'flux', name: 'Flux (AutoEmbed & VidLink)', cc: 'US' },
             { id: 'kisskh', name: 'KissKH (Asian Drama & Anime / Direct HLS)', cc: 'JP' },
             { id: 'asiaflix', name: 'Asiaflix (Vidmoly Multi-Bitrate HLS)', cc: 'KR' },
             { id: 's40', name: 'Aphelion (DarkMatter / 1080p Direct HLS)', cc: 'GL' },
@@ -1947,7 +2051,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         if (isAnimeContent) {
             const animeIds = ANIME_SPECIAL_SERVERS.map(s => s.id);
             if (!CURRENT_SERVER || !animeIds.includes(CURRENT_SERVER)) {
-                CURRENT_SERVER = 'vidlink';
+                CURRENT_SERVER = 'tokyoinsider';
             }
         }
 
@@ -1956,6 +2060,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN' },
             { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN' },
             { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted)', cc: 'IN' },
+            { id: 'two_embed', name: '2Embed (Swish / 2vCDN Direct HLS)', cc: 'US' },
+            { id: 'zanix', name: 'Zanix Anime (FlixEra & NovusCloud)', cc: 'TR' },
+            { id: 'flux', name: 'Flux (VidBinge & SudoFlix Direct HLS)', cc: 'US' },
+            { id: 'smashy', name: 'SmashyStream (Multi-Host / Filemoon & Wish HLS)', cc: 'US' },
             { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN' },
             { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US' },
             { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US' },
@@ -1981,14 +2089,21 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             loadServerList().catch(() => {}); // Run in background — don't block initial m4u playback
             loadMoreLikeThis();
 
+            const isSeriesOrAnime = (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || isAnimeContent || Boolean(urlParams.get('s')) || Boolean(urlParams.get('season')) || Boolean(urlParams.get('episode')) || Boolean(urlParams.get('e')));
             const btnEp = document.getElementById('btnEpisodesDrawer');
+            const btnEpMob = document.getElementById('btnEpisodesDrawerMob');
+            const mobBtnEpisodes = document.getElementById('mobBtnEpisodes');
             const epDrawer = document.getElementById('episodesDrawer');
-            if (MEDIA_TYPE === 'tv') {
-                if (btnEp) btnEp.classList.remove('hidden');
-                if (epDrawer) epDrawer.classList.remove('hidden');
+
+            if (isSeriesOrAnime) {
+                if (btnEp) { btnEp.classList.remove('hidden'); btnEp.classList.add('flex'); }
+                if (btnEpMob) { btnEpMob.classList.remove('hidden'); btnEpMob.classList.add('flex'); }
+                if (mobBtnEpisodes) { mobBtnEpisodes.classList.remove('hidden'); mobBtnEpisodes.classList.add('flex'); }
                 loadTvSeasonsAndEpisodes();
             } else {
                 if (btnEp) btnEp.classList.add('hidden');
+                if (btnEpMob) btnEpMob.classList.add('hidden');
+                if (mobBtnEpisodes) mobBtnEpisodes.classList.add('hidden');
                 if (epDrawer) epDrawer.classList.add('hidden');
             }
 
@@ -2084,7 +2199,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         function startInitialStreamPlayback() {
             const hasDirectStream = DIRECT_STREAM_URL && (DIRECT_STREAM_URL.startsWith('http') || DIRECT_STREAM_URL.startsWith('/'));
             if (hasDirectStream) {
-                showLoading(true, 'M3U Stream Locked — Few Seconds to Play!', 'Pre-buffering HD frames • You are right here in the front row', 'm3u_loaded');
+                const isDirectMp4 = DIRECT_STREAM_URL.includes('tokyoinsider.com') || DIRECT_STREAM_URL.toLowerCase().includes('.mp4');
+                if (isDirectMp4) {
+                    showLoading(true, 'Direct 1080p MP4 Ready — Starting Playback!', 'Pre-buffering direct video stream • TokyoInsider CDN', 'almost_playing');
+                } else {
+                    showLoading(true, 'M3U Stream Locked — Few Seconds to Play!', 'Pre-buffering HD frames • You are right here in the front row', 'm3u_loaded');
+                }
                 initHlsPlayer(DIRECT_STREAM_URL);
                 window.bingrActiveStreamUrl = DIRECT_STREAM_URL;
                 if (typeof probeSmMovieStream === 'function') {
@@ -2141,14 +2261,47 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
         let isProbingStream = false;
         let activeFetchCtrl = null;
+        let currentFetchReqId = 0;
+        let hlsPlaybackWatchdog = null;
+
+        function clearHlsPlaybackWatchdog() {
+            if (hlsPlaybackWatchdog) {
+                clearTimeout(hlsPlaybackWatchdog);
+                hlsPlaybackWatchdog = null;
+            }
+        }
 
         async function fetchAndPlayStream(serverId, isManual = false) {
-            if (isManual && activeFetchCtrl) {
-                try { activeFetchCtrl.abort('user_switch'); } catch(_) {}
+            if (playerMode === 'embed' && !isManual) {
+                console.log('[Bingr] Player is currently in embed mode; suppressing background direct stream resolution.');
+                return;
+            }
+            const myReqId = ++currentFetchReqId;
+            if (activeFetchCtrl) {
+                try { activeFetchCtrl.abort(isManual ? 'user_switch' : 'superseded'); } catch(_) {}
+                activeFetchCtrl = null;
+            }
+            clearHlsPlaybackWatchdog();
+            if (hlsInstance) {
+                try {
+                    hlsInstance.stopLoad();
+                    hlsInstance.detachMedia();
+                    hlsInstance.destroy();
+                } catch(_) {}
+                hlsInstance = null;
             }
             isProbingStream = true;
 
+            if (isManual && serverId) {
+                CURRENT_SERVER = serverId;
+                updateServerListUI();
+            }
+
             showLoading(true, 'Connecting to ' + getServerName(serverId) + '...', 'Searching fastest cinema node while you wait', 'waiting');
+
+            let isTimedOut = false;
+            const fetchCtrl = new AbortController();
+            activeFetchCtrl = fetchCtrl;
 
             try {
                 const payload = {
@@ -2163,12 +2316,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     anilistId: ANILIST_ID || undefined
                 };
 
-                // Extra more time for multi-hop decryption servers (Vidlink, Vidrift & Filmu: 7.5s), 3.5s for other fast servers
-                const isHeavyDecryptionServer = (serverId === 'vidlink' || serverId === 'vidlinkpro' || serverId === 'vidrift' || serverId === 'filmu' || serverId === 'vidly');
-                const serverTimeoutMs = isHeavyDecryptionServer ? 7500 : 3500;
-                const fetchCtrl = new AbortController();
-                activeFetchCtrl = fetchCtrl;
-                const timeoutTimer = setTimeout(() => fetchCtrl.abort('timeout'), serverTimeoutMs);
+                // Generous timeout for manual server selection (16s), fast 11s cascade in auto mode
+                const serverTimeoutMs = isManual ? 16000 : 11000;
+                const timeoutTimer = setTimeout(() => {
+                    isTimedOut = true;
+                    try { fetchCtrl.abort('timeout'); } catch(_) {}
+                }, serverTimeoutMs);
 
                 let res, data;
                 try {
@@ -2184,9 +2337,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     if (activeFetchCtrl === fetchCtrl) activeFetchCtrl = null;
                 }
 
+                // Ignore stale responses if a newer server request was initiated or if user switched to embed
+                if (myReqId !== currentFetchReqId || (playerMode === 'embed' && !isManual)) return;
+
                 const firstSource = (data && data.sources && data.sources.length > 0) ? data.sources[0] : null;
-                const isExplicitEmbed = (firstSource && firstSource.type === 'embed') ||
-                    (data && data.sources && data.sources.length > 0 && data.sources.every(s => s.type === 'embed'));
+                const isExplicitEmbed = Boolean(
+                    (firstSource && firstSource.type === 'embed') ||
+                    (data && data.sources && data.sources.length > 0 && data.sources.every(s => s.type === 'embed'))
+                );
 
                 const streamCandidate = (isExplicitEmbed && firstSource)
                     ? firstSource.url
@@ -2194,7 +2352,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
                 const hasValidStream = Boolean(data && data.success && streamCandidate && typeof streamCandidate === 'string' && streamCandidate.trim().length > 5);
 
-                const isEmbedSource = !hasValidStream && isExplicitEmbed;
+                const isEmbedSource = hasValidStream && isExplicitEmbed;
 
                 const isDirectStream = hasValidStream && !isExplicitEmbed && (
                     streamCandidate.includes('.m3u8') || 
@@ -2203,12 +2361,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     streamCandidate.includes('/stream') || 
                     streamCandidate.includes('.mpd') ||
                     streamCandidate.includes('.mp4') ||
-                    (firstSource && (firstSource.type === 'application/x-mpegurl' || firstSource.type === 'hls' || firstSource.type === 'application/dash+xml' || firstSource.type === 'video/mp4'))
+                    streamCandidate.includes('tokyoinsider.com') ||
+                    (firstSource && (firstSource.type === 'application/x-mpegurl' || firstSource.type === 'hls' || firstSource.type === 'application/dash+xml' || firstSource.type === 'video/mp4' || firstSource.skipProxy))
                 );
 
                 const streamUrl = streamCandidate;
 
-                if (hasValidStream && (isDirectStream || streamUrl)) {
+                if (hasValidStream && !isExplicitEmbed && (isDirectStream || streamUrl)) {
                     CURRENT_SERVER = data.serverId || serverId;
                     updateServerListUI();
                     window.bingrSources = data.sources || [];
@@ -2228,42 +2387,34 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         const timeDurationMob = document.getElementById('timeDurationMob');
                         if (timeDurationMob) timeDurationMob.textContent = initDurFmt;
                     }
-                    showLoading(true, 'M3U Stream Loaded — Starting in a Few Seconds!', 'Connected to ' + getServerName(CURRENT_SERVER) + ' • Decoding master playlist', 'm3u_loaded');
+                    const isTokyoOrMp4 = (firstSource && (firstSource.type === 'video/mp4' || firstSource.skipProxy)) || (streamUrl && (streamUrl.includes('tokyoinsider.com') || streamUrl.toLowerCase().includes('.mp4')));
+                    if (isTokyoOrMp4) {
+                        showLoading(true, 'Direct 1080p MP4 Ready — Starting Playback!', 'Connected to ' + getServerName(CURRENT_SERVER) + ' • Direct native video stream', 'almost_playing');
+                    } else {
+                        showLoading(true, 'M3U Stream Loaded — Starting in a Few Seconds!', 'Connected to ' + getServerName(CURRENT_SERVER) + ' • Decoding master playlist', 'm3u_loaded');
+                    }
                     initHlsPlayer(streamUrl);
                     if (data.subtitles && data.subtitles.length > 0) {
                         externalSubtitlesLoaded = data.subtitles;
                         populateSubtitlesList();
                     }
-                    if (isManual) {
-                        if (data.fallbackNote) {
-                            showToast(data.fallbackNote, 'info');
-                        } else {
-                            showToast(`Connected to ${getServerName(CURRENT_SERVER)}`);
-                        }
+                    if (data.fallbackNote) {
+                        showToast(data.fallbackNote, 'info');
+                    } else if (isManual) {
+                        showToast(`Connected to ${getServerName(CURRENT_SERVER)}`);
                     }
                 } else if (isEmbedSource) {
-                    const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
-                    const fallbackOrder = isAnimeMode
-                        ? ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex']
-                        : (MEDIA_TYPE === 'tv'
-                            ? ['vidlink', 'vidrift', 'filmu', 'm4u', 'vidsrc', 's62', 's30', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 's60', 's63', 's61', 'cinepro']
-                            : ['vidlink', 'vidrift', 'filmu', 'm4u', 'vidsrc', 's62', 's30', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 's60', 's63', 's61', 'cinepro']);
-                    failedServers.add(serverId);
-                    const unattemptedDirect = fallbackOrder.find(srv => !failedServers.has(srv));
-                    // If this was an auto-cascade and another direct server is available, search remaining direct servers first!
-                    if (!isManual && unattemptedDirect) {
-                        console.log(`[Bingr Cascade] Server "${serverId}" returned embed only. Searching direct server "${unattemptedDirect}"...`);
-                        fetchAndPlayStream(unattemptedDirect, false);
-                        return;
-                    }
-
-                    // Direct streams exhausted or user explicitly selected embed server
+                    // Backend returned a working embed source — launch playback immediately without rogue cascade loop
                     CURRENT_SERVER = (data && data.serverId) || serverId;
                     updateServerListUI();
                     showLoading(false);
                     const embedTarget = (firstSource && firstSource.url) || streamUrl;
                     switchPlayerMode('embed', 'vidlink_pro', true, embedTarget);
-                    if (isManual) showToast(`Playing via ${getServerName(CURRENT_SERVER)} Embed`);
+                    if (data && data.fallbackNote) {
+                        showToast(data.fallbackNote, 'info');
+                    } else if (isManual) {
+                        showToast(`Playing via ${getServerName(CURRENT_SERVER)} Embed`);
+                    }
                 } else {
                     console.warn(`[Bingr] Server "${serverId}" returned no direct stream. Advancing to next server...`);
                     failedServers.add(serverId);
@@ -2273,8 +2424,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     cascadeFallback(serverId);
                 }
             } catch (err) {
-                if (err && (err.name === 'AbortError' || err === 'user_switch')) {
-                    // Suppress cascade when abort was user initiated
+                if (myReqId !== currentFetchReqId) return;
+                const isExplicitUserSwitch = !isTimedOut && (err === 'user_switch' || err === 'superseded' || (fetchCtrl && fetchCtrl.signal && (fetchCtrl.signal.reason === 'user_switch' || fetchCtrl.signal.reason === 'superseded')));
+                if (isExplicitUserSwitch) {
                     return;
                 }
                 console.warn(`[Bingr] Server "${serverId}" connection failed/timed out:`, err?.message || err);
@@ -2284,13 +2436,16 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 }
                 cascadeFallback(serverId);
             } finally {
-                isProbingStream = false;
+                if (myReqId === currentFetchReqId) {
+                    isProbingStream = false;
+                }
             }
         }
 
         let failedServers = new Set();
         let isCascading = false;
         let hasValidatedDurationForCurrentStream = false;
+        const durationCheckedServers = new Set();
 
         function validatePlayingStreamDuration() {
             if (hasValidatedDurationForCurrentStream) return true;
@@ -2299,39 +2454,68 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const isTranscode = window.bingrActiveStreamUrl && (window.bingrActiveStreamUrl.includes('/api/transcode/mkv') || window.bingrActiveStreamUrl.includes('transcode_mkv.php'));
             if (isTranscode) return true;
 
-            const expected = window.bingrExpectedDurationSec || (MEDIA_TYPE === 'movie' ? 5400 : 0);
+            const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
+            const isTvMode = isAnimeMode || MEDIA_TYPE === 'tv';
+
+            // Calculate realistic expected duration per episode for TV/anime vs movie
+            let expected = window.bingrExpectedDurationSec || (MEDIA_TYPE === 'movie' ? 5400 : 1440);
+            if (isTvMode && expected > 3600) {
+                // TV/anime episodes are 20-45 minutes; clamp mistaken whole-season/movie runtimes
+                expected = 1440;
+            }
             const actual = mainVideo.duration;
 
-            // Strict check for movies or episodes expected >= 25 minutes to avoid ad loops / trailer previews
-            if (expected >= 1500) {
-                // If actual stream is under 12 minutes (720s) OR under 25% of expected runtime:
-                if (actual < 720 || actual < (expected * 0.25)) {
-                    hasValidatedDurationForCurrentStream = true;
-                    console.warn(`[Duration Guard] Server "${CURRENT_SERVER}" served an ad/preview clip (${Math.round(actual)}s vs expected ~${Math.round(expected)}s). Auto-rejecting stream!`);
-                    try { mainVideo.pause(); } catch(_) {}
-                    if (hlsInstance) {
-                        try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch (_) {}
-                        hlsInstance = null;
-                    }
-                    showToast(`${getServerName(CURRENT_SERVER)} served a short preview/sample clip. Switching to full-length stream...`, 'info');
-                    failedServers.add(CURRENT_SERVER);
-                    cascadeFallback(CURRENT_SERVER);
-                    return false;
+            // Circuit breaker: do not repeat check on already processed server in this session
+            if (durationCheckedServers.has(CURRENT_SERVER)) {
+                hasValidatedDurationForCurrentStream = true;
+                return true;
+            }
+
+            // Stream duration verification:
+            // For anime/TV: episodes are typically 18-30 mins; accept any stream >= 10 mins (600s) immediately.
+            // Only reject if it is genuinely a tiny dummy / ad clip (< 90s) while expected runtime is >= 20 mins.
+            let isAdClip = false;
+            if (isTvMode) {
+                if (actual < 90 && expected >= 900) {
+                    isAdClip = true;
+                }
+            } else if (expected >= 2400) {
+                // Movies: reject only if actual is under 10 minutes (600s)
+                if (actual < 600) {
+                    isAdClip = true;
                 }
             }
+
+            if (isAdClip) {
+                hasValidatedDurationForCurrentStream = true;
+                durationCheckedServers.add(CURRENT_SERVER);
+                console.warn(`[Duration Guard] Server "${CURRENT_SERVER}" served an ad/preview clip (${Math.round(actual)}s vs expected ~${Math.round(expected)}s). Auto-rejecting stream!`);
+                try { mainVideo.pause(); } catch(_) {}
+                if (hlsInstance) {
+                    try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch (_) {}
+                    hlsInstance = null;
+                }
+                showToast(`${getServerName(CURRENT_SERVER)} served a short preview clip. Auto-connecting to next best server...`, 'info');
+                failedServers.add(CURRENT_SERVER);
+                cascadeFallback(CURRENT_SERVER);
+                return false;
+            }
+
             hasValidatedDurationForCurrentStream = true;
+            durationCheckedServers.add(CURRENT_SERVER);
             return true;
         }
 
         function cascadeFallback(failedServerId) {
+            if (playerMode === 'embed') return;
             isCascading = false;
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['tokyoinsider', 'bing_anime', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
-                    ? ['vidlink', 'vidrift', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
-                    : ['vidlink', 'vidrift', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
+                    ? ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
+                    : ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
             // Find next unattempted direct server in priority sequence (never stuck on failed servers)
             const nextServer = fallbackOrder.find(srv => !failedServers.has(srv));
             if (nextServer) {
@@ -2432,12 +2616,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             stallWatchdogTimer = setTimeout(() => {
                 stallWatchdogTimer = null;
                 if (!mainVideo || mainVideo.paused || mainVideo.ended) return;
-                // If playback remains blocked for > 1.5s
-                if (mainVideo.readyState < 3) {
-                    console.warn('[StallWatchdog] Playback stalled >1.5s, un-stalling buffer...');
+                // Only run mid-stream un-stalling after initial playback has begun (currentTime > 0.5s)
+                if (mainVideo.readyState < 3 && mainVideo.currentTime > 0.5) {
                     resolveBufferStall('watchdog');
                 }
-            }, 1500);
+            }, 3500);
         }
 
         function clearStallWatchdog() {
@@ -2447,25 +2630,192 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }
         }
 
+        // Anti-Ad / Popup & Redirection Restrictions Guard for PWA
+        try {
+            window.open = function() { return null; };
+            Object.defineProperty(window, 'onbeforeunload', {
+                configurable: false,
+                get: function() { return null; },
+                set: function() {}
+            });
+        } catch(e) {}
+
+        function unwrapBingrProxyUrl(u) {
+            if (!u || typeof u !== 'string') return u;
+            let cur = u.trim();
+            for (let i = 0; i < 4; i++) {
+                const isProxyWrapper = cur.includes('stream_proxy.php') ||
+                                       cur.includes('/api/proxy/') ||
+                                       cur.includes('/api/stream-proxy') ||
+                                       cur.includes('live.php?url=') ||
+                                       cur.includes('live.php?id=http');
+                if (!isProxyWrapper) break;
+                try {
+                    const parsed = new URL(cur, window.location.origin);
+                    const inner = parsed.searchParams.get('url') || parsed.searchParams.get('id') || '';
+                    if (inner && (inner.startsWith('http://') || inner.startsWith('https://') || inner.startsWith('/'))) {
+                        cur = inner;
+                        continue;
+                    }
+                } catch (e) {}
+                const m = cur.match(/[?&](?:url|id)=([^&]+)/i);
+                if (m && m[1]) {
+                    try {
+                        const dec = decodeURIComponent(m[1]);
+                        if (dec.startsWith('http://') || dec.startsWith('https://') || dec.startsWith('/')) {
+                            cur = dec;
+                            continue;
+                        }
+                    } catch (e) {}
+                }
+                break;
+            }
+            return cur;
+        }
+        window.unwrapBingrProxyUrl = unwrapBingrProxyUrl;
+
+        function toggleBingrDirectNoProxyMode() {
+            window._directNoProxyMode = !window._directNoProxyMode;
+            const isDirect = Boolean(window._directNoProxyMode);
+            const topBadge = document.getElementById('topProxyingBadge');
+            const mobBadge = document.getElementById('mobProxyingPill');
+            const sheetBadge = document.getElementById('sheetProxyingBadge');
+            const desktopBtn = document.getElementById('btnProxyingDesktop');
+            if (topBadge) topBadge.textContent = isDirect ? 'Proxying: Direct' : 'Proxying';
+            if (mobBadge) mobBadge.textContent = isDirect ? 'Direct' : 'Proxying';
+            if (sheetBadge) sheetBadge.textContent = isDirect ? 'ON (Direct)' : 'Standard';
+            if (desktopBtn) {
+                desktopBtn.style.borderColor = isDirect ? 'rgba(251,191,36,0.75)' : '';
+                desktopBtn.style.background = isDirect ? 'rgba(180,83,9,0.55)' : '';
+            }
+            const rawStream = unwrapBingrProxyUrl(window._lastRawBingrStreamUrl || window.bingrActiveStreamUrl || '');
+            if (rawStream) {
+                initHlsPlayer(rawStream);
+            }
+        }
+        window.toggleBingrDirectNoProxyMode = toggleBingrDirectNoProxyMode;
+
         function initHlsPlayer(streamUrl) {
             if (!streamUrl) return;
+            const rawUrl = unwrapBingrProxyUrl(streamUrl);
+            window._lastRawBingrStreamUrl = rawUrl;
 
-            // Auto-proxy CDNs that enforce strict Origin/Referer or fail direct browser CORS
-            let effectiveUrl = streamUrl;
-            if (effectiveUrl.startsWith('/live.php?url=')) {
-                effectiveUrl = effectiveUrl.replace('/live.php?url=', '/stream_proxy.php?url=');
+            // Direct Video & TokyoInsider Detection (progressive MP4/MKV/WebM)
+            const currentSrcObj = (window.bingrSources || []).find(s => s && (s.url === streamUrl || s.url === rawUrl || s.rawUrl === rawUrl)) || (window.bingrSources && window.bingrSources[0]);
+
+            // 1. Detect iframe embeds and route to embed player immediately
+            const isEmbedUrl = Boolean(
+                (currentSrcObj && (currentSrcObj.type === 'embed' || currentSrcObj.type === 'text/html' || currentSrcObj.iframeUrl)) ||
+                streamUrl.includes('abyssplayer.com') ||
+                streamUrl.includes('/embed/') ||
+                streamUrl.includes('/e/') ||
+                streamUrl.includes('megacloud') ||
+                streamUrl.includes('streamwish') ||
+                streamUrl.includes('filemoon')
+            );
+
+            if (isEmbedUrl) {
+                console.log('[Player Engine] Iframe embed source detected; switching to high-definition embed player:', streamUrl);
+                switchPlayerMode('embed', 'vidlink_pro', false, streamUrl);
+                return;
             }
-            const isCorsReady = effectiveUrl.includes('dash-hls-bridge') ||
-                                effectiveUrl.includes('workers.dev') ||
-                                effectiveUrl.includes('proxy-web-sage.vercel.app') ||
-                                effectiveUrl.includes('cloudfront.net') ||
-                                effectiveUrl.includes('b-cdn.net') ||
-                                effectiveUrl.includes('fastly.net') ||
-                                effectiveUrl.includes('cloudflare.com') ||
-                                effectiveUrl.includes('cloudflarestream.com');
-            if (!isCorsReady && (effectiveUrl.startsWith('http://') || effectiveUrl.startsWith('https://')) && !effectiveUrl.startsWith(window.location.origin)) {
-                effectiveUrl = '/stream_proxy.php?url=' + encodeURIComponent(streamUrl);
-                console.log('[HLS] Automatically routed stream through reverse proxy for CORS compliance:', effectiveUrl);
+
+            // 2. Direct progressive video detection (progressive MP4/MKV/WebM)
+            const isTokyoInsider = streamUrl.includes('tokyoinsider.com') || (rawUrl && rawUrl.includes('tokyoinsider.com'));
+            const isDirectVideo = !isEmbedUrl && (
+                                  isTokyoInsider ||
+                                  streamUrl.toLowerCase().includes('.mkv') || 
+                                  streamUrl.toLowerCase().includes('.mp4') || 
+                                  streamUrl.toLowerCase().includes('.webm') ||
+                                  (rawUrl && rawUrl.toLowerCase().includes('.mkv')) || 
+                                  (rawUrl && rawUrl.toLowerCase().includes('.mp4')) || 
+                                  (rawUrl && rawUrl.toLowerCase().includes('.webm')) ||
+                                  streamUrl.includes('streamrip.fun/f/') ||
+                                  (currentSrcObj && (currentSrcObj.type === 'video/mp4' || currentSrcObj.type === 'video/x-matroska') && !streamUrl.toLowerCase().includes('.m3u8'))
+            );
+
+            if (isDirectVideo) {
+                console.log('[Video Player] Direct Progressive Video detected (bypassing HLS and CORS proxy):', rawUrl);
+                // Cleanly detach and destroy any previous HLS instance
+                if (hlsInstance) {
+                    try {
+                        hlsInstance.stopLoad();
+                        hlsInstance.detachMedia();
+                        hlsInstance.destroy();
+                    } catch(e) {}
+                    hlsInstance = null;
+                }
+                clearHlsPlaybackWatchdog();
+
+                // Direct video must NOT enforce CORS headers so native browser plays external CDNs without blocking
+                try {
+                    mainVideo.removeAttribute('crossorigin');
+                    mainVideo.crossOrigin = null;
+                } catch(_) {}
+
+                // Reset video element
+                try {
+                    mainVideo.pause();
+                    mainVideo.removeAttribute('src');
+                    mainVideo.load();
+                } catch(e) {}
+
+                const effectiveUrl = rawUrl;
+                window.bingrActiveStreamUrl = effectiveUrl;
+
+                const statusTitle = isTokyoInsider ? 'TokyoInsider 1080p MP4 Ready — Playing!' : 'Direct Stream Ready — Playing in a Moment!';
+                const statusDesc = isTokyoInsider ? 'Direct 1080p stream from TokyoInsider CDN • High-speed progressive video' : 'Buffering initial high-bitrate video frames...';
+                showLoading(true, statusTitle, statusDesc, 'almost_playing');
+
+                mainVideo.src = effectiveUrl;
+                probeSmMovieStream(effectiveUrl);
+                if (typeof syncDurationDisplay === 'function') syncDurationDisplay();
+
+                mainVideo.onerror = (e) => {
+                    mainVideo.onerror = null;
+                    console.warn('[Video Player] Direct video stream load error on', effectiveUrl, e);
+                    // Try next available source within window.bingrSources before cascading to next server
+                    const allSrcs = window.bingrSources || [];
+                    const curIdx = allSrcs.findIndex(s => s && (s.url === streamUrl || s.url === effectiveUrl || s.rawUrl === effectiveUrl));
+                    if (curIdx >= 0 && curIdx + 1 < allSrcs.length && allSrcs[curIdx + 1]?.url) {
+                        console.log(`[Video Player] Source #${curIdx + 1} failed, trying backup source #${curIdx + 2} on "${CURRENT_SERVER}"...`);
+                        initHlsPlayer(allSrcs[curIdx + 1].url);
+                        return;
+                    }
+                    console.warn('[Video Player] Direct video stream load error. Triggering fallback cascade...');
+                    cascadeFallback(CURRENT_SERVER);
+                };
+
+                const targetSeekTime = previousVideoTime;
+                if (targetSeekTime > 0 && !effectiveUrl.includes('/api/transcode/mkv') && !effectiveUrl.includes('transcode_mkv.php')) {
+                    previousVideoTime = 0;
+                    mainVideo.addEventListener('loadedmetadata', () => {
+                        try { mainVideo.currentTime = targetSeekTime; } catch(e) {}
+                    }, { once: true });
+                }
+
+                safePlayVideo();
+                return;
+            }
+
+            // Auto-proxy CDNs that enforce strict Origin/Referer or fail direct browser CORS (unless Direct No-Proxy mode is ON)
+            let effectiveUrl = window._directNoProxyMode ? unwrapBingrProxyUrl(streamUrl) : streamUrl;
+            if (!window._directNoProxyMode) {
+                if (effectiveUrl.startsWith('/live.php?url=')) {
+                    effectiveUrl = effectiveUrl.replace('/live.php?url=', '/stream_proxy.php?url=');
+                }
+                const isCorsReady = effectiveUrl.includes('dash-hls-bridge') ||
+                                    effectiveUrl.includes('workers.dev') ||
+                                    effectiveUrl.includes('proxy-web-sage.vercel.app') ||
+                                    effectiveUrl.includes('cloudfront.net') ||
+                                    effectiveUrl.includes('b-cdn.net') ||
+                                    effectiveUrl.includes('fastly.net') ||
+                                    effectiveUrl.includes('cloudflare.com') ||
+                                    effectiveUrl.includes('cloudflarestream.com');
+                if (!isCorsReady && (effectiveUrl.startsWith('http://') || effectiveUrl.startsWith('https://')) && !effectiveUrl.startsWith(window.location.origin)) {
+                    effectiveUrl = '/stream_proxy.php?url=' + encodeURIComponent(streamUrl);
+                    console.log('[HLS] Automatically routed stream through reverse proxy for CORS compliance:', effectiveUrl);
+                }
             }
 
             window.bingrActiveStreamUrl = effectiveUrl;
@@ -2476,8 +2826,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 window.bingrSeekOffset = 0;
             }
 
-            // Auto-proxy streamrip progressive video or HLS streams to bypass CORS and 401 blocks
-            if (effectiveUrl && effectiveUrl.includes('streamrip.fun') && !effectiveUrl.startsWith('/stream_proxy.php') && !effectiveUrl.includes('/stream_proxy.php?url=')) {
+            // Auto-proxy streamrip progressive video or HLS streams to bypass CORS and 401 blocks (unless Direct No-Proxy mode is ON)
+            if (!window._directNoProxyMode && effectiveUrl && effectiveUrl.includes('streamrip.fun') && !effectiveUrl.startsWith('/stream_proxy.php') && !effectiveUrl.includes('/stream_proxy.php?url=')) {
                 effectiveUrl = `/stream_proxy.php?url=${encodeURIComponent(effectiveUrl)}`;
             }
 
@@ -2498,35 +2848,37 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 mainVideo.load();
             } catch(e) {}
 
-            const targetSeekTime = previousVideoTime;
+            clearHlsPlaybackWatchdog();
 
-            const isDirectVideo = effectiveUrl.toLowerCase().includes('.mkv') || 
-                                  effectiveUrl.toLowerCase().includes('.mp4') || 
-                                  effectiveUrl.toLowerCase().includes('.webm') ||
-                                  effectiveUrl.includes('streamrip.fun/f/') ||
-                                  (window.bingrSources && window.bingrSources[0] && (window.bingrSources[0].type === 'video/mp4' || window.bingrSources[0].type === 'video/x-matroska'));
-
-            if (isDirectVideo) {
-                showLoading(true, 'Direct Stream Ready — Playing in a Moment!', 'Buffering initial high-bitrate video frames...', 'almost_playing');
-                mainVideo.src = effectiveUrl;
-                probeSmMovieStream(effectiveUrl);
-                if (typeof syncDurationDisplay === 'function') syncDurationDisplay();
-                mainVideo.onerror = () => {
-                    console.warn('[Video Player] Direct video stream load error. Triggering fallback cascade...');
-                    mainVideo.onerror = null;
-                    cascadeFallback(CURRENT_SERVER);
-                };
-                if (targetSeekTime > 0 && !effectiveUrl.includes('/api/transcode/mkv') && !effectiveUrl.includes('transcode_mkv.php')) {
-                    previousVideoTime = 0;
-                    mainVideo.addEventListener('loadedmetadata', () => {
-                        try { mainVideo.currentTime = targetSeekTime; } catch(e) {}
-                    }, { once: true });
+            const tryNextSourceOrCascade = (reason) => {
+                if (playerMode === 'embed') return;
+                clearHlsPlaybackWatchdog();
+                const allSrcs = (window.bingrSources || []).filter(s => s && s.type !== 'embed' && s.type !== 'text/html' && s.url && !s.url.includes('abyssplayer.com'));
+                const curIdx = allSrcs.findIndex(s => s.url === streamUrl || s.url === effectiveUrl);
+                if (curIdx >= 0 && curIdx + 1 < allSrcs.length && allSrcs[curIdx + 1]?.url) {
+                    console.log(`[HLS Failover] ${reason} on source #${curIdx + 1}; trying backup source #${curIdx + 2} on "${CURRENT_SERVER}"...`);
+                    initHlsPlayer(allSrcs[curIdx + 1].url);
+                    return;
                 }
-                safePlayVideo();
-                return;
-            }
+                console.warn(`[HLS Failover] ${reason} on "${CURRENT_SERVER}". Advancing to next server...`);
+                if (hlsInstance) {
+                    try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch (_) {}
+                    hlsInstance = null;
+                }
+                cascadeFallback(CURRENT_SERVER);
+            };
 
             if (Hls.isSupported()) {
+                let hasLoadedFirstFragOrFrame = false;
+                const activeReqSnapshot = currentFetchReqId;
+
+                hlsPlaybackWatchdog = setTimeout(() => {
+                    if (playerMode === 'embed' || activeReqSnapshot !== currentFetchReqId) return;
+                    if (!hasLoadedFirstFragOrFrame && (!mainVideo || mainVideo.readyState < 2)) {
+                        tryNextSourceOrCascade('Stream startup watchdog timeout (8.5s)');
+                    }
+                }, 8500);
+
                 hlsInstance = new Hls({
                     enableWorker: true,
                     startFragPrefetch: true,
@@ -2539,15 +2891,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     highBufferWatchdogPeriod: 2,
                     nudgeOffset: 0.1,
                     nudgeMaxRetry: 5,
-                    manifestLoadingTimeOut: 20000,
-                    manifestLoadingMaxRetry: 5,
-                    manifestLoadingRetryDelay: 800,
-                    levelLoadingTimeOut: 20000,
-                    levelLoadingMaxRetry: 5,
-                    levelLoadingRetryDelay: 800,
-                    fragLoadingTimeOut: 25000,
-                    fragLoadingMaxRetry: 5,
-                    fragLoadingRetryDelay: 800,
+                    manifestLoadingTimeOut: 7000,
+                    manifestLoadingMaxRetry: 1,
+                    manifestLoadingRetryDelay: 500,
+                    levelLoadingTimeOut: 7000,
+                    levelLoadingMaxRetry: 1,
+                    levelLoadingRetryDelay: 500,
+                    fragLoadingTimeOut: 10000,
+                    fragLoadingMaxRetry: 2,
+                    fragLoadingRetryDelay: 600,
                     xhrSetup: (xhr, url) => {
                         xhr.withCredentials = false;
                     }
@@ -2557,6 +2909,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 hlsInstance.attachMedia(mainVideo);
 
                 hlsInstance.on(Hls.Events.FRAG_LOADED, () => {
+                    hasLoadedFirstFragOrFrame = true;
+                    clearHlsPlaybackWatchdog();
                     networkErrorRetries = 0;
                 });
 
@@ -2612,6 +2966,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 });
 
                 hlsInstance.on(Hls.Events.FRAG_PARSED, () => {
+                    hasLoadedFirstFragOrFrame = true;
+                    clearHlsPlaybackWatchdog();
                     if (!window._audioCheckedAfterFrag) {
                         window._audioCheckedAfterFrag = true;
                         detectAndPopulateAudioTracks();
@@ -2639,6 +2995,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 let networkErrorRetries = 0;
                 let mediaErrorRetries = 0;
                 hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                    if (activeReqSnapshot !== currentFetchReqId) return;
                     if (data.details === 'bufferFullError' || data.details === Hls.ErrorDetails?.BUFFER_FULL_ERROR) {
                         try { hlsInstance.cleanUpBuffer(15); } catch(e){}
                         return;
@@ -2683,8 +3040,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                 initHlsPlayer(proxiedUrl);
                                 break;
                             }
+                            const isManifestOrLevelFailure = !hasLoadedFirstFragOrFrame && (
+                                data.details === 'manifestLoadError' ||
+                                data.details === 'manifestLoadTimeOut' ||
+                                data.details === 'manifestIncompatibleCodecsError' ||
+                                data.details === 'levelLoadError' ||
+                                data.details === 'levelLoadTimeOut' ||
+                                (data.response && (data.response.code === 404 || data.response.code === 403 || data.response.code >= 500))
+                            );
+                            if (isManifestOrLevelFailure) {
+                                tryNextSourceOrCascade(`Fatal ${data.details}`);
+                                break;
+                            }
                             networkErrorRetries++;
-                            if (networkErrorRetries <= 3) {
+                            if (networkErrorRetries <= 1) {
                                 console.log(`[HLS] Attempting network recovery (attempt ${networkErrorRetries})...`);
                                 try { hlsInstance.startLoad(); } catch (_) {}
                             } else if (!streamUrl.includes('/stream_proxy.php') && !streamUrl.includes('/live.php') && !streamUrl.includes('/api/proxy/')) {
@@ -2692,35 +3061,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                 const proxiedUrl = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
                                 initHlsPlayer(proxiedUrl);
                             } else {
-                                console.warn('[HLS] Unrecoverable network error. Triggering fallback cascade...');
-                                if (hlsInstance) {
-                                    try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch (_) {}
-                                    hlsInstance = null;
-                                }
-                                cascadeFallback(CURRENT_SERVER);
+                                tryNextSourceOrCascade('Unrecoverable network error');
                             }
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
                             mediaErrorRetries++;
-                            if (mediaErrorRetries <= 3) {
+                            if (mediaErrorRetries <= 2) {
                                 console.log(`[HLS] Attempting media error recovery (attempt ${mediaErrorRetries})...`);
                                 try { hlsInstance.recoverMediaError(); } catch (_) {}
                             } else {
-                                console.warn('[HLS] Unrecoverable media parsing error. Triggering auto-fallback cascade...');
-                                if (hlsInstance) {
-                                    try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch (_) {}
-                                    hlsInstance = null;
-                                }
-                                cascadeFallback(CURRENT_SERVER);
+                                tryNextSourceOrCascade('Unrecoverable media error');
                             }
                             break;
                         default:
-                            console.warn('[HLS] Fatal error, triggering fallback cascade...');
-                            if (hlsInstance) {
-                                try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch (_) {}
-                                hlsInstance = null;
-                            }
-                            cascadeFallback(CURRENT_SERVER);
+                            tryNextSourceOrCascade('Fatal HLS error');
                             break;
                     }
                 });
@@ -3281,12 +3635,70 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             </div>
                             ${CURRENT_SERVER === 's61' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
+                    </div>
+                </div>
+
+                <!-- DEDICATED ANIME SERVER CLUSTERS SECTION -->
+                <div class="border-t border-white/10 pt-2.5 mt-2">
+                    <div class="flex items-center justify-between mb-1.5 px-0.5">
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-rose-400"></i>
+                            Anime Server Clusters (Specialized JP/EN)
+                        </span>
+                        <span class="text-[9px] text-zinc-500 font-medium">Top Priority Anime Engines</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        <button type="button" onclick="switchServerCluster('tokyoinsider')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'tokyoinsider' ? 'glass-sub-panel bg-rose-500/25 border border-rose-500/40 text-white ring-1 ring-rose-400/50 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                    <span>TokyoInsider</span>
+                                    <span class="text-[9px] bg-red-500/20 text-red-300 px-1 py-0.5 rounded font-mono font-bold">1080p MP4</span>
+                                </div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">High-Speed Direct CDN</div>
+                            </div>
+                            ${CURRENT_SERVER === 'tokyoinsider' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('bing_anime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'bing_anime' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Bing Anime</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Nexa & Ravok Multi-Audio</div>
+                            </div>
+                            ${CURRENT_SERVER === 'bing_anime' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
                         <button type="button" onclick="switchServerCluster('hianime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'hianime' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
                                 <div class="truncate text-white font-bold text-[11px]">HiAnime (Anime)</div>
                                 <div class="text-[9px] text-zinc-400 font-normal truncate">MegaPlay Multi-Audio</div>
                             </div>
                             ${CURRENT_SERVER === 'hianime' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('animesalt')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'animesalt' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">AnimeSalt</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Special Multi-Audio</div>
+                            </div>
+                            ${CURRENT_SERVER === 'animesalt' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('aniembed')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'aniembed' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">AniEmbed (Dual Audio)</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">JP/EN Dual-Audio HLS</div>
+                            </div>
+                            ${CURRENT_SERVER === 'aniembed' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('zanix')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'zanix' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Zanix Anime</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">FlixEra & NovusCloud</div>
+                            </div>
+                            ${CURRENT_SERVER === 'zanix' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('flux')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'flux' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Flux Anime</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">SudoFlix & VidBinge HLS</div>
+                            </div>
+                            ${CURRENT_SERVER === 'flux' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('asiaflix')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'asiaflix' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
@@ -3301,13 +3713,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                 <div class="text-[9px] text-zinc-400 font-normal truncate">Asian Drama & Anime</div>
                             </div>
                             ${CURRENT_SERVER === 'kisskh' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('animesalt')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'animesalt' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">AnimeSalt</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Special Multi-Audio</div>
-                            </div>
-                            ${CURRENT_SERVER === 'animesalt' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                     </div>
                 </div>
@@ -3809,7 +4214,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    const animeAllowed = ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    const animeAllowed = ['tokyoinsider', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
                     availableServers = isAnime 
                         ? data.servers.filter(s => animeAllowed.includes(s.id))
                         : data.servers;
@@ -3828,7 +4233,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             list.innerHTML = availableServers.map(srv => {
                 const isSelected = srv.id === CURRENT_SERVER;
-                const flag = srv.cc === 'BD' ? '🇧🇩' : (srv.cc === 'IN' ? '🇮🇳' : (srv.cc === 'US' ? '🇺🇸' : (srv.cc === 'JP' ? '🇯🇵' : (srv.cc === 'KR' ? '🇰🇷' : (srv.cc === 'IT' ? '🇮🇹' : (srv.cc === 'IS' ? '🇮🇸' : '⚡'))))));
+                const flag = srv.cc === 'BD' ? '🇧🇩' : (srv.cc === 'IN' ? '🇮🇳' : (srv.cc === 'US' ? '🇺🇸' : (srv.cc === 'JP' ? '🇯🇵' : (srv.cc === 'KR' ? '🇰🇷' : (srv.cc === 'IT' ? '🇮🇹' : (srv.cc === 'IS' ? '🇮🇸' : (srv.cc === 'TR' ? '🇹🇷' : (srv.cc === 'GL' ? '🌐' : '⚡'))))))));
                 return `
                     <button onclick="switchServer('${srv.id}')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-all ${isSelected ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/20' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                         <span class="truncate">${flag} ${srv.name.split('(')[0].trim()}</span>
@@ -3852,7 +4257,16 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         function switchServer(serverId) {
-            if (serverId === CURRENT_SERVER && playerMode === 'direct') {
+            if (!serverId) return;
+            const isHealthyPlayingCurrent = (
+                serverId === CURRENT_SERVER &&
+                playerMode === 'direct' &&
+                !isProbingStream &&
+                mainVideo &&
+                !mainVideo.paused &&
+                mainVideo.readyState >= 2
+            );
+            if (isHealthyPlayingCurrent) {
                 toggleQualityServerModal(false);
                 toggleSubtitlesModal(false);
                 return;
@@ -3865,10 +4279,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             if (playerMode === 'embed') {
                 switchPlayerMode('direct', '', false);
             }
+            CURRENT_SERVER = serverId;
+            updateServerListUI();
             isProbingStream = false;
             showToast(`Switching server to ${getServerName(serverId)}...`);
             fetchAndPlayStream(serverId, true);
         }
+        window.switchServer = switchServer;
+        window.switchServerCluster = switchServerCluster;
 
         function getServerName(id) {
             const s = availableServers.find(x => x.id === id);
@@ -4209,14 +4627,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 previousVideoTime = 0;
                 initHlsPlayer(newUrl);
             } else {
-                if (typeof mainVideo.fastSeek === 'function') {
-                    try {
-                        mainVideo.fastSeek(clamped);
-                    } catch(e) {
-                        mainVideo.currentTime = clamped;
-                    }
-                } else {
+                try {
                     mainVideo.currentTime = clamped;
+                } catch (e) {
+                    if (typeof mainVideo.fastSeek === 'function') {
+                        try { mainVideo.fastSeek(clamped); } catch (_) {}
+                    }
                 }
             }
         }
@@ -4307,17 +4723,26 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
                 syncDurationDisplay();
 
+                if (current >= 85 || current < 1) {
+                    window._manualFallbackIntroSkipped = false;
+                }
+
                 // AniSkip / Skip Intro & Outro triggers (strictly for pure 'op' and 'ed', excluding mixed-op and mixed-ed)
                 let matchedAniSkip = null;
                 if (aniSkipResults && aniSkipResults.length > 0) {
                     matchedAniSkip = aniSkipResults.find(s => {
                         const t = (s.skipType || '').toLowerCase().trim();
-                        // Support intro/op, ending/credits/outro, and recap
                         if (t !== 'op' && t !== 'intro' && t !== 'ed' && t !== 'credits' && t !== 'outro' && t !== 'recap') return false;
+                        if ((s.skipId === 'movie_opening_intro_85' || s.skipId === 'fallback_intro_85') && window._manualFallbackIntroSkipped) return false;
                         const start = Math.max(0, (s.interval.startTime || 0) - 0.25);
                         return current >= start && current < s.interval.endTime;
                     });
                 }
+
+                const hasIntroSegment = aniSkipResults && aniSkipResults.some(s => {
+                    const t = (s.skipType || '').toLowerCase().trim();
+                    return t === 'op' || t === 'intro';
+                });
 
                 if (matchedAniSkip && current >= 0) {
                     activeAniSkipSegment = matchedAniSkip;
@@ -4326,8 +4751,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     if (aniSkipAutoSkip) {
                         if (lastAutoSkippedId !== segId) {
                             lastAutoSkippedId = segId;
-                            const targetTime = Math.min(duration, matchedAniSkip.interval.endTime + 0.5);
-                            mainVideo.currentTime = targetTime;
+                            const rawTarget = (matchedAniSkip.interval.endTime || 85) + 0.5;
+                            const targetTime = duration > 0 ? Math.min(duration, rawTarget) : rawTarget;
+                            applyVideoSeek(targetTime);
                             showToast('⚡ Auto-Skipped ' + getSkipTypeName(matchedAniSkip.skipType));
                         }
                         if (btnSkipIntro) {
@@ -4357,9 +4783,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             }
                         }
                     }
-                } else if ((!aniSkipResults || aniSkipResults.length === 0) && current >= 2 && current < 85 && (duration > 300 || !isFinite(duration))) {
+                } else if (!hasIntroSegment && !window._manualFallbackIntroSkipped && current >= 1 && current < 85 && (duration === 0 || duration > 180 || !isFinite(duration))) {
                     activeAniSkipSegment = {
-                        skipType: 'op',
+                        skipType: 'intro',
                         interval: { startTime: 0, endTime: 85 },
                         skipId: 'fallback_intro_85'
                     };
@@ -4604,24 +5030,43 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
         function skipIntro() {
             if (!mainVideo) return;
+            const dur = getEffectiveDuration();
+            const offset = (window.bingrSeekOffset !== undefined && window.bingrSeekOffset > 0) ? window.bingrSeekOffset : 0;
+            const cur = offset + ((mainVideo && !isNaN(mainVideo.currentTime)) ? mainVideo.currentTime : 0);
+
             if (activeAniSkipSegment && activeAniSkipSegment.interval) {
-                const targetTime = Math.min(mainVideo.duration || 0, activeAniSkipSegment.interval.endTime + 0.5);
-                mainVideo.currentTime = targetTime;
-                showToast('Skipped ' + getSkipTypeName(activeAniSkipSegment.skipType));
+                if (activeAniSkipSegment.skipId === 'fallback_intro_85' || activeAniSkipSegment.skipId === 'movie_opening_intro_85') {
+                    window._manualFallbackIntroSkipped = true;
+                }
+                const rawTarget = (activeAniSkipSegment.interval.endTime || 85) + 0.5;
+                const targetTime = dur > 0 ? Math.min(dur, rawTarget) : rawTarget;
+                applyVideoSeek(targetTime);
+                showToast('⚡ Skipped ' + getSkipTypeName(activeAniSkipSegment.skipType));
             } else if (aniSkipResults && aniSkipResults.length > 0) {
-                const cur = mainVideo.currentTime || 0;
-                const nextSeg = aniSkipResults.find(r => r.interval && r.interval.endTime > cur);
+                const nextSeg = aniSkipResults.find(r => r.interval && r.interval.endTime > cur && cur >= Math.max(0, (r.interval.startTime || 0) - 5));
                 if (nextSeg) {
-                    mainVideo.currentTime = Math.min(mainVideo.duration || 0, nextSeg.interval.endTime + 0.5);
-                    showToast('Skipped ' + getSkipTypeName(nextSeg.skipType));
+                    if (nextSeg.skipId === 'fallback_intro_85' || nextSeg.skipId === 'movie_opening_intro_85') {
+                        window._manualFallbackIntroSkipped = true;
+                    }
+                    const rawTarget = (nextSeg.interval.endTime || 85) + 0.5;
+                    const targetTime = dur > 0 ? Math.min(dur, rawTarget) : rawTarget;
+                    applyVideoSeek(targetTime);
+                    showToast('⚡ Skipped ' + getSkipTypeName(nextSeg.skipType));
+                } else {
+                    window._manualFallbackIntroSkipped = true;
+                    const rawTarget = cur < 85 ? 85.5 : (cur + 85);
+                    const targetTime = dur > 0 ? Math.min(dur, rawTarget) : rawTarget;
+                    applyVideoSeek(targetTime);
+                    showToast('⚡ Skipped 85s (Opening Intro)');
                 }
             } else {
-                const cur = mainVideo.currentTime || 0;
-                const dur = mainVideo.duration || 0;
-                const targetTime = Math.min(dur > 0 ? dur : Infinity, Math.max(85, cur + 85));
-                mainVideo.currentTime = targetTime;
-                showToast('Skipped 85s (Opening Logos)');
+                window._manualFallbackIntroSkipped = true;
+                const rawTarget = cur < 85 ? 85.5 : (cur + 85);
+                const targetTime = dur > 0 ? Math.min(dur, rawTarget) : rawTarget;
+                applyVideoSeek(targetTime);
+                showToast('⚡ Skipped 85s (Opening Intro)');
             }
+            activeAniSkipSegment = null;
             if (btnSkipIntro) {
                 btnSkipIntro.classList.remove('show');
                 btnSkipIntro.classList.add('hidden');
@@ -4700,7 +5145,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             
             if (show || isUserTouching || isModalOpen || (playerMode !== 'embed' && isPaused)) {
                 if (topControlsBar) topControlsBar.classList.remove('opacity-0', 'pointer-events-none');
-                if (bottomControlsBar) bottomControlsBar.classList.remove('opacity-0', 'pointer-events-none');
+                if (bottomControlsBar) {
+                    if (playerMode === 'embed') {
+                        bottomControlsBar.style.display = 'none';
+                        bottomControlsBar.classList.add('opacity-0', 'pointer-events-none');
+                    } else {
+                        bottomControlsBar.style.display = 'flex';
+                        bottomControlsBar.classList.remove('opacity-0', 'pointer-events-none');
+                    }
+                }
                 document.body.style.cursor = 'default';
                 if (embedTouchSensor) embedTouchSensor.classList.add('hidden');
             } else {
@@ -4851,9 +5304,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         function seekToAniSkip(sec) {
-            if (mainVideo) mainVideo.currentTime = sec;
+            if (sec >= 60) window._manualFallbackIntroSkipped = true;
+            applyVideoSeek(sec);
             toggleAniSkipModal(false);
-            showToast(`Seeked to ${formatTime(sec)}`);
+            showToast(`⚡ Seeked to ${formatTime(sec)}`);
         }
 
         function applyCustomMalId() {
@@ -5061,6 +5515,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     })
                     : [];
 
+                if (MEDIA_TYPE === 'movie' && !filteredResults.some(r => r.skipType === 'op' || r.skipType === 'intro')) {
+                    filteredResults.unshift({
+                        skipType: 'intro',
+                        interval: { startTime: 0, endTime: 85 },
+                        skipId: 'movie_opening_intro_85'
+                    });
+                }
+
                 if (filteredResults.length > 0) {
                     aniSkipResults = filteredResults;
                     lastAutoSkippedId = null; // Reset auto-skip trigger for new episode
@@ -5239,15 +5701,19 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         function toggleEpisodesDrawer(force) {
-            if (MEDIA_TYPE !== 'tv' || !episodesDrawer) return;
-            const isClosed = episodesDrawer.classList.contains('translate-y-full');
+            const drawer = document.getElementById('episodesDrawer');
+            if (!drawer) return;
+            const isClosed = drawer.classList.contains('translate-y-full') || drawer.classList.contains('hidden');
             const shouldOpen = force !== undefined ? force : isClosed;
             if (shouldOpen) {
-                episodesDrawer.classList.remove('translate-y-full');
-                moreLikeThisTray.classList.add('translate-y-full');
-                moreLikeThisChevron.classList.remove('rotate-180');
+                drawer.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    drawer.classList.remove('translate-y-full');
+                });
+                if (moreLikeThisTray) moreLikeThisTray.classList.add('translate-y-full');
+                if (moreLikeThisChevron) moreLikeThisChevron.classList.remove('rotate-180');
             } else {
-                episodesDrawer.classList.add('translate-y-full');
+                drawer.classList.add('translate-y-full');
             }
         }
 
@@ -5703,28 +6169,86 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         async function loadTvSeasonsAndEpisodes() {
-            if (MEDIA_TYPE !== 'tv') return;
+            const isSeriesOrAnime = (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || isAnimeContent || Boolean(urlParams.get('s')) || Boolean(urlParams.get('season')));
+            if (!isSeriesOrAnime) return;
             const seasonSelect = document.getElementById('seasonSelect');
             const grid = document.getElementById('episodesGrid');
             if (!seasonSelect || !grid) return;
 
-            try {
-                const res = await fetch('/api/bingr/tv/' + MEDIA_ID);
-                const data = await res.json();
-                if (!data || !data.seasons) return;
+            grid.innerHTML = '<div class="col-span-full py-8 text-center text-xs text-zinc-400">Loading episodes...</div>';
 
-                const seasons = data.seasons.filter(s => (s.season !== undefined ? s.season : s.season_number) > 0);
-                seasonSelect.innerHTML = seasons.map(s => {
-                    const sNum = s.season !== undefined ? s.season : s.season_number;
-                    const eCount = s.episodes !== undefined ? s.episodes : s.episode_count;
-                    const sName = s.name && s.name !== `Season ${sNum}` ? ` - ${s.name}` : '';
-                    return `<option value="${sNum}" ${sNum === MEDIA_SEASON ? 'selected' : ''}>Season ${sNum}${sName} (${eCount} eps)</option>`;
-                }).join('');
-
-                loadEpisodesForSeason(MEDIA_SEASON);
-            } catch (e) {
-                console.warn('Seasons load error:', e);
+            // 1. If TV series with TMDB ID, try TMDB TV details first
+            let tmdbSuccess = false;
+            if (MEDIA_TYPE === 'tv' || !isNaN(Number(MEDIA_ID))) {
+                try {
+                    const res = await fetch('/api/bingr/tv/' + MEDIA_ID);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.seasons && data.seasons.length > 0) {
+                            const seasons = data.seasons.filter(s => (s.season !== undefined ? s.season : s.season_number) > 0);
+                            if (seasons.length > 0) {
+                                seasonSelect.innerHTML = seasons.map(s => {
+                                    const sNum = s.season !== undefined ? s.season : s.season_number;
+                                    const eCount = s.episodes !== undefined ? s.episodes : s.episode_count;
+                                    const sName = s.name && s.name !== `Season ${sNum}` ? ` - ${s.name}` : '';
+                                    return `<option value="${sNum}" ${sNum === MEDIA_SEASON ? 'selected' : ''}>Season ${sNum}${sName} (${eCount} eps)</option>`;
+                                }).join('');
+                                tmdbSuccess = true;
+                                loadEpisodesForSeason(MEDIA_SEASON);
+                            }
+                        }
+                    }
+                } catch (_) {}
             }
+
+            if (tmdbSuccess) return;
+
+            // 2. If Anime or TMDB failed, fetch from AniList episodes API
+            try {
+                const aniParams = new URLSearchParams();
+                if (MAL_ID) aniParams.set('malId', MAL_ID);
+                if (ANILIST_ID) aniParams.set('id', ANILIST_ID);
+                if (MEDIA_TITLE) aniParams.set('title', MEDIA_TITLE);
+
+                const res = await fetch(`/api/bingr/anime/episodes?${aniParams.toString()}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.success && Array.isArray(data.episodes) && data.episodes.length > 0) {
+                        seasonSelect.innerHTML = `<option value="1" selected>Season 1 (${data.episodes.length} eps)</option>`;
+                        renderAnimeEpisodesGrid(data.episodes);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Bingr] Anime episodes fetch error:', e);
+            }
+
+            // 3. Fallback dummy grid if everything else failed
+            grid.innerHTML = '<div class="col-span-full py-8 text-center text-xs text-zinc-500">No episodes found.</div>';
+        }
+
+        function renderAnimeEpisodesGrid(episodes) {
+            const grid = document.getElementById('episodesGrid');
+            if (!grid) return;
+            grid.innerHTML = episodes.map((ep, idx) => {
+                const epNum = ep.episodeNumber || ep.episode_number || (idx + 1);
+                const isCurrent = epNum === MEDIA_EPISODE && MEDIA_SEASON === 1;
+                const thumb = ep.thumbnail || ep.still_path || '';
+                const title = ep.title || ep.name || `Episode ${epNum}`;
+                return `
+                    <div onclick="switchEpisode(1, ${epNum})" data-season="1" data-episode="${epNum}" class="episode-card-item group cursor-pointer space-y-1.5 transition-all transform hover:scale-[1.03] active:scale-95">
+                        <div class="episode-thumb-container relative aspect-video rounded-2xl overflow-hidden glass-sub-panel border ${isCurrent ? 'border-red-500 ring-2 ring-red-500/50' : 'border-white/10'} shadow-lg">
+                            ${thumb ? `<img src="${thumb}" alt="Ep ${epNum}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-xs font-bold text-zinc-600">EP ${epNum}</div>`}
+                            <div class="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md glass-panel text-white text-[10px] font-black">
+                                EP ${epNum}
+                            </div>
+                        </div>
+                        <div class="text-[11px] font-bold text-white truncate group-hover:text-red-400 transition-colors px-0.5">
+                            ${title}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         async function changeSeason(seasonNum) {
@@ -5866,13 +6390,26 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         const EMBED_PROVIDERS = [
-            { id: 'vidlink_pro', name: 'VidLink Pro (Official Embed)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://vidlink.pro/tv/${id}/${s}/${e}?multiLang=true&sub=true` : `https://vidlink.pro/movie/${id}?multiLang=true&sub=true` },
-            { id: 'vidy', name: 'Vidy (Bingr Official)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://www.vidy.st/tv/${id}/${s}/${e}` : `https://www.vidy.st/movie/${id}` },
-            { id: 'cinezo', name: 'Cinezo (Bingr Official)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://player.cinezo.live/embed/tv/${id}/${s}/${e}` : `https://player.cinezo.live/embed/movie/${id}` },
-            { id: 'vidbolt', name: 'Vidbolt (Bingr Official)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://vidbolt.xyz/tv/${id}/${s}/${e}` : `https://vidbolt.xyz/movie/${id}` },
-            { id: 'vidsrc_embed', name: 'VidSrc (Embed Mirror)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://vidsrc.mov/embed/tv/${id}/${s}/${e}` : `https://vidsrc.mov/embed/movie/${id}` },
-            { id: 'vidrift_embed', name: 'Vidrift (Direct Embed)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://embed.vidrift.in/embed/tv/${id}/${s}/${e}` : `https://embed.vidrift.in/embed/movie/${id}` },
-            { id: 'm4u_custom', name: 'Movie 4U (Direct Embed)', url: () => customEmbedUrl || 'https://new1.movies4u.garden' }
+            { id: 'vidlink_pro', name: 'VidLink Pro (Official Embed)', url: (t, id, s, e) => {
+                const isDub = (urlParams.get('audio') === 'dub' || window._embedAudioMode === 'dub');
+                return (t === 'tv' || t === 'series') ? `https://vidlink.pro/tv/${id}/${s || 1}/${e || 1}?multiLang=true&sub=true${isDub ? '&dub=true&defaultLang=en' : ''}` : `https://vidlink.pro/movie/${id}?multiLang=true&sub=true${isDub ? '&dub=true&defaultLang=en' : ''}`;
+            }},
+            { id: 'smashy', name: 'SmashyStream (Alternative Embed)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s || 1}&episode=${e || 1}` : `https://embed.smashystream.com/playere.php?tmdb=${id}` },
+            { id: 'two_embed', name: '2Embed (Alternative Embed)', url: (t, id, s, e) => (t === 'tv' || t === 'series') ? `https://www.2embed.cc/embedtv/${id}&s=${s || 1}&e=${e || 1}` : `https://www.2embed.cc/embed/${id}` },
+            { id: 'aniembed', name: 'AniEmbed (Anime Dual Audio)', url: (t, id, s, e) => `https://aniembed.se/e/${id}/${e || 1}` },
+            { id: 'vidsrc_pm', name: 'VidSrc VIP (Multi-Source VIP)', url: (t, id, s, e) => (t === 'tv' || t === 'series' || t === 'anime') ? `https://vidsrc.pm/embed/tv/${id}/${s || 1}/${e || 1}` : `https://vidsrc.pm/embed/movie/${id}` },
+            { id: 'autoembed', name: 'AutoEmbed Fast (1080p Embed)', url: (t, id, s, e) => (t === 'tv' || t === 'series' || t === 'anime') ? `https://autoembed.co/tv/tmdb/${id}-${s || 1}-${e || 1}` : `https://autoembed.co/movie/tmdb/${id}` },
+            { id: 'zanix', name: 'Zanix Anime (VidSrc & AniEmbed)', url: (t, id, s, e) => (t === 'movie') ? `https://vidsrc.pm/embed/movie/${id}` : `https://vidsrc.pm/embed/tv/${id}/${s || 1}/${e || 1}` },
+            { id: 'flux', name: 'Flux (AutoEmbed & VidLink)', url: (t, id, s, e) => (t === 'tv' || t === 'series' || t === 'anime') ? `https://autoembed.co/tv/tmdb/${id}-${s || 1}-${e || 1}` : `https://autoembed.co/movie/tmdb/${id}` },
+            { id: 'vidly_embed', name: 'Vidly Pro (Multi-Audio Embed)', url: (t, id, s, e) => {
+                const isDub = (urlParams.get('audio') === 'dub' || window._embedAudioMode === 'dub');
+                return (t === 'tv' || t === 'series') ? `https://vidly.pro/embed/tv/${id}/${s || 1}/${e || 1}${isDub ? '?dub=1&multiLang=true' : ''}` : `https://vidly.pro/embed/movie/${id}${isDub ? '?dub=1&multiLang=true' : ''}`;
+            }},
+            { id: 'vidrift_embed', name: 'Vidrift (Direct Embed)', url: (t, id, s, e) => {
+                const isDub = (urlParams.get('audio') === 'dub' || window._embedAudioMode === 'dub');
+                return (t === 'tv' || t === 'series') ? `https://embed.vidrift.in/embed/tv/${id}/${s || 1}/${e || 1}${isDub ? '?dub=true&audio=hindi' : ''}` : `https://embed.vidrift.in/embed/movie/${id}${isDub ? '?dub=true&audio=hindi' : ''}`;
+            }},
+            { id: 'm4u_custom', name: 'Movie 4U (Direct Embed)', url: () => customEmbedUrl || 'https://new4.movies4u.garden' }
         ];
 
         function populateEmbedProviders() {
@@ -5897,13 +6434,42 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const btnDirectMob = document.getElementById('btnModeDirectMob');
             const btnEmbedMob = document.getElementById('btnModeEmbedMob');
             const bottomControls = document.getElementById('bottomControlsBar');
+            const timelineContainer = document.querySelector('.timeline-container');
+            const timelineBackdrop = document.getElementById('timelineBackdrop');
+            const centerPlayBurst = document.getElementById('centerPlayBurst');
+            const seekOverlay = document.getElementById('seekIndicatorOverlay');
             
             if (mode === 'embed') {
+                window.IS_EMBED_ACTIVE = true;
+
+                // 1. Immediately abort any in-flight direct stream resolution
+                currentFetchReqId++;
+                isProbingStream = false;
+                if (activeFetchCtrl) {
+                    try { activeFetchCtrl.abort('user_switch_to_embed'); } catch (_) {}
+                    activeFetchCtrl = null;
+                }
+                clearHlsPlaybackWatchdog();
+                if (typeof stallWatchdogTimer !== 'undefined' && stallWatchdogTimer) {
+                    clearTimeout(stallWatchdogTimer);
+                    stallWatchdogTimer = null;
+                }
+                showLoading(false);
+
+                // 2. Stop and detach HLS and pause main video
                 if (hlsInstance) {
-                    try { hlsInstance.stopLoad(); } catch (_) {}
+                    try {
+                        hlsInstance.stopLoad();
+                        hlsInstance.detachMedia();
+                        hlsInstance.destroy();
+                    } catch (_) {}
+                    hlsInstance = null;
                 }
                 safePauseVideo();
                 if (mainVideo) {
+                    mainVideo.pause();
+                    mainVideo.removeAttribute('src');
+                    mainVideo.load();
                     mainVideo.classList.add('hidden');
                 }
                 document.body.classList.add('embed-active');
@@ -5915,11 +6481,16 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 embedFrame.setAttribute('allowfullscreen', 'true');
                 
                 embedFrame.classList.remove('hidden');
-                embedFrame.style.zIndex = '10'; // sit above mainVideo, but under controls
+                embedFrame.style.zIndex = '10'; // sit above mainVideo, but under top bar
                 embedFrame.style.transform = 'scale(1.10) translateY(-16px)';
                 embedFrame.style.transformOrigin = 'center center';
                 
-                if (bottomControls) bottomControls.style.display = 'flex';
+                // 3. HIDE ALL BOTTOM VIDEO CONTROLS & TIMELINE IN EMBED MODE
+                if (bottomControls) bottomControls.style.display = 'none';
+                if (timelineContainer) timelineContainer.style.display = 'none';
+                if (timelineBackdrop) timelineBackdrop.style.display = 'none';
+                if (centerPlayBurst) centerPlayBurst.classList.add('hidden');
+                if (seekOverlay) seekOverlay.classList.add('hidden');
 
                 const btnSwitchDirect = document.getElementById('btnSwitchToDirect');
                 if (btnSwitchDirect) btnSwitchDirect.classList.remove('hidden');
@@ -5937,8 +6508,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 showToast(`Switched to Embed: ${prov.name}`);
                 populateEmbedProviders();
                 toggleQualityServerModal(false);
-                resetControlsTimer(); // Ensure sensor gets initialized properly
+                resetControlsTimer();
             } else {
+                window.IS_EMBED_ACTIVE = false;
                 embedFrame.classList.add('hidden');
                 embedFrame.src = '';
                 embedFrame.style.zIndex = '0';
@@ -5951,7 +6523,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     mediaHudOverlay.classList.remove('hidden');
                 }
                 
-                if (bottomControls) bottomControls.style.display = 'flex'; // restore timeline
+                // RESTORE BOTTOM VIDEO CONTROLS & TIMELINE FOR DIRECT STREAM
+                if (bottomControls) bottomControls.style.display = 'flex';
+                if (timelineContainer) timelineContainer.style.display = '';
+                if (timelineBackdrop) timelineBackdrop.style.display = '';
                 
                 mainVideo.classList.remove('hidden');
                 if (hlsInstance) {
@@ -6068,25 +6643,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         function rotateBingrLoaderQuote() {
-            const pool = BINGR_LOADER_QUOTES[_bingrCurrentStage] || BINGR_LOADER_QUOTES.waiting;
-            const quoteEl = document.getElementById('streamLoadingQuoteText');
+            // No blinking opacity changes; simply update progress smoothly if still waiting
             const bar = document.getElementById('streamLoadingProgressBar');
             const pct = document.getElementById('streamLoadingPercent');
-            if (!quoteEl || !pool.length) return;
-
-            _bingrQuoteIdx = (_bingrQuoteIdx + 1) % pool.length;
-            const quoteText = pool[_bingrQuoteIdx];
-
-            quoteEl.style.opacity = '0';
-            setTimeout(() => {
-                quoteEl.textContent = typeof quoteText === 'string' ? quoteText : (quoteText.text || '');
-                quoteEl.style.opacity = '1';
-            }, 180);
-
-            // Gently advance progress bar so user sees continuous life
             const cap = _bingrCurrentStage === 'waiting' ? 60 : (_bingrCurrentStage === 'm3u_loaded' ? 88 : 98);
             if (_bingrProgressVal < cap) {
-                _bingrProgressVal = Math.min(cap, _bingrProgressVal + Math.floor(Math.random() * 5) + 2);
+                _bingrProgressVal = Math.min(cap, _bingrProgressVal + 2);
                 if (bar) bar.style.width = _bingrProgressVal + '%';
                 if (pct) pct.textContent = _bingrProgressVal + '%';
             }
@@ -6098,34 +6660,30 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             if (sub && subEl) subEl.textContent = sub;
 
             if (show) {
+                if (window.IS_EMBED_ACTIVE) return; // Do not show direct stream loader if embed is active
                 const inferredStage = stage || (msg && (msg.toLowerCase().includes('m3u') || msg.toLowerCase().includes('few seconds')) ? 'm3u_loaded' : 'waiting');
-                const stageChanged = inferredStage !== _bingrCurrentStage;
                 updateBingrLoaderStageUI(inferredStage);
 
-                if (stageChanged || !_bingrQuoteTimer) {
-                    const pool = BINGR_LOADER_QUOTES[_bingrCurrentStage] || BINGR_LOADER_QUOTES.waiting;
-                    _bingrQuoteIdx = Math.floor(Math.random() * pool.length);
-                    const quoteEl = document.getElementById('streamLoadingQuoteText');
-                    const quoteText = pool[_bingrQuoteIdx];
-                    if (quoteEl && quoteText) quoteEl.textContent = typeof quoteText === 'string' ? quoteText : (quoteText.text || '');
+                const quoteEl = document.getElementById('streamLoadingQuoteText');
+                if (quoteEl) {
+                    quoteEl.textContent = sub || 'Establishing secure media connection...';
+                    quoteEl.style.opacity = '1';
                 }
 
-                if (!_bingrQuoteTimer) {
-                    _bingrQuoteTimer = setInterval(rotateBingrLoaderQuote, 2800);
+                if (streamLoading) {
+                    streamLoading.style.display = 'flex';
+                    streamLoading.classList.remove('hidden', 'opacity-0');
                 }
-
-                streamLoading.classList.remove('hidden');
-                requestAnimationFrame(() => {
-                    streamLoading.classList.remove('opacity-0');
-                });
             } else {
                 if (_bingrQuoteTimer) {
                     clearInterval(_bingrQuoteTimer);
                     _bingrQuoteTimer = null;
                 }
                 _bingrProgressVal = 24;
-                streamLoading.classList.add('opacity-0');
-                setTimeout(() => streamLoading.classList.add('hidden'), 250);
+                if (streamLoading) {
+                    streamLoading.classList.add('opacity-0', 'hidden');
+                    streamLoading.style.display = 'none';
+                }
             }
         }
 
@@ -6513,10 +7071,37 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             let referer = '';
             let depth = 0;
 
+            // Direct match from active scraped sources inventory if present
+            if (Array.isArray(window.bingrSources)) {
+                const match = window.bingrSources.find(s => s && (s.url === current || s.rawUrl === current || s.directUrl === current));
+                if (match && (match.rawUrl || match.directUrl)) {
+                    current = match.rawUrl || match.directUrl;
+                    if (match.referrer || match.referer) {
+                        referer = match.referrer || match.referer;
+                    }
+                }
+            }
+
             while (depth++ < 10) {
                 if (!current) break;
                 let unwrapped = false;
                 try {
+                    // Extract and strip pipe headers (e.g. url|Cookie=... or |Referer=...)
+                    if (current.includes('|')) {
+                        const pipeIdx = current.indexOf('|');
+                        const pipeData = current.slice(pipeIdx + 1);
+                        current = current.slice(0, pipeIdx);
+                        const parts = pipeData.split('&');
+                        for (const part of parts) {
+                            const eq = part.indexOf('=');
+                            if (eq > 0) {
+                                const k = part.slice(0, eq).toLowerCase();
+                                const v = decodeURIComponent(part.slice(eq + 1));
+                                if (k === 'referer' || k === 'referrer') referer = v;
+                            }
+                        }
+                    }
+
                     const parseTarget = current.startsWith('http://') || current.startsWith('https://')
                         ? current
                         : (window.location.origin + (current.startsWith('/') ? '' : '/') + current);
@@ -6526,15 +7111,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         parsed.pathname.includes('/stream_proxy.php') ||
                         parsed.pathname.includes('/proxy/m3u8') ||
                         parsed.pathname.includes('/api/proxy') ||
+                        parsed.pathname.includes('/live.php') ||
+                        parsed.pathname.includes('/api/play_stream') ||
                         parsed.hostname.includes('filmu.in') ||
                         parsed.hostname.includes('wormhole');
 
-                    const inner = parsed.searchParams.get('url');
+                    const inner = parsed.searchParams.get('url') || parsed.searchParams.get('u') || parsed.searchParams.get('stream');
+                    const idParam = parsed.searchParams.get('id');
                     if (inner && (isProxy || inner.startsWith('http://') || inner.startsWith('https://'))) {
                         current = decodeURIComponent(inner);
                         unwrapped = true;
 
-                        const ref = parsed.searchParams.get('referer') || parsed.searchParams.get('ref');
+                        const ref = parsed.searchParams.get('referer') || parsed.searchParams.get('ref') || parsed.searchParams.get('referrer');
                         if (ref) referer = decodeURIComponent(ref);
 
                         const hdrs = parsed.searchParams.get('headers');
@@ -6545,6 +7133,16 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                     referer = parsedHeaders.Referer || parsedHeaders.referer;
                                 }
                             } catch (_) {}
+                        }
+                    } else if (idParam) {
+                        const decId = decodeURIComponent(idParam);
+                        if (decId.startsWith('http://') || decId.startsWith('https://')) {
+                            current = decId;
+                            unwrapped = true;
+                        } else if (decId.startsWith('mdtv-')) {
+                            const cleanMdtvId = decId.replace('mdtv-', '');
+                            current = `${window.location.origin}/api/mdtv/manifest/${cleanMdtvId}.mpd`;
+                            unwrapped = true;
                         }
                     }
                 } catch(e) {
@@ -6562,6 +7160,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     referer = 'https://megaplay.buzz/';
                 } else if (lower.includes('darkmatter') || lower.includes('fetchbox') || lower.includes('bingr.one')) {
                     referer = 'https://bingr.one/';
+                } else if (lower.includes('2vcdn.skin') || lower.includes('2embed')) {
+                    referer = 'https://2vcdn.skin/';
+                } else if (lower.includes('megavid.se') || lower.includes('aniembed')) {
+                    referer = 'https://aniembed.se/';
                 }
             }
 

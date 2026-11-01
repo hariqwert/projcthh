@@ -255,7 +255,7 @@ router.get('/servers', (req: Request, res: Response) => {
                     Boolean(req.query.mal) || 
                     Boolean(req.query.anilistId);
     if (isAnime) {
-        const animeIds = ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
+        const animeIds = ['tokyoinsider', 'bing_anime', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
         const animeServers = animeIds
             .map(id => BINGR_SERVERS.find(s => s.id === id))
             .filter((s): s is BingrServerCluster => Boolean(s));
@@ -265,7 +265,7 @@ router.get('/servers', (req: Request, res: Response) => {
 });
 
 router.get('/anime_servers', (req: Request, res: Response) => {
-    const animeIds = ['vidlink', 'vidrift', 'filmu', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
+    const animeIds = ['tokyoinsider', 'bing_anime', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
     const animeServers = animeIds
         .map(id => BINGR_SERVERS.find(s => s.id === id))
         .filter((s): s is BingrServerCluster => Boolean(s));
@@ -401,6 +401,56 @@ router.get('/episodes/:id/:season', async (req: Request, res: Response) => {
         res.json({ status: 'success', episodes });
     } catch (err: any) {
         res.status(500).json({ status: 'error', message: err?.message || 'Episodes fetch failed' });
+    }
+});
+
+/**
+ * GET /api/bingr/anime/episodes
+ * GET /api/bingr/anime/:id/episodes
+ * GET /api/bingr/anime-episodes
+ * Retrieves anime episodes using AniList / MAL for the Bingr player episodes drawer.
+ */
+router.get(['/anime/episodes', '/anime/:id/episodes', '/anime-episodes'], async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id || req.query.id || req.query.anilistId || req.query.aniId;
+        const malId = req.query.malId || req.query.mal_id || (id && !isNaN(Number(id)) ? id : undefined);
+        const title = (req.query.title || req.query.name || req.query.q || '').toString().trim();
+
+        const data = await fetchAniListEpisodes({
+            id: id ? String(id) : undefined,
+            malId: malId ? String(malId) : undefined,
+            title: title || undefined
+        });
+
+        if (!data || !data.episodes || data.episodes.length === 0) {
+            const count = data?.episodesCount || 12;
+            const fallbackList = Array.from({ length: count }, (_, i) => ({
+                episodeNumber: i + 1,
+                title: `Episode ${i + 1}`,
+                name: `Episode ${i + 1}`,
+                thumbnail: data?.bannerImage || data?.coverImage || ''
+            }));
+            return res.json({
+                status: 'success',
+                success: true,
+                totalEpisodes: count,
+                episodes: fallbackList
+            });
+        }
+
+        return res.json({
+            status: 'success',
+            success: true,
+            anilistId: data.id,
+            malId: data.idMal,
+            title: data.displayTitle,
+            coverImage: data.coverImage,
+            bannerImage: data.bannerImage,
+            totalEpisodes: data.episodesCount || data.episodes.length,
+            episodes: data.episodes
+        });
+    } catch (err: any) {
+        res.status(500).json({ status: 'error', success: false, message: err?.message || 'Anime episodes fetch failed' });
     }
 });
 
@@ -876,6 +926,10 @@ router.get('/m3u', async (req: Request, res: Response) => {
             return res.send(m3uContent);
         }
 
+        const requestedSrv = req.query.srv ? String(req.query.srv) : '';
+        const isAllServers = requestedSrv.toLowerCase() === 'all';
+        const normSrv = isAllServers ? undefined : normalizeServerId(requestedSrv);
+
         // ── 2. MOVIE M3U GENERATION (TMDB ID & DIRECT CLUSTER STREAMS) ──
         if (type === 'movie') {
             if (!id && title) {
@@ -899,14 +953,15 @@ router.get('/m3u', async (req: Request, res: Response) => {
             const movieYear = details?.year || year || '';
             const logo = details?.poster || '';
 
-            const requestedSrv = req.query.srv ? String(req.query.srv) : '';
-            const isAllServers = requestedSrv.toLowerCase() === 'all';
-            const normSrv = isAllServers ? undefined : normalizeServerId(requestedSrv);
-
             const items: any[] = [];
 
             if (isAllServers) {
                 const clusterList = [
+                    { id: 'vidlink', name: 'VidLink Pro' },
+                    { id: 'filmu', name: 'Filmu / Vidly' },
+                    { id: 'two_embed', name: '2Embed' },
+                    { id: 'smashy', name: 'SmashyStream' },
+                    { id: 'aniembed', name: 'AniEmbed' },
                     { id: 'm4u', name: 'Movie 4U' },
                     { id: 's62', name: 'Bastion' },
                     { id: 's70', name: 'Polaris' },
@@ -940,7 +995,7 @@ router.get('/m3u', async (req: Request, res: Response) => {
                                     name: `${movieTitle}${movieYear ? ` (${movieYear})` : ''} - [${cl.name}]`,
                                     url: unwrapped.streamUrl,
                                     rawUrl: unwrapped.streamUrl,
-                                    referrer: unwrapped.referer,
+                                    referrer: unwrapped.referer || (sc.sources?.[0] as any)?.referrer,
                                     quality: sc.quality || '1080p',
                                     logo,
                                     tmdbId: id
@@ -958,9 +1013,10 @@ router.get('/m3u', async (req: Request, res: Response) => {
                 }
             }
 
-            // Single server direct resolution (Polaris, Aphelion, Nova, Edmunds, etc.)
+            // Single server direct resolution (Polaris, Aphelion, Nova, Edmunds, 2Embed, etc.)
             if (items.length === 0) {
                 let streamUrl: string | null = null;
+                let streamReferer: string | undefined = undefined;
                 let qualityTag = '1080p';
                 let srvLabel = '';
 
@@ -976,6 +1032,7 @@ router.get('/m3u', async (req: Request, res: Response) => {
                     if (scrapeRes && scrapeRes.success && scrapeRes.primaryM3u8) {
                         const unwrapped = unwrapDirectStreamUrl(scrapeRes.primaryM3u8);
                         streamUrl = unwrapped.streamUrl;
+                        streamReferer = unwrapped.referer || (scrapeRes.sources?.[0] as any)?.referrer;
                         qualityTag = scrapeRes.quality || '1080p';
                         if (scrapeRes.serverName) srvLabel = ` [${scrapeRes.serverName.split(' ')[0]}]`;
                     }
@@ -988,6 +1045,8 @@ router.get('/m3u', async (req: Request, res: Response) => {
                 items.push({
                     name: `${movieTitle}${movieYear ? ` (${movieYear})` : ''}${srvLabel}`,
                     url: streamUrl,
+                    rawUrl: streamUrl,
+                    referrer: streamReferer,
                     quality: qualityTag,
                     logo,
                     tmdbId: id
@@ -1046,10 +1105,11 @@ router.get('/m3u', async (req: Request, res: Response) => {
             }
 
             const items: any[] = [];
+            const tvSrvParam = normSrv ? `&srv=${normSrv}` : (isTvAnime ? `&srv=hianime&malId=${detectedMalId || ''}` : '');
             for (const ep of episodesList) {
                 const epNum = ep.episode;
                 const epTitle = ep.title || `Episode ${epNum}`;
-                const streamUrl = `${baseUrl}/api/bingr/play?type=tv&id=${id || ''}&title=${encodeURIComponent(tvTitle)}&season=${season}&episode=${epNum}${isTvAnime ? `&srv=hianime&malId=${detectedMalId || ''}` : ''}`;
+                const streamUrl = `${baseUrl}/api/bingr/play?type=tv&id=${id || ''}&title=${encodeURIComponent(tvTitle)}&season=${season}&episode=${epNum}${tvSrvParam}`;
 
                 items.push({
                     name: `${tvTitle} S${String(season).padStart(2, '0')}E${String(epNum).padStart(2, '0')} - ${epTitle}`,

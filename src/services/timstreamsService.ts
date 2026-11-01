@@ -194,6 +194,7 @@ function mapRawTimEvent(ev: any): TimLiveEvent {
 }
 
 const TIMSTREAMS_MIRRORS = [
+    'https://timstreams.co.rw',
     'https://timst.top',
     'https://timst.cfd'
 ];
@@ -279,48 +280,11 @@ export async function getTimLiveEvents(forceRefresh = false): Promise<TimLiveEve
         });
     }
 
-    // Only if zero scheduled match/fight events found upstream, fallback to top 24/7 sports channels
-    if (events.length === 0) {
-        const ch247 = categories.find((c: any) => c.category === '24/7');
-        if (ch247 && Array.isArray(ch247.events)) {
-            const sportsChannels = ch247.events.filter((ch: any) => {
-                const sportName = getSportCategoryName(ch.genre, ch.sub_genre, ch.name);
-                return sportName && !['General / Entertainment', 'Entertainment', 'Family', 'Kids', 'News', 'Movies', 'Live Sports'].includes(sportName);
-            });
+    // Filter out any 24/7 static channel placeholders so only genuine scheduled live matches/events are returned
+    events = events.filter(ev => !/\(live\s*sports\)/i.test(ev.name || ''));
 
-            sportsChannels.forEach((ch: any) => {
-                events.push({
-                    url: ch.url || (ch.name || 'channel').toLowerCase().replace(/[^a-z0-9]/g, '-'),
-                    name: `${ch.name} (Live Sports)`,
-                    logo: ch.logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
-                    genre: ch.genre || 17,
-                    sub_genre: ch.sub_genre,
-                    time: 'LIVE',
-                    isevent: true,
-                    vip: ch.vip || false,
-                    featured: true,
-                    viewers: ch.viewers || 1,
-                    category: getSportCategoryName(ch.genre, ch.sub_genre, ch.name),
-                    streams: Array.isArray(ch.streams) ? ch.streams.map((s: any) => ({
-                        name: s.name || ch.name,
-                        url: s.url,
-                        embedSlug: ch.url,
-                        vip: s.vip || false
-                    })) : [{
-                        name: ch.name,
-                        url: ch.url,
-                        embedSlug: ch.url,
-                        vip: false
-                    }]
-                });
-            });
-        }
-    }
-
-    if (events.length > 0) {
-        liveEventsCache = events;
-        liveEventsCacheTime = now;
-    }
+    liveEventsCache = events;
+    liveEventsCacheTime = now;
 
     return events;
 }
@@ -349,51 +313,55 @@ export async function getTimChannels(forceRefresh = false): Promise<TimChannel[]
         return channelsCache;
     }
 
-    try {
-        const res = await axios.get('https://timst.top/api/channels', {
-            headers: {
-                'Referer': 'https://timst.top/',
-                'Origin': 'https://timst.top',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-            },
-            httpsAgent: agent,
-            timeout: 9000
-        });
+    for (const origin of TIMSTREAMS_MIRRORS) {
+        try {
+            const res = await axios.get(`${origin}/api/channels`, {
+                headers: {
+                    'Referer': `${origin}/`,
+                    'Origin': origin,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+                },
+                httpsAgent: agent,
+                timeout: 9000
+            });
 
-        const raw = res.data?.channels || res.data || [];
-        if (Array.isArray(raw) && raw.length > 0) {
-            channelsCache = raw;
-            channelsCacheTime = now;
-            return raw;
+            const raw = res.data?.channels || res.data || [];
+            if (Array.isArray(raw) && raw.length > 0) {
+                channelsCache = raw;
+                channelsCacheTime = now;
+                return raw;
+            }
+        } catch (e: any) {
+            // Try next mirror
         }
-    } catch (e: any) {
-        console.warn('[TimStreamsService] Failed to fetch /api/channels:', e?.message || e);
     }
 
     // Fallback: try secondary /api/streams endpoint if available
-    try {
-        const resStreams = await axios.get('https://timst.top/api/streams', {
-            headers: {
-                'Referer': 'https://timst.top/',
-                'Origin': 'https://timst.top',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-            },
-            httpsAgent: agent,
-            timeout: 9000
-        });
-        let raw: TimChannel[] = [];
-        if (Array.isArray(resStreams.data)) {
-            const cat247 = resStreams.data.find((c: any) => c.category === '24/7' || c.category === 'Channels');
-            if (cat247 && Array.isArray(cat247.events) && cat247.events.length > 0) {
-                raw = cat247.events;
+    for (const origin of TIMSTREAMS_MIRRORS) {
+        try {
+            const resStreams = await axios.get(`${origin}/api/streams`, {
+                headers: {
+                    'Referer': `${origin}/`,
+                    'Origin': origin,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+                },
+                httpsAgent: agent,
+                timeout: 9000
+            });
+            let raw: TimChannel[] = [];
+            if (Array.isArray(resStreams.data)) {
+                const cat247 = resStreams.data.find((c: any) => c.category === '24/7' || c.category === 'Channels');
+                if (cat247 && Array.isArray(cat247.events) && cat247.events.length > 0) {
+                    raw = cat247.events;
+                }
             }
-        }
-        if (raw.length > 0) {
-            channelsCache = raw;
-            channelsCacheTime = now;
-            return raw;
-        }
-    } catch (e: any) {}
+            if (raw.length > 0) {
+                channelsCache = raw;
+                channelsCacheTime = now;
+                return raw;
+            }
+        } catch (e: any) {}
+    }
 
     // Fallback to static assets/tim_channels.json
     if (channelsCache.length === 0) {
@@ -571,14 +539,14 @@ export async function extractM3u8FromHtml(html: string, embedUrl?: string): Prom
 /**
  * Fallback to native curl sub-process if Cloudflare WAF or TLS fingerprint blocks Node axios
  */
-function fetchHtmlViaCurl(url: string, referer: string = 'https://timst.top/'): Promise<string | null> {
+function fetchHtmlViaCurl(url: string, referer: string = 'https://timstreams.co.rw/'): Promise<string | null> {
     return new Promise((resolve) => {
         const args = [
             '-s',
             '-L',
             url,
             '-H', `Referer: ${referer}`,
-            '-H', 'Origin: https://timst.top',
+            '-H', 'Origin: https://timstreams.co.rw',
             '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             '--max-time', '4'
@@ -606,8 +574,8 @@ export async function resolveEmbedUrl(embedUrl: string, forceFresh = false): Pro
     const browserHeaders = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://timst.top/',
-        'Origin': 'https://timst.top',
+        'Referer': 'https://timstreams.co.rw/',
+        'Origin': 'https://timstreams.co.rw',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     };
 
@@ -635,7 +603,7 @@ export async function resolveEmbedUrl(embedUrl: string, forceFresh = false): Pro
                 html = res.data;
             }
         } catch (e: any) {
-            html = await fetchHtmlViaCurl(urlToTry, 'https://timst.top/');
+            html = await fetchHtmlViaCurl(urlToTry, 'https://timstreams.co.rw/');
         }
 
         if (html) {
@@ -784,14 +752,14 @@ const KNOWN_ALIASES: Record<string, string> = {
 export async function resolveTimChannel(channelSlugOrId: string, forceFresh = false): Promise<string | null> {
     if (!channelSlugOrId) return null;
 
-    // 1. If it is an HTTP/HTTPS URL, detect whether it is a timst.top page or an embed
+    // 1. If it is an HTTP/HTTPS URL, detect whether it is a timstreams/timst page or an embed
     if (channelSlugOrId.startsWith('http://') || channelSlugOrId.startsWith('https://')) {
-        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?timst\.(?:top|cfd)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
+        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?(?:timst\.(?:top|cfd)|timstreams\.co\.rw)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
         if (pageMatch && pageMatch[1]) {
             channelSlugOrId = pageMatch[1];
         } else if (channelSlugOrId.includes('exmxbxe') || channelSlugOrId.includes('ehgembxe') || channelSlugOrId.includes('grandemx') || channelSlugOrId.includes('epiembeds') || channelSlugOrId.includes('/e/')) {
             return await resolveEmbedUrl(channelSlugOrId, forceFresh);
-        } else if (channelSlugOrId.includes('timst') && channelSlugOrId.includes('/channel/')) {
+        } else if ((channelSlugOrId.includes('timst') || channelSlugOrId.includes('timstreams')) && channelSlugOrId.includes('/channel/')) {
             channelSlugOrId = channelSlugOrId.split('/channel/')[1].split(/[?#]/)[0];
         } else {
             return channelSlugOrId;
@@ -899,6 +867,8 @@ export async function resolveTimChannel(channelSlugOrId: string, forceFresh = fa
             `https://grandemx.org/e/${s}`,
             `https://exmxbxe.cfd/${s}`,
             `https://exmxbxe.cfd/e/${s}`,
+            `https://timstreams.co.rw/${s}`,
+            `https://timstreams.co.rw/e/${s}`,
             `https://timst.top/${s}`,
             `https://timst.top/e/${s}`,
             `https://timst.cfd/${s}`

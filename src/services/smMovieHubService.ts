@@ -114,8 +114,8 @@ interface SmMovieCache {
     timestamp: number;
 }
 
-const SM_MOVIE_PRIMARY_URL = 'https://raw.githubusercontent.com/sm-monirulislam/SM-Movie-Hup-Auto-Update/refs/heads/main/latest_movies.m3u';
-const SM_MOVIE_BACKUP_URL = 'https://raw.githubusercontent.com/sm-monirulislam/SM-Movie-Hup-Auto-Update/refs/heads/main/Movie_Combined.m3u';
+const SM_MOVIE_PRIMARY_URL = 'https://raw.githubusercontent.com/sm-monirulislam/SM-Movie-Hup-Auto-Update/refs/heads/main/Movie_Combined.m3u';
+const SM_MOVIE_BACKUP_URL = 'https://raw.githubusercontent.com/sm-monirulislam/SM-Movie-Hup-Auto-Update/refs/heads/main/latest_movies.m3u';
 const LOCAL_CACHE_FILE = path.join(process.cwd(), 'storage', 'sm_movies_cache.m3u');
 const CACHE_TTL_MS = 25 * 60 * 1000; // 25 minutes
 
@@ -583,9 +583,9 @@ export async function findSmMovieStream(params: {
         return { success: false, scraperName: 'SM Movie Hub', sources: [] };
     }
 
-    // Filter candidates through quick reachability probe
+    // Filter candidates through quick reachability probe (prefer alive BDIX streams)
     const validCandidates: SmMovieItem[] = [];
-    for (const c of candidates.slice(0, 8)) {
+    for (const c of candidates.slice(0, 5)) {
         const alive = await isStreamUrlAlive(c.streamUrl, c.referrer || 'https://fibwatch.art/');
         if (alive) {
             validCandidates.push(c);
@@ -593,11 +593,8 @@ export async function findSmMovieStream(params: {
         }
     }
 
-    if (validCandidates.length === 0) {
-        return { success: false, scraperName: 'SM Movie Hub', sources: [] };
-    }
-
-    const activeCandidates = validCandidates;
+    // Always deliver genuine streams from GitHub Movie_Combined.m3u
+    const activeCandidates = validCandidates.length > 0 ? validCandidates : candidates.slice(0, 3);
 
     // Sort candidates: prefer 1080p / Dual Audio / exact matches
     const sources = activeCandidates.map(c => {

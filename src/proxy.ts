@@ -138,8 +138,8 @@ export async function prefetchHlsSegments(baseM3u8Url: string, m3u8Body: string,
 
         const isSony = baseM3u8Url.includes('sonyliv') || baseM3u8Url.includes('akamaized.net') || baseM3u8Url.includes('sonydaime') || baseM3u8Url.includes('sonymtmnew') || baseM3u8Url.includes('slivcdn.com') || baseM3u8Url.includes('kliv.in');
         const isJudias = baseM3u8Url.includes('judiaslevels') || baseM3u8Url.includes('embeds.gay') || baseM3u8Url.includes('ehgembxe') || baseM3u8Url.includes('exmxbxe');
-        const defaultReferer = isSony ? 'https://www.sonyliv.com/' : (isJudias ? 'https://ehgembxe.cfd/' : 'https://timst.top/');
-        const defaultOrigin = isSony ? 'https://www.sonyliv.com' : (isJudias ? 'https://ehgembxe.cfd' : 'https://timst.top');
+        const defaultReferer = isSony ? 'https://www.sonyliv.com/' : (isJudias ? 'https://ehgembxe.cfd/' : 'https://timstreams.co.rw/');
+        const defaultOrigin = isSony ? 'https://www.sonyliv.com' : (isJudias ? 'https://ehgembxe.cfd' : 'https://timstreams.co.rw');
         const prefetchHeaders: Record<string, string> = {
             'User-Agent': isSony ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:157.0) Gecko/20100101 Firefox/157.0' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Referer': defaultReferer,
@@ -405,6 +405,76 @@ export async function isSafeUrl(urlStr: string): Promise<boolean> {
     }
 }
 
+const ALLOWED_STREAMING_DOMAINS = [
+    'akamaized.net',
+    'akamaihd.net',
+    'edgesuite.net',
+    'cloudfront.net',
+    'cdn.jio.com',
+    'jio.com',
+    '5centscdn.com',
+    'amagi.tv',
+    'yupptv.com',
+    'yuppcdn.com',
+    'videodelivery.net',
+    'cloudflarestream.com',
+    'b-cdn.net',
+    'fastly.net',
+    'tokyoinsider.com',
+    'dramahot.top',
+    'drama1.cfd',
+    'zokoanime.video',
+    'ravok.buzz',
+    'nexadrive.com',
+    'filmu.in',
+    'movies4u.cm',
+    'movies4u.quest',
+    'acekem.cfd',
+    'vidrift.in',
+    'swish.com',
+    'smashystream.com',
+    'filemoon.sx',
+    '2vcdn.skin',
+    'streamrip.fun',
+    'timstreams.co.rw',
+    'timst.top',
+    'timst.cfd',
+    'exmxbxe.cfd',
+    'ehgembxe.cfd',
+    'dlhd.st',
+    'romponalis.st',
+    'kisskh.co',
+    'asiaflix.net',
+    'aniembed.se',
+    'vidsrc.pm',
+    'vidsrc.me',
+    '2embed.cc',
+    'novuscloud.net',
+    'cinezo.live',
+    'vidbolt.xyz',
+    'vidy.st'
+];
+
+export function isStreamingTargetAllowed(targetUrl: URL): boolean {
+    try {
+        const host = targetUrl.hostname.toLowerCase();
+        if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0') {
+            return true;
+        }
+        if (ALLOWED_STREAMING_DOMAINS.some(domain => host === domain || host.endsWith('.' + domain))) {
+            return true;
+        }
+        const pathAndQuery = (targetUrl.pathname + targetUrl.search).toLowerCase();
+        const isMediaFile = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key)(\?|$)/i.test(pathAndQuery);
+        if (isMediaFile) {
+            return true;
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
+
 
 function resolveM3u8Url(base: string, pathStr: string): string {
     try {
@@ -596,8 +666,8 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         headers['Origin'] = 'https://ehgembxe.cfd';
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
     } else if (url.includes('hiveatick') || url.includes('casadenoval') || url.includes('timstreams') || url.includes('timst') || url.includes('cdx-08192') || url.includes('diffevixed') || url.includes('vilevodules') || url.includes('hundxvision') || url.includes('epidd') || url.includes('epiembeds') || url.includes('embedindia')) {
-        headers['Referer'] = 'https://timst.top/';
-        headers['Origin'] = 'https://timst.top';
+        headers['Referer'] = 'https://timstreams.co.rw/';
+        headers['Origin'] = 'https://timstreams.co.rw';
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
     } else if (url.includes('phantemlis') || url.includes('xameleon') || url.includes('romponalis') || url.includes('daddy') || url.includes('dlhd') || url.includes('cloudflarestorage.com')) {
         headers['Referer'] = 'https://hamis.romponalis.st/';
@@ -698,6 +768,18 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         delete headers['cookie'];
         delete headers['X-User-Agent'];
         delete headers['x-user-agent'];
+    } else if (lowerUrlCheck.includes('dramahot') || lowerUrlCheck.includes('zokoanime')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://zokoanime.video/';
+        delete headers['Origin'];
+    } else if (lowerUrlCheck.includes('ravok')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://ravok.buzz/';
+        delete headers['Origin'];
+    } else if (lowerUrlCheck.includes('as-cdn') || lowerUrlCheck.includes('animesalt')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://animesalt.cx/';
+        delete headers['Origin'];
     } else if (lowerUrlCheck.includes('judiaslevels') || lowerUrlCheck.includes('embeds.gay') || lowerUrlCheck.includes('ehgembxe') || lowerUrlCheck.includes('exmxbxe')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://ehgembxe.cfd/';
@@ -709,10 +791,22 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         delete headers['cookie'];
         delete headers['X-User-Agent'];
         delete headers['x-user-agent'];
-    } else if (lowerUrlCheck.includes('timst') || lowerUrlCheck.includes('hundxvision') || lowerUrlCheck.includes('casadenoval') || lowerUrlCheck.includes('diffevixed') || lowerUrlCheck.includes('vilevodules') || lowerUrlCheck.includes('hiveatick') || lowerUrlCheck.includes('cdx-08192') || lowerUrlCheck.includes('epidd') || lowerUrlCheck.includes('epiembeds') || lowerUrlCheck.includes('embedindia')) {
+    } else if (lowerUrlCheck.includes('dramahot') || lowerUrlCheck.includes('zokoanime')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://zokoanime.video/';
+        delete headers['Origin'];
+    } else if (lowerUrlCheck.includes('ravok')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://ravok.buzz/';
+        delete headers['Origin'];
+    } else if (lowerUrlCheck.includes('as-cdn') || lowerUrlCheck.includes('animesalt')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://animesalt.cx/';
+        delete headers['Origin'];
+    } else if (lowerUrlCheck.includes('timstreams') || lowerUrlCheck.includes('timst') || lowerUrlCheck.includes('hundxvision') || lowerUrlCheck.includes('casadenoval') || lowerUrlCheck.includes('diffevixed') || lowerUrlCheck.includes('vilevodules') || lowerUrlCheck.includes('hiveatick') || lowerUrlCheck.includes('cdx-08192') || lowerUrlCheck.includes('epidd') || lowerUrlCheck.includes('epiembeds') || lowerUrlCheck.includes('embedindia')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-        headers['Referer'] = 'https://timst.top/';
-        headers['Origin'] = 'https://timst.top';
+        headers['Referer'] = 'https://timstreams.co.rw/';
+        headers['Origin'] = 'https://timstreams.co.rw';
         headers['Accept'] = '*/*';
         delete headers['Authorization'];
         delete headers['authorization'];
@@ -720,6 +814,18 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         delete headers['cookie'];
         delete headers['X-User-Agent'];
         delete headers['x-user-agent'];
+    } else if (lowerUrlCheck.includes('dramahot') || lowerUrlCheck.includes('zokoanime')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://zokoanime.video/';
+        delete headers['Origin'];
+    } else if (lowerUrlCheck.includes('ravok')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://ravok.buzz/';
+        delete headers['Origin'];
+    } else if (lowerUrlCheck.includes('as-cdn') || lowerUrlCheck.includes('animesalt')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+        headers['Referer'] = 'https://animesalt.cx/';
+        delete headers['Origin'];
     }
 
     res.setHeader('X-Accel-Buffering', 'no');
@@ -784,11 +890,11 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
                     return;
                 }
 
-                if (redirectUrl.includes('timst') || redirectUrl.includes('exmxbxe') || redirectUrl.includes('hundxvision') || redirectUrl.includes('tiktokcdn') || redirectUrl.includes('casadenoval') || redirectUrl.includes('diffevixed') || redirectUrl.includes('vilevodules') || redirectUrl.includes('hiveatick') || redirectUrl.includes('cdx-08192') || redirectUrl.includes('epidd') || redirectUrl.includes('epiembeds') || redirectUrl.includes('embedindia')) {
+                if (redirectUrl.includes('timstreams') || redirectUrl.includes('timst') || redirectUrl.includes('exmxbxe') || redirectUrl.includes('hundxvision') || redirectUrl.includes('tiktokcdn') || redirectUrl.includes('casadenoval') || redirectUrl.includes('diffevixed') || redirectUrl.includes('vilevodules') || redirectUrl.includes('hiveatick') || redirectUrl.includes('cdx-08192') || redirectUrl.includes('epidd') || redirectUrl.includes('epiembeds') || redirectUrl.includes('embedindia')) {
                     headersArray = headersArray.filter(h => !h.toLowerCase().startsWith('user-agent:') && !h.toLowerCase().startsWith('referer:') && !h.toLowerCase().startsWith('origin:'));
                     headersArray.push('User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-                    headersArray.push('Referer: https://timst.top/');
-                    headersArray.push('Origin: https://timst.top');
+                    headersArray.push('Referer: https://timstreams.co.rw/');
+                    headersArray.push('Origin: https://timstreams.co.rw');
                     headersArray.push('Accept: */*');
                 } else if (redirectUrl.includes('slivcdn.com') || redirectUrl.includes('dishmt.com') || redirectUrl.includes('kliv.in') || url.includes('kliv.in') || redirectUrl.includes('sonyliv.com')) {
                     headersArray = headersArray.filter(h => !h.toLowerCase().startsWith('user-agent:') && !h.toLowerCase().startsWith('referer:') && !h.toLowerCase().startsWith('origin:'));
@@ -1247,7 +1353,7 @@ export async function handleLiveStream(req: Request, res: Response) {
         return res.redirect(302, req_id);
     }
 
-    if (req_id && (req_id.startsWith('jtv-') || req_id.startsWith('mdtv-') || req_id.startsWith('jtv_') || req_id.startsWith('mdtv_') || /^\d+$/.test(req_id))) {
+    if (req_id && (req_id.startsWith('jtv-') || req_id.startsWith('mdtv-') || req_id.startsWith('jtv_') || req_id.startsWith('mdtv_'))) {
         try {
             const ch = await JtvService.resolveChannel(req_id);
             if (ch && (ch.manifest_url || ch.full_stream_url || ch.stream_url)) {
@@ -1258,10 +1364,13 @@ export async function handleLiveStream(req: Request, res: Response) {
 
     if (req_id && (
         req_id.startsWith('fancode-') || req_id.startsWith('fancode_') || req_id.startsWith('fc-') ||
-        (req_id.startsWith('http') && (req_id.includes('fancode') || req_id.includes('flive') || req_id.includes('dai-fancode')))
+        (req_id.startsWith('http') && (req_id.includes('fancode') || req_id.includes('flive') || req_id.includes('dai-fancode') || req_id.includes('proxy-web-sage.vercel.app')))
     )) {
         try {
             if (req_id.startsWith('http://') || req_id.startsWith('https://')) {
+                if (req_id.includes('proxy-web-sage.vercel.app')) {
+                    return res.redirect(302, req_id);
+                }
                 return res.redirect(302, wrapFanCodeProxyUrl(req_id));
             }
             const ev = await JtvService.resolveEvent(req_id);
@@ -1306,7 +1415,7 @@ export async function handleLiveStream(req: Request, res: Response) {
         } catch (e) {}
     }
     
-    if (req_id && (req_id.includes('exmxbxe.cfd/') || req_id.includes('timst.top/') || req_id.includes('epiembeds.online/embed/') || req_id.includes('embedindia.st/embed/'))) {
+    if (req_id && (req_id.includes('exmxbxe.cfd/') || req_id.includes('timstreams.co.rw/') || req_id.includes('timst.top/') || req_id.includes('epiembeds.online/embed/') || req_id.includes('embedindia.st/embed/'))) {
         if (!await isSafeUrl(req_id)) {
             return res.status(403).send('Access Denied: Unsafe URL detected.');
         }
@@ -1385,8 +1494,8 @@ export async function handleLiveStream(req: Request, res: Response) {
             headersArray.push('Origin: https://ehgembxe.cfd');
             headersArray.push('User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
         } else if (urlToCheck && (urlToCheck.includes('timstreams') || urlToCheck.includes('timst') || urlToCheck.includes('casadenoval') || urlToCheck.includes('cdx-08192') || urlToCheck.includes('hiveatick') || urlToCheck.includes('vilevodules') || urlToCheck.includes('diffevixed') || urlToCheck.includes('hundxvision') || urlToCheck.includes('epidd') || urlToCheck.includes('tiktokcdn') || urlToCheck.includes('epiembeds') || urlToCheck.includes('embedindia'))) {
-            headersArray.push('Referer: https://timst.top/');
-            headersArray.push('Origin: https://timst.top');
+            headersArray.push('Referer: https://timstreams.co.rw/');
+            headersArray.push('Origin: https://timstreams.co.rw');
             headersArray.push('User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
         } else if (urlToCheck && (urlToCheck.includes('fancode') || urlToCheck.includes('flive') || urlToCheck.includes('dai-fancode'))) {
             headersArray = headersArray.filter(h => !h.toLowerCase().startsWith('user-agent:'));
@@ -1775,8 +1884,8 @@ export async function handleLiveStream(req: Request, res: Response) {
                         headersArray.push('Referer: https://ehgembxe.cfd/');
                         headersArray.push('Origin: https://ehgembxe.cfd');
                     } else {
-                        headersArray.push('Referer: https://timst.top/');
-                        headersArray.push('Origin: https://timst.top');
+                        headersArray.push('Referer: https://timstreams.co.rw/');
+                        headersArray.push('Origin: https://timstreams.co.rw');
                     }
                     headersArray.push('User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
                 }
@@ -1837,8 +1946,8 @@ export async function handleLiveStream(req: Request, res: Response) {
                         headersArray.push('Referer: https://ehgembxe.cfd/');
                         headersArray.push('Origin: https://ehgembxe.cfd');
                     } else {
-                        headersArray.push('Referer: https://timst.top/');
-                        headersArray.push('Origin: https://timst.top');
+                        headersArray.push('Referer: https://timstreams.co.rw/');
+                        headersArray.push('Origin: https://timstreams.co.rw');
                     }
                     headersArray.push('User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
                 }
@@ -1979,8 +2088,8 @@ export async function handleLiveStream(req: Request, res: Response) {
                         !h.toLowerCase().startsWith('cookie:') &&
                         !h.toLowerCase().startsWith('x-user-agent:')
                     );
-                    headersArray.push('Referer: https://timst.top/');
-                    headersArray.push('Origin: https://timst.top');
+                    headersArray.push('Referer: https://timstreams.co.rw/');
+                    headersArray.push('Origin: https://timstreams.co.rw');
                     headersArray.push('User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
                 }
             } catch (e: any) {}
@@ -2130,7 +2239,7 @@ export async function handleLiveStream(req: Request, res: Response) {
                         stream = final_url;
                         vision = stream.substring(0, stream.lastIndexOf('/') + 1);
                     }
-                } else if (req_id && (req_id.startsWith('tim_') || req_id.startsWith('tim-') || req_id.startsWith('embed-') || req_id.startsWith('embedindia-') || req_id.startsWith('247-') || req_id.startsWith('dlhd') || stream.includes('timst.top') || stream.includes('cdx-08192') || stream.includes('hundxvision') || stream.includes('exmxbxe'))) {
+                } else if (req_id && (req_id.startsWith('tim_') || req_id.startsWith('tim-') || req_id.startsWith('embed-') || req_id.startsWith('embedindia-') || req_id.startsWith('247-') || req_id.startsWith('dlhd') || stream.includes('timstreams.co.rw') || stream.includes('timst.top') || stream.includes('cdx-08192') || stream.includes('hundxvision') || stream.includes('exmxbxe'))) {
                     const timId = req_id.replace(/^(tim|embed|embedindia|dlhd)[_-]?/i, '');
                     try {
                         const decoded = await resolveTimChannel(timId, true) || await resolveTimChannel(req_id, true);

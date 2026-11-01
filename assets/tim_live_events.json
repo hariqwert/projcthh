@@ -1,7 +1,7 @@
 [
   {
     "category": "Events",
-    "events": null
+    "events": []
   },
   {
     "category": "Replays",
@@ -45,7 +45,7 @@
       {
         "url": "ae-network",
         "name": "AE",
-        "logo": "https://deadline.com/wp-content/uploads/2016/12/ae-network-logo.jpg?w=630&amp;h=383&amp;crop=1",
+        "logo": "https://deadline.com/wp-content/uploads/2016/12/ae-network-logo.jpg?w=630&amp;amp;h=383&amp;amp;crop=1",
         "genre": 1,
         "flag": "us",
         "vip": false,
@@ -93,7 +93,7 @@
       {
         "url": "animal-planet",
         "name": "Animal Planet",
-        "logo": "https://imagescdn.designweek.co.uk/uploads/2018/10/25115647/AnimalPlanet_Vertical_OneLineLarge_RGB-002.jpg?fit=max&amp;amp;crop=faces&amp;amp;q=50&amp;amp;auto=compress,format&amp;amp;cs=origin&amp;amp;w=2559&amp;amp;h=1.0",
+        "logo": "https://imagescdn.designweek.co.uk/uploads/2018/10/25115647/AnimalPlanet_Vertical_OneLineLarge_RGB-002.jpg?fit=max&amp;amp;amp;crop=faces&amp;amp;amp;q=50&amp;amp;amp;auto=compress,format&amp;amp;amp;cs=origin&amp;amp;amp;w=2559&amp;amp;amp;h=1.0",
         "genre": 1,
         "vip": false,
         "viewers": 0,
@@ -262,7 +262,7 @@
       {
         "url": "bein-sports",
         "name": "beIN Sports",
-        "logo": "https://assets-us-01.kc-usercontent.com/31dbcbc6-da4c-0033-328a-d7621d0fa726/1318873e-8501-4f79-bb69-182d741cf9ad/beIN%20SPORTS%20Portada.jpg?ver=03-06-2025?w=3840&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;q=75",
+        "logo": "https://assets-us-01.kc-usercontent.com/31dbcbc6-da4c-0033-328a-d7621d0fa726/1318873e-8501-4f79-bb69-182d741cf9ad/beIN%20SPORTS%20Portada.jpg?ver=03-06-2025?w=3840&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;q=75",
         "genre": 2,
         "flag": "us",
         "vip": false,
@@ -745,7 +745,7 @@
       {
         "url": "dazn-1-germany",
         "name": "DAZN 1 Germany",
-        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=12dpnhddhmpm71228raanhyxs2_image-header_pDach_1723627450000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
+        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=12dpnhddhmpm71228raanhyxs2_image-header_pDach_1723627450000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -760,7 +760,7 @@
       {
         "url": "dazn-1-italia",
         "name": "DAZN 1 Italia",
-        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=pterrit4f2xu1pa2r6x87y5e9_image-header_pIt_1724315365000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
+        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=pterrit4f2xu1pa2r6x87y5e9_image-header_pIt_1724315365000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -775,7 +775,7 @@
       {
         "url": "dazn-1-portugal",
         "name": "DAZN 1 Portugal",
-        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=1o4eamzb4env61ddc8wv4ra06l_image-header_pRow_1720521601000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
+        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=1o4eamzb4env61ddc8wv4ra06l_image-header_pRow_1720521601000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -805,7 +805,7 @@
       {
         "url": "dazn-1-usa",
         "name": "DAZN 1 USA",
-        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=1owzb99m9mnzy15hjxolpukwul_image-header_pUs_1771501796000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
+        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=1owzb99m9mnzy15hjxolpukwul_image-header_pUs_1771501796000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -835,7 +835,7 @@
       {
         "url": "dazn-2-spain",
         "name": "DAZN 2 Spain",
-        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=2ouwtae8ad7l1fxviow9bowpk_image-header_pEs_1723118632000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
+        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=2ouwtae8ad7l1fxviow9bowpk_image-header_pEs_1723118632000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -850,7 +850,7 @@
       {
         "url": "dazn-f1",
         "name": "DAZN F1",
-        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=14ln25pmjdv031ejxsmg8dczsu_image-header_pEs_1723117975000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
+        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=14ln25pmjdv031ejxsmg8dczsu_image-header_pEs_1723117975000&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -873,6 +873,21 @@
           {
             "name": "TimStreams",
             "url": "https://ehgembxe.cfd/fw2jrum9-448",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "dirtvision-now-24-7",
+        "name": "Dirtvision Now 24/7",
+        "logo": "https://dirtvision.asset.viewlift.com/images/2025/10/17/1715300867054-64c720a301f24f34820b4c7143ff5bd2-1737996577673-1742219029838-1760724870716.webp",
+        "genre": 2,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "TimStreams",
+            "url": "https://ehgembxe.cfd/2uhz8pq7-2322",
             "vip": false
           }
         ]
@@ -1435,7 +1450,7 @@
       {
         "url": "hbo-comedy",
         "name": "HBO Comedy",
-        "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLyenDc7wucCDm_3vYBURzz0cfYKw5tVWpm4rtCOfILlOua2dcpiTwG5JZ&amp;amp;s=10",
+        "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLyenDc7wucCDm_3vYBURzz0cfYKw5tVWpm4rtCOfILlOua2dcpiTwG5JZ&amp;amp;amp;s=10",
         "genre": 4,
         "vip": false,
         "viewers": 0,
@@ -1750,7 +1765,7 @@
       {
         "url": "nbc-sports-philadelphia",
         "name": "NBC Sports Philadelphia",
-        "logo": "https://media.nbcsportsphiladelphia.com/2023/04/Philly-Landmark.png?resize=1200%2C675&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=85&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;strip=all",
+        "logo": "https://media.nbcsportsphiladelphia.com/2023/04/Philly-Landmark.png?resize=1200%2C675&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=85&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;strip=all",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -1833,6 +1848,21 @@
           {
             "name": "TimStreams",
             "url": "https://ehgembxe.cfd/yrqvb007-1124",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "polsat",
+        "name": "Polsat",
+        "logo": "https://i.ibb.co/1YTCVJ7W/image.png",
+        "genre": 1,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "Stream 1",
+            "url": "https://ehgembxe.cfd/dnr1b6k5-3961",
             "vip": false
           }
         ]
@@ -2865,7 +2895,7 @@
       {
         "url": "sportdigital-fussball",
         "name": "SPORTDIGITAL FUSSBALL",
-        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=712wbfqz8apl1k09rf681eqxd_image-header_pDach_1661948855000&amp;amp;amp;amp;amp;amp;amp;quality=70",
+        "logo": "https://image.discovery.indazn.com/ca/v2/ca/image?id=712wbfqz8apl1k09rf681eqxd_image-header_pDach_1661948855000&amp;amp;amp;amp;amp;amp;amp;amp;quality=70",
         "genre": 2,
         "vip": false,
         "viewers": 0,
@@ -2887,7 +2917,7 @@
         "streams": [
           {
             "name": "Timstreams",
-            "url": "https://ehgembxe.cfd/yfxb31me-8913",
+            "url": "https://ehgembxe.cfd/mmuqk3b6-6934",
             "vip": false
           }
         ]
@@ -2940,7 +2970,7 @@
       {
         "url": "syfy",
         "name": "SYFY",
-        "logo": "https://assets.goal.com/images/v3/blt1be56273baf0440d/syfy%20logo.jpg?auto=webp&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;format=pjpg&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;width=3840&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=60",
+        "logo": "https://assets.goal.com/images/v3/blt1be56273baf0440d/syfy%20logo.jpg?auto=webp&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;format=pjpg&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;width=3840&amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;amp;quality=60",
         "genre": 1,
         "vip": false,
         "viewers": 0,

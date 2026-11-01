@@ -495,6 +495,16 @@ async function pollTorrentMetadata(hash, attempts = 0) {
       `Connected to ${peers} peers${statText}. Resolving file contents...`
     );
 
+    if (peers === 0 && (attempts === 6 || attempts === 12)) {
+      const fallbackQuery = data.title || (magnetInput ? magnetInput.value : '') || '';
+      attemptHdStreamFallback(fallbackQuery).then(success => {
+        if (success && metadataPollTimer) {
+          clearTimeout(metadataPollTimer);
+          return;
+        }
+      });
+    }
+
     if (fileStats.length > 0) {
       renderFileList(fileStats);
 
@@ -526,8 +536,13 @@ async function pollTorrentMetadata(hash, attempts = 0) {
         pollTorrentMetadata(hash, attempts + 1);
       }, 800);
     } else {
-      console.warn('Metadata timeout, attempting direct stream index 1 fallback...');
-      playTorrentFile(hash, 1, data.title || 'Torrent Stream', data.title || 'Torrent Stream', 0);
+      console.warn('Metadata timeout, attempting direct stream fallback...');
+      const fallbackQuery = data.title || (magnetInput ? magnetInput.value : '') || '';
+      attemptHdStreamFallback(fallbackQuery).then(success => {
+        if (!success) {
+          playTorrentFile(hash, 1, data.title || 'Torrent Stream', data.title || 'Torrent Stream', 0);
+        }
+      });
     }
 
   } catch (err) {
@@ -537,10 +552,57 @@ async function pollTorrentMetadata(hash, attempts = 0) {
         pollTorrentMetadata(hash, attempts + 1);
       }, 800);
     } else {
-      hideLoading();
-      alert('Timed out waiting for torrent metadata. Ensure the magnet link has active seeders.');
+      const fallbackQuery = magnetInput ? magnetInput.value : '';
+      attemptHdStreamFallback(fallbackQuery).then(success => {
+        if (!success) {
+          hideLoading();
+          alert('Timed out waiting for torrent metadata. Ensure the magnet link has active seeders.');
+        }
+      });
     }
   }
+}
+
+async function attemptHdStreamFallback(queryTitle) {
+  if (!queryTitle) return false;
+  let clean = queryTitle.replace(/magnet:\?xt=urn:btih:[^&]+/i, '')
+                        .replace(/[?&]dn=/g, ' ')
+                        .replace(/\+/g, ' ')
+                        .replace(/%20/g, ' ')
+                        .replace(/%5B/g, '[').replace(/%5D/g, ']')
+                        .replace(/[\._-]/g, ' ')
+                        .replace(/\b(2160p|1080p|720p|480p|4k|hdr|web-?dl|bluray|x264|x265|hevc|aac|rmteam|esub)\b/gi, '')
+                        .trim();
+  if (!clean || clean.length < 2) return false;
+
+  console.log(`[Torrent Fallback] Searching direct HD CDN stream for: "${clean}"...`);
+  showLoading('Connecting to Direct 1080p Mirror...', `Bypassing P2P peers • Fetching direct stream for "${clean.slice(0, 30)}"...`);
+
+  try {
+    const res = await fetch('/api/bingr/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: clean, srv: 'vidlink', t: 'movie' })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.sources && data.sources.length > 0) {
+        const activeSrc = data.sources[0].url;
+        console.log(`[Torrent Fallback] Success! Direct HD Stream found: ${activeSrc}`);
+        showLoading('Direct 1080p Stream Ready!', 'Playing via High-Speed CDN Node...');
+        if (currentTitle) currentTitle.textContent = `${clean} (Direct 1080p Mirror)`;
+        if (currentHash) currentHash.textContent = 'Mode: Direct CDN Mirror';
+        if (videoPlayer) {
+          videoPlayer.src = activeSrc;
+          videoPlayer.play().catch(() => {});
+        }
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('[Torrent Fallback] Notice:', e);
+  }
+  return false;
 }
 
 // Play specific file inside torrent

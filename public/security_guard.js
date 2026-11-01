@@ -27,21 +27,44 @@
     }
 
     // ==============================================================================
+    // 0. CLIENT-SIDE URL & DOM XSS GUARD + ANTI-HIJACKING FETCH SHIELD
+    // ==============================================================================
+    (function _initClientXssAndFetchShield() {
+        try {
+            var rawHref = window.location.search + window.location.hash;
+            if (rawHref && /(%3Cscript|<script|javascript:|vbscript:|data:text\/html|onerror=|onload=)/i.test(decodeURIComponent(rawHref))) {
+                var cleanUrl = window.location.pathname;
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, document.title, cleanUrl);
+                }
+            }
+        } catch (e) {}
+
+        // Attach X-Requested-With header to same-origin API mutations to prevent CSRF / cross-origin hijacking
+        if (typeof window.fetch === 'function' && !window.__citadelFetchWrapped) {
+            window.__citadelFetchWrapped = true;
+            var _origFetch = window.fetch.bind(window);
+            window.fetch = function(input, init) {
+                try {
+                    var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+                    var isSameOrigin = urlStr.startsWith('/') || urlStr.startsWith(window.location.origin);
+                    if (isSameOrigin) {
+                        init = init || {};
+                        var headers = new Headers(init.headers || {});
+                        if (!headers.has('X-Requested-With')) {
+                            headers.set('X-Requested-With', 'XMLHttpRequest');
+                        }
+                        init.headers = headers;
+                    }
+                } catch (e) {}
+                return _origFetch(input, init);
+            };
+        }
+    })();
+
+    // ==============================================================================
     // 1. SECRET STREAM MATRIX TERMINAL (Ctrl + 9 / Cmd + 9 Web-Crypto Protected)
     // ==============================================================================
-    var _AUTH_DIGESTS = [
-        'e5e53c784d5d49de1cabb6e904bf3380026aadcb9769775a268dd304dd9aa2df', // Master Gate Key 2008
-        '91a843c7f2615702652c58a4c145b3ae8688bca9e8410dffa9064a37daf3172e'  // Citadel Site Lock 202012
-    ];
-
-    async function _computeSha256(str) {
-        if (!window.crypto || !window.crypto.subtle) return '';
-        var enc = new TextEncoder();
-        var buf = await window.crypto.subtle.digest('SHA-256', enc.encode(str));
-        return Array.from(new Uint8Array(buf)).map(function(b) {
-            return b.toString(16).padStart(2, '0');
-        }).join('');
-    }
 
     function _extractRawM3uData() {
         var sp = new URLSearchParams(window.location.search);

@@ -7,9 +7,20 @@ import axios from 'axios';
 
 const router = Router();
 
+export const getTorrServerBaseUrl = (): string => {
+    return (process.env.TORRSERVER_URL || 'http://127.0.0.1:8090').replace(/\/+$/, '');
+};
+
 const TMDB_API_KEY = '9d83476d2e27f56748167514c69cd2b4';
 const DEFAULT_TRACKERS = [
+  'https://tracker.tamersunion.org:443/announce',
+  'https://tracker.gbitt.info:443/announce',
+  'https://tracker.foreverpirates.co:443/announce',
   'http://nyaa.tracker.wf:7777/announce',
+  'wss://tracker.openwebtorrent.com',
+  'wss://tracker.btorrent.xyz',
+  'wss://tracker.files.fm:7072/announce',
+  'http://open.acgnxtracker.com:80/announce',
   'udp://tracker.opentrackr.org:1337/announce',
   'udp://open.stealth.si:80/announce',
   'udp://tracker.torrent.eu.org:451/announce',
@@ -104,8 +115,112 @@ function isTitleMatching(t1: string, t2: string): boolean {
     return (matchingWords.length / words1.length >= 0.5) || (matchingWords.length / words2.length >= 0.5);
 }
 
+export function isJunkMedia(name: string, sizeBytes?: number, maxVideoBytes?: number): boolean {
+    if (!name) return true;
+    const lower = name.toLowerCase();
+    const fileName = lower.split(/[\/\\]/).pop() || lower;
+
+    // Filter out image/nfo/text/sample non-video files
+    if (/\.(jpg|jpeg|png|gif|webp|nfo|txt|exe|url|sfv|srr|torrent)$/i.test(fileName)) {
+        return true;
+    }
+
+    // Explicit junk keywords
+    if (/(?:^|[\._\- \[\(])(sample|trailer|promo|preview|featurette|backcover|frontcover|cover|bonus|extras?|proof|screen|screener)(?:$|[\._\- \] \)])/i.test(fileName)) {
+        return true;
+    }
+    if (/(?:backcover|frontcover|sample|trailer)\.(?:mp4|mkv|avi|webm|ts|mov)$/i.test(fileName)) {
+        return true;
+    }
+
+    // Small clips (< 35 MB) when full files are > 120 MB
+    if (sizeBytes && maxVideoBytes && maxVideoBytes > 120 * 1024 * 1024 && sizeBytes < 35 * 1024 * 1024) {
+        return true;
+    }
+
+    return false;
+}
+
+export function isVideoFilePath(pathStr: string): boolean {
+    if (!pathStr) return false;
+    const ext = pathStr.split('.').pop()?.toLowerCase() || '';
+    return ['mp4', 'mkv', 'webm', 'avi', 'mov', 'm4v', 'ts', 'flv', 'wmv'].includes(ext);
+}
+
+export function findBestTorrentFile(fileStats: any[], targetSeason?: number, targetEpisode?: number, titleHint?: string): any {
+    if (!fileStats || !Array.isArray(fileStats) || fileStats.length === 0) return null;
+
+    let maxBytes = 0;
+    fileStats.forEach(f => {
+        const len = f.length || f.size || 0;
+        if (isVideoFilePath(f.path || f.name) && len > maxBytes) {
+            maxBytes = len;
+        }
+    });
+
+    const cleanVideos = fileStats.filter(f => {
+        const p = f.path || f.name || '';
+        const len = f.length || f.size || 0;
+        return isVideoFilePath(p) && !isJunkMedia(p, len, maxBytes);
+    });
+
+    const candidatePool = cleanVideos.length > 0 ? cleanVideos : fileStats.filter(f => isVideoFilePath(f.path || f.name));
+    if (candidatePool.length === 0) return fileStats[0] || null;
+
+    const s = targetSeason ? parseInt(String(targetSeason), 10) : 0;
+    const e = targetEpisode ? parseInt(String(targetEpisode), 10) : 0;
+
+    if (!isNaN(e) && e > 0) {
+        // 1. Exact Season + Episode match: S02E03, 2x03, Season 2 Episode 3, S2 - 03
+        if (!isNaN(s) && s > 0) {
+            const exactMatch = candidatePool.find(f => {
+                const name = (f.path || f.name || '').toLowerCase();
+                return new RegExp(`s0*${s}e0*${e}\\b`, 'i').test(name) ||
+                       new RegExp(`\\b0*${s}x0*${e}\\b`, 'i').test(name) ||
+                       new RegExp(`season\\s*0*${s}.*?(?:ep|episode)\\s*0*${e}\\b`, 'i') ||
+                       new RegExp(`s0*${s}\\s*-\\s*0*${e}\\b`, 'i');
+            });
+            if (exactMatch) return exactMatch;
+        }
+
+        // 2. Anime Continuous Episode Handling (e.g. Black Clover S2 E3 = Ep 54, S1=51 eps)
+        const isBlackClover = (titleHint && /black\s*(?:clover|cover)/i.test(titleHint)) ||
+                              candidatePool.some(f => /black\s*clover/i.test(f.path || f.name));
+        if (isBlackClover && s === 2) {
+            const bcAbsEp = 51 + e; // S2 Ep 3 = 54
+            const absMatch = candidatePool.find(f => {
+                const name = (f.path || f.name || '').toLowerCase();
+                return new RegExp(`(?:-|ep|episode|#|\\s)\\s*0*${bcAbsEp}\\b`, 'i').test(name) ||
+                       new RegExp(`\\[0*${bcAbsEp}\\]`, 'i').test(name);
+            });
+            if (absMatch) return absMatch;
+        }
+
+        // 3. Episode number in filename: EP03, Episode 03, - 03, [03]
+        const epMatch = candidatePool.find(f => {
+            const name = (f.path || f.name || '').toLowerCase();
+            if (!isNaN(s) && s > 0) {
+                const otherSeason = new RegExp(`s0*(?!${s}\\b)\\d+e`, 'i');
+                if (otherSeason.test(name)) return false;
+            }
+            return new RegExp(`(?:ep|episode|\\s-\\s|#)\\s*0*${e}\\b`, 'i').test(name) ||
+                   new RegExp(`\\[0*${e}\\]`, 'i').test(name) ||
+                   new RegExp(`\\b0*${e}\\.(?:mp4|mkv|webm|avi)`, 'i').test(name);
+        });
+        if (epMatch) return epMatch;
+    }
+
+    // 4. Default: Prefer MKV/MP4 over AVI, select largest clean video file
+    const mkvMp4 = candidatePool.filter(f => !String(f.path || f.name).toLowerCase().endsWith('.avi'));
+    if (mkvMp4.length > 0) {
+        return mkvMp4.reduce((prev, curr) => ((prev.length || 0) > (curr.length || 0)) ? prev : curr);
+    }
+    return candidatePool.reduce((prev, curr) => ((prev.length || 0) > (curr.length || 0)) ? prev : curr);
+}
+
 function streamTitleMatches(rawTitle: string, targetTitle: string, targetQuery: string): boolean {
     if (!rawTitle) return false;
+    if (isJunkMedia(rawTitle)) return false;
     const lowerRaw = rawTitle.toLowerCase();
     
     const cleanTarget = (targetTitle || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
@@ -127,35 +242,89 @@ function streamTitleMatches(rawTitle: string, targetTitle: string, targetQuery: 
     return (matchingWords.length / allWords.length) >= 0.4;
 }
 
-function streamMatchesEpisode(rawTitle: string, targetEpisode: number): boolean {
+export function streamMatchesEpisode(rawTitle: string, targetSeason: number, targetEpisode: number): boolean {
     if (!targetEpisode || isNaN(targetEpisode)) return true;
+    if (isJunkMedia(rawTitle)) return false;
     const lower = rawTitle.toLowerCase();
     
-    if (/(batch|complete|season\s*\d+|s01-s|s\d+[\s\.\-]s\d+|full)/i.test(lower)) {
+    // Multi-season pack or complete series
+    if (/(s\d+[\s\.\-]s\d+|seasons?\s*\d+\s*-\s*\d+|complete\s*(?:series|collection)|full\s*series)/i.test(lower)) {
         return true;
     }
-    
-    // Find explicitly specified episode numbers in rawTitle (e.g., S01E06, EP06, Episode 06, - 06)
+
+    // Check season constraint
+    if (targetSeason && !isNaN(targetSeason) && targetSeason > 0) {
+        const seasonMatches = Array.from(lower.matchAll(/\b(?:s|season)\s*0*(\d{1,2})\b/gi));
+        if (seasonMatches.length > 0) {
+            let hasTargetSeason = false;
+            for (const sm of seasonMatches) {
+                const foundSeason = parseInt(sm[1], 10);
+                if (foundSeason === targetSeason) {
+                    hasTargetSeason = true;
+                }
+            }
+            if (!hasTargetSeason) {
+                // If title specifies S01 when looking for S02, reject!
+                const wrongSeasonRegex = new RegExp(`\\b(?:s|season)\\s*0*(?!${targetSeason}\\b)(\\d{1,2})\\b`, 'i');
+                if (wrongSeasonRegex.test(lower)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    // Season batch (e.g., "Black Clover Season 2 [1080p]")
+    const isSeasonBatch = /(batch|complete|season\s*\d+|s\d+\s*(?:1080p|720p|complete|web-dl))/i.test(lower) && 
+                         !new RegExp(`s\\d+e\\d+`, 'i').test(lower);
+    if (isSeasonBatch) {
+        if (targetSeason && targetSeason > 0) {
+            const sRegex = new RegExp(`(?:s|season)\\s*0*${targetSeason}\\b`, 'i');
+            return sRegex.test(lower);
+        }
+        return true;
+    }
+
+    // Exact Season + Episode
+    if (targetSeason && targetSeason > 0) {
+        const exactSeasonEpRegexes = [
+            new RegExp(`s0*${targetSeason}e0*${targetEpisode}\\b`, 'i'),
+            new RegExp(`\\b0*${targetSeason}x0*${targetEpisode}\\b`, 'i'),
+            new RegExp(`season\\s*0*${targetSeason}.*?ep(?:isode)?\\s*0*${targetEpisode}\\b`, 'i'),
+            new RegExp(`s0*${targetSeason}\\s*-\\s*0*${targetEpisode}\\b`, 'i')
+        ];
+        if (exactSeasonEpRegexes.some(r => r.test(lower))) {
+            return true;
+        }
+    }
+
+    // Anime continuous episode check (Black Clover S2 Ep 3 = Ep 54)
+    if (lower.includes('black clover') && targetSeason === 2) {
+        const bcAbsEp = 51 + targetEpisode;
+        if (new RegExp(`(?:-|ep|episode|#|\\s)\\s*0*${bcAbsEp}\\b`, 'i').test(lower) || 
+            new RegExp(`\\[0*${bcAbsEp}\\]`, 'i').test(lower)) {
+            return true;
+        }
+    }
+
+    // Explicit episode tags
     const epMatches = Array.from(lower.matchAll(/(?:\bs\d+e|\bep|\bepisode|\s-\s)\s*0*(\d{1,3})\b/gi));
     if (epMatches.length > 0) {
-        let matchesTarget = false;
         for (const m of epMatches) {
             const foundEp = parseInt(m[1], 10);
             if (foundEp === targetEpisode) {
-                matchesTarget = true;
-            } else if (foundEp !== targetEpisode && foundEp > 0 && foundEp <= 2000) {
-                return false;
+                return true;
             }
         }
-        if (matchesTarget) return true;
+        return false;
     }
-    
+
     const epNumStr = String(targetEpisode).padStart(2, '0');
     const epRegs = [
         new RegExp(`s\\d+e${epNumStr}\\b`, 'i'),
         new RegExp(`s\\d+e${targetEpisode}\\b`, 'i'),
         new RegExp(`\\bep\\s*0*${targetEpisode}\\b`, 'i'),
-        new RegExp(`-\\s*0*${targetEpisode}\\b`, 'i')
+        new RegExp(`-\\s*0*${targetEpisode}\\b`, 'i'),
+        new RegExp(`\\[0*${targetEpisode}\\]`, 'i')
     ];
     return epRegs.some(r => r.test(lower));
 }
@@ -287,19 +456,53 @@ router.get('/api/v1/search', async (req, res) => {
     let episode = parseInt(String(req.query.episode || req.query.e || '1'), 10);
 
     if (query) {
-        const seMatch = query.match(/s(\d+)e(\d+)/i) || query.match(/(\d+)x(\d+)/i) || query.match(/season\s*(\d+)\s*ep(?:isode)?\s*(\d+)/i);
-        const epMatch = query.match(/ep(?:isode)?\s*(\d+)/i);
-        
-        if (seMatch) {
-            season = parseInt(seMatch[1]);
-            episode = parseInt(seMatch[2]);
+        // Normalize query string
+        let cleanQ = query.trim();
+
+        // 1. Check for reversed Ep X Season Y format: "ep3 s2", "episode 3 season 2", "e3 s2", "ep 03 season 02"
+        const epSeMatch = cleanQ.match(/(?:ep|episode|e)\s*0*(\d+)\s*(?:season|s)\s*0*(\d+)/i);
+        // 2. Check for standard Season X Ep Y format: "s2e3", "s02e03", "season 2 episode 3", "2x03"
+        const seMatch = cleanQ.match(/s0*(\d+)\s*e0*(\d+)/i) || 
+                        cleanQ.match(/(\d+)x0*(\d+)/i) || 
+                        cleanQ.match(/season\s*0*(\d+)\s*(?:ep|episode)?\s*0*(\d+)/i);
+        // 3. Standalone season or episode matches
+        const seasonOnlyMatch = cleanQ.match(/(?:season|s)\s*0*(\d+)/i);
+        const epOnlyMatch = cleanQ.match(/(?:ep|episode|e)\s*0*(\d+)/i);
+
+        if (epSeMatch) {
+            episode = parseInt(epSeMatch[1], 10);
+            season = parseInt(epSeMatch[2], 10);
             mediaType = 'series';
-            query = query.replace(/s\d+e\d+/i, '').replace(/\d+x\d+/i, '').replace(/season\s*\d+\s*ep(?:isode)?\s*\d+/i, '').trim();
-        } else if (epMatch) {
-            episode = parseInt(epMatch[1]);
+            cleanQ = cleanQ.replace(/(?:ep|episode|e)\s*0*\d+\s*(?:season|s)\s*0*\d+/i, '').trim();
+        } else if (seMatch) {
+            season = parseInt(seMatch[1], 10);
+            episode = parseInt(seMatch[2], 10);
             mediaType = 'series';
-            query = query.replace(/ep(?:isode)?\s*\d+/i, '').trim();
+            cleanQ = cleanQ.replace(/s0*\d+\s*e0*\d+/i, '').replace(/\d+x0*\d+/i, '').replace(/season\s*0*\d+\s*(?:ep|episode)?\s*0*\d+/i, '').trim();
+        } else if (seasonOnlyMatch && epOnlyMatch) {
+            season = parseInt(seasonOnlyMatch[1], 10);
+            episode = parseInt(epOnlyMatch[1], 10);
+            mediaType = 'series';
+            cleanQ = cleanQ.replace(/(?:season|s)\s*0*\d+/i, '').replace(/(?:ep|episode|e)\s*0*\d+/i, '').trim();
+        } else if (epOnlyMatch) {
+            episode = parseInt(epOnlyMatch[1], 10);
+            mediaType = 'series';
+            cleanQ = cleanQ.replace(/(?:ep|episode|e)\s*0*\d+/i, '').trim();
+        } else if (seasonOnlyMatch) {
+            season = parseInt(seasonOnlyMatch[1], 10);
+            mediaType = 'series';
+            cleanQ = cleanQ.replace(/(?:season|s)\s*0*\d+/i, '').trim();
         }
+
+        // Clean out leftover noise tokens (e.g. trailing "s2", "e3")
+        cleanQ = cleanQ.replace(/\b(?:s\d+|e\d+|season|episode)\b/gi, '').trim();
+
+        // Automatic title typo correction (e.g. "black cover" -> "Black Clover")
+        if (/^black\s+cover$/i.test(cleanQ)) {
+            cleanQ = 'Black Clover';
+        }
+
+        query = cleanQ;
     }
 
     let title = query || 'Media Stream';
@@ -396,7 +599,16 @@ router.get('/api/v1/search', async (req, res) => {
     if (query) apibayQueries.push(query);
     if (title && title !== 'Media Stream') {
         if (mediaType === 'series') {
-            apibayQueries.push(`${title} S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`);
+            const sPad = String(season).padStart(2, '0');
+            const epPad = String(episode).padStart(2, '0');
+            apibayQueries.push(`${title} S${sPad}E${epPad}`);
+            apibayQueries.push(`${title} Season ${season}`);
+            apibayQueries.push(`${title} S${season}`);
+            if (/black\s*clover/i.test(title) && season === 2) {
+                const bcEp = 51 + episode;
+                apibayQueries.push(`Black Clover 0${bcEp}`);
+                apibayQueries.push(`Black Clover ${bcEp}`);
+            }
         } else {
             if (year) apibayQueries.push(`${title} ${year}`);
             apibayQueries.push(title);
@@ -413,6 +625,7 @@ router.get('/api/v1/search', async (req, res) => {
                     const rawTitleLower = (item.name || '').toLowerCase();
                     if (cat >= 500 && cat < 600) return;
                     if (/(xxx|porn|adult|brazzers|naughty|onlyfans)/i.test(rawTitleLower)) return;
+                    if (isJunkMedia(item.name)) return;
 
                     if (item.info_hash && item.info_hash !== '0000000000000000000000000000000000000000') {
                         const hash = item.info_hash.toLowerCase();
@@ -444,7 +657,7 @@ router.get('/api/v1/search', async (req, res) => {
         promises.push((async () => {
             const solidItems = await fetchSolidTorrents(searchTerm);
             solidItems.forEach(item => {
-                if (item.infoHash && !streamsMap.has(item.infoHash)) {
+                if (item.infoHash && !streamsMap.has(item.infoHash) && !isJunkMedia(item.title)) {
                     streamsMap.set(item.infoHash, {
                         ...item,
                         magnet: createMagnet(item.infoHash, item.title)
@@ -459,21 +672,28 @@ router.get('/api/v1/search', async (req, res) => {
     if (query) nyaaQueries.push(query);
     if (title && title !== 'Media Stream') {
         if (mediaType === 'series') {
+            const sPad = String(season).padStart(2, '0');
             const epNum = String(episode).padStart(2, '0');
+            nyaaQueries.push(`${title} S${sPad}E${epNum}`);
             nyaaQueries.push(`${title} - ${epNum}`);
-            nyaaQueries.push(`${title} S${String(season).padStart(2, '0')}E${epNum}`);
-            nyaaQueries.push(`${title} E${epNum}`);
+            nyaaQueries.push(`${title} Season ${season}`);
+            if (/black\s*clover/i.test(title) && season === 2) {
+                const bcEp = 51 + episode;
+                nyaaQueries.push(`Black Clover - 0${bcEp}`);
+                nyaaQueries.push(`Black Clover ${bcEp}`);
+            }
+            nyaaQueries.push(`${title} S${season}`);
         } else {
             nyaaQueries.push(title);
         }
     }
-    const uniqueNyaaQueries = Array.from(new Set(nyaaQueries.filter(q => q && q.trim().length > 1))).slice(0, 3);
+    const uniqueNyaaQueries = Array.from(new Set(nyaaQueries.filter(q => q && q.trim().length > 1))).slice(0, 4);
 
     uniqueNyaaQueries.forEach(searchTerm => {
         promises.push((async () => {
             const nyaaItems = await fetchNyaaTorrents(searchTerm);
             nyaaItems.forEach(item => {
-                if (item.infoHash && !streamsMap.has(item.infoHash)) {
+                if (item.infoHash && !streamsMap.has(item.infoHash) && !isJunkMedia(item.title)) {
                     streamsMap.set(item.infoHash, {
                         ...item,
                         magnet: createMagnet(item.infoHash, item.title)
@@ -570,14 +790,17 @@ router.get('/api/v1/search', async (req, res) => {
     const isMovie = mediaType === 'movie';
     let streams = Array.from(streamsMap.values());
 
-    // Filter streams for title and episode accuracy
+    // Filter streams for title, episode accuracy, and discard junk/backcover/sample files
     streams = streams.filter(s => {
         const rawTitle = s.raw_title || s.title || '';
+        if (isJunkMedia(rawTitle)) {
+            return false;
+        }
         if (!streamTitleMatches(rawTitle, title, query)) {
             return false;
         }
         if (!isMovie && episode) {
-            if (!streamMatchesEpisode(rawTitle, episode)) {
+            if (!streamMatchesEpisode(rawTitle, season, episode)) {
                 return false;
             }
         }
@@ -604,6 +827,69 @@ router.get('/api/v1/search', async (req, res) => {
         year,
         results: streams
     });
+});
+
+// Targeted File & Episode Resolver: Automatically finds exact file index inside multi-file torrent
+router.get('/api/torrent/resolve-file', async (req, res) => {
+    const link = (req.query.link || req.query.hash || '').toString().trim();
+    const season = parseInt(String(req.query.season || req.query.s || '0'), 10);
+    const episode = parseInt(String(req.query.episode || req.query.e || '0'), 10);
+    const titleHint = (req.query.title || '').toString().trim();
+
+    if (!link) {
+        return res.status(400).json({ error: 'Missing torrent link or hash' });
+    }
+
+    try {
+        let hash = link;
+        if (link.startsWith('magnet:')) {
+            const mMatch = link.match(/xt=urn:btih:([a-zA-Z0-9]+)/i);
+            if (mMatch) hash = mMatch[1].toLowerCase();
+        }
+
+        // Check if TorrServer already has metadata
+        let tsRes: any = await axios.post(`${getTorrServerBaseUrl()}/torrents`, {
+            action: 'get',
+            hash: hash
+        }, { timeout: 3000 }).catch(() => null);
+
+        if (!tsRes || !tsRes.data || !tsRes.data.file_stats) {
+            tsRes = await axios.post(`${getTorrServerBaseUrl()}/torrents`, {
+                action: 'add',
+                link: link,
+                save_to_db: false
+            }, { timeout: 4000 }).catch(() => null);
+        }
+
+        const fileStats = tsRes?.data?.file_stats || tsRes?.data?.files || [];
+        if (fileStats.length === 0) {
+            return res.json({
+                status: 'pending',
+                message: 'Metadata still resolving',
+                index: 1,
+                streamUrl: `/stream?link=${encodeURIComponent(link)}&index=1&play=1`
+            });
+        }
+
+        const bestFile = findBestTorrentFile(fileStats, season, episode, titleHint || tsRes?.data?.title);
+        const selectedId = bestFile ? (bestFile.id || 1) : 1;
+
+        res.json({
+            status: 'resolved',
+            selectedFile: bestFile ? {
+                id: bestFile.id,
+                path: bestFile.path || bestFile.name,
+                length: bestFile.length || bestFile.size,
+                sizeFormatted: formatBytes(bestFile.length || bestFile.size || 0)
+            } : null,
+            index: selectedId,
+            season,
+            episode,
+            streamUrl: `/stream?link=${encodeURIComponent(link)}&index=${selectedId}&play=1`
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message, index: 1 });
+    }
 });
 
 function parseDurationString(str: string): number {
@@ -699,7 +985,7 @@ function getVideoDuration(streamUrl: string): Promise<number> {
                 const link = urlObj.searchParams.get('link');
                 const indexStr = urlObj.searchParams.get('index') || '1';
                 if (link) {
-                    const tsRes = await axios.post('http://127.0.0.1:8090/torrents', {
+                    const tsRes = await axios.post(`${getTorrServerBaseUrl()}/torrents`, {
                         action: 'get',
                         hash: link
                     }, { timeout: 2000 }).catch(() => null);
@@ -790,14 +1076,14 @@ router.get('/api/torrent/check-subtitles', async (req, res) => {
             const mMatch = link.match(/xt=urn:btih:([a-zA-Z0-9]+)/i);
             if (mMatch) hash = mMatch[1].toLowerCase();
         }
-        let response: any = await axios.post('http://127.0.0.1:8090/torrents', {
+        let response: any = await axios.post(`${getTorrServerBaseUrl()}/torrents`, {
             action: 'add',
             link: link,
             save_to_db: false
         }, { timeout: 3000 }).catch(() => null);
 
         if (!response || !response.data) {
-            response = await axios.post('http://127.0.0.1:8090/torrents', {
+            response = await axios.post(`${getTorrServerBaseUrl()}/torrents`, {
                 action: 'get',
                 hash: hash
             }, { timeout: 3000 }).catch(() => null);
@@ -831,7 +1117,7 @@ router.get('/api/torrent/srt-proxy', async (req, res) => {
     const link = (req.query.link || '').toString().trim();
     const index = (req.query.index || '1').toString().trim();
     if (!link) return res.status(400).send('Missing link');
-    const streamUrl = `http://127.0.0.1:8090/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1`;
+    const streamUrl = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1`;
     try {
         const response = await axios.get(streamUrl, {
             responseType: 'text',
@@ -855,7 +1141,7 @@ router.get('/api/torrent/audio-tracks', async (req, res) => {
     const link = (req.query.link || '').toString().trim();
     const index = (req.query.index || '1').toString().trim();
     if (!urlStr && link) {
-        urlStr = `http://127.0.0.1:8090/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1`;
+        urlStr = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1`;
     }
     if (urlStr && urlStr.startsWith('/')) {
         const port = process.env.PORT || 3000;
@@ -906,19 +1192,21 @@ router.get('/api/torrent/download', async (req: any, res: any) => {
         filename += '.mp4';
     }
 
-    const targetUrl = `http://127.0.0.1:8090/stream?link=${encodeURIComponent(hash)}&index=${encodeURIComponent(index)}&play=1`;
+    const targetUrl = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(hash)}&index=${encodeURIComponent(index)}&play=1`;
 
-    const http = require('http');
     try {
         const parsedUrl = new URL(targetUrl);
-        const proxyReq = http.request({
+        const isHttps = parsedUrl.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+        const defaultPort = isHttps ? 443 : 80;
+        const proxyReq = client.request({
             hostname: parsedUrl.hostname,
-            port: parsedUrl.port,
+            port: parsedUrl.port || defaultPort,
             path: parsedUrl.pathname + parsedUrl.search,
             method: 'GET',
             headers: {
                 ...req.headers,
-                host: `${parsedUrl.hostname}:${parsedUrl.port}`
+                host: parsedUrl.port ? `${parsedUrl.hostname}:${parsedUrl.port}` : parsedUrl.hostname
             }
         }, (proxyRes: any) => {
             const ext = filename.split('.').pop()?.toLowerCase() || 'mp4';
@@ -959,7 +1247,7 @@ router.all('/api/torrent/stream-ffmpeg', async (req: any, res: any) => {
     const audioTrack = (req.query.audioTrack || req.query.a || '').toString().trim();
 
     if (!urlStr && link) {
-        urlStr = `http://127.0.0.1:8090/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1&preload=1`;
+        urlStr = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1&preload=1`;
     }
     if (!urlStr) return res.status(400).send('Missing stream URL or torrent link');
     if (urlStr.startsWith('/')) {
@@ -1112,7 +1400,7 @@ export function setupTorrentProxies(app: any) {
 
     async function isTorrServerHealthy(): Promise<boolean> {
         try {
-            const res = await axios.get('http://127.0.0.1:8090/echo', { timeout: 1000 });
+            const res = await axios.get(`${getTorrServerBaseUrl()}/echo`, { timeout: 2000 });
             return res.status === 200;
         } catch (e) {
             return false;
@@ -1125,7 +1413,14 @@ export function setupTorrentProxies(app: any) {
 
         const healthy = await isTorrServerHealthy();
         if (healthy) {
-            console.log("[TorrServer] Service is already running and healthy on port 8090.");
+            console.log(`[TorrServer] Service is already running and healthy at ${getTorrServerBaseUrl()}`);
+            isStarting = false;
+            return;
+        }
+
+        // If user configured an external TorrServer URL, do not try to spawn local binary
+        if (process.env.TORRSERVER_URL && process.env.TORRSERVER_URL !== 'http://127.0.0.1:8090') {
+            console.warn(`[TorrServer] External URL ${process.env.TORRSERVER_URL} is currently unreachable. Waiting for remote service...`);
             isStarting = false;
             return;
         }
@@ -1191,19 +1486,24 @@ export function setupTorrentProxies(app: any) {
         isStarting = false;
 
         try {
-            await axios.post('http://127.0.0.1:8090/settings', {
+            await axios.post(`${getTorrServerBaseUrl()}/settings`, {
                 action: 'set',
                 sets: {
-                    CacheSize: 209715200,
-                    ConnectionsLimit: 150,
-                    PreloadCache: 5,
-                    ReaderReadAHead: 30,
+                    CacheSize: 104857600,
+                    ConnectionsLimit: 45,
+                    PreloadCache: 1,
+                    ReaderReadAHead: 15,
                     ResponsiveMode: true,
                     RemoveCacheOnDrop: true,
-                    TorrentDisconnectTimeout: 30
+                    TorrentDisconnectTimeout: 20,
+                    EnableDHT: true,
+                    EnablePEX: true,
+                    EnableIPv4: true,
+                    EnableIPv6: false,
+                    BTHandshakeTimeout: 5
                 }
             }, { timeout: 3000 });
-            console.log("[TorrServer] Initialized default fast-seeking memory settings");
+            console.log("[TorrServer] Initialized default fast-seeking memory settings with cloud P2P optimizations");
         } catch(e) {}
     }
 
@@ -1211,7 +1511,7 @@ export function setupTorrentProxies(app: any) {
 
     const handleTorrApiProxy = async (req: any, res: any, retryCount = 0) => {
         const maxRetries = 25;
-        const targetUrl = `http://127.0.0.1:8090${req.originalUrl}`;
+        const targetUrl = `${getTorrServerBaseUrl()}${req.originalUrl}`;
 
         try {
             const payload = (req.method !== 'GET' && req.method !== 'HEAD' && req.body) 
@@ -1251,23 +1551,110 @@ export function setupTorrentProxies(app: any) {
         }
     };
 
+    // Active stream connection counter & auto-cleanup tracker
+    const activeStreamConnections = new Map<string, number>();
+    const streamCleanupTimers = new Map<string, NodeJS.Timeout>();
+
+    function extractHashFromReq(req: any): string | null {
+        const link = (req.query?.link || req.query?.hash || '').toString().trim();
+        if (link) {
+            if (link.startsWith('magnet:')) {
+                const m = link.match(/xt=urn:btih:([a-zA-Z0-9]+)/i);
+                if (m) return m[1].toLowerCase();
+            }
+            if (/^[a-fA-F0-9]{40}$/.test(link) || /^[a-zA-Z2-7]{32}$/.test(link)) {
+                return link.toLowerCase();
+            }
+        }
+        const urlStr = req.originalUrl || req.url || '';
+        const mMatch = urlStr.match(/xt=urn:btih:([a-zA-Z0-9]+)/i) || 
+                       urlStr.match(/link=([a-fA-F0-9]{40})/i) || 
+                       urlStr.match(/link=([a-zA-Z2-7]{32})/i) ||
+                       urlStr.match(/hash=([a-fA-F0-9]{40})/i);
+        if (mMatch) return mMatch[1].toLowerCase();
+        return null;
+    }
+
+    function markStreamStarted(hash: string) {
+        if (!hash) return;
+        if (streamCleanupTimers.has(hash)) {
+            clearTimeout(streamCleanupTimers.get(hash)!);
+            streamCleanupTimers.delete(hash);
+        }
+        const current = activeStreamConnections.get(hash) || 0;
+        activeStreamConnections.set(hash, current + 1);
+    }
+
+    function markStreamEnded(hash: string) {
+        if (!hash) return;
+        const current = (activeStreamConnections.get(hash) || 1) - 1;
+        if (current <= 0) {
+            activeStreamConnections.delete(hash);
+            if (streamCleanupTimers.has(hash)) {
+                clearTimeout(streamCleanupTimers.get(hash)!);
+            }
+            const timer = setTimeout(async () => {
+                streamCleanupTimers.delete(hash);
+                if (!activeStreamConnections.has(hash)) {
+                    try {
+                        console.log(`[TorrServer Auto-Cleanup] User closed connection. Dropping & removing torrent: ${hash}`);
+                        await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'drop', hash }, { timeout: 3000 }).catch(() => null);
+                        await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'rem', hash }, { timeout: 3000 }).catch(() => null);
+                    } catch (e: any) {}
+                }
+            }, 15000); // 15 seconds grace period for pause/scrubbing
+            streamCleanupTimers.set(hash, timer);
+        } else {
+            activeStreamConnections.set(hash, current);
+        }
+    }
+
+    // Periodic orphan torrent reaper (cleans up any abandoned torrents every 45s)
+    setInterval(async () => {
+        try {
+            const res = await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'list' }, { timeout: 4000 }).catch(() => null);
+            if (res && Array.isArray(res.data) && res.data.length > 0) {
+                for (const t of res.data) {
+                    const tHash = (t.hash || '').toLowerCase();
+                    if (tHash && !activeStreamConnections.has(tHash) && !streamCleanupTimers.has(tHash)) {
+                        const activePeers = t.active_peers || 0;
+                        if (activePeers === 0) {
+                            console.log(`[TorrServer Reaper] Purging inactive orphan torrent: ${t.title || tHash}`);
+                            await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'drop', hash: tHash }, { timeout: 3000 }).catch(() => null);
+                            await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'rem', hash: tHash }, { timeout: 3000 }).catch(() => null);
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+    }, 45000);
+
     const handleTorrStreamProxy = (req: any, res: any, retryCount = 0) => {
         const maxRetries = 15;
-        const targetUrl = `http://127.0.0.1:8090${req.originalUrl}`;
+        const targetUrl = `${getTorrServerBaseUrl()}${req.originalUrl}`;
+        const torrentHash = extractHashFromReq(req);
+        if (torrentHash) {
+            markStreamStarted(torrentHash);
+        }
         
         try {
             const parsedUrl = new URL(targetUrl);
-            const http = require('http');
+            const isHttps = parsedUrl.protocol === 'https:';
+            const client = isHttps ? require('https') : require('http');
+            const defaultPort = isHttps ? 443 : 80;
 
-            const proxyReq = http.request({
+            const cleanHeaders = { ...req.headers };
+            delete cleanHeaders.host;
+            delete cleanHeaders.origin;
+            delete cleanHeaders.referer;
+            cleanHeaders.host = parsedUrl.port ? `${parsedUrl.hostname}:${parsedUrl.port}` : parsedUrl.hostname;
+
+            const proxyReq = client.request({
                 hostname: parsedUrl.hostname,
-                port: parsedUrl.port,
+                port: parsedUrl.port || defaultPort,
                 path: parsedUrl.pathname + parsedUrl.search,
                 method: req.method,
-                headers: {
-                    ...req.headers,
-                    host: `${parsedUrl.hostname}:${parsedUrl.port}`
-                }
+                headers: cleanHeaders
             }, (proxyRes: any) => {
                 const proxyHeaders = { ...proxyRes.headers, 'Access-Control-Allow-Origin': '*' };
                 if (req.query.download === '1') {
@@ -1279,14 +1666,22 @@ export function setupTorrentProxies(app: any) {
 
             proxyReq.setTimeout(0);
 
-            req.on('close', () => {
+            let cleanedUp = false;
+            const cleanupConnection = () => {
+                if (cleanedUp) return;
+                cleanedUp = true;
+                if (torrentHash) {
+                    markStreamEnded(torrentHash);
+                }
                 try { proxyReq.destroy(); } catch (e) {}
-            });
-            req.on('aborted', () => {
-                try { proxyReq.destroy(); } catch (e) {}
-            });
+            };
+
+            req.on('close', cleanupConnection);
+            req.on('aborted', cleanupConnection);
+            res.on('finish', cleanupConnection);
 
             proxyReq.on('error', async (err: any) => {
+                cleanupConnection();
                 if (req.destroyed || res.writableEnded) return;
                 if (retryCount < maxRetries) {
                     if (!isStarting) startTorrServer();
@@ -1304,6 +1699,9 @@ export function setupTorrentProxies(app: any) {
                 req.pipe(proxyReq, { end: true });
             }
         } catch (e: any) {
+            if (torrentHash) {
+                markStreamEnded(torrentHash);
+            }
             if (!res.headersSent) {
                 res.status(502).send('Stream proxy error.');
             }
@@ -1313,7 +1711,7 @@ export function setupTorrentProxies(app: any) {
     app.all('/torrents', handleTorrApiProxy);
     app.all('/settings', handleTorrApiProxy);
     app.all('/echo', handleTorrApiProxy);
-    app.all('/stream', handleTorrStreamProxy);
+    app.all(/^\/(?:stream|play)(?:\/.*)?$/, handleTorrStreamProxy);
 
     process.on('exit', () => { if (torrProcess) torrProcess.kill(); });
     process.on('SIGINT', () => { if (torrProcess) torrProcess.kill(); process.exit(); });

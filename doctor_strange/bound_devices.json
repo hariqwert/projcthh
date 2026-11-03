@@ -1,0 +1,22 @@
+[
+  {
+    "deviceId": "dev_19d553f011892ff4afc2866a",
+    "deviceLabel": "Win32 • Desktop Browser",
+    "deviceFingerprint": "19d553f011892ff4afc2866a8508263641dadb71708af1f115c5aa98664d7f15",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "firstBoundAt": 1792183472726,
+    "lastSeenAt": 1793731596464,
+    "status": "authorized"
+  },
+  {
+    "deviceId": "test-dev",
+    "deviceLabel": "Dev Browser",
+    "deviceFingerprint": "fp-123",
+    "ip": "127.0.0.1",
+    "userAgent": "node",
+    "firstBoundAt": 1793635978067,
+    "lastSeenAt": 1793635978067,
+    "status": "authorized"
+  }
+]

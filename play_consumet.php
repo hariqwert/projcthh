@@ -4415,6 +4415,88 @@
 
             window.reconnectAttempts = 0;
             const MAX_RECONNECT_ATTEMPTS = 3;
+
+            // Auto-Backup Failover Engine for Multi-Source Live Matches
+            window._isAutoSwitchingBackup = false;
+            window.triggerAutoBackupFailover = async function(reason) {
+                if (window._isAutoSwitchingBackup) return;
+                window._isAutoSwitchingBackup = true;
+                console.warn(`[Auto-Backup Failover] Triggered by: ${reason}. Evaluating available backups...`);
+
+                let list = window._activePlayerBackupSources || [];
+                if (!list || list.length <= 1) {
+                    try {
+                        const storedRaw = sessionStorage.getItem('active_event_sources') || localStorage.getItem('active_event_sources_backup');
+                        if (storedRaw) {
+                            const parsed = JSON.parse(storedRaw);
+                            if (parsed && Array.isArray(parsed.sources) && parsed.sources.length > 0) {
+                                list = parsed.sources;
+                                window._activePlayerBackupSources = list;
+                            }
+                        }
+                    } catch (_) {}
+                }
+
+                const currentFullUrl = window.location.pathname + window.location.search;
+                let currentIdx = -1;
+                if (list && list.length > 0) {
+                    currentIdx = list.findIndex(s => 
+                        (s.playUrl && currentFullUrl === s.playUrl) ||
+                        (s.streamUrl && window.location.search.includes(encodeURIComponent(s.streamUrl))) ||
+                        (s.streamUrl && typeof rawUrl !== 'undefined' && rawUrl && s.streamUrl.toLowerCase() === rawUrl.toLowerCase())
+                    );
+                }
+
+                const nextIdx = currentIdx !== -1 ? currentIdx + 1 : 1;
+                if (list && list.length > 1 && nextIdx < list.length) {
+                    const nextSource = list[nextIdx];
+                    console.warn(`[Auto-Backup Failover] Switching from S${currentIdx + 1} to S${nextIdx + 1} (${nextSource.sourceName || 'Backup Mirror'})...`);
+                    const toast = document.createElement('div');
+                    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(16,185,129,0.92);backdrop-filter:blur(10px);color:#000;font-weight:800;font-size:12px;padding:8px 16px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,0.8);display:flex;align-items:center;gap:8px;';
+                    toast.innerHTML = `<span style="font-size:14px;">⚡</span> Primary feed unreachable. Switching to ${nextSource.sourceName || 'Backup #' + (nextIdx + 1)}...`;
+                    document.body.appendChild(toast);
+                    setTimeout(() => {
+                        if (typeof window.switchPlayerToBackupSource === 'function') {
+                            window.switchPlayerToBackupSource(nextIdx);
+                        } else if (nextSource.playUrl) {
+                            window.location.replace(nextSource.playUrl);
+                        }
+                    }, 1000);
+                    return;
+                }
+
+                // If backup list is exhausted or not yet populated, try refreshing the stream token
+                const urlParams = new URLSearchParams(window.location.search);
+                const lookupId = urlParams.get('channel_id') || urlParams.get('channelId') || urlParams.get('event_id') || urlParams.get('id') || '';
+                if (lookupId && !window._hasTriedFreshResolve) {
+                    window._hasTriedFreshResolve = true;
+                    console.warn(`[Auto-Backup Failover] No local backup mirror. Fetching fresh token from server for ${lookupId}...`);
+                    try {
+                        const r = await fetch(`/api/resolve_stream/${encodeURIComponent(lookupId)}?refresh=1&nocache=1`);
+                        const data = await r.json();
+                        if (data && data.url) {
+                            const freshUrl = ensureProxiedSportsUrl(data.url);
+                            console.log('[Auto-Backup Failover] Successfully obtained fresh stream:', freshUrl);
+                            window._isAutoSwitchingBackup = false;
+                            if (hls) {
+                                try { hls.destroy(); } catch(e){}
+                                hls = null;
+                            }
+                            loadHls(freshUrl);
+                            return;
+                        }
+                    } catch(e) {}
+                }
+
+                window._isAutoSwitchingBackup = false;
+                showPlayerError("⚠️ Live stream is buffering or unreachable. Please click 'Sources' above to choose a backup stream or select another match.");
+                const sourcesBtn = document.getElementById('btn-sources-top');
+                if (sourcesBtn) {
+                    sourcesBtn.style.display = 'inline-flex';
+                    sourcesBtn.style.animation = 'pulse 1.5s infinite';
+                }
+            };
+
             // Smart Auto-Reconnect Watchdog
             window.triggerAutoReconnect = async function() {
                 if (isReconnecting) return;
@@ -4443,7 +4525,7 @@
                 }
                 const urlParams = new URLSearchParams(window.location.search);
                 const rawIdParam = urlParams.get('channel_id') || urlParams.get('channelId') || urlParams.get('id') || urlParams.get('url') || '';
-                const isBingrReq = urlParams.has('media_type') || urlParams.has('type') || urlParams.has('tmdbId') || urlParams.has('srv') || (rawIdParam && !isNaN(Number(rawIdParam)) && rawIdParam.length > 3);
+                const isBingrReq = urlParams.has('media_type') || (urlParams.get('type') === 'movie' || urlParams.get('type') === 'tv' || urlParams.get('type') === 'series') || urlParams.has('tmdbId') || urlParams.has('srv') || (rawIdParam && !isNaN(Number(rawIdParam)) && rawIdParam.length > 3 && !urlParams.has('channel_id'));
                 
                 if (!isBingrReq && rawIdParam && !rawIdParam.startsWith('http') && !rawIdParam.includes('.mp4') && !rawIdParam.includes('.mkv')) {
                     try {
@@ -4597,16 +4679,33 @@
                 }
             };
 
+            let initialBufferStallMs = 0;
             function startWatchdog() {
                 if (watchdogTimer) clearInterval(watchdogTimer);
                 lastCurrentTime = video.currentTime;
                 lastProgressTime = Date.now();
+                initialBufferStallMs = 0;
                 watchdogTimer = setInterval(() => {
-                    if (isReconnecting || video.paused || video.ended || video.seeking || video.readyState < 2) {
+                    if (isReconnecting || video.paused || video.ended || video.seeking) {
                         lastCurrentTime = video.currentTime;
                         lastProgressTime = Date.now();
                         return;
                     }
+                    // Detect if player is stuck waiting for initial frames / buffering with black screen
+                    if (video.readyState < 2 || video.currentTime === 0) {
+                        initialBufferStallMs += 1000;
+                        if (initialBufferStallMs >= 5000) {
+                            console.warn(`[Watchdog] Black screen / buffering stall (${initialBufferStallMs}ms). Triggering Auto-Backup Failover...`);
+                            initialBufferStallMs = 0;
+                            if (typeof window.triggerAutoBackupFailover === 'function') {
+                                window.triggerAutoBackupFailover('Buffering stall (no frames received within 5s)');
+                            } else {
+                                triggerAutoReconnect();
+                            }
+                        }
+                        return;
+                    }
+                    initialBufferStallMs = 0;
                     if (video.currentTime !== lastCurrentTime) {
                         lastCurrentTime = video.currentTime;
                         lastProgressTime = Date.now();
@@ -4622,6 +4721,8 @@
                             lastProgressTime = Date.now();
                             if (window.AiStreamDoctor) {
                                 window.AiStreamDoctor.heal(`Playback stalled for ${(stalledTime/1000).toFixed(1)}s`);
+                            } else if (typeof window.triggerAutoBackupFailover === 'function') {
+                                window.triggerAutoBackupFailover(`Playback stalled for ${(stalledTime/1000).toFixed(1)}s`);
                             } else {
                                 triggerAutoReconnect();
                             }
@@ -5325,7 +5426,7 @@
                         triggerSafePlayback('MP4-Native');
                         if (!player) {
                             player = new Plyr(video, {
-                                controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'download', 'fullscreen'],
+                                controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                 autoplay: true,
                                 muted: false,
                                 clickToPlay: false,
@@ -5461,9 +5562,15 @@
                             }
                             if (data.details === 'levelLoadError' || data.details === 'levelLoadTimeOut' || data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR || data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT) {
                                 levelRecoveryAttempts++;
-                                if (levelRecoveryAttempts <= 3) {
+                                if (levelRecoveryAttempts <= 2) {
                                     setTimeout(() => { try { hls.startLoad(); } catch(e) {} }, 1000);
                                     return;
+                                }
+                                console.warn('[HLS Level Load Failed] Escalating to Auto-Backup Failover...');
+                                if (typeof window.triggerAutoBackupFailover === 'function') {
+                                    window.triggerAutoBackupFailover(`Sub-level manifest error (${data.details})`);
+                                } else {
+                                    triggerAutoReconnect();
                                 }
                                 return;
                             }
@@ -6372,7 +6479,7 @@
                     triggerSafePlayback('Direct-Media');
                     if (!player) {
                         player = new Plyr(video, {
-                            controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'download', 'fullscreen'],
+                            controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                             autoplay: true,
                             muted: false,
                             hideControls: false,

@@ -1380,6 +1380,73 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 </div>
             </div>
 
+            <!-- DEDICATED ANIME SERVER CLUSTERS SECTION IN SERVER MODAL -->
+            <div id="modalAnimeClusterSection" class="pt-2.5 pb-2 border-t border-white/10">
+                <div class="flex items-center justify-between mb-1.5 px-0.5">
+                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-rose-400"></i>
+                        Anime Server Clusters (Specialized JP/EN)
+                    </span>
+                    <span class="text-[9px] text-zinc-400 font-medium">Top Priority Anime Engines</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5" id="animeServersQuickGrid">
+                    <button type="button" onclick="switchServerCluster('megaplay_buzz')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                <span>MegaPlay Buzz</span>
+                                <span class="text-[9px] bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded font-mono font-bold">HLS</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Bitrate Master</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('animepahe')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                <span>AnimePahe</span>
+                                <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-mono font-bold">Google CDN</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">Direct 720p/360p MP4</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('bing_anime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                <span>Bing Anime</span>
+                                <span class="text-[9px] bg-sky-500/20 text-sky-300 px-1 py-0.5 rounded font-mono font-bold">Multi-Audio</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">AnimeSalt / HLS Direct</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('tokyoinsider')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                <span>TokyoInsider</span>
+                                <span class="text-[9px] bg-red-500/20 text-red-300 px-1 py-0.5 rounded font-mono font-bold">1080p</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">High-Speed MP4</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('hianime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel text-zinc-300 hover:bg-white/10">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px]">HiAnime</div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Audio Scraper</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('animesalt')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel text-zinc-300 hover:bg-white/10">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px]">AnimeSalt</div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">Special Multi-Audio</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('aniembed')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel text-zinc-300 hover:bg-white/10">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px]">AniEmbed</div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">JP/EN Dual-Audio HLS</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
             <!-- HUGE EMBEDDED STREAMS SECTION -->
             <div class="pt-3 pb-1 border-t border-white/10">
                 <div class="flex items-center justify-between mb-2 px-1">
@@ -2027,12 +2094,29 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let currentActiveSubtitleTrack = -1;
         let externalSubtitlesLoaded = [];
 
-        const isAnimeContent = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || 
+        const isAnimeContent = (typeof MEDIA_TYPE !== 'undefined' && (MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'tv_anime')) || 
                                Boolean(MAL_ID) || Boolean(ANILIST_ID) ||
-                               (typeof window.location !== 'undefined' && (window.location.search.includes('type=anime') || window.location.search.includes('srv=tokyoinsider') || window.location.search.includes('srv=bing_anime') || window.location.search.includes('srv=zanix') || window.location.search.includes('srv=aniembed')));
+                               (typeof window.location !== 'undefined' && (
+                                   window.location.search.includes('type=anime') || 
+                                   window.location.search.includes('anime') ||
+                                   window.location.search.includes('mal') ||
+                                   window.location.search.includes('ani') ||
+                                   window.location.search.includes('srv=megaplay_buzz') || 
+                                   window.location.search.includes('srv=animepahe') ||
+                                   window.location.search.includes('srv=bing_anime') || 
+                                   window.location.search.includes('srv=tokyoinsider') || 
+                                   window.location.search.includes('srv=hianime') || 
+                                   window.location.search.includes('srv=animesalt') || 
+                                   window.location.search.includes('srv=aniembed') || 
+                                   window.location.search.includes('srv=zanix') ||
+                                   window.location.search.includes('srv=kisskh') ||
+                                   window.location.search.includes('srv=asiaflix')
+                               ));
         const ANIME_SPECIAL_SERVERS = [
+            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
+            { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' },
+            { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' },
             { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP' },
-            { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP' },
             { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP' },
             { id: 'animesalt', name: 'AnimeSalt (Special Anime Scraper / Multi-Audio)', cc: 'JP' },
             { id: 'aniembed', name: 'AniEmbed (Dual Audio JP/EN Embed)', cc: 'JP' },
@@ -2051,11 +2135,16 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         if (isAnimeContent) {
             const animeIds = ANIME_SPECIAL_SERVERS.map(s => s.id);
             if (!CURRENT_SERVER || !animeIds.includes(CURRENT_SERVER)) {
-                CURRENT_SERVER = 'tokyoinsider';
+                CURRENT_SERVER = 'megaplay_buzz';
             }
         }
 
         const DEFAULT_SERVERS = isAnimeContent ? ANIME_SPECIAL_SERVERS : [
+            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
+            { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' },
+            { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' },
+            { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP' },
+            { id: 'moviebox', name: 'MovieBox Online (Direct CDN MP4)', cc: 'US' },
             { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US' },
             { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN' },
             { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN' },
@@ -2078,8 +2167,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             { id: 's60', name: 'Vertex (Direct CDN)', cc: 'US' },
             { id: 's63', name: 'Hallyu (Asian & International HLS)', cc: 'KR' },
             { id: 's61', name: 'Corvus (Multi-Source Hub / 1080p)', cc: 'US' },
-            { id: 'cinepro', name: 'CinePro Core (OMSS Multi-Provider 4K/1080p)', cc: 'US' },
-            { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP' }
+            { id: 'cinepro', name: 'CinePro Core (OMSS Multi-Provider 4K/1080p)', cc: 'US' }
         ];
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -2367,6 +2455,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
                 const streamUrl = streamCandidate;
 
+                // Guard: If backend cascaded into a server that client already marked as failed, advance immediately to avoid loops
+                if (data && data.serverId && failedServers.has(data.serverId)) {
+                    console.warn(`[Bingr Cascade Guard] Backend returned already-failed server "${data.serverId}". Advancing to next server...`);
+                    failedServers.add(serverId);
+                    cascadeFallback(serverId);
+                    return;
+                }
+
                 if (hasValidStream && !isExplicitEmbed && (isDirectStream || streamUrl)) {
                     CURRENT_SERVER = data.serverId || serverId;
                     updateServerListUI();
@@ -2512,7 +2608,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['tokyoinsider', 'bing_anime', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
                     ? ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
                     : ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
@@ -2520,7 +2616,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const nextServer = fallbackOrder.find(srv => !failedServers.has(srv));
             if (nextServer) {
                 console.log(`[Bingr Cascade] Stepping down from "${failedServerId}" to "${nextServer}"...`);
-                fetchAndPlayStream(nextServer, false);
+                CURRENT_SERVER = nextServer;
+                updateServerListUI();
+                fetchAndPlayStream(nextServer, true);
             } else {
                 showLoading(false);
                 console.warn("[Fallback] Direct streams unavailable across primary clusters. Switching to embed mode...");
@@ -3648,6 +3746,26 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         <span class="text-[9px] text-zinc-500 font-medium">Top Priority Anime Engines</span>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        <button type="button" onclick="switchServerCluster('megaplay_buzz')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'megaplay_buzz' ? 'glass-sub-panel bg-rose-500/25 border border-rose-500/40 text-white ring-1 ring-rose-400/50 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                    <span>MegaPlay</span>
+                                    <span class="text-[9px] bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded font-mono font-bold">HLS Master</span>
+                                </div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Direct Multi-Bitrate HLS</div>
+                            </div>
+                            ${CURRENT_SERVER === 'megaplay_buzz' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('animepahe')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'animepahe' ? 'glass-sub-panel bg-rose-500/25 border border-rose-500/40 text-white ring-1 ring-rose-400/50 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                    <span>AnimePahe</span>
+                                    <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-mono font-bold">Google CDN</span>
+                                </div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Direct 720p/360p MP4</div>
+                            </div>
+                            ${CURRENT_SERVER === 'animepahe' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
                         <button type="button" onclick="switchServerCluster('tokyoinsider')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'tokyoinsider' ? 'glass-sub-panel bg-rose-500/25 border border-rose-500/40 text-white ring-1 ring-rose-400/50 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
                                 <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
@@ -3658,13 +3776,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             </div>
                             ${CURRENT_SERVER === 'tokyoinsider' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
-                        <button type="button" onclick="switchServerCluster('bing_anime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'bing_anime' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Bing Anime</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Nexa & Ravok Multi-Audio</div>
-                            </div>
-                            ${CURRENT_SERVER === 'bing_anime' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
+
                         <button type="button" onclick="switchServerCluster('hianime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'hianime' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
                                 <div class="truncate text-white font-bold text-[11px]">HiAnime (Anime)</div>
@@ -4207,17 +4319,26 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
         async function loadServerList() {
             try {
-                const isAnime = Boolean(isAnimeContent || (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || window.MAL_ID || window.ANILIST_ID);
+                const isAnime = Boolean(isAnimeContent || (typeof MEDIA_TYPE !== 'undefined' && (MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'tv_anime')) || window.MAL_ID || window.ANILIST_ID || (typeof window.location !== 'undefined' && window.location.search.includes('anime')));
                 const queryParam = isAnime 
                     ? `?type=anime&malId=${encodeURIComponent(window.MAL_ID || '')}&anilistId=${encodeURIComponent(window.ANILIST_ID || '')}` 
                     : `?type=${encodeURIComponent(MEDIA_TYPE)}`;
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    const animeAllowed = ['tokyoinsider', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'bing_anime', 'hianime', 'animesalt', 'kisskh', 'asiaflix', 's40', 'framex'];
-                    availableServers = isAnime 
+                    const animeAllowed = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    let list = isAnime 
                         ? data.servers.filter(s => animeAllowed.includes(s.id))
                         : data.servers;
+                    // Ensure megaplay_buzz and animepahe are unconditionally at the top of the server list
+                    const hasMega = list.some(s => s.id === 'megaplay_buzz');
+                    const hasPahe = list.some(s => s.id === 'animepahe');
+                    const prepend = [];
+                    const hasBing = list.some(s => s.id === 'bing_anime');
+                    if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });
+                    if (!hasPahe) prepend.push({ id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' });
+                    if (!hasBing) prepend.push({ id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' });
+                    availableServers = [...prepend, ...list];
                 } else {
                     availableServers = DEFAULT_SERVERS;
                 }
@@ -4249,6 +4370,19 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             renderServerList();
             if (typeof detectAndPopulateAudioTracks === 'function') {
                 detectAndPopulateAudioTracks();
+            }
+            const quickGrid = document.getElementById('animeServersQuickGrid');
+            if (quickGrid) {
+                const btns = quickGrid.querySelectorAll('button');
+                btns.forEach(btn => {
+                    const onclickStr = btn.getAttribute('onclick') || '';
+                    const match = onclickStr.match(/switchServerCluster\(['"]([^'"]+)['"]\)/);
+                    if (match) {
+                        const srvId = match[1];
+                        const isCur = srvId === CURRENT_SERVER;
+                        btn.className = `flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${isCur ? 'glass-sub-panel bg-rose-500/30 border border-rose-500/50 text-white ring-1 ring-rose-400/60 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}`;
+                    }
+                });
             }
             const clusterBadge = document.getElementById('hudClusterBadge');
             if (clusterBadge) {
@@ -6409,6 +6543,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const isDub = (urlParams.get('audio') === 'dub' || window._embedAudioMode === 'dub');
                 return (t === 'tv' || t === 'series') ? `https://embed.vidrift.in/embed/tv/${id}/${s || 1}/${e || 1}${isDub ? '?dub=true&audio=hindi' : ''}` : `https://embed.vidrift.in/embed/movie/${id}${isDub ? '?dub=true&audio=hindi' : ''}`;
             }},
+            { id: 'm4uhd_vip', name: 'M4UHD VIP (Multi-Source Cluster)', url: (t, id) => `https://m4uhd.vip/search/${id}.html` },
+            { id: 'arc018_stream', name: 'Arc018 Stream (Fast HD Embed)', url: (t, id) => `https://arc018.stream/` },
             { id: 'm4u_custom', name: 'Movie 4U (Direct Embed)', url: () => customEmbedUrl || 'https://new4.movies4u.garden' }
         ];
 
@@ -7320,5 +7456,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         });
     </script>
     <script src="/party-mode.js?v=7.0"></script>
+<script src="/watchdog.js"></script>
 </body>
 </html>

@@ -109,8 +109,10 @@ async function main() {
 
   const getFreshSeed = () => ((Date.now() ^ Math.floor(performance.now() * 1000) ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0) || 1;
   let seed = getFreshSeed();
+  let lastHomeAt = 0;
 
   function toTitle(show: boolean) {
+    if (show) lastHomeAt = performance.now();
     seed = getFreshSeed();
     sim.reset(seed, false);
     world.resetScenery(seed ^ 0x5bf03635);
@@ -122,6 +124,7 @@ async function main() {
     if (show) ui.show('start');
   }
   function play() {
+    if (performance.now() - lastHomeAt < 300) return;
     audio.unlock();
     audio.click();
     if (state === 'over') toTitle(false);
@@ -152,7 +155,7 @@ async function main() {
   }
   function onAction(a: Action) {
     if (a === 'mute') { toggleMute(); return; }
-    if (state === 'start') { if (a === 'up' || a === 'confirm') play(); return; }
+    if (state === 'start') { if ((a === 'up' || a === 'confirm') && performance.now() - lastHomeAt > 350) play(); return; }
     if (state === 'over') { if ((a === 'up' || a === 'confirm') && overTimer > 0.6) { toTitle(false); play(); } return; }
     if (state === 'pause') { if (a === 'pause' || a === 'confirm') resume(); return; }
     audio.unlock();

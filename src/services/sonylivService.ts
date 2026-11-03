@@ -175,6 +175,9 @@ export function normalizeSonyLivStreamUrl(url: string): string {
     if (normalized.includes('sonydaimenew.akamaized.net')) {
         normalized = normalized.replace(/sonydaimenew\.akamaized\.net/g, 'sonymtmnew.akamaized.net');
     }
+    if (normalized.includes('rv:157.0')) {
+        normalized = normalized.replace(/rv:157\.0/g, 'rv:158.0');
+    }
     return normalized;
 }
 

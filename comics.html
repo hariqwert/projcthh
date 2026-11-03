@@ -50,6 +50,8 @@
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
         * {
@@ -681,13 +683,15 @@
         </div>
 
         <!-- Floating Glass Top HUD Bar -->
-        <header id="readerTopHud" class="h-16 px-2.5 sm:px-6 bg-[#0c0d14]/90 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between z-30 transition-all duration-300 gap-2 sm:gap-4 overflow-hidden shadow-xl">
-            <div class="flex items-center gap-2 sm:gap-4 min-w-0 shrink-0 max-w-[32%] sm:max-w-none">
+        <header id="readerTopHud" class="min-h-[58px] px-2 sm:px-6 bg-[#0c0d14]/95 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between z-30 transition-all duration-300 gap-1.5 sm:gap-4 shadow-xl select-none">
+            <!-- Left: Back to Store + Compact Chapter Info -->
+            <div class="flex items-center gap-2 sm:gap-3 shrink-0 max-w-[45%] sm:max-w-xs">
                 <button
                     onclick="closeReader()"
-                    class="p-2 sm:px-3 sm:py-2 rounded-xl text-gray-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 transition-colors flex items-center gap-2 text-xs font-semibold shrink-0"
+                    class="p-2 sm:px-3 sm:py-2 rounded-xl text-gray-200 hover:text-white bg-white/[0.08] hover:bg-white/[0.15] border border-white/10 transition-colors flex items-center gap-1.5 text-xs font-bold shrink-0"
+                    title="Return to Comics Store"
                 >
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <i data-lucide="arrow-left" class="w-4 h-4 text-[#ff6a00]"></i>
                     <span class="hidden sm:inline">Store</span>
                 </button>
 
@@ -699,70 +703,55 @@
                 </div>
             </div>
 
-            <!-- Scrollable Controls Wrapper on Mobile so no buttons (including Fullscreen) get cut off -->
-            <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto hide-scroll shrink min-w-0 py-1 pl-1 pr-0.5">
+            <!-- Right: All Reader Controls (100% Visible & Touch-Friendly on Mobile) -->
+            <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+                <!-- Chapter Selector Dropdown -->
                 <select
                     id="readerChapterSelect"
                     onchange="changeChapter(this.value)"
-                    class="h-8 sm:h-9 px-2 sm:px-3 rounded-xl bg-[#141720] border border-white/10 text-[11px] sm:text-xs text-gray-200 focus:outline-none focus:border-[#ff6a00] font-mono max-w-[95px] sm:max-w-[200px] shrink-0 truncate"
+                    class="h-8 sm:h-9 px-1.5 sm:px-2.5 rounded-lg sm:rounded-xl bg-[#141720] border border-white/10 text-[11px] sm:text-xs text-gray-200 focus:outline-none focus:border-[#ff6a00] font-mono w-20 sm:w-36 shrink-0 truncate"
+                    title="Jump to Chapter"
                 >
                 </select>
 
+                <!-- Reading Mode Toggle (Webtoon Scroll vs Paged Flip) -->
                 <button
                     id="btnToggleMode"
                     onclick="toggleReadingMode()"
-                    class="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-gray-200 flex items-center justify-center gap-1.5 transition-colors shrink-0"
-                    title="Toggle between Webtoon Scroll & Paged Flip"
+                    class="h-8 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-gray-200 flex items-center justify-center gap-1 transition-colors shrink-0"
+                    title="Toggle Webtoon / Paged Mode"
                 >
-                    <i id="modeIcon" data-lucide="scroll" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ff6a00]"></i>
-                    <span id="modeLabel" class="hidden md:inline">Webtoon</span>
+                    <i id="modeIcon" data-lucide="scroll" class="w-3.5 h-3.5 text-[#ff6a00]"></i>
+                    <span id="modeLabel" class="hidden md:inline text-[11px]">Webtoon</span>
                 </button>
 
-                <div class="h-8 sm:h-9 flex items-center gap-0.5 sm:gap-1 bg-white/[0.05] border border-white/10 rounded-xl px-1 sm:px-1.5 py-0.5 shrink-0">
-                    <button onclick="zoomOut()" class="w-6 h-6 sm:w-7 sm:h-7 text-gray-300 hover:text-white flex items-center justify-center font-bold active:scale-90 cursor-pointer" title="Zoom Out (-)">
-                        <i data-lucide="zoom-out" class="w-3.5 h-3.5"></i>
-                    </button>
-                    <span id="zoomLevelLabel" onclick="resetZoom()" class="text-[9px] sm:text-[10px] font-mono font-bold text-[#ff6a00] px-0.5 cursor-pointer" title="Tap to Reset Zoom">100%</span>
-                    <button onclick="zoomIn()" class="w-6 h-6 sm:w-7 sm:h-7 text-gray-300 hover:text-white flex items-center justify-center font-bold active:scale-90 cursor-pointer" title="Zoom In (+)">
-                        <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
-                    </button>
-                </div>
-
-                <!-- Quick Page Jump Button -->
+                <!-- Download Chapter as PDF Button (Prominent & Visible on Mobile) -->
                 <button
-                    onclick="togglePageGridModal()"
-                    class="h-8 sm:h-9 px-2.5 rounded-xl text-gray-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 flex items-center justify-center gap-1.5 transition-colors shrink-0"
-                    title="Quick Page Jump Grid"
+                    id="btnDownloadChapter"
+                    onclick="downloadCurrentChapter()"
+                    class="h-8 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-[#ff6a00]/15 hover:bg-[#ff6a00]/30 border border-[#ff6a00]/40 text-xs font-bold text-[#ff6a00] flex items-center justify-center gap-1 transition-all shrink-0 shadow-sm"
+                    title="Download this Chapter as PDF"
                 >
-                    <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-zinc-400"></i>
-                    <span class="text-[10px] font-mono hidden lg:inline">Pages</span>
+                    <i data-lucide="file-down" class="w-3.5 h-3.5 text-[#ff6a00]"></i>
+                    <span class="text-[11px] font-mono font-bold">PDF</span>
                 </button>
 
-                <!-- Zen Full Immersion Button -->
+                <!-- Settings Drawer Toggle Button -->
                 <button
-                    id="btnZenMode"
-                    onclick="toggleZenMode()"
-                    class="h-8 sm:h-9 px-2.5 rounded-xl text-gray-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 flex items-center justify-center gap-1.5 transition-colors shrink-0"
-                    title="Zen Mode (Immersive View)"
+                    onclick="toggleSettingsDrawer()"
+                    class="h-8 sm:h-9 w-8 sm:w-9 rounded-lg sm:rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                    title="Reading Settings (Theme, Width, Zoom)"
                 >
-                    <i data-lucide="eye" class="w-3.5 h-3.5 text-emerald-400"></i>
-                    <span class="text-[10px] font-semibold hidden lg:inline">Zen</span>
+                    <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
                 </button>
 
+                <!-- Fullscreen Toggle Button -->
                 <button
-                    onclick="toggleReaderSettings()"
-                    class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-gray-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 flex items-center justify-center transition-colors shrink-0"
-                    title="Reading Settings (Width, Theme, Gaps)"
+                    onclick="toggleReaderFullscreen()"
+                    class="h-8 sm:h-9 w-8 sm:w-9 rounded-lg sm:rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                    title="Fullscreen Mode"
                 >
-                    <i data-lucide="sliders" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
-                </button>
-
-                <button
-                    onclick="toggleFullscreen()"
-                    class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-gray-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 flex items-center justify-center transition-colors shrink-0"
-                    title="Fullscreen"
-                >
-                    <i data-lucide="maximize" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                    <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
         </header>
@@ -983,10 +972,16 @@
                             <p id="modalSynopsis" class="text-xs text-gray-300 leading-relaxed line-clamp-4"></p>
                         </div>
                         <div class="pt-3">
+                            <div class="flex items-center gap-2">
                             <button id="modalReadFirstBtn" onclick="readFirstChapter()" class="px-6 py-2.5 rounded-full bg-[#ff6a00] hover:bg-[#e65f00] text-xs font-extrabold text-black flex items-center gap-1.5 shadow-lg shadow-orange-500/25">
                                 <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
                                 <span>Read Chapter 1</span>
                             </button>
+                            <button id="modalDownloadFirstBtn" onclick="downloadFirstChapter()" class="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white flex items-center gap-1.5 border border-white/10 transition-colors" title="Download Chapter 1 as CBZ">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                <span class="hidden sm:inline">Download</span>
+                            </button>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -1698,14 +1693,26 @@
                 return;
             }
             list.innerHTML = chapters.map((ch, idx) => `
-                <button
-                    onclick="loadChapterByIndex(${idx})"
-                    class="p-2.5 rounded-xl bg-[#141720] hover:bg-[#ff6a00]/15 border border-white/10 hover:border-[#ff6a00]/40 text-left transition-all"
-                >
-                    <div class="text-xs font-semibold text-white truncate">${ch.title}</div>
-                    <div class="text-[10px] text-gray-400 font-mono">${ch.releaseDate || 'Read'}</div>
-                </button>
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#141720] hover:bg-[#ff6a00]/15 border border-white/10 hover:border-[#ff6a00]/40 transition-all group">
+                    <button
+                        type="button"
+                        onclick="loadChapterByIndex(${idx})"
+                        class="flex-1 min-w-0 text-left"
+                    >
+                        <div class="text-xs font-semibold text-white truncate group-hover:text-[#ff6a00] transition-colors">${ch.title}</div>
+                        <div class="text-[10px] text-gray-400 font-mono">${ch.releaseDate || 'Read'}</div>
+                    </button>
+                    <button
+                        type="button"
+                        onclick="event.stopPropagation(); downloadChapterByIndex(${idx})"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-[#ff6a00] hover:bg-white/10 transition-colors shrink-0 ml-2"
+                        title="Download ${ch.title} as CBZ"
+                    >
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
             `).join('');
+            if (window.lucide) lucide.createIcons();
         }
 
         function filterModalChapters(query) {
@@ -2135,11 +2142,26 @@
         }
 
         function showStorefront() {
-            document.getElementById('readerView').classList.add('hidden');
-            document.getElementById('storefrontView').classList.remove('hidden');
+            const readerView = document.getElementById('readerView');
+            const storefrontView = document.getElementById('storefrontView');
+            if (readerView) readerView.classList.add('hidden');
+            if (storefrontView) storefrontView.classList.remove('hidden');
+
+            // Restore body scroll and exit fullscreen
+            document.body.style.overflow = '';
             if (document.fullscreenElement) {
                 document.exitFullscreen().catch(() => {});
             }
+
+            // Scroll cleanly to top of store
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Ensure store catalog is loaded
+            if (!state.storeData || !state.storeData.spotlight || state.storeData.spotlight.length === 0) {
+                loadStoreCatalog();
+            }
+
+            if (window.lucide) lucide.createIcons();
         }
 
         function openReaderView() {
@@ -2281,6 +2303,181 @@
             initInsideOutScrollObserver();
             initTouchPinchZoom();
         });
+    </script>
+<script src="/watchdog.js"></script>
+<script>
+        // =========================================================================
+        // 📥 COMIC & MANGA DOWNLOAD ENGINE (CBZ / ZIP FORMAT)
+        // =========================================================================
+        function showDownloadToast(msg, progress = -1) {
+            let toast = document.getElementById('comicDownloadToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'comicDownloadToast';
+                toast.className = 'fixed bottom-6 right-6 z-[99999] max-w-sm w-full p-4 rounded-2xl bg-[#0c0d14]/95 border border-[#ff6a00]/40 shadow-2xl backdrop-blur-md flex flex-col gap-2 transition-all font-mono text-xs text-white';
+                document.body.appendChild(toast);
+            }
+            toast.classList.remove('hidden');
+            let progressHtml = '';
+            if (progress >= 0) {
+                progressHtml = `
+                    <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-1">
+                        <div class="bg-[#ff6a00] h-full transition-all duration-200" style="width: ${progress}%"></div>
+                    </div>
+                `;
+            }
+            toast.innerHTML = `
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="download" class="w-4 h-4 text-[#ff6a00] shrink-0 animate-bounce"></i>
+                    <span class="flex-1 font-bold text-gray-200 text-[11px] leading-tight">${msg}</span>
+                </div>
+                ${progressHtml}
+            `;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function hideDownloadToast() {
+            const toast = document.getElementById('comicDownloadToast');
+            if (toast) {
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 2500);
+            }
+        }
+
+        window.downloadFirstChapter = function() {
+            if (state.currentManga && state.currentManga.chapters.length > 0) {
+                downloadChapterByIndex(0);
+            }
+        };
+
+        window.downloadCurrentChapter = function() {
+            if (state.currentManga && state.currentChapterIndex !== -1) {
+                downloadChapterByIndex(state.currentChapterIndex);
+            } else if (state.currentPages && state.currentPages.length > 0) {
+                saveChapterPagesAsZip('Manga_Chapter', state.currentPages);
+            }
+        };
+
+        window.downloadChapterByIndex = async function(idx) {
+            if (!state.currentManga || !state.currentManga.chapters[idx]) return;
+            const ch = state.currentManga.chapters[idx];
+            const mangaTitle = state.currentManga.title || 'Comic';
+            const chTitle = ch.title || `Chapter_${idx + 1}`;
+            
+            showDownloadToast(`Preparing download: ${chTitle}...`, 0);
+
+            try {
+                // Fetch chapter pages if not already loaded
+                let pages = [];
+                if (state.currentChapterIndex === idx && state.currentPages && state.currentPages.length > 0) {
+                    pages = state.currentPages;
+                } else {
+                    let fetchUrl = `/api/comics/chapter?source=${encodeURIComponent(state.currentManga.source || '')}&mangaId=${encodeURIComponent(state.currentManga.id || '')}&chapterId=${encodeURIComponent(ch.id || '')}&ch=${encodeURIComponent(ch.chapterNumber || '')}`;
+                    if (ch.url) fetchUrl += `&url=${encodeURIComponent(ch.url)}`;
+                    
+                    const res = await fetch(fetchUrl);
+                    const data = await res.json();
+                    if (!data.success || !data.chapter || !data.chapter.pages || data.chapter.pages.length === 0) {
+                        throw new Error(data.error || 'No pages found for chapter');
+                    }
+                    pages = data.chapter.pages;
+                }
+
+                await saveChapterPagesAsZip(`${mangaTitle}_${chTitle}`, pages);
+            } catch (err) {
+                console.error('[Download] Failed:', err);
+                showDownloadToast(`Download failed: ${err.message}`, -1);
+                hideDownloadToast();
+            }
+        };
+
+        // =========================================================================
+        // 📄 COMIC CHAPTER PDF ENGINE (HIGH QUALITY MOBILE PDF)
+        // =========================================================================
+        window.saveChapterPagesAsPdf = async function(fileBaseName, pages) {
+            showDownloadToast(`Initializing PDF generator for ${pages.length} pages...`, 5);
+
+            // Ensure jsPDF is loaded
+            if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Failed to load PDF library'));
+                    document.head.appendChild(script);
+                });
+            }
+
+            const jsPDFClass = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+            if (!jsPDFClass) throw new Error('PDF generator engine unavailable');
+
+            const cleanName = (fileBaseName || 'Manga_Chapter').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 60);
+            const total = pages.length;
+            let doc = null;
+
+            showDownloadToast(`Downloading ${total} pages for PDF...`, 10);
+
+            for (let i = 0; i < total; i++) {
+                const page = pages[i];
+                const rawUrl = typeof page === 'string' ? page : (page.img || page.url || '');
+                if (!rawUrl) continue;
+
+                const proxyUrl = `/api/comics/proxy-image?url=${encodeURIComponent(rawUrl)}`;
+                try {
+                    const imgRes = await fetch(proxyUrl);
+                    if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`);
+                    const blob = await imgRes.blob();
+
+                    const dataUrl = await new Promise((res, rej) => {
+                        const reader = new FileReader();
+                        reader.onload = () => res(reader.result);
+                        reader.onerror = rej;
+                        reader.readAsDataURL(blob);
+                    });
+
+                    const imgObj = await new Promise((res, rej) => {
+                        const img = new Image();
+                        img.onload = () => res(img);
+                        img.onerror = rej;
+                        img.src = dataUrl;
+                    });
+
+                    const w = imgObj.naturalWidth || 800;
+                    const h = imgObj.naturalHeight || 1200;
+                    const isLandscape = w > h;
+
+                    if (!doc) {
+                        doc = new jsPDFClass({
+                            orientation: isLandscape ? 'landscape' : 'portrait',
+                            unit: 'px',
+                            format: [w, h],
+                            compress: true
+                        });
+                        doc.addImage(dataUrl, 'JPEG', 0, 0, w, h, undefined, 'FAST');
+                    } else {
+                        doc.addPage([w, h], isLandscape ? 'landscape' : 'portrait');
+                        doc.addImage(dataUrl, 'JPEG', 0, 0, w, h, undefined, 'FAST');
+                    }
+
+                    const pct = Math.round(10 + ((i + 1) / total) * 80);
+                    showDownloadToast(`Compiled PDF page ${i + 1}/${total}...`, pct);
+                } catch (e) {
+                    console.warn(`[PDF Download] Error on page ${i + 1}:`, e);
+                }
+            }
+
+            if (!doc) throw new Error('No pages could be rendered into PDF');
+
+            showDownloadToast('Finalizing PDF document...', 95);
+            doc.save(`${cleanName}.pdf`);
+
+            showDownloadToast(`✓ Downloaded ${cleanName}.pdf!`, 100);
+            hideDownloadToast();
+        };
+
+        // Alias saveChapterPagesAsZip to PDF generator
+        window.saveChapterPagesAsZip = window.saveChapterPagesAsPdf;
     </script>
 </body>
 </html>

@@ -8,15 +8,15 @@
     // 1. Automatic Smart TV & Leanback User-Agent Detection
     function detectSmartTv() {
         const ua = navigator.userAgent || '';
+        // Only activate TV mode if genuine TV user-agent or explicitly requested in URL query
         return /Android.*TV|SmartTV|Tizen|Web0S|webOS|AppleTV|Apple TV|FireTV|AFT[BMS]|Roku|CrKey|HbbTV|POV_TV|GoogleTV|Large Screen/i.test(ua) ||
                window.location.search.includes('mode=tv') ||
-               window.location.search.includes('tv=1') ||
-               localStorage.getItem('stalker_tv_mode') === 'true';
+               window.location.search.includes('tv=1');
     }
 
     const isInitialTvMode = detectSmartTv();
 
-    // 2. Inject High-Contrast 10-Foot Leanback & Glowing Focus Styles
+    // 2. Clean, Elegant TV Focus Styles (Zero Harsh Red Boxes)
     const styleEl = document.createElement('style');
     styleEl.id = 'tv-navigation-styles';
     styleEl.innerHTML = `
@@ -31,41 +31,28 @@
             cursor: none !important;
         }
 
-        /* Netflix-style Leanback Typography & Spacing in TV Mode */
-        body.tv-mode .movie-card,
-        body.tv-mode .channel-card,
-        body.tv-mode .event-card {
-            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, outline 0.15s ease !important;
-        }
-
-        /* TV Mode Exclusive D-Pad Spatial Focus Ring (Strictly scoped - Never shows on desktop) */
-        body.tv-mode *:focus-visible,
+        /* TV Mode Subtle Focus Ring - Clean frosted glow, NO harsh red boxes */
         body.tv-mode .tv-focus-active,
-        body.tv-mode button:focus-visible,
-        body.tv-mode a:focus-visible,
-        body.tv-mode [tabindex="0"]:focus-visible,
         body.tv-mode .movie-card:focus-visible,
-        body.tv-mode .channel-card:focus-visible {
-            outline: 2.5px solid #f43f5e !important;
-            outline-offset: 3px !important;
-            box-shadow: 0 0 20px rgba(244, 63, 94, 0.6) !important;
-            transform: scale(1.05) !important;
+        body.tv-mode .channel-card:focus-visible,
+        body.tv-mode .event-card:focus-visible {
+            outline: none !important;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.45), 0 8px 24px rgba(0, 0, 0, 0.8) !important;
+            transform: scale(1.03) !important;
             z-index: 9999 !important;
             transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s ease !important;
         }
 
-        /* Desktop Mode: Completely remove blue outlines and blue rays */
-        body:not(.tv-mode) *,
-        body:not(.tv-mode) *:focus,
-        body:not(.tv-mode) *:focus-visible,
-        body:not(.tv-mode) a:focus,
-        body:not(.tv-mode) a:focus-visible,
-        body:not(.tv-mode) button:focus,
-        body:not(.tv-mode) button:focus-visible,
-        body:not(.tv-mode) input:focus,
-        body:not(.tv-mode) input:focus-visible {
+        /* Prevent brand logos, header buttons, and regular links from getting red/harsh focus boxes */
+        header a, header button, .brand-logo, [href="/"], [href="/hero.html"], [href*="index"] {
             outline: none !important;
             box-shadow: none !important;
+        }
+
+        /* Universal Clean Outlines: Eliminate red/blue focus rings across all platforms */
+        *, *:focus, *:focus-visible, a:focus, a:focus-visible, button:focus, button:focus-visible, input:focus, input:focus-visible {
+            outline: none !important;
+            -webkit-tap-highlight-color: transparent !important;
         }
     `;
     document.head.appendChild(styleEl);
@@ -328,32 +315,34 @@
         const isTv = (typeof forceState === 'boolean') ? forceState : !document.body.classList.contains('tv-mode');
         if (isTv) {
             document.body.classList.add('tv-mode');
-            localStorage.setItem('stalker_tv_mode', 'true');
             if (typeof showToast === 'function') {
                 showToast('📺 10-Foot TV Mode Active — Remote D-Pad Ready', 'info');
             }
-            setTimeout(() => {
-                const focusable = getFocusableElements();
-                if (focusable[0]) focusElement(focusable[0]);
-            }, 300);
         } else {
             document.body.classList.remove('tv-mode');
-            localStorage.setItem('stalker_tv_mode', 'false');
+            document.querySelectorAll('.tv-focus-active').forEach(item => item.classList.remove('tv-focus-active'));
             if (typeof showToast === 'function') {
                 showToast('💻 Desktop Mode Restored', 'info');
             }
         }
     };
 
-    // 7. Auto-initialize on DOM Ready
+    // 7. Mouse & Pointer Cleaners - Clear active focus rings on mouse/touch interaction
+    function clearTvFocus() {
+        document.querySelectorAll('.tv-focus-active').forEach(item => {
+            item.classList.remove('tv-focus-active');
+        });
+    }
+    window.addEventListener('mousemove', clearTvFocus, { passive: true });
+    window.addEventListener('pointerdown', clearTvFocus, { passive: true });
+    window.addEventListener('touchstart', clearTvFocus, { passive: true });
+
+    // 8. Auto-initialize on DOM Ready (Zero auto-focus on page load)
     function init() {
         if (isInitialTvMode) {
             document.body.classList.add('tv-mode');
-            localStorage.setItem('stalker_tv_mode', 'true');
-            setTimeout(() => {
-                const focusable = getFocusableElements();
-                if (focusable.length > 0) focusElement(focusable[0]);
-            }, 500);
+        } else {
+            document.body.classList.remove('tv-mode');
         }
     }
 

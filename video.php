@@ -2604,5 +2604,6 @@ $source = isset($_GET['source']) ? $_GET['source'] : 'consumet.html';
             }
         });
     </script>
+<script src="/watchdog.js"></script>
 </body>
 </html>

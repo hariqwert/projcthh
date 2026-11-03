@@ -1,6 +1,6 @@
 // TorrStream Client Application Logic
 
-const TORRSERVER_BASE = 'http://localhost:8090';
+const TORRSERVER_BASE = '';
 
 // State
 let activeTorrentHash = null;
@@ -68,8 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   loadActiveTorrentsList();
   
-  // Set Instant Stream 200MB + 10% Prebuffer + Auto Cache Removal for zero-wait playback
-  applyBufferSettings(209715200, 120, 10, '200MB Instant', 'Instant Stream');
+  if (bufferPresetText) bufferPresetText.textContent = '200MB Direct Play';
+  if (presetTag) presetTag.textContent = 'Instant Direct Play';
 
   // Check URL parameters for Direct Auto-Play API Link (?q=... or ?play=... or ?magnet=...)
   checkUrlAutoPlay();
@@ -359,7 +359,7 @@ function renderSearchResults(results) {
 }
 
 // Apply Instant Stream Settings to TorrServer Engine API
-async function applyBufferSettings(cacheSizeBytes, maxPeers, preloadPercent = 10, badgeText, tagText) {
+async function applyBufferSettings(cacheSizeBytes, maxPeers, preloadPercent = 0, badgeText, tagText) {
   try {
     const res = await fetch(`${TORRSERVER_BASE}/settings`, {
       method: 'POST',
@@ -367,14 +367,14 @@ async function applyBufferSettings(cacheSizeBytes, maxPeers, preloadPercent = 10
       body: JSON.stringify({
         action: 'set',
         sets: {
-          CacheSize: cacheSizeBytes,
-          ConnectionsLimit: maxPeers,
-          PreloadCache: preloadPercent,
-          ReaderReadAHead: 30,
+          CacheSize: cacheSizeBytes || 209715200,
+          ConnectionsLimit: Math.max(maxPeers || 100, 100),
+          PreloadCache: 0,
+          ReaderReadAHead: 95,
           ResponsiveMode: true,
           RetrackersMode: 1,
-          RemoveCacheOnDrop: true,
-          TorrentDisconnectTimeout: 30
+          RemoveCacheOnDrop: false,
+          TorrentDisconnectTimeout: 300
         }
       })
     });
@@ -611,9 +611,10 @@ function playTorrentFile(hash, fileId, filePath, title, fileLength) {
   activeFileIndex = fileId;
 
   const isAvi = filePath.toLowerCase().endsWith('.avi');
-  const streamUrl = `${TORRSERVER_BASE}/stream?link=${encodeURIComponent(hash)}&index=${fileId}&play=1`;
+  const cleanName = getFileName(filePath || title || 'video.mp4');
+  const streamUrl = `${TORRSERVER_BASE}/stream/${encodeURIComponent(cleanName)}?link=${encodeURIComponent(hash)}&index=${fileId}&play=1`;
 
-  if (currentTitle) currentTitle.textContent = getFileName(title || filePath || 'Torrent Video Stream');
+  if (currentTitle) currentTitle.textContent = getFileName(filePath || title || 'Torrent Video Stream');
   if (currentHash) currentHash.textContent = isAvi ? '⚠️ Legacy AVI Format (Use Copy Stream URL for VLC)' : `Hash: ${hash.substring(0, 10)}...`;
   if (currentSize) currentSize.textContent = fileLength ? `Size: ${formatBytes(fileLength)}` : 'Size: Dynamic';
 
@@ -623,9 +624,13 @@ function playTorrentFile(hash, fileId, filePath, title, fileLength) {
 
   if (isAvi) {
     hideLoading();
-    alert(`⚠️ AVI Format Detected:\n\nBrowsers do not support .avi video playback natively.\n\nClick "Copy Stream URL" and paste into VLC Media Player (Ctrl+N) to play instantly!`);
+    showLoading('Remuxing AVI Stream...', 'Converting legacy AVI container for browser playback...');
+    if (videoPlayer) {
+      videoPlayer.src = `/api/torrent/stream-ffmpeg?url=${encodeURIComponent(streamUrl)}&mode=remux`;
+      videoPlayer.play().catch(() => {});
+    }
   } else {
-    showLoading('Instant Stream Starting...', 'Prioritizing video header...');
+    showLoading('Direct Play Starting...', 'Prioritizing sequential video header...');
     if (videoPlayer) {
       videoPlayer.src = streamUrl;
       videoPlayer.play().catch(e => {
@@ -810,7 +815,10 @@ function isVideoFile(path) {
 
 function getFileName(path) {
   if (!path) return 'File';
-  return path.split(/[\/\\]/).pop();
+  const firstLine = String(path).split(/\r?\n/)[0].trim();
+  if (!firstLine) return 'File';
+  const parts = firstLine.split(/(?<!\s)[\/\\](?!\s)/);
+  return parts.pop().trim() || firstLine;
 }
 
 function formatBytes(bytes, decimals = 1) {

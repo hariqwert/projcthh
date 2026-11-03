@@ -20,6 +20,7 @@ import {
 import { findTmdbMatch, getMovieDetails, getTvDetails } from './src/services/bingrScraperService';
 import { getCineProStreams, CINEPRO_PROVIDERS } from './src/services/cineproService';
 import cineproM3uRouter from './src/routes/cineproM3u';
+import nasaRouter from './src/routes/nasa';
 import express, { Request, Response, NextFunction } from 'express';
 import { EventEmitter } from 'events';
 import { spawn, execFile } from 'child_process';
@@ -336,8 +337,14 @@ videoBroadcastEmitter.setMaxListeners(100);
 
 export function getVideoBroadcastState() {
     const videoEnabled = !!(systemState as any).maintenanceVideoEnabled;
-    const videoType = (systemState as any).maintenanceVideoType || 'auto';
+    let videoType = (systemState as any).maintenanceVideoType || 'auto';
     let videoUrl = (systemState as any).maintenanceVideoUrl || (systemState as any).maintenanceVideoUploadedFile || '';
+    const lowerUrl = String(videoUrl || '').toLowerCase().trim();
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) {
+        if (videoType !== 'webrtc' || !webrtcService.getStatus().isLive) {
+            videoType = 'youtube';
+        }
+    }
     if (videoType === 'webrtc' && !videoUrl) {
         videoUrl = 'live_webrtc_stream';
     }
@@ -700,10 +707,6 @@ function escapeHtml(str: string): string {
 // Helper to check if request is authorized / unlocked for site lock mode
 export function isSiteUnlocked(req: Request): boolean {
     const cleanIp = getRequestClientIp(req);
-    // Local loopback is always unlocked
-    if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost') {
-        return true;
-    }
 
     const rawCookieHeader = req.headers.cookie || '';
     const parsed = parseCookies(rawCookieHeader);
@@ -1281,9 +1284,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     if (req.path !== '/music.html' && req.path !== '/music' && req.path !== '/r.html' && req.path !== '/r' && req.path !== '/player.html' && !req.path.startsWith('/player/')) {
         res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-        res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob:; frame-src 'self' https:;");
+        res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: http://*.gstatic.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob: http://*.gstatic.com; frame-src 'self' https:;");
     } else {
-        res.setHeader('Content-Security-Policy', "frame-ancestors *; default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob:;");
+        res.setHeader('Content-Security-Policy', "frame-ancestors *; default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: http://*.gstatic.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob: http://*.gstatic.com;");
     }
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -1364,84 +1367,10 @@ app.get('/.well-known/security.txt', (req, res) => {
 
 
 // ----------------------------------------------------
-// LIVE DATA & REAL-TIME SERVICES REST API
+// LIVE DATA & EPG SERVICES IMPORTS (Routes mounted after Security/Lock/Maintenance Middleware)
 // ----------------------------------------------------
 import { WeatherService, NewsService, SportsScoreService } from './src/services/liveDataService';
-
-app.get('/api/live/weather', async (req, res) => {
-    try {
-        const city = (req.query.city || 'London').toString();
-        const data = await WeatherService.getWeather(city);
-        if (!data) return res.status(404).json({ error: 'City weather not found' });
-        res.json(data);
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.get('/api/live/news', async (req, res) => {
-    try {
-        const category = (req.query.category || 'top').toString();
-        const news = await NewsService.getBreakingNews(category);
-        res.json({ category, articles: news });
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.get('/api/live/scores', async (req, res) => {
-    try {
-        const sport = (req.query.sport || 'all').toString();
-        const scores = await SportsScoreService.getLiveScores(sport);
-        res.json({ sport, scores });
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-
-// ----------------------------------------------------
-// ELECTRONIC PROGRAM GUIDE (EPG) REST API
-// ----------------------------------------------------
 import { EpgService } from './src/services/epgService';
-
-app.get('/api/epg/timeline', async (req, res) => {
-    try {
-        const category = (req.query.category || 'all').toString().toLowerCase();
-        const search = (req.query.q || '').toString().toLowerCase();
-        const fullEpg = await EpgService.getFullEpg();
-
-        let filtered = fullEpg;
-        if (category && category !== 'all') {
-            filtered = filtered.filter(c => (c.genre || '').toLowerCase().includes(category));
-        }
-        if (search) {
-            filtered = filtered.filter(c => 
-                (c.name || '').toLowerCase().includes(search) || 
-                (c.currentProgram?.title || '').toLowerCase().includes(search) ||
-                (c.genre || '').toLowerCase().includes(search)
-            );
-        }
-
-        res.json({
-            status: 'success',
-            count: filtered.length,
-            channels: filtered
-        });
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.get('/api/epg/channel/:id', async (req, res) => {
-    try {
-        const channelData = await EpgService.getChannelEpg(req.params.id);
-        if (!channelData) return res.status(404).json({ error: 'Channel EPG not found' });
-        res.json(channelData);
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
 
 app.set('trust proxy', true);
 const port = 3000;
@@ -1539,34 +1468,19 @@ app.use((req, res, next) => {
         return res.status(403).send('ACCESS DENIED: Your IP has been blacklisted by system administrator.');
     }
 
-    // 1. ADMIN BYPASS: Always allow access to admin routes, assets, and login actions
+    // 1. HARI ADMIN CONSOLE & LOGIN BYPASS: Only /hari, /hari.html, /hari.js and admin auth endpoints
     const action = (req.query.action || req.body?.action) as string;
-    const isAdminPath = req.path.startsWith('/api/admin') || 
-                       req.path.startsWith('/api/webrtc') ||
-                       req.path === '/hari' ||
-                       req.path.includes('/hari.') || 
-                       req.path === '/admin' ||
-                       req.path === '/admin.html' ||
-                       req.path === '/login.php' ||
-                       req.path.startsWith('/assets') ||
-                       req.path.startsWith('/api/v1/youtube') ||
-                       req.path === '/youtube' ||
-                       req.path === '/torrent' ||
-                       req.path.startsWith('/torrents') ||
-                       req.path === '/settings' ||
-                       req.path === '/echo' ||
-                       req.path.startsWith('/stream') ||
-                       req.path.startsWith('/api/v1/search') ||
-                       req.path.startsWith('/api/local-ai') ||
-                       req.path.startsWith('/api/gemini') ||
-                       req.path === '/site-map.json' ||
-                       req.path === '/local-ai.js' ||
-                       req.path === '/local-ai.css' ||
-                       req.path.startsWith('/api/torrent');
-    
+    const isHariPage = req.path === '/hari' || req.path === '/hari.html' || req.path === '/hari.js';
+    const isAdminAuthEndpoint = req.path.startsWith('/api/admin/login') ||
+                                req.path.startsWith('/api/admin/gate-verify') ||
+                                req.path.startsWith('/api/admin/gate-status') ||
+                                req.path.startsWith('/api/admin/verify-2fa') ||
+                                req.path.startsWith('/api/admin/auth-check') ||
+                                req.path.startsWith('/api/admin/session');
+    const isAdminPath = isHariPage || req.path.startsWith('/api/admin');
     const isLoginAction = req.path === '/stalker_api.php' && (action === 'admin_login' || action === 'gate_verify');
 
-    // 1b. AUTH BYPASS: Allow access if admin_auth cookie OR Bearer token is present
+    // 1b. AUTH BYPASS: Check if admin_auth cookie OR Bearer token is present
     const cookieHeader = req.headers.cookie || '';
     const cookies = parseCookies(cookieHeader);
     const authHeader = req.headers.authorization;
@@ -1583,8 +1497,6 @@ app.use((req, res, next) => {
         
         if (!token) return false;
 
-
-
         try {
             const decoded = jwt.verify(token, JWT_SECRET) as any;
             return decoded && decoded.role === 'admin';
@@ -1593,14 +1505,23 @@ app.use((req, res, next) => {
         }
     })();
 
-    // Check if the target is a frontend client page
-    const isClientPage = ['/', '/index.php', '/play.php', '/play_consumet.php', '/play_bingr.php', '/play_bing.php', '/play_bingr', '/play_bing', '/bing.php', '/bing', '/video.php', '/playlist.php', '/hero.html', '/consumet.html', '/consumet_redesign.html', '/books.html', '/music.html', '/play_media.html', '/sample_maintenance.html', '/torrent.html', '/torrent', '/player.html', '/player', '/hls.html', '/hls', '/r.html', '/r', '/search.html', '/search'].includes(req.path);
+    const referer = String(req.headers.referer || '');
+    const isFromHariConsole = referer.includes('/hari') && req.headers['sec-fetch-dest'] !== 'document';
+    const isAdminStalkerAction = req.path.includes('stalker_api.php') && [
+        'admin_login',
+        'gate_verify',
+        'all_portals',
+        'switch_portal',
+        'login_details',
+        'm3u_save',
+        'save_portal',
+        'delete_portal',
+        'test_portal'
+    ].includes(action);
 
-    // 1c. ADMIN BYPASS FOR STALKER API: If authorized admin, allow all stalker_api.php actions
-    const isStalkerApi = req.path.includes('stalker_api.php');
-    
-    if (isAdminPath || isLoginAction || (isAuthorizedAdmin && (isStalkerApi || !isClientPage))) {
-        if (req.query.auth && !cookies.admin_auth) {
+    // Allow Hari console page, login/gate endpoints, and authenticated admin API calls originating from Hari console
+    if (isHariPage || isAdminAuthEndpoint || isLoginAction || (isAuthorizedAdmin && (req.path.startsWith('/api/admin') || req.path.startsWith('/api/webrtc') || isAdminStalkerAction || isFromHariConsole))) {
+        if (req.query.auth && !cookies.admin_auth && isAuthorizedAdmin) {
             setSecureCookie(req, res, 'admin_auth', req.query.auth as string, {
                 maxAge: 30 * 24 * 60 * 60 * 1000,
                 httpOnly: true
@@ -1612,12 +1533,12 @@ app.use((req, res, next) => {
         return next();
     }
 
-    // Refresh system state to ensure maintenance mode is up-to-date
+    // Refresh system state to ensure maintenance mode and lock mode are up-to-date
     loadSystemConfig();
 
     console.log(`[ACCESS CHECK] Path: ${req.path}, Status: ${systemState.status}, Maintenance: ${systemState.maintenanceMode}, DevMode: ${systemState.developerMode}, LockMode: ${systemState.siteLockMode}`);
 
-    // 2.2 SITE LOCK MODE: If lock mode is active, require password authentication before accessing website
+    // 2.2 SITE LOCK MODE: If lock mode is active, require password authentication before accessing ANY page or API (except /hari.html)
     const isUnlocked = isSiteUnlocked(req);
     if (req.query?.unlock_token && isUnlocked) {
         const isHttps = req.secure || 
@@ -1632,55 +1553,73 @@ app.use((req, res, next) => {
         });
     }
 
-    // Static UI assets (styles, scripts, icons, fonts) are lock-exempt to render the lock screen UI
-    const isStaticMedia = /\.(png|jpe?g|gif|webp|svg|ico|bmp|tiff|woff2?|ttf|eot|css|js|map)$/i.test(req.path) &&
-                          !req.path.startsWith('/api/') && !req.path.includes('.php');
+    // Pre-compute Maintenance Mode & Dead Kill state so HTML page navigations show Maintenance when active
+    let isSpecificMaintenance = false;
+    if (systemState.consumetMaintenance && (req.path === '/consumet.html' || req.path === '/consumet' || req.path === '/')) isSpecificMaintenance = true;
+    if (systemState.playMaintenance && req.path === '/play.php') isSpecificMaintenance = true;
+    if (systemState.playConsumetMaintenance && req.path === '/play_consumet.php') isSpecificMaintenance = true;
 
-    const isLockExempt = isAdminPath || 
-                         isLoginAction || 
-                         isStaticMedia ||
-                         req.path === '/hari' || req.path === '/hari.html' || 
-                         req.path === '/admin' || req.path === '/admin.html' || 
-                         req.path === '/hari.js' || req.path === '/admin.js' ||
+    let isMaintenanceAdminBypassed = false;
+    if (systemState.maintenanceAdminBypass && isAuthorizedAdmin) {
+        isMaintenanceAdminBypassed = true;
+    }
+
+    const isMaintenanceActive = (systemState.status === 'offline' || systemState.status === 'killed' || systemState.maintenanceMode || isSpecificMaintenance) && !isMaintenanceAdminBypassed;
+
+    const isMaintenancePageMediaAsset = isMaintenanceActive && Boolean(req.headers.referer) && (
+        req.path === '/api/system/video-broadcast-stream' ||
+        req.path.startsWith('/api/webrtc') ||
+        req.path.startsWith('/api/music') ||
+        req.path.startsWith('/api/v1/youtube') ||
+        req.path.startsWith('/uploads') ||
+        req.path.startsWith('/public/uploads') ||
+        req.path === '/hls.min.js'
+    );
+
+    // Only essential lock screen scripts/icons and unlock endpoints are exempt when locked
+    const isLockExempt = isHariPage ||
+                         isAdminAuthEndpoint ||
+                         isLoginAction ||
+                         req.path.startsWith('/assets/') ||
+                         req.path.startsWith('/api/nasa') ||
+                         req.path.startsWith('/api/comics') ||
+                         req.path === '/comics.html' ||
+                         req.path === '/comics.php' ||
                          req.path === '/watchdog.js' || 
                          req.path === '/security_guard.js' ||
-                         req.path === '/local-ai.js' ||
                          req.path === '/api/system/public-status' || 
                          req.path === '/api/system/unlock-site' || 
-                         req.path === '/api/system/verify-m3u-vault' ||
-                         req.path === '/api/system/relock-site' || 
                          req.path === '/api/system/lock-status' ||
-                         req.path === '/play_bingr.php' ||
-                         req.path === '/play_consumet.php' ||
-                         req.path === '/play.php' ||
-                         req.path === '/play_bing.php' ||
-                         req.path === '/bing.php' ||
-                         req.path === '/consumet.html' ||
-                         req.path === '/' ||
-                         req.path.startsWith('/api/admin') ||
-                         req.path.startsWith('/api/media/') ||
-                         req.path.startsWith('/api/anime/') ||
-                         req.path.startsWith('/api/bingr/') ||
-                         req.path.startsWith('/api/movies4u') ||
-                         req.path.startsWith('/api/play_stream/') ||
-                         req.path.startsWith('/api/scrape-m3u8') ||
-                         req.path.startsWith('/api/sports/') ||
-                         req.path.startsWith('/api/mdtv/') ||
-                         req.path.startsWith('/stream_proxy.php') ||
-                         req.path.startsWith('/assets/logos/') ||
-                         req.path.startsWith('/images/') ||
                          req.path === '/favicon.ico' ||
-                         req.path === '/manifest.json';
+                         req.path === '/apple-touch-icon.png' ||
+                         req.path === '/stalker_pro_infinity.svg' ||
+                         req.path.startsWith('/sports.m3u') ||
+                         req.path.startsWith('/api/sports') ||
+                         req.path.startsWith('/consumet') ||
+                         req.path.startsWith('/api/play_stream') ||
+                         req.path.startsWith('/api/resolve_stream') ||
+                         req.path.startsWith('/playlist.php') ||
+                         req.path.startsWith('/stream_proxy.php') ||
+                         req.path.startsWith('/live.php') ||
+                         req.path.endsWith('.m3u') ||
+                         req.path.endsWith('.m3u8') ||
+                         isMaintenancePageMediaAsset;
 
     if (systemState.siteLockMode && !isUnlocked && !isLockExempt) {
-        const isApiReq = req.path.startsWith('/api/') || 
-                         req.path.includes('stalker_api.php') ||
-                         req.path.includes('playlist.php') ||
-                         (req.path.endsWith('.php') && !['/index.php', '/login.php', '/play.php', '/play_consumet.php', '/play_bingr.php', '/play_bing.php', '/bing.php', '/video.php', '/'].includes(req.path)) || 
-                         req.headers['accept']?.includes('application/json') ||
-                         req.headers['x-requested-with'] === 'XMLHttpRequest';
+        const isPageNavigation = req.method === 'GET' &&
+                                 !req.path.startsWith('/api/') &&
+                                 !req.path.includes('stalker_api.php') &&
+                                 !req.path.includes('playlist.php') &&
+                                 !req.path.startsWith('/stream_proxy.php') &&
+                                 !req.path.startsWith('/live.php') &&
+                                 !req.path.startsWith('/xtream.php') &&
+                                 !/\.(m3u8?|mpd|ts|json|xml|txt|csv|zip|gz)$/i.test(req.path) &&
+                                 (req.path === '/' || /\.(html|php)$/i.test(req.path) || !path.extname(req.path)) &&
+                                 !req.headers['accept']?.includes('application/json') &&
+                                 req.headers['x-requested-with'] !== 'XMLHttpRequest';
 
-        if (isApiReq) {
+        // Block ALL raw API, playlist, stream, or non-page requests with HTTP 423 Locked
+        if (!isPageNavigation) {
             return res.status(423).json({
                 status: "locked",
                 message: "System Access Locked: Passcode authentication required.",
@@ -1688,16 +1627,19 @@ app.use((req, res, next) => {
             });
         }
 
-        console.warn(`[SITE LOCK] Serving Quantum Lock Screen to IP: ${cleanIp} for path: ${req.path}`);
-        return res.status(200).send(renderLockScreenHtml(
-            systemState.siteLockTitle || "RESTRICTED ACCESS PORTAL",
-            systemState.siteLockMessage || "This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.",
-            systemState.siteLockHint || ""
-        ));
+        // For HTML page navigation: if Maintenance Mode / Dead Kill is active, fall through to render Maintenance Page; otherwise render Lock Screen
+        if (!isMaintenanceActive && !systemState.deadKill) {
+            console.warn(`[SITE LOCK] Serving Quantum Lock Screen to IP: ${cleanIp} for path: ${req.path}`);
+            return res.status(200).send(renderLockScreenHtml(
+                systemState.siteLockTitle || "RESTRICTED ACCESS PORTAL",
+                systemState.siteLockMessage || "This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.",
+                systemState.siteLockHint || ""
+            ));
+        }
     }
 
     // 2.5 DEVELOPER MODE: Block non-whitelisted IPs
-    if (systemState.developerMode && !isAdminPath && !isLoginAction && req.path !== '/hari.html' && req.path !== '/hari.js' && req.path !== '/watchdog.js' && req.path !== '/api/system/public-status' && req.path !== '/music.html' && req.path !== '/music') {
+    if (systemState.developerMode && !isAdminPath && !isLoginAction && req.path !== '/hari.html' && req.path !== '/hari.js' && req.path !== '/watchdog.js' && req.path !== '/api/system/public-status') {
         const isLocalLoopback = cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost';
         const isAllowedDeveloperIp = (systemState.allowedDeveloperIps || []).includes(cleanIp);
         if (!isLocalLoopback && !isAllowedDeveloperIp) {
@@ -1706,36 +1648,10 @@ app.use((req, res, next) => {
         }
     }
 
-    // 3. MASTER KILL SWITCH: If system is offline, block public access
-    let isSpecificMaintenance = false;
-    if (systemState.consumetMaintenance && (req.path === '/consumet.html' || req.path === '/consumet' || req.path === '/')) isSpecificMaintenance = true;
-    if (systemState.playMaintenance && req.path === '/play.php') isSpecificMaintenance = true;
-    if (systemState.playConsumetMaintenance && req.path === '/play_consumet.php') isSpecificMaintenance = true;
-
-    // Admin Bypass Logic for Maintenance Mode
-    let isMaintenanceAdminBypassed = false;
-    if (systemState.maintenanceAdminBypass) {
-        const cookieHeader = req.headers.cookie || '';
-        const cookies = cookieHeader.split(';').reduce((acc, c) => {
-            const [name, val] = c.trim().split('=');
-            if (name && val) acc[name] = val;
-            return acc;
-        }, {} as Record<string, string>);
-        
-        if (cookies.admin_auth) {
-            try {
-                const decoded = require('jsonwebtoken').verify(cookies.admin_auth, JWT_SECRET);
-                if (decoded && decoded.role === 'admin') {
-                    isMaintenanceAdminBypassed = true;
-                }
-            } catch (e) {}
-        }
-    }
-
     // 2.9 DEAD KILL MODE: Ultimate lockdown prohibited state - returns bare white page HTTP 403
     if (systemState.deadKill && !isMaintenanceAdminBypassed) {
-        const isAdminAccess = req.path === '/login.php' || 
-                              req.path === '/api/admin/login' || 
+        const isAdminAccess = isHariPage ||
+                              isAdminAuthEndpoint ||
                               req.path === '/api/admin/maintenance/dead-kill' || 
                               req.path === '/api/admin/maintenance';
         if (!isAdminAccess) {
@@ -1753,32 +1669,27 @@ app.use((req, res, next) => {
         }
     }
 
-
-    if ((systemState.status === 'offline' || systemState.status === 'killed' || systemState.maintenanceMode || isSpecificMaintenance) && !isMaintenanceAdminBypassed) {
-        // Exclude admin API, music proxy, video uploads, and admin UI from being blocked
-        if (req.path.startsWith('/api/admin') || 
-            req.path.startsWith('/api/system') ||
+    // 3. MASTER KILL SWITCH & MAINTENANCE MODE: Block public access across ALL pages except /hari.html
+    if (isMaintenanceActive) {
+        // Exclude ONLY /hari.html, admin auth/control APIs, and the Maintenance Mode page's own media/status endpoints
+        if (isHariPage ||
+            isAdminAuthEndpoint ||
+            req.path === '/watchdog.js' ||
+            req.path === '/security_guard.js' ||
+            req.path === '/api/system/public-status' ||
+            req.path === '/api/system/video-broadcast-stream' ||
+            req.path === '/api/system/unlock-site' ||
+            req.path === '/api/system/lock-status' ||
             req.path.startsWith('/api/webrtc') ||
             req.path.startsWith('/api/music') ||
             req.path.startsWith('/api/v1/youtube') ||
             req.path.startsWith('/uploads') ||
             req.path.startsWith('/public/uploads') ||
-            req.path === '/api/music/proxy' ||
-            req.path === '/watchdog.js' ||
-            req.path === '/api/system/public-status' ||
-            
-            req.path === '/music.html' ||
-            req.path === '/music' ||
-            req.path === '/hari.html' || 
-            req.path === '/hari.js' || 
-            req.path === '/login.php' ||
-            (req.path.includes('stalker_api.php') && [
-                'admin_login', 
-                'all_portals', 
-                'switch_portal', 
-                'login_details', 
-                'm3u_save'
-            ].includes(action))
+            req.path === '/hls.min.js' ||
+            req.path === '/favicon.ico' ||
+            req.path === '/apple-touch-icon.png' ||
+            req.path === '/stalker_pro_infinity.svg' ||
+            isAdminStalkerAction
         ) {
             return next();
         }
@@ -1786,15 +1697,23 @@ app.use((req, res, next) => {
         const isApiRequest = req.path.startsWith('/api/') || 
                             req.path.includes('stalker_api.php') ||
                             req.path.includes('playlist.php') ||
-                            (req.path.endsWith('.php') && !['/index.php', '/login.php', '/play.php', '/play_consumet.php', '/play_bingr.php', '/play_bing.php', '/bing.php', '/video.php', '/'].includes(req.path)) || 
+                            req.path.endsWith('.m3u') ||
+                            req.path.endsWith('.m3u8') ||
+                            req.path.endsWith('.mpd') ||
+                            req.path.endsWith('.json') ||
+                            req.path.endsWith('.xml') ||
+                            req.path.startsWith('/stream_proxy.php') ||
+                            req.path.startsWith('/live.php') ||
+                            req.path.startsWith('/xtream.php') ||
                             req.headers['accept']?.includes('application/json') ||
                             req.headers['x-requested-with'] === 'XMLHttpRequest';
 
         if (isApiRequest) {
-            console.warn(`[SYSTEM] Returning JSON offline response for API request: ${req.path}`);
-            return res.status(200).json({ 
+            console.warn(`[SYSTEM] Returning JSON 503 offline response for API request: ${req.path}`);
+            return res.status(503).json({ 
                 status: "error", 
-                message: systemState.maintenanceMode ? `Maintenance Mode: ${systemState.activeTemplate}` : "System Offline: Access Terminated by Administrator.",
+                maintenance: true,
+                message: systemState.maintenanceMode ? (systemState.maintenanceTitle || `Maintenance Mode: ${systemState.activeTemplate}`) : "System Offline: Access Terminated by Administrator.",
                 systemStatus: systemState.status
             });
         }
@@ -3527,11 +3446,13 @@ app.use((req, res, next) => {
         }
 
         function detectBroadcastType(url, explicitType) {
+            const clean = String(url || '').toLowerCase().trim();
+            if (clean.includes('youtube.com') || clean.includes('youtu.be')) {
+                if (explicitType !== 'webrtc') return 'youtube';
+            }
             if (explicitType && explicitType !== 'auto') return explicitType;
             if (!url) return 'iframe';
-            const clean = url.toLowerCase().trim();
             if (clean.includes('webrtc') || clean === 'live_webrtc_stream') return 'webrtc';
-            if (clean.includes('youtube.com') || clean.includes('youtu.be')) return 'youtube';
             if (clean.includes('twitter.com') || clean.includes('x.com')) return 'twitter';
             if (clean.includes('facebook.com') || clean.includes('fb.watch')) return 'facebook';
             if (clean.includes('.m3u8') || clean.includes('.m3u') || clean.includes('m3u') || clean.includes('hls')) return 'hls';
@@ -4667,6 +4588,15 @@ app.use((req, res, next) => {
                         });
                     }
 
+                    function escapeHtml(str) {
+                        return String(str || '')
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#039;');
+                    }
+
                     function renderChatMessages(messages) {
                         if (!chatMessages) return;
                         const filtered = (messages || []).filter(m => {
@@ -4966,23 +4896,34 @@ app.use((req, res, next) => {
             if (broadcastMediaElement && broadcastMediaElement.tagName === 'VIDEO') {
                 broadcastMediaElement.muted = isBroadcastMuted;
                 if (!isBroadcastMuted) {
-                    // stopMusicPlayback();
                     if (broadcastMediaElement.paused) {
                         broadcastMediaElement.play().catch(e => console.warn('[Broadcast Audio] Playback resume error:', e));
                     }
                 }
+            } else if (broadcastMediaElement && broadcastMediaElement.tagName === 'IFRAME' && broadcastMediaElement.contentWindow) {
+                try {
+                    const cmd = isBroadcastMuted ? 'mute' : 'unMute';
+                    broadcastMediaElement.contentWindow.postMessage(JSON.stringify({ event: 'command', func: cmd, args: [] }), '*');
+                    if (!isBroadcastMuted) {
+                        broadcastMediaElement.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                    }
+                } catch (e) {}
             }
             updateBroadcastAudioUI();
         }
 
         function unmuteBroadcastImmediately() {
             isBroadcastMuted = false;
-            // stopMusicPlayback();
             if (broadcastMediaElement && broadcastMediaElement.tagName === 'VIDEO') {
                 broadcastMediaElement.muted = false;
                 if (broadcastMediaElement.paused) {
                     broadcastMediaElement.play().catch(e => console.warn('[Broadcast Audio] Unmute error:', e));
                 }
+            } else if (broadcastMediaElement && broadcastMediaElement.tagName === 'IFRAME' && broadcastMediaElement.contentWindow) {
+                try {
+                    broadcastMediaElement.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
+                    broadcastMediaElement.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                } catch (e) {}
             }
             updateBroadcastAudioUI();
         }
@@ -5149,7 +5090,7 @@ app.use((req, res, next) => {
         window.maximizeBroadcastVideo = maximizeBroadcastVideo;
         window.closeBroadcastVideo = closeBroadcastVideo;
         window.triggerDeadKill = function() {
-            if (!confirm("⚠️ WARNING: ENGAGE DEAD KILL?\n\nThis will terminate ALL active streams and lock the entire server into a prohibited dead state.\n\nAll non-admin visitors will receive a bare white HTTP 403 page.")) return;
+            if (!confirm("⚠️ WARNING: ENGAGE DEAD KILL?\\n\\nThis will terminate ALL active streams and lock the entire server into a prohibited dead state.\\n\\nAll non-admin visitors will receive a bare white HTTP 403 page.")) return;
             fetch('/api/admin/maintenance/dead-kill', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -5238,6 +5179,81 @@ app.use((req, res, next) => {
         return;
     }
     next();
+});
+
+// ----------------------------------------------------
+// LIVE DATA & REAL-TIME SERVICES REST API (Protected behind Site Lock & Maintenance)
+// ----------------------------------------------------
+app.get('/api/live/weather', async (req, res) => {
+    try {
+        const city = (req.query.city || 'London').toString();
+        const data = await WeatherService.getWeather(city);
+        if (!data) return res.status(404).json({ error: 'City weather not found' });
+        res.json(data);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/live/news', async (req, res) => {
+    try {
+        const category = (req.query.category || 'top').toString();
+        const news = await NewsService.getBreakingNews(category);
+        res.json({ category, articles: news });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/live/scores', async (req, res) => {
+    try {
+        const sport = (req.query.sport || 'all').toString();
+        const scores = await SportsScoreService.getLiveScores(sport);
+        res.json({ sport, scores });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ----------------------------------------------------
+// ELECTRONIC PROGRAM GUIDE (EPG) REST API (Protected behind Site Lock & Maintenance)
+// ----------------------------------------------------
+app.get('/api/epg/timeline', async (req, res) => {
+    try {
+        const category = (req.query.category || 'all').toString().toLowerCase();
+        const search = (req.query.q || '').toString().toLowerCase();
+        const fullEpg = await EpgService.getFullEpg();
+
+        let filtered = fullEpg;
+        if (category && category !== 'all') {
+            filtered = filtered.filter(c => (c.genre || '').toLowerCase().includes(category));
+        }
+        if (search) {
+            filtered = filtered.filter(c => 
+                (c.name || '').toLowerCase().includes(search) || 
+                (c.currentProgram?.title || '').toLowerCase().includes(search) ||
+                (c.genre || '').toLowerCase().includes(search)
+            );
+        }
+
+        res.json({
+            status: 'success',
+            count: filtered.length,
+            channels: filtered
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/epg/channel/:id', async (req, res) => {
+    try {
+        const channelData = await EpgService.getChannelEpg(req.params.id);
+        if (!channelData) return res.status(404).json({ error: 'Channel EPG not found' });
+        res.json(channelData);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Explicit routes for Secret Admin Control Panel UI (Double-Tier Security)
@@ -5788,6 +5804,56 @@ export async function handleCobaltStream(req: Request, res: Response) {
         return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(streamUrl)}`);
       }
     } catch (e: any) {}
+  } else if (vid) {
+    // Handle Video Stream (type=mp4) requests
+    // 1. Try yt-dlp direct MP4 extraction
+    try {
+      const ytdlpPath = getYtdlpExecutable();
+      const videoUrl = await new Promise<string>((resolve, reject) => {
+        const args = ["-g", "-f", "best[ext=mp4]/best", "--no-playlist", "--no-warnings", `https://www.youtube.com/watch?v=${vid}`];
+        execFile(ytdlpPath, args, { timeout: 12000 }, (err, stdout) => {
+          if (err) return reject(err);
+          const u = stdout ? stdout.trim().split('\n')[0].trim() : '';
+          if (u && u.startsWith('http')) resolve(u);
+          else reject(new Error('No valid video URL returned by yt-dlp'));
+        });
+      });
+      if (videoUrl) {
+        return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(videoUrl)}`);
+      }
+    } catch (e: any) {
+      console.warn(`[YouTube Video Stream] yt-dlp notice for ${vid}:`, e.message);
+    }
+
+    // 2. Try Invidious & Piped video stream extractors
+    const videoExtractors = [
+      `https://invidious.flokinet.to/api/v1/videos/${vid}`,
+      `https://inv.nadeko.net/api/v1/videos/${vid}`,
+      `https://invidious.nerdvpn.de/api/v1/videos/${vid}`,
+      `https://pipedapi.kavin.rocks/streams/${vid}`
+    ];
+    for (const instUrl of videoExtractors) {
+      try {
+        const invRes = await axios.get(instUrl, { timeout: 4000, headers: { 'User-Agent': 'Mozilla/5.0' } });
+        if (invRes.data) {
+          if (Array.isArray(invRes.data.formatStreams) && invRes.data.formatStreams.length > 0) {
+            const bestVid = invRes.data.formatStreams[0];
+            if (bestVid?.url) {
+              return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(bestVid.url)}`);
+            }
+          }
+          if (invRes.data.hls) {
+            return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(invRes.data.hls)}`);
+          }
+          if (Array.isArray(invRes.data.videoStreams) && invRes.data.videoStreams.length > 0) {
+            const muxed = invRes.data.videoStreams.find((s: any) => !s.videoOnly && s.url) || invRes.data.videoStreams[0];
+            if (muxed?.url) {
+              return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(muxed.url)}`);
+            }
+          }
+        }
+      } catch (e: any) {}
+    }
   }
 
   if (!res.headersSent) res.status(500).send('Streaming Failed');
@@ -5795,6 +5861,39 @@ export async function handleCobaltStream(req: Request, res: Response) {
 
 app.get('/api/music/download-youtube', handleCobaltStream);
 app.get('/api/v1/youtube/stream', handleCobaltStream);
+
+app.get('/api/v1/youtube/cookies', (req: Request, res: Response) => {
+    const cookiePath = path.join(process.cwd(), 'doctor_strange', 'youtube_cookies.txt');
+    if (fs.existsSync(cookiePath)) {
+        try {
+            const content = fs.readFileSync(cookiePath, 'utf8');
+            return res.json({ hasCookies: Boolean(content.trim()), content });
+        } catch (e) {}
+    }
+    return res.json({ hasCookies: false, content: '' });
+});
+
+app.post('/api/v1/youtube/cookies', (req: Request, res: Response) => {
+    try {
+        const cookies = String(req.body?.cookies || '').trim();
+        if (!cookies) return res.status(400).json({ success: false, error: 'Cookies content is required' });
+        const cookiePath = path.join(process.cwd(), 'doctor_strange', 'youtube_cookies.txt');
+        fs.writeFileSync(cookiePath, cookies, 'utf8');
+        return res.json({ success: true });
+    } catch (e: any) {
+        return res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.delete('/api/v1/youtube/cookies', (req: Request, res: Response) => {
+    try {
+        const cookiePath = path.join(process.cwd(), 'doctor_strange', 'youtube_cookies.txt');
+        if (fs.existsSync(cookiePath)) fs.unlinkSync(cookiePath);
+        return res.json({ success: true });
+    } catch (e: any) {
+        return res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 app.get('/api/v1/youtube/search', async (req: Request, res: Response) => {
     try {
@@ -6268,6 +6367,7 @@ const ADMIN_DB_PATH = path.join(process.cwd(), 'doctor_strange', 'admin_db.json'
 
 
 app.get('/api/system/public-status', (req: Request, res: Response) => {
+    loadSystemConfig();
     const targetPage = (req.query.page as string) || req.headers.referer || '/';
     let urlPath = targetPage;
     try {
@@ -6277,8 +6377,16 @@ app.get('/api/system/public-status', (req: Request, res: Response) => {
         urlPath = targetPage.split('?')[0];
     }
 
+    const rawCookies = parseCookies(req.headers.cookie || '');
+    const hadUnlockToken = Boolean(
+        rawCookies.site_unlock_token ||
+        (req as any).cookies?.site_unlock_token ||
+        req.headers['x-site-unlock-token'] ||
+        req.query?.unlock_token
+    );
     const unlocked = isSiteUnlocked(req);
     const isLocked = !!systemState.siteLockMode && !unlocked;
+    const isRelocked = !!systemState.siteLockMode && hadUnlockToken && !unlocked;
 
     let isSpecific = false;
     if (systemState.consumetMaintenance && (urlPath === '/consumet.html' || urlPath === '/consumet' || urlPath === '/')) isSpecific = true;
@@ -6288,23 +6396,8 @@ app.get('/api/system/public-status', (req: Request, res: Response) => {
     let isMaintenance = systemState.status === 'offline' || systemState.status === 'killed' || systemState.maintenanceMode || isSpecific;
 
     // Check if admin is bypassed so we don't trigger automatic reloads for them on the frontend
-    if (systemState.maintenanceAdminBypass) {
-        const cookieHeader = req.headers.cookie || '';
-        const cookies = cookieHeader.split(';').reduce((acc, c) => {
-            const [name, val] = c.trim().split('=');
-            if (name && val) acc[name] = val;
-            return acc;
-        }, {} as Record<string, string>);
-        
-        if (cookies.admin_auth) {
-            try {
-                const JWT_SECRET = process.env.JWT_SECRET || 'stalker_pro_super_secret_key_2024';
-                const decoded = require('jsonwebtoken').verify(cookies.admin_auth, JWT_SECRET);
-                if (decoded && decoded.role === 'admin') {
-                    isMaintenance = false;
-                }
-            } catch (e) {}
-        }
+    if (systemState.maintenanceAdminBypass && isAdminAuthenticated(req)) {
+        isMaintenance = false;
     }
 
     let schedStatus: any = { scheduled: false };
@@ -6342,6 +6435,7 @@ app.get('/api/system/public-status', (req: Request, res: Response) => {
         status: "success",
         maintenance: isMaintenance,
         locked: isLocked,
+        relocked: isRelocked,
         isAdmin: isAdmin,
         videoBroadcast: getVideoBroadcastState(),
         maintenanceSchedule: schedStatus
@@ -7261,7 +7355,7 @@ app.get('/api/system/bound-devices', (req: Request, res: Response) => {
 
 // Revoke a specific bound hardware device
 app.post('/api/system/revoke-device', (req: Request, res: Response) => {
-    const isAuth = isSiteUnlocked(req);
+    const isAuth = isSiteUnlocked(req) || isAdminAuthenticated(req);
     if (!isAuth) {
         return res.status(401).json({ status: "error", message: "Unauthorized. Site is locked." });
     }
@@ -7280,11 +7374,12 @@ app.post('/api/system/revoke-device', (req: Request, res: Response) => {
 
 // Revoke all bound devices
 app.post('/api/system/revoke-all-devices', (req: Request, res: Response) => {
-    const isAuth = isSiteUnlocked(req);
+    const isAuth = isSiteUnlocked(req) || isAdminAuthenticated(req);
     if (!isAuth) {
         return res.status(401).json({ status: "error", message: "Unauthorized. Site is locked." });
     }
     revokeAllDevices();
+    clearUnlockedIps();
     logServerEvent('AUTH', `ALL bound hardware devices revoked by IP: ${getRequestClientIp(req)}`, {
         ip: getRequestClientIp(req)
     });
@@ -8298,7 +8393,7 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         headers['Origin'] = headers['Origin'] || 'https://vidrock.ru';
     }
 
-    if (u.hostname.includes('bxcnm.com') || u.hostname.includes('knocw') || u.hostname.includes('nxocw') || u.hostname.includes('flocw') || u.hostname.includes('mwocx') || u.hostname.includes('kxonn.com') || u.hostname.includes('flnmb.com') || u.hostname.includes('hmocx.com') || u.hostname.includes('hcozn.com') || u.hostname.includes('hcnmd.com') || u.hostname.includes('fxoxn.com') || u.hostname.includes('streamrip') || u.hostname.includes('bingr.one')) {
+    if (u.hostname.includes('workers.dev') || u.hostname.includes('bxcnm.com') || u.hostname.includes('knocw') || u.hostname.includes('nxocw') || u.hostname.includes('flocw') || u.hostname.includes('mwocx') || u.hostname.includes('kxonn.com') || u.hostname.includes('flnmb.com') || u.hostname.includes('hmocx.com') || u.hostname.includes('hcozn.com') || u.hostname.includes('hcnmd.com') || u.hostname.includes('fxoxn.com') || u.hostname.includes('streamrip') || u.hostname.includes('bingr.one')) {
         headers['User-Agent'] = headers['User-Agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://bingr.one/';
         headers['Origin'] = 'https://bingr.one';
@@ -8446,7 +8541,7 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         (lowerHost.includes('pages.dev') && (lowerHost.includes('sony') || lowerPath.includes('sony')))
     );
     if (isSonyLiv) {
-        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:157.0) Gecko/20100101 Firefox/157.0';
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0';
         headers['Referer'] = 'https://www.sonyliv.com/';
         headers['Origin'] = 'https://www.sonyliv.com';
         
@@ -9497,6 +9592,7 @@ app.use('/api/comics', comicsRouter);
 app.use('/comics', comicsRouter);
 app.use('/api/manga', comicsRouter);
 app.use('/manga', comicsRouter);
+app.use('/api/nasa', nasaRouter);
 // Bingr Scraper microservice top-level parity routes
 app.use('/peakstream', peakstreamRouter);
 app.use('/servers', (req, res, next) => { req.url = '/servers'; bingrRouter(req, res, next); });
@@ -10569,14 +10665,21 @@ function getActivePortal(req?: Request) {
     return StalkerAPI.getActivePortal(req);
 }
 
-// Outbound HTML sanitization to strip Kaspersky and unauthorized AV injections
+// Outbound HTML sanitization to strip Kaspersky and unauthorized AV injections + ensure global watchdog
 export function sanitizeOutboundHtml(html: string): string {
     if (!html || typeof html !== 'string') return '';
-    return html
+    let cleaned = html
         .replace(/<script[^>]*kaspersky[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<script[^>]*kis\.v2\.scr\.kaspersky-labs\.com[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<link[^>]*kaspersky[^>]*>/gi, '')
         .replace(/<link[^>]*kis\.v2\.scr\.kaspersky-labs\.com[^>]*>/gi, '');
+
+    if (!cleaned.includes('watchdog.js') && !cleaned.includes('TRIPLE-LOCK SECURITY CITADEL') && !cleaned.includes('protected_admin')) {
+        if (cleaned.includes('</body>')) {
+            cleaned = cleaned.replace('</body>', '<script src="/watchdog.js"></script></body>');
+        }
+    }
+    return cleaned;
 }
 
 export function servePerimeterGate(reqOrRes: Request | Response, maybeRes?: Response) {
@@ -11255,16 +11358,34 @@ app.get('/manifest.json', (req, res) => {
 
 app.get(['/subway', '/subway.html'], (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    const pubPath = path.join(process.cwd(), 'public', 'subway.html');
-    if (fs.existsSync(pubPath)) return res.sendFile(pubPath);
-    return res.sendFile(path.join(process.cwd(), 'subway.html'));
+    res.setHeader('Cache-Control', 'no-cache');
+    res.removeHeader('X-Frame-Options');
+    const candidates = [
+        path.join(process.cwd(), 'public', 'subway.html'),
+        path.join(process.cwd(), 'subway.html'),
+        path.join(__dirname, 'public', 'subway.html'),
+        path.join(__dirname, 'subway.html')
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) return res.sendFile(p);
+    }
+    return res.status(404).send('subway.html not found');
 });
 
 app.get(['/offline', '/offline.html'], (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    const pubPath = path.join(process.cwd(), 'public', 'offline.html');
-    if (fs.existsSync(pubPath)) return res.sendFile(pubPath);
-    return res.sendFile(path.join(process.cwd(), 'offline.html'));
+    res.setHeader('Cache-Control', 'no-cache');
+    res.removeHeader('X-Frame-Options');
+    const candidates = [
+        path.join(process.cwd(), 'public', 'offline.html'),
+        path.join(process.cwd(), 'offline.html'),
+        path.join(__dirname, 'public', 'offline.html'),
+        path.join(__dirname, 'offline.html')
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) return res.sendFile(p);
+    }
+    return res.status(404).send('offline.html not found');
 });
 
 app.get('/search_launcher.js', (req, res) => {
@@ -11757,6 +11878,14 @@ app.get('/music.html', (req, res) => {
     res.removeHeader('X-Frame-Options');
     res.setHeader('Content-Security-Policy', "frame-ancestors *");
     res.sendFile(path.join(process.cwd(), 'music.html'));
+});
+
+// Comics & Manga Reader Hub (/comics.html, /comics, /manga)
+app.get(['/comics.html', '/comics', '/comics.php', '/manga.html', '/manga'], (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Content-Security-Policy', "frame-ancestors *");
+    res.sendFile(path.join(process.cwd(), 'comics.html'));
 });
 
 // Legacy anime.html redirect to Consumet anime tab

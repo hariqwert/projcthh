@@ -452,7 +452,29 @@ const ALLOWED_STREAMING_DOMAINS = [
     'novuscloud.net',
     'cinezo.live',
     'vidbolt.xyz',
-    'vidy.st'
+    'vidy.st',
+    'googlevideo.com',
+    'blogger.com',
+    'nexabloom.top',
+    'megaplay.buzz',
+    'aoneroom.com',
+    'movieboxonline.net',
+    'workers.dev',
+    'hakunaymatata.com',
+    'hakunamatata.com',
+    'sakunamatata.buzz',
+    'streamvid.cc',
+    'streamvid.net',
+    'mistyhorizon.space',
+    'eclipseharbor.space',
+    'midnightvoyage.space',
+    'onehpanddreaming.space',
+    'broforgotsave.space',
+    'goldenanchor.space',
+    'fetchbox.space',
+    'dokicloud.one',
+    'rabbitstream.net',
+    'megacloud.tv'
 ];
 
 export function isStreamingTargetAllowed(targetUrl: URL): boolean {
@@ -461,11 +483,15 @@ export function isStreamingTargetAllowed(targetUrl: URL): boolean {
         if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0') {
             return true;
         }
+        if (host.endsWith('.space')) {
+            return true;
+        }
         if (ALLOWED_STREAMING_DOMAINS.some(domain => host === domain || host.endsWith('.' + domain))) {
             return true;
         }
         const pathAndQuery = (targetUrl.pathname + targetUrl.search).toLowerCase();
-        const isMediaFile = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key)(\?|$)/i.test(pathAndQuery);
+        const isMediaFile = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key)(\?|&|$|%26|%3f)/i.test(pathAndQuery) ||
+            (/(?:seg-\d+|[a-f0-9]{32})\.(?:jpg|png|html|js|css|ts)/i.test(pathAndQuery));
         if (isMediaFile) {
             return true;
         }
@@ -645,6 +671,14 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         headers['Referer'] = 'https://callistanise.com/';
         headers['Origin'] = 'https://callistanise.com';
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+    } else if (url.includes('googlevideo.com') || url.includes('blogger.com')) {
+        headers['Referer'] = 'https://www.blogger.com/';
+        headers['Origin'] = 'https://www.blogger.com';
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    } else if (url.includes('aoneroom.com') || url.includes('moviebox')) {
+        headers['Referer'] = 'https://movieboxonline.net/';
+        headers['Origin'] = 'https://movieboxonline.net';
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
     } else if (
         url.includes('nexabloom.top') || 
         url.includes('megaplay') || 

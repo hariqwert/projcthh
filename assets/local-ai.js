@@ -2392,8 +2392,7 @@ User request: "${userText}"`;
     const isTv = ua.includes('tv') || ua.includes('smarttv') || ua.includes('android tv') ||
                  ua.includes('firetv') || ua.includes('aft') || ua.includes('apple tv') ||
                  ua.includes('tizen') || ua.includes('web0s') ||
-                 document.body.classList.contains('tv-mode') ||
-                 localStorage.getItem('stalker_tv_mode') === 'true';
+                 document.body.classList.contains('tv-mode');
 
     // Desktop mouse mode: Do not intercept D-pad or focus elements
     if (!isTv) return;

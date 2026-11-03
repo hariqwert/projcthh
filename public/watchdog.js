@@ -207,8 +207,8 @@
             var isLockPage = checkIsLockPage();
             var telemetry = detectVisitorTelemetry();
             
-            // Do not trigger reload on Hari Admin Console or login pages
-            var isHariConsole = window.location.pathname.startsWith('/hari') || window.location.pathname.startsWith('/login') || window.location.pathname.startsWith('/admin');
+            // Exclude ONLY /hari and /hari.html from automatic Maintenance and Site Lock enforcement
+            var isHariConsole = window.location.pathname === '/hari' || window.location.pathname === '/hari.html';
 
             var storedToken = '';
             try {
@@ -254,15 +254,26 @@
                 if (data.relocked === true) {
                     haltAllPageMedia();
                     clearUnlockCredentials();
-                    if (!isLockPage) {
+                    if (!isLockPage && !data.maintenance) {
                         safeReload('Password authorization revoked by Admin');
                         return;
                     }
                 }
             }
 
-            // 1. Check Site Lock Mode State (Priority: Instant Lock Screen Gate)
-            if (typeof data.locked === 'boolean' && !isHariConsole) {
+            // 1. Check Maintenance Mode State FIRST (Global Maintenance takes visual priority across ALL pages except /hari.html)
+            if (typeof data.maintenance === 'boolean' && !isHariConsole) {
+                if (!is503Page && data.maintenance === true) {
+                    safeReload('Maintenance Mode activated');
+                    return;
+                } else if (is503Page && data.maintenance === false) {
+                    safeReload('Maintenance Mode deactivated');
+                    return;
+                }
+            }
+
+            // 2. Check Site Lock Mode State (When not in Maintenance Mode, enforce Quantum Lock Screen)
+            if (typeof data.locked === 'boolean' && !data.maintenance && !isHariConsole) {
                 if (!isLockPage && data.locked === true) {
                     clearUnlockCredentials();
                     safeReload('Lock Mode activated');
@@ -270,15 +281,6 @@
                 } else if (isLockPage && data.locked === false) {
                     safeReload('Lock Mode deactivated or unlocked');
                     return;
-                }
-            }
-
-            // 2. Check Maintenance Mode State
-            if (typeof data.maintenance === 'boolean' && !data.locked && !isHariConsole) {
-                if (!is503Page && data.maintenance === true) {
-                    safeReload('Maintenance Mode activated');
-                } else if (is503Page && data.maintenance === false) {
-                    safeReload('Maintenance Mode deactivated');
                 }
             }
 

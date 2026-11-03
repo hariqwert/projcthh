@@ -784,5 +784,6 @@
     document.addEventListener('DOMContentLoaded', initPlayer);
 
 </script>
+<script src="/watchdog.js"></script>
 </body>
 </html>

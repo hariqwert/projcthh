@@ -2126,5 +2126,6 @@ function e($str)
         }
     </script>
     <script src="assets/tv-navigation.js"></script>
+<script src="/watchdog.js"></script>
 </body>
 </html>

@@ -24,11 +24,12 @@
             console.log('[PWA] Application successfully installed.');
         });
 
-        // Register Service Worker & purge legacy HTML caches so UI updates appear immediately
+        // Register Service Worker & preserve active Offline Arcade / Subway Surfers 3D cache
+        const ACTIVE_CACHE = 'aetheris-pwa-v12';
         if ('caches' in window) {
             caches.keys().then((keys) => {
                 keys.forEach((key) => {
-                    if (key !== 'aetheris-pwa-v6') {
+                    if (key !== ACTIVE_CACHE) {
                         caches.delete(key).catch(() => {});
                     }
                 });
@@ -37,8 +38,11 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=6', { updateViaCache: 'none' }).then((reg) => {
+                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((reg) => {
                     reg.update().catch(() => {});
+                    if (reg.active) {
+                        reg.active.postMessage({ type: 'WARM_SUBWAY_CACHE' });
+                    }
                     console.log('[PWA] Service Worker registered with scope:', reg.scope);
                 }).catch((err) => {
                     console.warn('[PWA] Service Worker registration failed:', err);
@@ -71,14 +75,19 @@
             } catch (err) {}
         }, true);
 
-        // Sanitize third-party embed iframes to block top-navigation hijacking
+        // Sanitize third-party embed iframes to block top-navigation hijacking (exempt trusted players & YouTube)
         function shieldIframes() {
             const iframes = document.querySelectorAll('iframe');
             iframes.forEach(iframe => {
+                const src = iframe.src || '';
+                // Never sandbox YouTube, Vimeo, or internal ISS live views
+                if (src.includes('youtube.com') || src.includes('youtube-nocookie.com') || iframe.id === 'issFeedFrame' || src.includes('isstracker.pl')) {
+                    return;
+                }
                 if (!iframe.dataset.pwaShielded) {
                     iframe.dataset.pwaShielded = 'true';
                     if (!iframe.hasAttribute('sandbox')) {
-                        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms font-src allow-presentation allow-media-playback');
+                        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
                     }
                 }
             });
@@ -168,7 +177,7 @@
 
         // Initialize Google Cast SDK
         window['__onGCastApiAvailable'] = function(isAvailable) {
-            if (isAvailable) {
+            if (isAvailable && window.chrome && window.chrome.cast && typeof window.chrome.cast.SessionRequest === 'function') {
                 try {
                     const sessionRequest = new chrome.cast.SessionRequest(chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID);
                     const apiConfig = new chrome.cast.ApiConfig(

@@ -255,7 +255,7 @@ router.get('/servers', (req: Request, res: Response) => {
                     Boolean(req.query.mal) || 
                     Boolean(req.query.anilistId);
     if (isAnime) {
-        const animeIds = ['tokyoinsider', 'bing_anime', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
+        const animeIds = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
         const animeServers = animeIds
             .map(id => BINGR_SERVERS.find(s => s.id === id))
             .filter((s): s is BingrServerCluster => Boolean(s));
@@ -265,7 +265,7 @@ router.get('/servers', (req: Request, res: Response) => {
 });
 
 router.get('/anime_servers', (req: Request, res: Response) => {
-    const animeIds = ['tokyoinsider', 'bing_anime', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
+    const animeIds = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
     const animeServers = animeIds
         .map(id => BINGR_SERVERS.find(s => s.id === id))
         .filter((s): s is BingrServerCluster => Boolean(s));

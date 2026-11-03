@@ -2280,6 +2280,7 @@
             initTouchPinchZoom();
         });
     </script>
+<script src="/watchdog.js"></script>
 </body>
 </html>
 

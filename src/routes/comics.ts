@@ -122,23 +122,25 @@ comicsRouter.get('/proxy-image', async (req: Request, res: Response) => {
 
 // GET /api/comics/store - Full Store Catalog with Spotlight, Subsections & Shelves
 comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
+    const proxyCover = (u: string) => '/api/comics/proxy-image?url=' + encodeURIComponent(u);
+
     const spotlight = [
         {
             id: 'oZOG5',
             source: 'atsu',
             title: 'Solo Leveling',
-            subtitle: 'Stories Without Limits',
+            subtitle: 'Stories Without Limits • Shadow Monarch',
             tag: 'READ • EXPLORE • GET LOST',
             badge: 'Global Hit #1',
             type: 'Manhwa',
             year: 2018,
             rating: '9.9',
-            cover: 'https://cdn.atsu.moe/static/posters/cGoOe70KFmmEBe4m.jpg',
-            backdrop: 'https://cdn.atsu.moe/static/posters/cGoOe70KFmmEBe4m.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg.512.jpg'),
+            backdrop: proxyCover('https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg.512.jpg'),
             genres: ['Action', 'Fantasy', 'System', 'Hunters'],
             chapterCount: 201,
             latestChapter: 201,
-            description: 'Discover thousands of manga and comics from around the world. Simple. Fast. Beautiful.'
+            description: 'In a world where hunters must battle deadly monsters to protect humanity, Sung Jinwoo, the weakest hunter of all mankind, receives an unprecedented second chance through a mysterious quest system.'
         },
         {
             id: 'JD89O',
@@ -150,12 +152,12 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             type: 'Manga',
             year: 2018,
             rating: '9.8',
-            cover: 'https://cdn.atsu.moe/static/posters/FkQTMZhaEFqYtMSQ.jpg',
-            backdrop: 'https://cdn.atsu.moe/static/posters/FkQTMZhaEFqYtMSQ.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/c52b2ce3-7f95-469c-96b0-479524fb7a1a/6d9134b2-21ea-4d02-ac2b-7c0d1c6a2aaa.jpg.512.jpg'),
+            backdrop: proxyCover('https://uploads.mangadex.org/covers/c52b2ce3-7f95-469c-96b0-479524fb7a1a/6d9134b2-21ea-4d02-ac2b-7c0d1c6a2aaa.jpg.512.jpg'),
             genres: ['Action', 'Curses', 'Supernatural', 'Shonen'],
             chapterCount: 271,
             latestChapter: 271,
-            description: 'A boy swallowed a cursed talisman - the finger of a demon - and became cursed himself. He enters a shaman school to track down the demon’s remaining limbs.'
+            description: 'A high schooler swallowed a cursed talisman - the finger of a demon - and became cursed himself. He enters a shaman school to track down the demon remaining limbs.'
         },
         {
             id: '2KM8H',
@@ -167,16 +169,49 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             type: 'Manga',
             year: 2016,
             rating: '9.9',
-            cover: 'https://cdn.atsu.moe/static/posters/jVDglw9uBhkrPT73.jpg',
-            backdrop: 'https://cdn.atsu.moe/static/posters/jVDglw9uBhkrPT73.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/789642f8-ca89-4e4e-8f7b-eee4d17ea08b/60530e72-f76f-45d5-b6f9-f95e05058fc3.png.512.jpg'),
+            backdrop: proxyCover('https://uploads.mangadex.org/covers/789642f8-ca89-4e4e-8f7b-eee4d17ea08b/60530e72-f76f-45d5-b6f9-f95e05058fc3.png.512.jpg'),
             genres: ['Action', 'Demons', 'Historical', 'Shonen'],
             chapterCount: 205,
             latestChapter: 205,
             description: 'Tanjiro Kamado, a kindhearted boy who sells charcoal for a living, finds his family slaughtered by a demon. His sister Nezuko is transformed into a demon.'
+        },
+        {
+            id: 'sVC2A',
+            source: 'atsu',
+            title: 'One Piece',
+            subtitle: 'Egghead Island • Final Saga',
+            tag: 'PIRATES • FREEDOM • TREASURE',
+            badge: 'Legendary Masterwork',
+            type: 'Manga',
+            year: 1997,
+            rating: '9.9',
+            cover: proxyCover('https://uploads.mangadex.org/covers/a1c7c817-4e59-43b7-9365-09675a149a6f/2f4aca53-64c7-46ac-ae85-3bc9b3169890.png.512.jpg'),
+            backdrop: proxyCover('https://uploads.mangadex.org/covers/a1c7c817-4e59-43b7-9365-09675a149a6f/2f4aca53-64c7-46ac-ae85-3bc9b3169890.png.512.jpg'),
+            genres: ['Adventure', 'Pirates', 'Action', 'Comedy'],
+            chapterCount: 1125,
+            latestChapter: 1125,
+            description: 'Monkey D. Luffy refuses to let anyone or anything stand in the way of his quest to become the king of all pirates.'
+        },
+        {
+            id: 'VRSVH',
+            source: 'atsu',
+            title: 'Chainsaw Man',
+            subtitle: 'Public Safety & Academy Arcs',
+            tag: 'DEVILS • CHAOS • REINCARNATION',
+            badge: 'Cult Classic',
+            type: 'Manga',
+            year: 2018,
+            rating: '9.8',
+            cover: proxyCover('https://uploads.mangadex.org/covers/a77742b1-befd-49a4-bff5-1ad4e6b0ef7b/6e518bd1-5f60-446b-8832-bfe6bf74834b.jpg.512.jpg'),
+            backdrop: proxyCover('https://uploads.mangadex.org/covers/a77742b1-befd-49a4-bff5-1ad4e6b0ef7b/6e518bd1-5f60-446b-8832-bfe6bf74834b.jpg.512.jpg'),
+            genres: ['Dark Fantasy', 'Action', 'Gore', 'Supernatural'],
+            chapterCount: 175,
+            latestChapter: 175,
+            description: 'Denji is a young boy who was living a tragic life as a Devil Hunter. After a betrayal, he merges with his devil pet Pochita to become Chainsaw Man.'
         }
     ];
 
-    // Trending Now: Matches the exact 8 ranked cards (01 to 08) from reference design
     const trendingNow = [
         {
             rank: '01',
@@ -187,7 +222,7 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             chapterCount: 201,
             badge: 'Manhwa',
             rating: '9.9',
-            cover: 'https://cdn.atsu.moe/static/posters/cGoOe70KFmmEBe4m.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg.512.jpg'),
             genres: ['Action', 'Fantasy']
         },
         {
@@ -199,7 +234,7 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             chapterCount: 271,
             badge: 'Manga',
             rating: '9.8',
-            cover: 'https://cdn.atsu.moe/static/posters/FkQTMZhaEFqYtMSQ.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/c52b2ce3-7f95-469c-96b0-479524fb7a1a/6d9134b2-21ea-4d02-ac2b-7c0d1c6a2aaa.jpg.512.jpg'),
             genres: ['Action', 'Curses']
         },
         {
@@ -207,15 +242,39 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             id: 'sVC2A',
             source: 'atsu',
             title: 'One Piece',
-            chapter: 'Chapter 1105',
+            chapter: 'Chapter 1125',
             chapterCount: 1125,
             badge: 'Legendary',
             rating: '9.9',
-            cover: 'https://cdn.atsu.moe/static/posters/qp33UK6whoY69nrR.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/a1c7c817-4e59-43b7-9365-09675a149a6f/2f4aca53-64c7-46ac-ae85-3bc9b3169890.png.512.jpg'),
             genres: ['Adventure', 'Pirates']
         },
         {
             rank: '04',
+            id: '2KM8H',
+            source: 'atsu',
+            title: 'Demon Slayer',
+            chapter: 'Chapter 205',
+            chapterCount: 205,
+            badge: 'Top Rated',
+            rating: '9.9',
+            cover: proxyCover('https://uploads.mangadex.org/covers/789642f8-ca89-4e4e-8f7b-eee4d17ea08b/60530e72-f76f-45d5-b6f9-f95e05058fc3.png.512.jpg'),
+            genres: ['Action', 'Demons']
+        },
+        {
+            rank: '05',
+            id: 'VRSVH',
+            source: 'atsu',
+            title: 'Chainsaw Man',
+            chapter: 'Chapter 175',
+            chapterCount: 175,
+            badge: 'Dark Fantasy',
+            rating: '9.8',
+            cover: proxyCover('https://uploads.mangadex.org/covers/a77742b1-befd-49a4-bff5-1ad4e6b0ef7b/6e518bd1-5f60-446b-8832-bfe6bf74834b.jpg.512.jpg'),
+            genres: ['Action', 'Horror']
+        },
+        {
+            rank: '06',
             id: 'jqSM1',
             source: 'atsu',
             title: 'My Hero Academia',
@@ -223,11 +282,11 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             chapterCount: 430,
             badge: 'Shonen',
             rating: '9.7',
-            cover: 'https://cdn.atsu.moe/static/posters/PsHepXHNcF6cCydu.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/4f3bcae4-2d96-4c9d-932c-90181d9c873e/c7a7101a-8e22-442b-a1db-55ba9ef5b1ab.jpg.512.jpg'),
             genres: ['Superhero', 'Action']
         },
         {
-            rank: '05',
+            rank: '07',
             id: 'rSmmf',
             source: 'atsu',
             title: 'Naruto',
@@ -235,23 +294,11 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             chapterCount: 700,
             badge: 'Classic',
             rating: '9.8',
-            cover: 'https://cdn.atsu.moe/static/posters/eetjg5vwF5DliKM4.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/a787b10a-02d0-46c0-8236-0d01d69ad4a3/a2b399c6-a938-4971-89f3-870b30038e5a.jpg.512.jpg'),
             genres: ['Ninja', 'Adventure']
         },
         {
-            rank: '06',
-            id: 'VRSVH',
-            source: 'atsu',
-            title: 'Chainsaw Man',
-            chapter: 'Chapter 167',
-            chapterCount: 175,
-            badge: 'Dark Fantasy',
-            rating: '9.8',
-            cover: 'https://cdn.atsu.moe/static/posters/rGVzeEHgpwXHagMM.png',
-            genres: ['Action', 'Horror']
-        },
-        {
-            rank: '07',
+            rank: '08',
             id: 'KgLw8',
             source: 'atsu',
             title: 'Tokyo Ghoul',
@@ -259,11 +306,11 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             chapterCount: 143,
             badge: 'Psychological',
             rating: '9.7',
-            cover: 'https://cdn.atsu.moe/static/posters/97xVJWfmESTUddgP.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/6a1d1cb1-ecd5-40d9-89ff-9d88e40b136b/040e8ae9-4ddd-49d2-8986-56782b391714.jpg.512.jpg'),
             genres: ['Dark', 'Supernatural']
         },
         {
-            rank: '08',
+            rank: '09',
             id: 'JZmEt',
             source: 'atsu',
             title: 'Spy x Family',
@@ -271,13 +318,108 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             chapterCount: 104,
             badge: 'Comedy',
             rating: '9.8',
-            cover: 'https://cdn.atsu.moe/static/posters/fve8l8JxAz9C4nLz.jpg',
-            genres: ['Comedy', 'Spy', 'Slice of Life']
+            cover: proxyCover('https://uploads.mangadex.org/covers/6b958848-c885-4735-9201-12ee77abcb3c/91a35e78-62b2-41fe-9869-ce051f2d1070.jpg.512.jpg'),
+            genres: ['Comedy', 'Spy', 'Family']
+        },
+        {
+            rank: '10',
+            id: 'deadpool-roleplays-the-marvel-universe-2024',
+            source: 'readcomics',
+            title: 'Deadpool: Marvel Roleplay',
+            chapter: 'Chapter 1',
+            chapterCount: 5,
+            badge: 'Marvel Comic',
+            rating: '9.7',
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/deadpool-roleplays-the-marvel-universe-2024/cover/cover_250x350.jpg'),
+            genres: ['Superhero', 'Comedy']
+        },
+        {
+            rank: '11',
+            id: 'batman-2016',
+            source: 'readcomics',
+            title: 'Batman: Rebirth',
+            chapter: 'Chapter 85',
+            chapterCount: 85,
+            badge: 'DC Comics',
+            rating: '9.8',
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/batman-2016/cover/cover_250x350.jpg'),
+            genres: ['Detective', 'Action']
+        },
+        {
+            rank: '12',
+            id: 'the-amazing-spider-man-2022',
+            source: 'readcomics',
+            title: 'The Amazing Spider-Man',
+            chapter: 'Chapter 55',
+            chapterCount: 55,
+            badge: 'Spider-Verse',
+            rating: '9.7',
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/the-amazing-spider-man-2022/cover/cover_250x350.jpg'),
+            genres: ['Superhero', 'Action']
         }
     ];
 
-    // Latest Updates: Cards with vibrant orange "NEW" badge (All tested & verified working CDNs)
     const latestUpdates = [
+        {
+            id: 'oZOG5',
+            source: 'atsu',
+            title: 'Solo Leveling',
+            chapter: 'Chapter 201',
+            badge: 'COMPLETE',
+            rating: '9.9',
+            cover: proxyCover('https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg.512.jpg'),
+            genres: ['Action', 'Fantasy']
+        },
+        {
+            id: 'JD89O',
+            source: 'atsu',
+            title: 'Jujutsu Kaisen',
+            chapter: 'Chapter 271',
+            badge: 'FINALE',
+            rating: '9.8',
+            cover: proxyCover('https://uploads.mangadex.org/covers/c52b2ce3-7f95-469c-96b0-479524fb7a1a/6d9134b2-21ea-4d02-ac2b-7c0d1c6a2aaa.jpg.512.jpg'),
+            genres: ['Action', 'Curses']
+        },
+        {
+            id: 'sVC2A',
+            source: 'atsu',
+            title: 'One Piece',
+            chapter: 'Chapter 1125',
+            badge: 'NEW',
+            rating: '9.9',
+            cover: proxyCover('https://uploads.mangadex.org/covers/a1c7c817-4e59-43b7-9365-09675a149a6f/2f4aca53-64c7-46ac-ae85-3bc9b3169890.png.512.jpg'),
+            genres: ['Adventure', 'Pirates']
+        },
+        {
+            id: '2KM8H',
+            source: 'atsu',
+            title: 'Demon Slayer',
+            chapter: 'Chapter 205',
+            badge: 'COMPLETE',
+            rating: '9.9',
+            cover: proxyCover('https://uploads.mangadex.org/covers/789642f8-ca89-4e4e-8f7b-eee4d17ea08b/60530e72-f76f-45d5-b6f9-f95e05058fc3.png.512.jpg'),
+            genres: ['Action', 'Demons']
+        },
+        {
+            id: 'VRSVH',
+            source: 'atsu',
+            title: 'Chainsaw Man',
+            chapter: 'Chapter 175',
+            badge: 'SIMULCAST',
+            rating: '9.8',
+            cover: proxyCover('https://uploads.mangadex.org/covers/a77742b1-befd-49a4-bff5-1ad4e6b0ef7b/6e518bd1-5f60-446b-8832-bfe6bf74834b.jpg.512.jpg'),
+            genres: ['Dark Fantasy', 'Horror']
+        },
+        {
+            id: 'jqSM1',
+            source: 'atsu',
+            title: 'My Hero Academia',
+            chapter: 'Chapter 430',
+            badge: 'COMPLETE',
+            rating: '9.7',
+            cover: proxyCover('https://uploads.mangadex.org/covers/4f3bcae4-2d96-4c9d-932c-90181d9c873e/c7a7101a-8e22-442b-a1db-55ba9ef5b1ab.jpg.512.jpg'),
+            genres: ['Superhero', 'Action']
+        },
         {
             id: 'deadpool-roleplays-the-marvel-universe-2024',
             source: 'readcomics',
@@ -285,78 +427,18 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             chapter: 'Chapter 1',
             badge: 'NEW',
             rating: '9.8',
-            cover: '/api/comics/proxy-image?url=' + encodeURIComponent('https://cdn.readcomicsonline.ru/uploads/manga/deadpool-roleplays-the-marvel-universe-2024/cover/cover_250x350.jpg'),
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/deadpool-roleplays-the-marvel-universe-2024/cover/cover_250x350.jpg'),
             genres: ['Superhero', 'Comedy']
         },
         {
-            id: 'o7i8',
-            source: 'atsu',
-            title: 'Strongest Sword Saint',
-            chapter: 'Chapter 96',
-            badge: 'NEW',
-            rating: '9.6',
-            cover: 'https://cdn.atsu.moe/static/posters/h7J2Rqw2wbberhuK.webp',
-            genres: ['Isekai', 'Action']
-        },
-        {
-            id: 'z18j',
-            source: 'atsu',
-            title: 'Reborn as a Hatchling',
-            chapter: 'Chapter 166',
-            badge: 'NEW',
-            rating: '9.5',
-            cover: 'https://cdn.atsu.moe/static/posters/SAS2kfee9vnhiUVG.jpg',
-            genres: ['Webtoon', 'Fantasy']
-        },
-        {
-            id: '2KM8H',
-            source: 'atsu',
-            title: 'Demon Slayer',
-            chapter: 'Chapter 205',
-            badge: 'NEW',
-            rating: '9.9',
-            cover: 'https://cdn.atsu.moe/static/posters/jVDglw9uBhkrPT73.jpg',
-            genres: ['Action', 'Demons']
-        },
-        {
-            id: 'jqSM1',
-            source: 'atsu',
-            title: 'My Hero Academia',
-            chapter: 'Chapter 430',
-            badge: 'NEW',
-            rating: '9.7',
-            cover: 'https://cdn.atsu.moe/static/posters/PsHepXHNcF6cCydu.jpg',
-            genres: ['Superhero', 'Action']
-        },
-        {
-            id: 'JD89O',
-            source: 'atsu',
-            title: 'Jujutsu Kaisen',
-            chapter: 'Chapter 271',
-            badge: 'NEW',
+            id: 'batman-2016',
+            source: 'readcomics',
+            title: 'Batman: Rebirth (DC)',
+            chapter: 'Issue 85',
+            badge: 'DC COMICS',
             rating: '9.8',
-            cover: 'https://cdn.atsu.moe/static/posters/FkQTMZhaEFqYtMSQ.jpg',
-            genres: ['Action', 'Curses']
-        },
-        {
-            id: 'oZOG5',
-            source: 'atsu',
-            title: 'Solo Leveling',
-            chapter: 'Chapter 201',
-            badge: 'NEW',
-            rating: '9.9',
-            cover: 'https://cdn.atsu.moe/static/posters/cGoOe70KFmmEBe4m.jpg',
-            genres: ['Action', 'Fantasy']
-        },
-        {
-            id: 'VRSVH',
-            source: 'atsu',
-            title: 'Chainsaw Man',
-            chapter: 'Chapter 167',
-            badge: 'NEW',
-            rating: '9.8',
-            cover: 'https://cdn.atsu.moe/static/posters/rGVzeEHgpwXHagMM.png',
-            genres: ['Dark Fantasy', 'Horror']
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/batman-2016/cover/cover_250x350.jpg'),
+            genres: ['Detective', 'Action']
         }
     ];
 
@@ -367,8 +449,8 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             title: 'Deadpool Roleplays Marvel (2024)',
             badge: 'Marvel 2024',
             rating: '9.8',
-            cover: '/api/comics/proxy-image?url=' + encodeURIComponent('https://cdn.readcomicsonline.ru/uploads/manga/deadpool-roleplays-the-marvel-universe-2024/cover/cover_250x350.jpg'),
-            chapterCount: 1,
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/deadpool-roleplays-the-marvel-universe-2024/cover/cover_250x350.jpg'),
+            chapterCount: 5,
             genres: ['Superhero', 'Comedy', 'Action']
         },
         {
@@ -376,9 +458,9 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             source: 'readcomics',
             title: 'Batman (2016 Rebirth Series)',
             badge: 'DC Comics',
-            rating: '9.7',
-            cover: '/api/comics/proxy-image?url=' + encodeURIComponent('https://cdn.readcomicsonline.ru/uploads/manga/batman-2016/cover/cover_250x350.jpg'),
-            chapterCount: 40,
+            rating: '9.8',
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/batman-2016/cover/cover_250x350.jpg'),
+            chapterCount: 85,
             genres: ['DC Universe', 'Detective', 'Superhero']
         },
         {
@@ -386,9 +468,9 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
             source: 'readcomics',
             title: 'The Amazing Spider-Man',
             badge: 'Marvel Comics',
-            rating: '9.6',
-            cover: 'https://cdn.atsu.moe/static/posters/koQsfbXuz5Qcm1KD.jpg',
-            chapterCount: 50,
+            rating: '9.7',
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/the-amazing-spider-man-2022/cover/cover_250x350.jpg'),
+            chapterCount: 55,
             genres: ['Marvel', 'Spider-Verse', 'Action']
         }
     ];
@@ -405,6 +487,7 @@ comicsRouter.get(['/store', '/home'], async (req: Request, res: Response) => {
 
 // GET /api/comics/featured - Backward-compatible Curated list
 comicsRouter.get('/featured', async (req: Request, res: Response) => {
+    const proxyCover = (u: string) => '/api/comics/proxy-image?url=' + encodeURIComponent(u);
     const featured = [
         {
             id: 'deadpool-roleplays-the-marvel-universe-2024',
@@ -412,7 +495,7 @@ comicsRouter.get('/featured', async (req: Request, res: Response) => {
             title: 'Deadpool Roleplays The Marvel Universe (2024)',
             badge: 'Marvel Comics',
             type: 'Comic',
-            cover: 'https://cdn.readcomicsonline.ru/uploads/manga/deadpool-roleplays-the-marvel-universe-2024/cover/cover_250x350.jpg',
+            cover: proxyCover('https://cdn.readcomicsonline.ru/uploads/manga/deadpool-roleplays-the-marvel-universe-2024/cover/cover_250x350.jpg'),
             chapterCount: 1,
             description: 'Deadpool takes on roleplaying through the Marvel Universe in this high-octane 2024 limited series run.'
         },
@@ -422,7 +505,7 @@ comicsRouter.get('/featured', async (req: Request, res: Response) => {
             title: 'The Strongest Sword Saint Reincarnated Into a Prestigious Magic Family',
             badge: 'Manga / Isekai',
             type: 'Manga',
-            cover: 'https://cdn.atsu.moe/static/posters/h7J2Rqw2wbberhuK.webp',
+            cover: proxyCover('https://uploads.mangadex.org/covers/4c28fa92-d88a-4686-b068-348c4e72f3e1/5fcec5e3-ef6a-4f13-8f0e-8b5e7e27d215.jpg.512.jpg'),
             chapterCount: 96,
             description: 'A master swordsman reincarnates into a world of elite spellcasters, demonstrating blade mastery exceeding magic.'
         },
@@ -432,7 +515,7 @@ comicsRouter.get('/featured', async (req: Request, res: Response) => {
             title: 'I Became a Hatchling (Reborn as a Hatchling)',
             badge: 'Manhwa / Fantasy',
             type: 'Manhwa',
-            cover: 'https://cdn.atsu.moe/static/posters/b6Z7J.webp',
+            cover: proxyCover('https://uploads.mangadex.org/covers/37838287-3fe9-443d-9d22-eafc1089140e/0f18c90b-fda6-4534-a1d2-028526b0a866.jpg.512.jpg'),
             chapterCount: 166,
             description: 'Reincarnated as a mythical dragon hatchling, surviving against predatory beasts and growing into a legendary titan.'
         },
@@ -442,17 +525,17 @@ comicsRouter.get('/featured', async (req: Request, res: Response) => {
             title: 'Demon Slayer: Kimetsu no Yaiba',
             badge: 'Shonen / Action',
             type: 'Manga',
-            cover: 'https://cdn.atsu.moe/static/posters/jVDglw9uBhkrPT73.jpg',
+            cover: proxyCover('https://uploads.mangadex.org/covers/789642f8-ca89-4e4e-8f7b-eee4d17ea08b/60530e72-f76f-45d5-b6f9-f95e05058fc3.png.512.jpg'),
             chapterCount: 205,
             description: 'Tanjiro Kamado sets out on a perilous path to slay demons and turn his transformed sister Nezuko back into a human.'
         },
         {
-            id: 'peR8',
+            id: 'oZOG5',
             source: 'atsu',
             title: 'Solo Leveling',
             badge: 'Action / Fantasy',
-            type: 'Manwha',
-            cover: 'https://cdn.atsu.moe/static/posters/cGoOe70KFmmEBe4m.jpg',
+            type: 'Manhwa',
+            cover: proxyCover('https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg.512.jpg'),
             chapterCount: 201,
             description: 'In a world of gates and awakenings, Sung Jin-woo receives a mysterious quest system that allows him to level up infinitely.'
         }

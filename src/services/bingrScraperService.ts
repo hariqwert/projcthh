@@ -15,6 +15,9 @@ import { searchAsiaflix, resolveAsiaflixEpisodeStream } from './asiaflixService'
 import { scrapeMovies4uCluster } from './movies4uService';
 import { getCineProStreams } from './cineproService';
 import { scrapeFrameXStream } from './framexService';
+import { resolveMegaPlayBuzzStream } from './megaPlayBuzzService';
+import { resolveAnimePaheStream } from './animePaheService';
+import { resolveMovieBoxStream } from './movieBoxService';
 import {
     findSmMovieStream,
     searchSmMovies,
@@ -47,6 +50,30 @@ export function getCdnHeaders(url?: string): CdnHeaders {
     const defaultUa = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
     if (!url) return { userAgent: defaultUa };
     const lower = url.toLowerCase();
+
+    if (lower.includes('googlevideo.com') || lower.includes('blogger.com')) {
+        return {
+            referer: 'https://www.blogger.com/',
+            origin: 'https://www.blogger.com',
+            userAgent: defaultUa
+        };
+    }
+
+    if (lower.includes('nexabloom') || lower.includes('megaplay.buzz')) {
+        return {
+            referer: 'https://megaplay.buzz/',
+            origin: 'https://megaplay.buzz',
+            userAgent: defaultUa
+        };
+    }
+
+    if (lower.includes('aoneroom.com') || lower.includes('moviebox')) {
+        return {
+            referer: 'https://movieboxonline.net/',
+            origin: 'https://movieboxonline.net',
+            userAgent: defaultUa
+        };
+    }
 
     if (
         lower.includes('vidrift.in') ||
@@ -310,6 +337,12 @@ export function normalizeServerId(rawSrv?: string): string | undefined {
         'mann': 's2',
         'luna': 's4',
         'aditya': 's5',
+        'megaplay_buzz': 'megaplay_buzz',
+        'megaplaybuzz': 'megaplay_buzz',
+        'animepahe': 'animepahe',
+        'pahe': 'animepahe',
+        'moviebox': 'moviebox',
+        'movieboxonline': 'moviebox',
         'movies4u': 'm4u',
         'm4u': 'm4u',
         'cinepro': 'cinepro',
@@ -1542,8 +1575,11 @@ export const BINGR_SERVERS: BingrServerCluster[] = [
     { id: 'aniembed', name: 'AniEmbed (Dual Audio JP/EN HLS)', cc: 'JP', priority: 22 },
     { id: 'zanix', name: 'Zanix Anime (FlixEra & NovusCloud Multi-Audio)', cc: 'TR', priority: 23 },
     { id: 'flux', name: 'Flux (VidBinge & SudoFlix Direct 1080p HLS)', cc: 'US', priority: 24 },
-    { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP', priority: 1 },
-    { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS / Nexa & Ravok Direct)', cc: 'JP', priority: 25 },
+    { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL', priority: 1 },
+    { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP', priority: 2 },
+    { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP', priority: 3 },
+    { id: 'moviebox', name: 'MovieBox Online (Direct CDN MP4)', cc: 'US', priority: 4 },
+    { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP', priority: 5 },
     { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP', priority: 24 },
     { id: 'animesalt', name: 'AnimeSalt (Special Anime Scraper)', cc: 'JP', priority: 25 },
     { id: 'asiaflix', name: 'Asiaflix (Vidmoly Multi-Bitrate HLS)', cc: 'KR', priority: 26 },
@@ -2632,7 +2668,62 @@ export async function scrapeBingrStream(params: {
             let upstreamDurationSec: number | undefined = undefined;
             let probeAudioTracks: any[] = [];
 
-            if (serverId === 'tokyoinsider') {
+            if (serverId === 'megaplay_buzz' || serverId === 'megaplaybuzz') {
+                scraperName = 'MegaPlay Buzz (Direct Multi-Bitrate HLS)';
+                const effectiveTitle = requestedTitle || mediaTitle || '';
+                const isDub = (params as any).dub === true || (params as any).type === 'dub';
+                const megaRes = await resolveMegaPlayBuzzStream(effectiveTitle, e, isDub ? 'dub' : 'sub').catch(() => null);
+                if (megaRes && megaRes.success && megaRes.masterM3u8) {
+                    sources = [{
+                        url: megaRes.masterM3u8,
+                        rawUrl: megaRes.masterM3u8,
+                        quality: '1080p Multi-Bitrate',
+                        type: 'application/x-mpegurl',
+                        label: `MegaPlay Buzz (${isDub ? 'English DUB' : 'Japanese SUB'})`,
+                        name: 'MegaPlay Buzz Direct HLS',
+                        language: isDub ? 'English Dub' : 'Japanese Sub',
+                        skipProxy: false
+                    }];
+                    if (megaRes.tracks) {
+                        subtitles = megaRes.tracks.map(t => ({
+                            lang: t.label || 'en',
+                            label: t.label || 'English',
+                            url: t.file
+                        }));
+                    }
+                }
+            } else if (serverId === 'animepahe' || serverId === 'pahe') {
+                scraperName = 'AnimePahe (Direct Google CDN MP4)';
+                const effectiveTitle = requestedTitle || mediaTitle || '';
+                const paheRes = await resolveAnimePaheStream(effectiveTitle, e).catch(() => null);
+                if (paheRes && paheRes.success && paheRes.streams && paheRes.streams.length > 0) {
+                    sources = paheRes.streams.map(st => ({
+                        url: st.proxyUrl || st.url,
+                        rawUrl: st.url,
+                        proxyUrl: st.proxyUrl,
+                        quality: st.quality,
+                        type: 'video/mp4',
+                        label: st.label,
+                        name: 'AnimePahe Direct CDN',
+                        language: 'Japanese (English Sub)'
+                    }));
+                }
+            } else if (serverId === 'moviebox' || serverId === 'movieboxonline') {
+                scraperName = 'MovieBox Online (Direct CDN MP4)';
+                const effectiveTarget = (params as any).url || (rawIdStr.startsWith('http') ? rawIdStr : '') || requestedTitle || mediaTitle || '';
+                const boxRes = await resolveMovieBoxStream(effectiveTarget, s, e).catch(() => null);
+                if (boxRes && boxRes.success && boxRes.streams && boxRes.streams.length > 0) {
+                    sources = boxRes.streams.map(st => ({
+                        url: st.url,
+                        rawUrl: st.url,
+                        quality: st.quality,
+                        type: 'video/mp4',
+                        label: st.label,
+                        name: 'MovieBox Online CDN',
+                        skipProxy: true
+                    }));
+                }
+            } else if (serverId === 'tokyoinsider') {
                 scraperName = 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)';
                 const effectiveTitle = requestedTitle || mediaTitle || '';
                 const cleanTitle = effectiveTitle.replace(/\s*\((?:anime|tv|series|\d{4})\)/gi, '').replace(/\s*Season\s*\d+/i, '').trim();
@@ -3404,7 +3495,7 @@ export async function scrapeBingrStream(params: {
                 const candidateUrl = sources[0].url;
                 let durCheck: { isValid: boolean; expected?: number; actual?: number; reason?: string } = { isValid: true };
 
-                if (sources[0].type !== 'embed') {
+                if (sources[0].type !== 'embed' && serverId !== 'animepahe' && serverId !== 'pahe' && serverId !== 'moviebox' && serverId !== 'movieboxonline') {
                     // Parallel reachability check across up to 5 candidate sources (prevents sequential timeout hangs)
                     const checkSlice = sources.slice(0, 5);
                     const reachResults = await Promise.all(
@@ -3630,8 +3721,8 @@ export async function scrapeBingrStream(params: {
         }
 
         if (isAnimeTarget) {
-            // Tier 1: TokyoInsider First Priority, Vidlink, Vidrift, Filmu
-            const animePriorityTier = ['tokyoinsider', 'vidlink', 'vidrift', 'filmu'];
+            // Tier 1: MegaPlay Buzz, AnimePahe, Bing Anime, TokyoInsider First Priority
+            const animePriorityTier = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
             successResult = await raceTierForDirectStream(animePriorityTier, 11000);
 
             // Tier 2: Specialized anime scrapers & multi-source hubs

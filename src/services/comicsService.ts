@@ -106,7 +106,238 @@ export function parseComicUrl(input: string): { source: 'readcomics' | 'atsu' | 
 }
 
 // ==========================================
-// 🚀 ATSUMARU (ATSU.MOE) ENGINE
+// 🚀 MANGADEX OFFICIAL API FALLBACK ENGINE
+// (Used automatically when atsu.moe returns Cloudflare 403)
+// ==========================================
+const MANGADEX_ID_MAP: Record<string, string> = {
+    'oZOG5': '32d76d19-8a05-4db0-9fc2-e0b0648fe9d0', // Solo Leveling
+    'peR8': '32d76d19-8a05-4db0-9fc2-e0b0648fe9d0',  // Solo Leveling (legacy alias)
+    'JD89O': 'c52b2ce3-7f95-469c-96b0-479524fb7a1a', // Jujutsu Kaisen
+    '2KM8H': '789642f8-ca89-4e4e-8f7b-eee4d17ea08b', // Demon Slayer: Kimetsu no Yaiba
+    'sVC2A': 'a2c1d849-af05-4bbc-b2a7-866ebb10331f', // One Piece
+    'jqSM1': '4f3bcae4-2d96-4c9d-932c-90181d9c873e', // My Hero Academia
+    'rSmmf': 'a787b10a-02d0-46c0-8236-0d01d69ad4a3', // Naruto
+    'VRSVH': 'a77742b1-befd-49a4-bff5-1ad4e6b0ef7b', // Chainsaw Man
+    'KgLw8': '6a1d1cb1-ecd5-40d9-89ff-9d88e40b136b', // Tokyo Ghoul
+    'JZmEt': '6b958848-c885-4735-9201-12ee77abcb3c', // Spy x Family
+    'o7i8': '4c28fa92-d88a-4686-b068-348c4e72f3e1',  // The Strongest Sword Saint
+    'z18j': '37838287-3fe9-443d-9d22-eafc1089140e',  // Reborn as a Hatchling
+    'yegj1-i-became-a-hatchling': '37838287-3fe9-443d-9d22-eafc1089140e',
+    'yegj1': '37838287-3fe9-443d-9d22-eafc1089140e'
+};
+
+const ATSU_COVER_FALLBACK_MAP: Record<string, string> = {
+    'cGoOe70KFmmEBe4m.jpg': 'https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg.512.jpg',
+    'FkQTMZhaEFqYtMSQ.jpg': 'https://uploads.mangadex.org/covers/c52b2ce3-7f95-469c-96b0-479524fb7a1a/6d9134b2-21ea-4d02-ac2b-7c0d1c6a2aaa.jpg.512.jpg',
+    'jVDglw9uBhkrPT73.jpg': 'https://uploads.mangadex.org/covers/789642f8-ca89-4e4e-8f7b-eee4d17ea08b/60530e72-f76f-45d5-b6f9-f95e05058fc3.png.512.jpg',
+    'qp33UK6whoY69nrR.jpg': 'https://uploads.mangadex.org/covers/a1c7c817-4e59-43b7-9365-09675a149a6f/2f4aca53-64c7-46ac-ae85-3bc9b3169890.png.512.jpg',
+    'PsHepXHNcF6cCydu.jpg': 'https://uploads.mangadex.org/covers/4f3bcae4-2d96-4c9d-932c-90181d9c873e/c7a7101a-8e22-442b-a1db-55ba9ef5b1ab.jpg.512.jpg',
+    'eetjg5vwF5DliKM4.jpg': 'https://uploads.mangadex.org/covers/a787b10a-02d0-46c0-8236-0d01d69ad4a3/a2b399c6-a938-4971-89f3-870b30038e5a.jpg.512.jpg',
+    'rGVzeEHgpwXHagMM.png': 'https://uploads.mangadex.org/covers/a77742b1-befd-49a4-bff5-1ad4e6b0ef7b/6e518bd1-5f60-446b-8832-bfe6bf74834b.jpg.512.jpg',
+    '97xVJWfmESTUddgP.jpg': 'https://uploads.mangadex.org/covers/6a1d1cb1-ecd5-40d9-89ff-9d88e40b136b/040e8ae9-4ddd-49d2-8986-56782b391714.jpg.512.jpg',
+    'fve8l8JxAz9C4nLz.jpg': 'https://uploads.mangadex.org/covers/6b958848-c885-4735-9201-12ee77abcb3c/91a35e78-62b2-41fe-9869-ce051f2d1070.jpg.512.jpg',
+    'h7J2Rqw2wbberhuK.webp': 'https://uploads.mangadex.org/covers/4c28fa92-d88a-4686-b068-348c4e72f3e1/5fcec5e3-ef6a-4f13-8f0e-8b5e7e27d215.jpg.512.jpg',
+    'SAS2kfee9vnhiUVG.jpg': 'https://uploads.mangadex.org/covers/37838287-3fe9-443d-9d22-eafc1089140e/0f18c90b-fda6-4534-a1d2-028526b0a866.jpg.512.jpg',
+    'b6Z7J.webp': 'https://uploads.mangadex.org/covers/37838287-3fe9-443d-9d22-eafc1089140e/0f18c90b-fda6-4534-a1d2-028526b0a866.jpg.512.jpg',
+    'koQsfbXuz5Qcm1KD.jpg': 'https://cdn.readcomicsonline.ru/uploads/manga/the-amazing-spider-man-2022/cover/cover_250x350.jpg'
+};
+
+function isUuid(str: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+export async function getMangaDexDetails(idOrQuery: string): Promise<ComicDetails | null> {
+    const cleanInput = idOrQuery.trim();
+    const cacheKey = `mangadex:manga:${cleanInput}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        let mdId = MANGADEX_ID_MAP[cleanInput] || (isUuid(cleanInput) ? cleanInput : '');
+        if (!mdId) {
+            const searchTitle = cleanInput.replace(/^[a-z0-9]{4,6}-/i, '').replace(/-/g, ' ');
+            const sRes = await axios.get(`https://api.mangadex.org/manga`, {
+                params: {
+                    title: searchTitle,
+                    limit: 5,
+                    'includes[]': ['cover_art', 'author', 'artist'],
+                    'order[followedCount]': 'desc'
+                },
+                headers: { 'User-Agent': 'StalkerPro/2.0' },
+                timeout: 8000
+            });
+            const first = sRes.data?.data?.[0];
+            if (first?.id) mdId = first.id;
+        }
+        if (!mdId) return null;
+
+        const mRes = await axios.get(`https://api.mangadex.org/manga/${mdId}`, {
+            params: { 'includes[]': ['cover_art', 'author', 'artist'] },
+            headers: { 'User-Agent': 'StalkerPro/2.0' },
+            timeout: 8000
+        });
+        const mData = mRes.data?.data;
+        if (!mData) return null;
+
+        const attr = mData.attributes || {};
+        const titleObj = attr.title || {};
+        const title = titleObj.en || titleObj['ja-ro'] || Object.values(titleObj)[0] || 'Untitled Manga';
+        const altTitles: string[] = (attr.altTitles || []).map((o: any) => Object.values(o)[0] as string).filter(Boolean);
+        const descObj = attr.description || {};
+        const synopsis = descObj.en || Object.values(descObj)[0] || '';
+
+        const rels = mData.relationships || [];
+        const coverRel = rels.find((r: any) => r.type === 'cover_art');
+        const coverFile = coverRel?.attributes?.fileName || '';
+        const rawCoverUrl = coverFile ? `https://uploads.mangadex.org/covers/${mdId}/${coverFile}.512.jpg` : '';
+        const cover = rawCoverUrl ? `/api/comics/proxy-image?url=${encodeURIComponent(rawCoverUrl)}` : '';
+
+        const authors = rels.filter((r: any) => r.type === 'author').map((r: any) => r.attributes?.name).filter(Boolean).join(', ');
+        const artists = rels.filter((r: any) => r.type === 'artist').map((r: any) => r.attributes?.name).filter(Boolean).join(', ');
+        const genres = (attr.tags || []).map((t: any) => t.attributes?.name?.en).filter(Boolean);
+
+        // Fetch hosted chapters (prefer English first; fallback to any hosted language if English is external-only)
+        let feedList: any[] = [];
+        const enFeedRes = await axios.get(`https://api.mangadex.org/manga/${mdId}/feed`, {
+            params: {
+                limit: 500,
+                'translatedLanguage[]': ['en'],
+                'order[chapter]': 'asc',
+                includeExternalUrl: 0
+            },
+            headers: { 'User-Agent': 'StalkerPro/2.0' },
+            timeout: 8000
+        }).catch(() => ({ data: { data: [] } }));
+
+        feedList = (enFeedRes.data?.data || []).filter((ch: any) => (ch.attributes?.pages || 0) > 0 && !ch.attributes?.externalUrl);
+
+        if (feedList.length === 0) {
+            const anyFeedRes = await axios.get(`https://api.mangadex.org/manga/${mdId}/feed`, {
+                params: {
+                    limit: 500,
+                    'order[chapter]': 'asc',
+                    includeExternalUrl: 0
+                },
+                headers: { 'User-Agent': 'StalkerPro/2.0' },
+                timeout: 8000
+            }).catch(() => ({ data: { data: [] } }));
+            feedList = (anyFeedRes.data?.data || []).filter((ch: any) => (ch.attributes?.pages || 0) > 0 && !ch.attributes?.externalUrl);
+        }
+
+        const chapterMap = new Map<string, any>();
+        for (const ch of feedList) {
+            if (!ch?.id) continue;
+            const chNum = ch.attributes?.chapter ?? '1';
+            const key = String(chNum);
+            const existing = chapterMap.get(key);
+            const isEn = ch.attributes?.translatedLanguage === 'en';
+            const existingEn = existing?.attributes?.translatedLanguage === 'en';
+            if (!existing || (isEn && !existingEn) || ((ch.attributes?.pages || 0) > (existing.attributes?.pages || 0))) {
+                chapterMap.set(key, ch);
+            }
+        }
+
+        const chapters: ComicChapter[] = [...chapterMap.values()].map((ch: any, idx: number) => {
+            const cAttr = ch.attributes || {};
+            const cNum = cAttr.chapter ?? (idx + 1);
+            return {
+                id: ch.id,
+                chapterNumber: cNum,
+                title: cAttr.title ? `Ch. ${cNum} - ${cAttr.title}` : `Chapter ${cNum}`,
+                releaseDate: cAttr.publishAt ? new Date(cAttr.publishAt).toLocaleDateString() : undefined,
+                pageCount: cAttr.pages || 0
+            };
+        });
+
+        chapters.sort((a, b) => (parseFloat(String(a.chapterNumber)) || 0) - (parseFloat(String(b.chapterNumber)) || 0));
+
+        const details: ComicDetails = {
+            source: 'atsu',
+            id: cleanInput,
+            slug: mdId,
+            title,
+            altTitles,
+            synopsis,
+            cover,
+            author: authors || undefined,
+            artist: artists || undefined,
+            status: attr.status ? (attr.status.charAt(0).toUpperCase() + attr.status.slice(1)) : 'Ongoing',
+            genres,
+            totalChapters: chapters.length,
+            chapters
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: details });
+        return details;
+    } catch (e: any) {
+        console.warn(`[ComicsService] MangaDex fallback details error for "${cleanInput}":`, e.message);
+        return null;
+    }
+}
+
+export async function getMangaDexChapterPages(mangaId: string, chapterId: string): Promise<ChapterPagesResult | null> {
+    const cacheKey = `mangadex:chapter:${mangaId}:${chapterId}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        let targetChapterUuid = isUuid(chapterId) ? chapterId : '';
+        let chapterTitle = `Chapter ${chapterId}`;
+
+        if (!targetChapterUuid) {
+            const details = await getMangaDexDetails(mangaId);
+            if (details && details.chapters.length > 0) {
+                const matched = details.chapters.find(c =>
+                    String(c.id) === String(chapterId) ||
+                    String(c.chapterNumber) === String(chapterId) ||
+                    Number(c.chapterNumber) === Number(chapterId)
+                ) || details.chapters[0];
+                if (matched) {
+                    targetChapterUuid = matched.id;
+                    chapterTitle = matched.title || chapterTitle;
+                }
+            }
+        }
+
+        if (!targetChapterUuid) return null;
+
+        const atHomeRes = await axios.get(`https://api.mangadex.org/at-home/server/${targetChapterUuid}`, {
+            headers: { 'User-Agent': 'StalkerPro/2.0' },
+            timeout: 8000
+        });
+
+        const baseUrl = atHomeRes.data?.baseUrl;
+        const chObj = atHomeRes.data?.chapter;
+        if (!baseUrl || !chObj) return null;
+
+        const hash = chObj.hash;
+        const files: string[] = (Array.isArray(chObj.data) && chObj.data.length > 0)
+            ? chObj.data
+            : (chObj.dataSaver || []);
+        const mode = (Array.isArray(chObj.data) && chObj.data.length > 0) ? 'data' : 'data-saver';
+
+        const pages = files.map((file: string) => `${baseUrl}/${mode}/${hash}/${file}`);
+        if (pages.length === 0) return null;
+
+        const result: ChapterPagesResult = {
+            source: 'atsu',
+            mangaId,
+            chapterId: targetChapterUuid,
+            title: chapterTitle,
+            pages,
+            total: pages.length
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+        return result;
+    } catch (e: any) {
+        console.warn(`[ComicsService] MangaDex chapter pages error:`, e.message);
+        return null;
+    }
+}
+
+// ==========================================
+// 🚀 ATSUMARU (ATSU.MOE) ENGINE (+ MANGADEX AUTO-FALLBACK)
 // ==========================================
 export async function getAtsuComicDetails(mangaId: string): Promise<ComicDetails | null> {
     const cacheKey = `atsu:manga:${mangaId}`;
@@ -119,15 +350,14 @@ export async function getAtsuComicDetails(mangaId: string): Promise<ComicDetails
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
                 'Referer': `https://atsu.moe/manga/${mangaId}`
             },
-            timeout: 8000
+            timeout: 5000
         });
 
         const page = res.data?.mangaPage;
-        if (!page) return null;
+        if (!page) return await getMangaDexDetails(mangaId);
 
         let rawChapters = [...(page.chapters || [])];
 
-        // If Atsu paginated chapters (e.g. 200+ chapters), fetch all pages
         if (page.hasMoreChapters) {
             try {
                 const chRes = await axios.get(`https://atsu.moe/api/manga/chapters?id=${encodeURIComponent(mangaId)}&page=1`, {
@@ -135,7 +365,7 @@ export async function getAtsuComicDetails(mangaId: string): Promise<ComicDetails
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
                         'Referer': `https://atsu.moe/manga/${mangaId}`
                     },
-                    timeout: 8000
+                    timeout: 5000
                 });
                 const totalPages = chRes.data?.pages || 1;
                 rawChapters.push(...(chRes.data?.chapters || []));
@@ -149,7 +379,7 @@ export async function getAtsuComicDetails(mangaId: string): Promise<ComicDetails
                                     'User-Agent': 'Mozilla/5.0',
                                     'Referer': `https://atsu.moe/manga/${mangaId}`
                                 },
-                                timeout: 8000
+                                timeout: 5000
                             }).then(r => r.data?.chapters || []).catch(() => [])
                         );
                     }
@@ -163,7 +393,6 @@ export async function getAtsuComicDetails(mangaId: string): Promise<ComicDetails
             }
         }
 
-        // Deduplicate chapters by chapter number (selecting the version with highest page count / best scan)
         const chapterMap = new Map<number | string, any>();
         for (const ch of rawChapters) {
             if (!ch || !ch.id) continue;
@@ -182,7 +411,6 @@ export async function getAtsuComicDetails(mangaId: string): Promise<ComicDetails
             pageCount: ch.pageCount
         }));
 
-        // Sort chapters numerically ascending (Ch 1 -> Ch N)
         chapters.sort((a, b) => Number(a.chapterNumber) - Number(b.chapterNumber));
 
         const coverPath = typeof page.poster === 'string'
@@ -210,8 +438,8 @@ export async function getAtsuComicDetails(mangaId: string): Promise<ComicDetails
         COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: details });
         return details;
     } catch (e: any) {
-        console.warn(`[ComicsService] Atsu manga fetch error for "${mangaId}":`, e.message);
-        return null;
+        console.warn(`[ComicsService] Atsu manga fetch error for "${mangaId}" (${e.message}) -> Falling back to MangaDex`);
+        return await getMangaDexDetails(mangaId);
     }
 }
 
@@ -220,6 +448,11 @@ export async function getAtsuChapterPages(mangaId: string, chapterId: string): P
     const cached = COMIC_CACHE.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
 
+    // If chapterId is already a MangaDex UUID, resolve directly via MangaDex
+    if (isUuid(chapterId) || isUuid(mangaId)) {
+        return await getMangaDexChapterPages(mangaId, chapterId);
+    }
+
     try {
         const url = `https://atsu.moe/api/read/chapter?mangaId=${encodeURIComponent(mangaId)}&chapterId=${encodeURIComponent(chapterId)}`;
         const res = await axios.get(url, {
@@ -227,11 +460,11 @@ export async function getAtsuChapterPages(mangaId: string, chapterId: string): P
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
                 'Referer': `https://atsu.moe/read/${mangaId}/${chapterId}`
             },
-            timeout: 8000
+            timeout: 5000
         });
 
         const readChapter = res.data?.readChapter;
-        if (!readChapter || !readChapter.pages) return null;
+        if (!readChapter || !readChapter.pages) return await getMangaDexChapterPages(mangaId, chapterId);
 
         const pages: string[] = readChapter.pages.map((p: any) => {
             const img = p.image || '';
@@ -250,8 +483,8 @@ export async function getAtsuChapterPages(mangaId: string, chapterId: string): P
         COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
         return result;
     } catch (e: any) {
-        console.warn(`[ComicsService] Atsu chapter fetch error:`, e.message);
-        return null;
+        console.warn(`[ComicsService] Atsu chapter fetch error (${e.message}) -> Falling back to MangaDex`);
+        return await getMangaDexChapterPages(mangaId, chapterId);
     }
 }
 
@@ -403,6 +636,15 @@ export async function getComixDetails(mangaSlug: string): Promise<ComicDetails |
     const cached = COMIC_CACHE.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
 
+    if (MANGADEX_ID_MAP[cleanSlug] || MANGADEX_ID_MAP[hid]) {
+        const mdDetails = await getMangaDexDetails(MANGADEX_ID_MAP[cleanSlug] || MANGADEX_ID_MAP[hid]);
+        if (mdDetails) {
+            const mapped: ComicDetails = { ...mdDetails, source: 'comix', id: cleanSlug, slug: cleanSlug };
+            COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: mapped });
+            return mapped;
+        }
+    }
+
     try {
         const url = `https://comix.to/title/${cleanSlug}`;
         const res = await axios.get(url, {
@@ -414,7 +656,7 @@ export async function getComixDetails(mangaSlug: string): Promise<ComicDetails |
         });
 
         const initDataMatch = res.data.match(/<script[^>]*id="initial-data"[^>]*>([\s\S]*?)<\/script>/i);
-        if (!initDataMatch) return null;
+        if (!initDataMatch) return await getMangaDexDetails(cleanSlug);
 
         const initData = JSON.parse(initDataMatch[1]);
         const queries = initData.queries || {};
@@ -423,29 +665,18 @@ export async function getComixDetails(mangaSlug: string): Promise<ComicDetails |
 
         const title = detail.title || cleanSlug.split('-').slice(1).join(' ');
 
-        // Check if there is a cross-catalog mapping to Atsu for direct chapter image streaming
-        const searchRes = await searchComics(title);
-        const atsuMatch = searchRes.find(s => s.source === 'atsu' && (
-            s.title.toLowerCase().includes(title.toLowerCase()) || 
-            title.toLowerCase().includes(s.title.toLowerCase()) ||
-            s.altTitles?.some(alt => alt.toLowerCase().includes(title.toLowerCase()))
-        ));
-
-        if (atsuMatch) {
-            const atsuDetails = await getAtsuComicDetails(atsuMatch.id);
-            if (atsuDetails && atsuDetails.chapters.length > 0) {
-                // Return enriched comic details with Atsu's direct high-res reader streams!
-                const combined: ComicDetails = {
-                    ...atsuDetails,
-                    source: 'comix',
-                    id: atsuMatch.id,
-                    slug: cleanSlug,
-                    altTitles: [...new Set([...(atsuDetails.altTitles || []), ...(detail.altTitles || [])])],
-                    synopsis: detail.synopsis || atsuDetails.synopsis
-                };
-                COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: combined });
-                return combined;
-            }
+        const mdDetails = await getMangaDexDetails(title);
+        if (mdDetails && mdDetails.chapters.length > 0) {
+            const combined: ComicDetails = {
+                ...mdDetails,
+                source: 'comix',
+                id: cleanSlug,
+                slug: cleanSlug,
+                altTitles: [...new Set([...(mdDetails.altTitles || []), ...(detail.altTitles || [])])],
+                synopsis: detail.synopsis || mdDetails.synopsis
+            };
+            COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: combined });
+            return combined;
         }
 
         const totalCh = detail.latestChapter || 30;
@@ -478,12 +709,12 @@ export async function getComixDetails(mangaSlug: string): Promise<ComicDetails |
         return result;
     } catch (e: any) {
         console.warn(`[ComicsService] Comix details error:`, e.message);
-        return null;
+        return await getMangaDexDetails(cleanSlug);
     }
 }
 
 // ==========================================
-// 🚀 SEARCH ENGINE (TYPESENSE + SITEMAP)
+// 🚀 SEARCH ENGINE (ATSU + MANGADEX FALLBACK)
 // ==========================================
 export async function searchComics(query: string): Promise<ComicSearchResult[]> {
     if (!query || query.trim().length === 0) return [];
@@ -493,28 +724,69 @@ export async function searchComics(query: string): Promise<ComicSearchResult[]> 
         const searchUrl = `https://atsu.moe/collections/manga/documents/search?q=${encodeURIComponent(q)}&query_by=title,englishTitle,otherNames`;
         const res = await axios.get(searchUrl, {
             headers: { 'User-Agent': 'Mozilla/5.0' },
-            timeout: 5000
+            timeout: 3500
         });
 
         const hits = res.data?.hits || [];
-        return hits.map((h: any) => {
-            const doc = h.document || {};
-            const posterPath = doc.poster || doc.posterMedium || '';
-            const cover = posterPath.startsWith('http') ? posterPath : `https://cdn.atsu.moe/static/${posterPath.replace(/^\/?(static\/)?/, '')}`;
+        if (hits.length > 0) {
+            return hits.map((h: any) => {
+                const doc = h.document || {};
+                const posterPath = doc.poster || doc.posterMedium || '';
+                const cover = posterPath.startsWith('http') ? posterPath : `https://cdn.atsu.moe/static/${posterPath.replace(/^\/?(static\/)?/, '')}`;
+                return {
+                    id: doc.id,
+                    source: 'atsu',
+                    title: doc.title,
+                    altTitles: doc.otherNames || [],
+                    cover,
+                    chapterCount: doc.chapterCount,
+                    status: doc.status,
+                    type: doc.type,
+                    year: doc.year
+                };
+            });
+        }
+    } catch (e: any) {
+        console.warn(`[ComicsService] Atsu search error (${e.message}) -> Falling back to MangaDex search`);
+    }
+
+    // MangaDex Official Search Fallback
+    try {
+        const mdRes = await axios.get(`https://api.mangadex.org/manga`, {
+            params: {
+                title: q,
+                limit: 20,
+                'includes[]': ['cover_art'],
+                'order[followedCount]': 'desc'
+            },
+            headers: { 'User-Agent': 'StalkerPro/2.0' },
+            timeout: 8000
+        });
+
+        const list = mdRes.data?.data || [];
+        return list.map((item: any) => {
+            const attr = item.attributes || {};
+            const titleObj = attr.title || {};
+            const title = titleObj.en || titleObj['ja-ro'] || Object.values(titleObj)[0] || 'Untitled';
+            const altTitles = (attr.altTitles || []).map((o: any) => Object.values(o)[0] as string).filter(Boolean);
+            const coverRel = (item.relationships || []).find((r: any) => r.type === 'cover_art');
+            const coverFile = coverRel?.attributes?.fileName || '';
+            const rawCover = coverFile ? `https://uploads.mangadex.org/covers/${item.id}/${coverFile}.256.jpg` : '';
+            const cover = rawCover ? `/api/comics/proxy-image?url=${encodeURIComponent(rawCover)}` : '';
             return {
-                id: doc.id,
+                id: item.id,
                 source: 'atsu',
-                title: doc.title,
-                altTitles: doc.otherNames || [],
+                title,
+                altTitles,
                 cover,
-                chapterCount: doc.chapterCount,
-                status: doc.status,
-                type: doc.type,
-                year: doc.year
+                chapterCount: attr.lastChapter ? Number(attr.lastChapter) || undefined : undefined,
+                status: attr.status ? (attr.status.charAt(0).toUpperCase() + attr.status.slice(1)) : 'Ongoing',
+                type: attr.originalLanguage === 'ko' ? 'Manhwa' : (attr.originalLanguage === 'zh' ? 'Manhua' : 'Manga'),
+                year: attr.year || undefined
             };
         });
-    } catch (e: any) {
-        console.warn('[ComicsService] Search error:', e.message);
+    } catch (mdErr: any) {
+        console.warn('[ComicsService] MangaDex search fallback error:', mdErr.message);
         return [];
     }
 }
@@ -536,9 +808,9 @@ export async function resolveComicInfo(params: { source?: string; id?: string; u
 
     if (!id) return null;
 
-    if (source === 'atsu' || id.length === 4 || (!source && id.match(/^[a-zA-Z0-9]{4}$/))) {
+    if (source === 'atsu' || isUuid(id) || id.length === 4 || id.length === 5 || MANGADEX_ID_MAP[id] || (!source && id.match(/^[a-zA-Z0-9]{4,5}$/))) {
         return await getAtsuComicDetails(id);
-    } else if (source === 'readcomics' || (id.includes('marvel') || id.includes('deadpool') || id.includes('batman'))) {
+    } else if (source === 'readcomics' || (id.includes('marvel') || id.includes('deadpool') || id.includes('batman') || id.includes('spider-man'))) {
         return await getReadComicsDetails(id);
     } else if (source === 'comix' || id.includes('hatchling') || id.includes('-')) {
         return await getComixDetails(id);
@@ -563,26 +835,24 @@ export async function resolveChapterPages(params: { source?: string; mangaId?: s
 
     if (!mangaId) return null;
 
-    if (source === 'atsu' || mangaId.length === 4 || mangaId.length === 5) {
-        if (/^\d+(\.\d+)?$/.test(chapterId)) {
+    if (source === 'atsu' || isUuid(mangaId) || isUuid(chapterId) || mangaId.length === 4 || mangaId.length === 5 || MANGADEX_ID_MAP[mangaId]) {
+        if (/^\d+(\.\d+)?$/.test(chapterId) && !isUuid(chapterId)) {
             const atsuDetails = await getAtsuComicDetails(mangaId);
             if (atsuDetails && atsuDetails.chapters.length > 0) {
                 const targetNum = Number(chapterId);
-                const matched = atsuDetails.chapters.find(c => Number(c.chapterNumber) === targetNum);
+                const matched = atsuDetails.chapters.find(c => Number(c.chapterNumber) === targetNum) || atsuDetails.chapters[0];
                 if (matched) chapterId = matched.id;
             }
         }
         return await getAtsuChapterPages(mangaId, chapterId);
-    } else if (source === 'readcomics' || mangaId.includes('deadpool') || mangaId.includes('marvel')) {
+    } else if (source === 'readcomics' || mangaId.includes('deadpool') || mangaId.includes('marvel') || mangaId.includes('batman') || mangaId.includes('spider-man')) {
         return await getReadComicsChapterPages(mangaId, chapterId);
     } else if (source === 'comix') {
-        // If mangaId is from Comix, check if it maps to an Atsu ID
         const comixInfo = await getComixDetails(mangaId);
         if (comixInfo && comixInfo.chapters.length > 0) {
-            // Find chapter with matching chapter number or ID
             const targetCh = comixInfo.chapters.find(c => Number(c.chapterNumber) === (Number(chapterId) || 1) || String(c.id) === String(chapterId)) || comixInfo.chapters[0];
-            if (targetCh && comixInfo.id && comixInfo.id.length === 4) {
-                return await getAtsuChapterPages(comixInfo.id, targetCh.id);
+            if (targetCh) {
+                return await getAtsuChapterPages(comixInfo.slug || comixInfo.id, targetCh.id);
             }
         }
     }
@@ -599,6 +869,8 @@ const ALLOWED_COMIC_HOSTS = [
     'readallcomics.com',
     'readcomicsonline.ru',
     'mangadex.org',
+    'mangadex.network',
+    'uploads.mangadex.org',
     'mangakakalot.com',
     'manganelo.com',
     'chapmanganelo.com',
@@ -620,34 +892,45 @@ export function isAllowedComicHost(urlStr: string): boolean {
 
 export async function streamComicImage(imageUrl: string, res: any): Promise<void> {
     try {
-        if (!imageUrl || !imageUrl.startsWith('http')) {
+        let targetUrl = (imageUrl || '').trim();
+        if (!targetUrl || !targetUrl.startsWith('http')) {
             res.status(400).send('Invalid image URL');
             return;
         }
 
+        // Automatically remap legacy cdn.atsu.moe poster URLs to verified MangaDex / ReadComicsOnline covers
+        if (targetUrl.includes('cdn.atsu.moe')) {
+            const fileName = targetUrl.split('/').pop()?.split('?')[0] || '';
+            if (fileName && ATSU_COVER_FALLBACK_MAP[fileName]) {
+                targetUrl = ATSU_COVER_FALLBACK_MAP[fileName];
+            }
+        }
+
         // Strict SSRF check against private IP ranges / cloud metadata
-        if (!(await isSafeUrl(imageUrl))) {
+        if (!(await isSafeUrl(targetUrl))) {
             res.status(403).send('403 Forbidden: Restricted or unsafe image target');
             return;
         }
 
         // Strict Host Allowlist validation to prevent open relay / SSRF
-        if (!isAllowedComicHost(imageUrl)) {
+        if (!isAllowedComicHost(targetUrl)) {
             res.status(403).send('403 Forbidden: Target host not authorized for comic image relay');
             return;
         }
 
+        const isMangaDex = targetUrl.includes('mangadex.org') || targetUrl.includes('mangadex.network');
         const reqHeaders: Record<string, string> = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+            'User-Agent': isMangaDex
+                ? 'StalkerPro/2.0'
+                : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
         };
-        // Atsu and Comix require their referers, but readcomicsonline returns 403 if referer is sent
-        if (imageUrl.includes('atsu.moe')) {
+        if (targetUrl.includes('atsu.moe')) {
             reqHeaders['Referer'] = 'https://atsu.moe/';
-        } else if (imageUrl.includes('comix.to')) {
+        } else if (targetUrl.includes('comix.to')) {
             reqHeaders['Referer'] = 'https://comix.to/';
         }
 
-        const resp = await axios.get(imageUrl, {
+        const resp = await axios.get(targetUrl, {
             responseType: 'stream',
             headers: reqHeaders,
             timeout: 12000
@@ -662,4 +945,3 @@ export async function streamComicImage(imageUrl: string, res: any): Promise<void
         }
     }
 }
-

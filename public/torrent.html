@@ -243,7 +243,7 @@
                 <span class="meta-tag" id="currentHash">Hash: -</span>
                 <span class="meta-tag" id="currentSize">Size: -</span>
                 <span class="meta-tag" id="ffmpegStatusTag">
-                  <i data-lucide="cpu" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Engine: <strong id="currentEngineLabel">FFmpeg (Live Remux)</strong>
+                  <i data-lucide="zap" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px; color:#10b981;"></i> Engine: <strong id="currentEngineLabel" style="color:#10b981;">Direct Play (Instant)</strong>
                 </span>
               </div>
             </div>
@@ -251,6 +251,9 @@
               <a href="javascript:history.back()" class="btn btn-secondary btn-sm" title="Go Back">
                 <i data-lucide="arrow-left"></i> <span>Back</span>
               </a>
+              <button class="btn btn-primary btn-sm" id="directPlayToolbarBtn" title="Instant High-Speed Direct Play Stream" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #000; font-weight: 800; border: none;">
+                <i data-lucide="zap"></i> <span>Direct Play</span>
+              </button>
               <button class="btn btn-black-theme btn-sm" id="openSearchBtnToolbar" title="Search Movies & Series">
                 <i data-lucide="search"></i> <span>Search</span>
               </button>
@@ -281,19 +284,19 @@
           <div class="panel-card buffer-config-card">
             <div class="panel-header">
               <h3><i data-lucide="sliders"></i> Buffer & Speed Optimizer</h3>
-              <span class="preset-status-tag" id="presetTag">Instant Stream</span>
+              <span class="preset-status-tag" id="presetTag">Instant Direct Play</span>
             </div>
             <p class="panel-desc">Fix heavy buffering by increasing RAM cache & max peer connections.</p>
             <div class="buffer-mode-selector">
-              <button class="buffer-mode-btn" data-cache="16777216" data-peers="30" data-label="16MB">
+              <button class="buffer-mode-btn" data-cache="67108864" data-peers="80" data-label="64MB">
                 <span class="mode-name">Standard</span>
                 <span class="mode-desc">64MB RAM</span>
               </button>
-              <button class="buffer-mode-btn active" data-cache="33554432" data-peers="60" data-label="32MB">
-                <span class="mode-name">⚡ 200MB Instant (Default)</span>
+              <button class="buffer-mode-btn active" data-cache="209715200" data-peers="120" data-label="200MB">
+                <span class="mode-name">⚡ 200MB Direct Play</span>
                 <span class="mode-desc">Zero-Wait Stream</span>
               </button>
-              <button class="buffer-mode-btn" data-cache="67108864" data-peers="100" data-label="64MB">
+              <button class="buffer-mode-btn" data-cache="524288000" data-peers="150" data-label="500MB">
                 <span class="mode-name">🚀 500MB Ultra</span>
                 <span class="mode-desc">Heavy 4K Stream</span>
               </button>
@@ -480,7 +483,7 @@
       </div>
     </div>
   </div>
-  <script src="torrent.js?v=1788460544"></script>
+  <script src="torrent.js?v=1788460990"></script>
   <script src="/skip_intro.js"></script>
   <script src="/watchdog.js" id="maintenance-watchdog"></script>
 

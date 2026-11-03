@@ -7,8 +7,10 @@ import axios from 'axios';
 
 const router = Router();
 
+export const DEFAULT_TORRSERVER_URL = 'https://torrserver-render-2afo.onrender.com';
+
 export const getTorrServerBaseUrl = (): string => {
-    return (process.env.TORRSERVER_URL || 'http://127.0.0.1:8090').replace(/\/+$/, '');
+    return (process.env.TORRSERVER_URL || DEFAULT_TORRSERVER_URL).replace(/\/+$/, '');
 };
 
 const TMDB_API_KEY = '9d83476d2e27f56748167514c69cd2b4';
@@ -563,6 +565,18 @@ router.get('/api/v1/search', async (req, res) => {
         return mag;
     };
 
+    const cleanReleaseTitle = (raw: string, fallbackTitle: string): string => {
+        if (!raw) return fallbackTitle;
+        const lines = String(raw)
+            .split(/\r?\n/)
+            .map(l => l.trim())
+            .filter(l => l && !/[👤💾⚙️🇬🇧🇺🇸🇫🇷🇯🇵🇮🇳🇷🇺🇪🇸🇩🇪🇮🇹🇵🇹🇧🇷]|(?:multi\s*audio|dubbed|subbed|dual\s*audio)/i.test(l));
+        if (lines.length === 0) return fallbackTitle;
+        // Prefer the line that looks like a video filename or release name
+        const fileLine = lines.find(l => /\.(mkv|mp4|avi|webm|mov|m4v)$/i.test(l));
+        return (fileLine || lines[0]).replace(/\s+/g, ' ').trim() || fallbackTitle;
+    };
+
     const promises: Promise<void>[] = [];
     // Add Torrentio backend fetch
     if (imdbId) {
@@ -573,19 +587,23 @@ router.get('/api/v1/search', async (req, res) => {
             const torData = await fetchJsonUrl(torUrl);
             if (torData && torData.streams) {
                 torData.streams.forEach((s: any) => {
-                    const hash = s.infoHash;
-                    if (hash && !streamsMap.has(hash.toLowerCase())) {
+                    const hash = (s.infoHash || '').toLowerCase();
+                    if (hash && !streamsMap.has(hash)) {
                         const rawTitle = s.title || s.name || title;
+                        const cleanTitle = cleanReleaseTitle(rawTitle, `${title} ${mediaType === 'series' ? `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}` : ''}`.trim());
+                        const seedMatch = rawTitle.match(/👤\s*(\d+)/);
+                        const sizeMatch = rawTitle.match(/💾\s*([\d\.]+\s*[GMK]i?B)/i);
                         const qualityMatch = rawTitle.match(/(2160p|4K|1080p|720p|HDR|Remux|CAM|TS)/i);
-                        streamsMap.set(hash.toLowerCase(), {
-                            name: s.name || 'Torrentio',
-                            title: rawTitle,
+                        const sizeBytes = sizeMatch ? parseSizeBytes(sizeMatch[1]) : parseSizeBytes(rawTitle);
+                        streamsMap.set(hash, {
+                            name: (s.name || 'Torrentio').replace(/\r?\n/g, ' ').trim(),
+                            title: cleanTitle,
                             raw_title: rawTitle,
-                            magnet: s.magnet || createMagnet(hash, rawTitle),
+                            magnet: s.magnet || createMagnet(hash, cleanTitle),
                             infoHash: hash,
-                            seeders: 100, // Torrentio doesn't always give seeders
-                            sizeBytes: 0,
-                            size: 'Unknown',
+                            seeders: seedMatch ? parseInt(seedMatch[1], 10) : 100,
+                            sizeBytes: sizeBytes,
+                            size: sizeMatch ? sizeMatch[1] : (sizeBytes ? formatBytes(sizeBytes) : 'Unknown'),
                             quality: qualityMatch ? qualityMatch[1] : 'HD'
                         });
                     }
@@ -763,17 +781,18 @@ router.get('/api/v1/search', async (req, res) => {
                         const hash = (s.infoHash || '').toLowerCase();
                         if (hash && !streamsMap.has(hash)) {
                             const rawTitle = s.title || s.name || title;
+                            const cleanTitle = cleanReleaseTitle(rawTitle, `${title} ${mediaType === 'series' ? `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}` : ''}`.trim());
                             const seedMatch = rawTitle.match(/👤\s*(\d+)/);
-                            const sizeMatch = rawTitle.match(/💾\s*([\d\.]+\s*[GMK]B)/i);
+                            const sizeMatch = rawTitle.match(/💾\s*([\d\.]+\s*[GMK]i?B)/i);
                             const qualityMatch = rawTitle.match(/(2160p|4K|1080p|720p|HDR|Remux|CAM|TS)/i);
                             const sizeBytes = sizeMatch ? parseSizeBytes(sizeMatch[1]) : parseSizeBytes(rawTitle);
                             streamsMap.set(hash, {
-                                name: s.name || 'Stremio',
-                                title: `${title} ${mediaType === 'series' ? `S${season}E${episode}` : ''} (${qualityMatch ? qualityMatch[1] : '1080p'})`,
+                                name: (s.name || 'Stremio').replace(/\r?\n/g, ' ').trim(),
+                                title: cleanTitle,
                                 raw_title: rawTitle,
-                                magnet: s.magnet || createMagnet(hash, title),
+                                magnet: s.magnet || createMagnet(hash, cleanTitle),
                                 infoHash: hash,
-                                seeders: seedMatch ? parseInt(seedMatch[1]) : 10,
+                                seeders: seedMatch ? parseInt(seedMatch[1], 10) : 10,
                                 sizeBytes: sizeBytes,
                                 size: sizeMatch ? sizeMatch[1] : (sizeBytes ? formatBytes(sizeBytes) : 'Unknown'),
                                 quality: qualityMatch ? qualityMatch[1] : 'HD'
@@ -829,6 +848,51 @@ router.get('/api/v1/search', async (req, res) => {
     });
 });
 
+// Track ignited torrent hashes so we wake up TorrServer's preload & sequential Reader once per torrent:index
+const ignitedStreams = new Map<string, number>();
+
+export function igniteTorrentStream(linkOrHash: string, index: number | string = 1) {
+    if (!linkOrHash) return;
+    let hash = linkOrHash.trim();
+    if (hash.startsWith('magnet:')) {
+        const m = hash.match(/xt=urn:btih:([a-zA-Z0-9]+)/i);
+        if (m) hash = m[1].toLowerCase();
+    }
+    const key = `${hash}:${index}`;
+    const now = Date.now();
+    if (ignitedStreams.has(key) && now - (ignitedStreams.get(key) || 0) < 90000) {
+        return;
+    }
+    ignitedStreams.set(key, now);
+
+    // Trigger TorrServer's direct play stream so it immediately requests pieces and activates sequential downloading
+    const preloadUrl = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(hash)}&index=${encodeURIComponent(String(index))}&play=1`;
+    try {
+        const parsedUrl = new URL(preloadUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+        const req = client.request({
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (isHttps ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'GET',
+            headers: {
+                'User-Agent': 'StalkerPro-PreloadIgniter/2.0'
+            },
+            timeout: 60000
+        }, (res: any) => {
+            res.on('data', () => {});
+            res.on('end', () => {});
+            res.on('error', () => {});
+        });
+        req.on('timeout', () => {
+            try { req.destroy(); } catch (e) {}
+        });
+        req.on('error', () => {});
+        req.end();
+    } catch (e) {}
+}
+
 // Targeted File & Episode Resolver: Automatically finds exact file index inside multi-file torrent
 router.get('/api/torrent/resolve-file', async (req, res) => {
     const link = (req.query.link || req.query.hash || '').toString().trim();
@@ -857,12 +921,13 @@ router.get('/api/torrent/resolve-file', async (req, res) => {
             tsRes = await axios.post(`${getTorrServerBaseUrl()}/torrents`, {
                 action: 'add',
                 link: link,
-                save_to_db: false
+                save_to_db: true
             }, { timeout: 4000 }).catch(() => null);
         }
 
         const fileStats = tsRes?.data?.file_stats || tsRes?.data?.files || [];
         if (fileStats.length === 0) {
+            igniteTorrentStream(link, 1);
             return res.json({
                 status: 'pending',
                 message: 'Metadata still resolving',
@@ -873,6 +938,7 @@ router.get('/api/torrent/resolve-file', async (req, res) => {
 
         const bestFile = findBestTorrentFile(fileStats, season, episode, titleHint || tsRes?.data?.title);
         const selectedId = bestFile ? (bestFile.id || 1) : 1;
+        igniteTorrentStream(hash, selectedId);
 
         res.json({
             status: 'resolved',
@@ -885,7 +951,7 @@ router.get('/api/torrent/resolve-file', async (req, res) => {
             index: selectedId,
             season,
             episode,
-            streamUrl: `/stream?link=${encodeURIComponent(link)}&index=${selectedId}&play=1`
+            streamUrl: `/stream?link=${encodeURIComponent(hash)}&index=${selectedId}&play=1`
         });
     } catch (e: any) {
         res.status(500).json({ error: e.message, index: 1 });
@@ -911,21 +977,37 @@ function parseDurationString(str: string): number {
 
 const durationCache = new Map<string, number>();
 
+function resolveUpstreamTorrUrl(urlStr: string): string {
+    if (!urlStr) return '';
+    let resolved = urlStr.trim();
+    if (resolved.startsWith('/')) {
+        resolved = `${getTorrServerBaseUrl()}${resolved}`;
+    } else if (resolved.includes('127.0.0.1:3000/') || resolved.includes('localhost:3000/')) {
+        resolved = resolved.replace(/^https?:\/\/(?:127\.0\.0\.1|localhost):3000/i, getTorrServerBaseUrl());
+    }
+    if (resolved.includes('link=') && !resolved.includes('play=')) {
+        resolved += (resolved.includes('?') ? '&' : '?') + 'play=1';
+    }
+    return resolved;
+}
+
 function getVideoDuration(streamUrl: string): Promise<number> {
-    if (durationCache.has(streamUrl)) {
-        return Promise.resolve(durationCache.get(streamUrl) || 0);
+    const targetUrl = resolveUpstreamTorrUrl(streamUrl);
+    if (durationCache.has(targetUrl)) {
+        return Promise.resolve(durationCache.get(targetUrl) || 0);
     }
     return new Promise((resolve) => {
         const args = [
             '-v', 'quiet',
+            '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             '-print_format', 'json',
             '-show_format',
             '-show_streams',
-            '-analyzeduration', '3000000',
-            '-probesize', '3000000',
-            '-i', streamUrl
+            '-analyzeduration', '5000000',
+            '-probesize', '5000000',
+            '-i', targetUrl
         ];
-        execFile('ffprobe', args, { timeout: 4000 }, async (error, stdout) => {
+        execFile('ffprobe', args, { timeout: 10000 }, async (error, stdout) => {
             if (!error && stdout) {
                 try {
                     const data = JSON.parse(stdout);
@@ -933,14 +1015,14 @@ function getVideoDuration(streamUrl: string): Promise<number> {
                     
                     if (data.format && data.format.duration) {
                         const dur = parseFloat(data.format.duration);
-                        if (!isNaN(dur) && dur > 0) foundDuration = dur;
+                        if (!isNaN(dur) && isFinite(dur) && dur > 0) foundDuration = dur;
                     }
                     
                     if (!foundDuration && data.streams && Array.isArray(data.streams)) {
                         for (const stream of data.streams) {
                             if (stream.duration) {
                                 const dur = parseFloat(stream.duration);
-                                if (!isNaN(dur) && dur > 0) {
+                                if (!isNaN(dur) && isFinite(dur) && dur > 0) {
                                     foundDuration = dur;
                                     break;
                                 }
@@ -973,30 +1055,33 @@ function getVideoDuration(streamUrl: string): Promise<number> {
                     }
                     
                     if (foundDuration > 0) {
-                        durationCache.set(streamUrl, foundDuration);
+                        durationCache.set(targetUrl, foundDuration);
                         return resolve(foundDuration);
                     }
                 } catch(e) {}
             }
 
-            // Fallback: Query TorrServer directly for torrent file stats
+            // Fallback: Query TorrServer directly for torrent file stats (do not permanently cache rough estimate)
             try {
-                const urlObj = new URL(streamUrl);
-                const link = urlObj.searchParams.get('link');
+                const urlObj = new URL(targetUrl);
+                let link = urlObj.searchParams.get('link') || urlObj.searchParams.get('hash') || '';
+                if (link.startsWith('magnet:')) {
+                    const m = link.match(/xt=urn:btih:([a-zA-Z0-9]+)/i);
+                    if (m) link = m[1].toLowerCase();
+                }
                 const indexStr = urlObj.searchParams.get('index') || '1';
                 if (link) {
                     const tsRes = await axios.post(`${getTorrServerBaseUrl()}/torrents`, {
                         action: 'get',
                         hash: link
-                    }, { timeout: 2000 }).catch(() => null);
-                    if (tsRes?.data?.file_stats) {
+                    }, { timeout: 3000 }).catch(() => null);
+                    const fStats = tsRes?.data?.file_stats || tsRes?.data?.FileStats || [];
+                    if (fStats.length > 0) {
                         const idx = parseInt(indexStr, 10);
-                        const file = tsRes.data.file_stats.find((f: any) => f.id === idx) || tsRes.data.file_stats[0];
+                        const file = fStats.find((f: any) => f.id === idx) || fStats[0];
                         if (file && file.length && file.length > 0) {
-                            // Estimate duration based on standard bitrate (~2.2 Mbps) if metadata isn't probed yet
                             const estimatedSecs = Math.round(file.length / 280000);
                             if (estimatedSecs > 60) {
-                                durationCache.set(streamUrl, estimatedSecs);
                                 return resolve(estimatedSecs);
                             }
                         }
@@ -1010,14 +1095,11 @@ function getVideoDuration(streamUrl: string): Promise<number> {
 }
 
 router.get('/api/torrent/duration', async (req, res) => {
-    let urlStr = (req.query.url || req.query.link || '').toString().trim();
+    const urlStr = (req.query.url || req.query.link || '').toString().trim();
     if (!urlStr) return res.status(400).json({ error: 'Missing stream URL' });
-    if (urlStr.startsWith('/')) {
-        const port = process.env.PORT || 3000;
-        urlStr = `http://127.0.0.1:${port}${urlStr}`;
-    }
-    const duration = await getVideoDuration(urlStr);
-    res.json({ duration });
+    const targetUrl = resolveUpstreamTorrUrl(urlStr);
+    const duration = await getVideoDuration(targetUrl);
+    res.json({ duration, exact: durationCache.has(targetUrl) });
 });
 
 function convertSrtToVtt(srtText: string): string {
@@ -1143,14 +1225,18 @@ router.get('/api/torrent/audio-tracks', async (req, res) => {
     if (!urlStr && link) {
         urlStr = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1`;
     }
-    if (urlStr && urlStr.startsWith('/')) {
-        const port = process.env.PORT || 3000;
-        urlStr = `http://127.0.0.1:${port}${urlStr}`;
-    }
+    urlStr = resolveUpstreamTorrUrl(urlStr);
     if (!urlStr) return res.status(400).json({ tracks: [] });
 
-    const cmd = `ffprobe -v error -select_streams a -show_entries stream=index,codec_name:stream_tags=language,title -of json "${urlStr}"`;
-    exec(cmd, { timeout: 6000 }, (error, stdout) => {
+    const args = [
+        '-v', 'error',
+        '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        '-select_streams', 'a',
+        '-show_entries', 'stream=index,codec_name:stream_tags=language,title',
+        '-of', 'json',
+        urlStr
+    ];
+    execFile('ffprobe', args, { timeout: 8000 }, (error, stdout) => {
         if (error || !stdout) {
             return res.json({ tracks: [{ index: 0, streamIndex: 0, label: 'Default Audio Track (AAC)', lang: 'default' }] });
         }
@@ -1247,20 +1333,17 @@ router.all('/api/torrent/stream-ffmpeg', async (req: any, res: any) => {
     const audioTrack = (req.query.audioTrack || req.query.a || '').toString().trim();
 
     if (!urlStr && link) {
-        urlStr = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1&preload=1`;
+        urlStr = `${getTorrServerBaseUrl()}/stream?link=${encodeURIComponent(link)}&index=${encodeURIComponent(index)}&play=1`;
     }
+    urlStr = resolveUpstreamTorrUrl(urlStr);
     if (!urlStr) return res.status(400).send('Missing stream URL or torrent link');
-    if (urlStr.startsWith('/')) {
-        const port = process.env.PORT || 3000;
-        urlStr = `http://127.0.0.1:${port}${urlStr}`;
-    }
 
     let exactDuration = durationCache.get(urlStr) || 0;
     if (exactDuration === 0 && (req.method === 'HEAD' || req.query.probe === '1')) {
         exactDuration = await getVideoDuration(urlStr);
     } else if (exactDuration === 0) {
-        // Trigger background duration probe for subsequent queries
-        getVideoDuration(urlStr).catch(() => {});
+        // Delay background duration probe slightly so ffmpeg gets priority on initial pieces
+        setTimeout(() => { getVideoDuration(urlStr).catch(() => {}); }, 2000);
     }
 
     res.setHeader('Content-Type', 'video/x-matroska');
@@ -1286,26 +1369,28 @@ router.all('/api/torrent/stream-ffmpeg', async (req: any, res: any) => {
         videoArgs = ['-c:v', 'copy'];
     }
 
-    let audioArgs: string[] = ['-c:a', 'aac', '-ac', '2', '-b:a', '128k', '-ar', '44100'];
+    let mapAndAudioArgs: string[] = ['-map', '0:v:0', '-map', '0:a:0?', '-c:a', 'aac', '-ac', '2', '-b:a', '128k', '-ar', '44100'];
     if (audioTrack !== '') {
         const aIdx = parseInt(audioTrack, 10);
         if (!isNaN(aIdx)) {
-            audioArgs = ['-map', '0:v:0', '-map', `0:a:${aIdx}`, '-c:a', 'aac', '-ac', '2', '-b:a', '128k', '-ar', '44100'];
+            mapAndAudioArgs = ['-map', '0:v:0', '-map', `0:a:${aIdx}?`, '-c:a', 'aac', '-ac', '2', '-b:a', '128k', '-ar', '44100'];
         }
     }
 
     const ffmpegArgs = [
         '-loglevel', 'warning',
+        '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         ...(startTime && startTime !== '0' ? ['-ss', startTime] : []),
-        '-analyzeduration', '3000000',
-        '-probesize', '3000000',
-        '-fflags', '+nobuffer+genpts+discardcorrupt+igndts',
+        '-analyzeduration', '1500000',
+        '-probesize', '1500000',
+        '-fflags', '+nobuffer+fastseek+discardcorrupt',
+        '-flags', 'low_delay',
         '-reconnect', '1',
         '-reconnect_streamed', '1',
-        '-reconnect_delay_max', '5',
+        '-reconnect_delay_max', '3',
         '-i', urlStr,
         ...videoArgs,
-        ...audioArgs,
+        ...mapAndAudioArgs,
         '-sn', '-dn',
         '-avoid_negative_ts', 'make_zero',
         '-f', 'matroska',
@@ -1317,7 +1402,7 @@ router.all('/api/torrent/stream-ffmpeg', async (req: any, res: any) => {
     ffmpegProcess.on('error', (err) => { console.error('[FFmpeg] Spawn error:', err); });
     let errLog = '';
     ffmpegProcess.stderr.on('data', (d) => { errLog += d.toString(); });
-    ffmpegProcess.on('close', (code) => { if (code !== 0) console.error('[FFmpeg] Process closed with code', code, 'Error log:', errLog); });
+    ffmpegProcess.on('close', (code) => { if (code !== 0 && code !== null && code !== 255) console.error('[FFmpeg] Process closed with code', code, 'Error log:', errLog); });
     ffmpegProcess.stdin.on('error', () => {});
     ffmpegProcess.stdout.on('error', () => {});
     res.on('error', () => { try { ffmpegProcess.kill('SIGKILL'); } catch (e) {} });
@@ -1400,27 +1485,58 @@ export function setupTorrentProxies(app: any) {
 
     async function isTorrServerHealthy(): Promise<boolean> {
         try {
-            const res = await axios.get(`${getTorrServerBaseUrl()}/echo`, { timeout: 2000 });
+            const res = await axios.get(`${getTorrServerBaseUrl()}/echo`, { timeout: 8000 });
             return res.status === 200;
         } catch (e) {
             return false;
         }
     }
 
+    let hasVerifiedRemoteSettings = false;
+
     async function startTorrServer() {
         if (isStarting) return;
         isStarting = true;
 
+        const baseUrl = getTorrServerBaseUrl();
+        const isRemoteServer = !baseUrl.includes('127.0.0.1') && !baseUrl.includes('localhost');
+
         const healthy = await isTorrServerHealthy();
         if (healthy) {
-            console.log(`[TorrServer] Service is already running and healthy at ${getTorrServerBaseUrl()}`);
+            if (!hasVerifiedRemoteSettings && isRemoteServer) {
+                hasVerifiedRemoteSettings = true;
+                console.log(`[TorrServer] Service is running and healthy at ${baseUrl}`);
+                // Only update remote settings if ResponsiveMode or ReaderReadAHead are not already configured.
+                // Calling action:'set' on TorrServer restarts its BT client and drops active swarms!
+                axios.post(`${baseUrl}/settings`, { action: 'get' }, { timeout: 5000 })
+                    .then((res) => {
+                        const cur = res.data;
+                        if (cur && (!cur.ResponsiveMode || (cur.ReaderReadAHead || 0) < 90)) {
+                            return axios.post(`${baseUrl}/settings`, {
+                                action: 'set',
+                                sets: {
+                                    ...cur,
+                                    CacheSize: cur.CacheSize || 209715200,
+                                    ConnectionsLimit: Math.max(cur.ConnectionsLimit || 100, 100),
+                                    PreloadCache: 0,
+                                    ReaderReadAHead: 95,
+                                    ResponsiveMode: true,
+                                    RetrackersMode: 1,
+                                    RemoveCacheOnDrop: false,
+                                    TorrentDisconnectTimeout: 300
+                                }
+                            }, { timeout: 5000 });
+                        }
+                    })
+                    .catch(() => {});
+            }
             isStarting = false;
             return;
         }
 
-        // If user configured an external TorrServer URL, do not try to spawn local binary
-        if (process.env.TORRSERVER_URL && process.env.TORRSERVER_URL !== 'http://127.0.0.1:8090') {
-            console.warn(`[TorrServer] External URL ${process.env.TORRSERVER_URL} is currently unreachable. Waiting for remote service...`);
+        // If configured to use an external TorrServer URL (e.g. Render), do not spawn local binary
+        if (isRemoteServer) {
+            console.warn(`[TorrServer] Remote TorrServer ${baseUrl} is waking up or unreachable. Waiting for remote service...`);
             isStarting = false;
             return;
         }
@@ -1489,13 +1605,14 @@ export function setupTorrentProxies(app: any) {
             await axios.post(`${getTorrServerBaseUrl()}/settings`, {
                 action: 'set',
                 sets: {
-                    CacheSize: 104857600,
-                    ConnectionsLimit: 45,
-                    PreloadCache: 1,
-                    ReaderReadAHead: 15,
+                    CacheSize: 209715200,
+                    ConnectionsLimit: 100,
+                    PreloadCache: 0,
+                    ReaderReadAHead: 95,
                     ResponsiveMode: true,
-                    RemoveCacheOnDrop: true,
-                    TorrentDisconnectTimeout: 20,
+                    RetrackersMode: 1,
+                    RemoveCacheOnDrop: false,
+                    TorrentDisconnectTimeout: 300,
                     EnableDHT: true,
                     EnablePEX: true,
                     EnableIPv4: true,
@@ -1514,8 +1631,48 @@ export function setupTorrentProxies(app: any) {
         const targetUrl = `${getTorrServerBaseUrl()}${req.originalUrl}`;
 
         try {
-            const payload = (req.method !== 'GET' && req.method !== 'HEAD' && req.body) 
-                ? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
+            let bodyObj = req.body;
+            if (typeof bodyObj === 'string') {
+                try { bodyObj = JSON.parse(bodyObj); } catch (e) {}
+            }
+
+            // Guard /settings action:'set': Calling 'set' in TorrServer disconnects all active swarms and wipes cache!
+            // Only forward 'set' if the requested CacheSize actually differs from current TorrServer settings.
+            if (req.originalUrl.startsWith('/settings') && bodyObj && bodyObj.action === 'set' && bodyObj.sets) {
+                try {
+                    const curRes = await axios.post(targetUrl, { action: 'get' }, { timeout: 4000 });
+                    const curSets = curRes.data || {};
+                    const reqCacheSize = bodyObj.sets.CacheSize || 209715200;
+                    if (
+                        curSets.CacheSize === reqCacheSize &&
+                        curSets.ResponsiveMode === true &&
+                        (curSets.ReaderReadAHead || 0) >= 90
+                    ) {
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.setHeader('Content-Type', 'application/json');
+                        return res.status(200).json(curSets);
+                    }
+                    bodyObj.sets = {
+                        ...curSets,
+                        ...bodyObj.sets,
+                        CacheSize: reqCacheSize,
+                        PreloadCache: 0,
+                        ReaderReadAHead: 95,
+                        ResponsiveMode: true,
+                        RemoveCacheOnDrop: false,
+                        ConnectionsLimit: Math.max(bodyObj.sets.ConnectionsLimit || 100, 100),
+                        TorrentDisconnectTimeout: Math.max(bodyObj.sets.TorrentDisconnectTimeout || 300, 300)
+                    };
+                } catch (e) {
+                    bodyObj.sets.PreloadCache = 0;
+                    bodyObj.sets.ReaderReadAHead = 95;
+                    bodyObj.sets.ResponsiveMode = true;
+                    bodyObj.sets.RemoveCacheOnDrop = false;
+                }
+            }
+
+            const payload = (req.method !== 'GET' && req.method !== 'HEAD' && bodyObj) 
+                ? (typeof bodyObj === 'string' ? bodyObj : JSON.stringify(bodyObj))
                 : undefined;
 
             const response = await axios({
@@ -1530,6 +1687,18 @@ export function setupTorrentProxies(app: any) {
                 validateStatus: () => true
             });
 
+            // Immediately wake up TorrServer's 32MB preload & sequential piece reader once file_stats is available
+            if (req.originalUrl.startsWith('/torrents') && bodyObj && (bodyObj.action === 'add' || bodyObj.action === 'get')) {
+                const tData = response.data;
+                if (tData && typeof tData === 'object' && tData.hash) {
+                    const fStats = tData.file_stats || tData.FileStats || [];
+                    if (fStats.length > 0) {
+                        const best = findBestTorrentFile(fStats, 0, 0, tData.title);
+                        igniteTorrentStream(tData.hash, best ? (best.id || 1) : 1);
+                    }
+                }
+            }
+
             res.status(response.status);
             res.setHeader('Access-Control-Allow-Origin', '*');
             if (typeof response.data === 'object') {
@@ -1540,7 +1709,6 @@ export function setupTorrentProxies(app: any) {
             }
         } catch (err: any) {
             if (retryCount < maxRetries) {
-                if (!isStarting) startTorrServer();
                 await new Promise(r => setTimeout(r, 500));
                 return handleTorrApiProxy(req, res, retryCount + 1);
             }
@@ -1593,45 +1761,30 @@ export function setupTorrentProxies(app: any) {
             if (streamCleanupTimers.has(hash)) {
                 clearTimeout(streamCleanupTimers.get(hash)!);
             }
+            // Keep torrent alive in TorrServer for 30 minutes so HTML5 Range requests, pauses, and seeks never drop the swarm
             const timer = setTimeout(async () => {
                 streamCleanupTimers.delete(hash);
                 if (!activeStreamConnections.has(hash)) {
                     try {
-                        console.log(`[TorrServer Auto-Cleanup] User closed connection. Dropping & removing torrent: ${hash}`);
+                        console.log(`[TorrServer Auto-Cleanup] 30m idle timeout reached. Dropping torrent: ${hash}`);
                         await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'drop', hash }, { timeout: 3000 }).catch(() => null);
-                        await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'rem', hash }, { timeout: 3000 }).catch(() => null);
                     } catch (e: any) {}
                 }
-            }, 15000); // 15 seconds grace period for pause/scrubbing
+            }, 1800000);
             streamCleanupTimers.set(hash, timer);
         } else {
             activeStreamConnections.set(hash, current);
         }
     }
 
-    // Periodic orphan torrent reaper (cleans up any abandoned torrents every 45s)
-    setInterval(async () => {
-        try {
-            const res = await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'list' }, { timeout: 4000 }).catch(() => null);
-            if (res && Array.isArray(res.data) && res.data.length > 0) {
-                for (const t of res.data) {
-                    const tHash = (t.hash || '').toLowerCase();
-                    if (tHash && !activeStreamConnections.has(tHash) && !streamCleanupTimers.has(tHash)) {
-                        const activePeers = t.active_peers || 0;
-                        if (activePeers === 0) {
-                            console.log(`[TorrServer Reaper] Purging inactive orphan torrent: ${t.title || tHash}`);
-                            await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'drop', hash: tHash }, { timeout: 3000 }).catch(() => null);
-                            await axios.post(`${getTorrServerBaseUrl()}/torrents`, { action: 'rem', hash: tHash }, { timeout: 3000 }).catch(() => null);
-                        }
-                    }
-                }
-            }
-        } catch (e) {}
-    }, 45000);
-
     const handleTorrStreamProxy = (req: any, res: any, retryCount = 0) => {
         const maxRetries = 15;
-        const targetUrl = `${getTorrServerBaseUrl()}${req.originalUrl}`;
+        let forwardUrl = req.originalUrl;
+        // Guarantee play=1 so TorrServer activates its high-priority sequential Direct Play reader
+        if (forwardUrl.includes('link=') && !forwardUrl.includes('play')) {
+            forwardUrl += (forwardUrl.includes('?') ? '&' : '?') + 'play=1';
+        }
+        const targetUrl = `${getTorrServerBaseUrl()}${forwardUrl}`;
         const torrentHash = extractHashFromReq(req);
         if (torrentHash) {
             markStreamStarted(torrentHash);
@@ -1656,14 +1809,20 @@ export function setupTorrentProxies(app: any) {
                 method: req.method,
                 headers: cleanHeaders
             }, (proxyRes: any) => {
-                const proxyHeaders = { ...proxyRes.headers, 'Access-Control-Allow-Origin': '*' };
+                const proxyHeaders = {
+                    ...proxyRes.headers,
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
+                };
                 if (req.query.download === '1') {
                     proxyHeaders['Content-Disposition'] = `attachment; filename="torrent_video.mp4"`;
                 }
                 res.writeHead(proxyRes.statusCode || 200, proxyHeaders);
+                if (typeof res.flushHeaders === 'function') res.flushHeaders();
                 proxyRes.pipe(res);
             });
 
+            proxyReq.setNoDelay(true);
             proxyReq.setTimeout(0);
 
             let cleanedUp = false;

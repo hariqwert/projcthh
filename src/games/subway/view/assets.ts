@@ -32,6 +32,14 @@ export async function parseGLB(buf: ArrayBuffer): Promise<GLTF> {
 }
 
 export async function fetchBuffer(url: string): Promise<ArrayBuffer> {
+  if (typeof window !== 'undefined' && 'caches' in window) {
+    try {
+      const cached = await caches.match(url, { ignoreSearch: true });
+      if (cached && cached.ok) {
+        return await cached.arrayBuffer();
+      }
+    } catch {}
+  }
   const r = await fetch(url);
   if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
   return r.arrayBuffer();

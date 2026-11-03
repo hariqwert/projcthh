@@ -56,11 +56,22 @@ const BLOCKED_BOT_REGEX = /\b(sqlmap|nikto|masscan|zgrab|nmap|nuclei|gobuster|di
 // Dangerous exploit signatures in URL / parameters
 const EXPLOIT_PAYLOAD_REGEX = /(\.\.[\/\\]|\bunion\s+select\b|\bselect\s+.*\s+from\b|<script\b|\bjavascript:|\beval\(|\bbase64_decode|\/etc\/passwd|\/proc\/self|\bchmod\s+[0-7]+|\b(cat|nc|curl|wget)\s+.*http)/i;
 
-// Rate limit: 40 requests per 1-second burst window for automated scrapers
-const BURST_LIMIT = 40;
+// Rate limit: 250 API requests per 1-second burst window for automated scrapers (excluding static/media assets)
+const BURST_LIMIT = 250;
 const BURST_WINDOW_MS = 1000;
 const TEMP_BAN_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 const HONEYPOT_BAN_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Trusted / whitelisted IPs that must never be quarantined
+const WHITELISTED_IPS = new Set([
+    '127.0.0.1',
+    '::1',
+    'localhost',
+    '111.92.124.169'
+]);
+
+// Static assets, channel logos, media segments, and stream/image proxies excluded from burst scraping counter
+const STATIC_OR_MEDIA_EXT_REGEX = /\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|mp4|webm|ts|m4s|m3u8|mpd|vtt|srt|json|map)$/i;
 
 export class PerimeterDefenseShield {
     private static totalBlocked = 0;
@@ -77,10 +88,18 @@ export class PerimeterDefenseShield {
     }
 
     /**
+     * Checks if IP is whitelisted
+     */
+    static isWhitelisted(ip: string): boolean {
+        return WHITELISTED_IPS.has(ip);
+    }
+
+    /**
      * Checks if IP is currently banned in perimeter firewall
      */
     static isIpBanned(ip: string): { banned: boolean; reason?: string; remainingSeconds?: number } {
-        if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') {
+        if (this.isWhitelisted(ip)) {
+            bannedIps.delete(ip);
             return { banned: false };
         }
         const record = bannedIps.get(ip);
@@ -104,7 +123,7 @@ export class PerimeterDefenseShield {
      * Bans an IP immediately
      */
     static banIp(ip: string, reason: string, durationMs: number = TEMP_BAN_DURATION_MS): void {
-        if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return;
+        if (this.isWhitelisted(ip)) return;
         bannedIps.set(ip, {
             bannedUntil: Date.now() + durationMs,
             reason
@@ -144,8 +163,9 @@ export class PerimeterDefenseShield {
             const normalizedPath = (req.path || '').toLowerCase();
             const fullUrl = req.originalUrl || req.url || '';
 
-            // Allow local loopback always
-            if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') {
+            // Allow local loopback & whitelisted IPs always
+            if (PerimeterDefenseShield.isWhitelisted(ip)) {
+                bannedIps.delete(ip);
                 return next();
             }
 
@@ -192,21 +212,33 @@ export class PerimeterDefenseShield {
                 return res.status(403).send("403 Forbidden: Dangerous request signature prohibited by Perimeter Defense Shield.");
             }
 
-            // 6. Anti-Scraping Burst Limiter
-            const now = Date.now();
-            let tracker = requestWindowMap.get(ip);
-            if (!tracker || (now - tracker.windowStart) > BURST_WINDOW_MS) {
-                tracker = { count: 1, windowStart: now };
-                requestWindowMap.set(ip, tracker);
-            } else {
-                tracker.count++;
-                if (tracker.count > BURST_LIMIT) {
-                    PerimeterDefenseShield.scrapersTerminated++;
-                    PerimeterDefenseShield.banIp(ip, `Excessive Scraping Burst (${tracker.count} req/s)`, TEMP_BAN_DURATION_MS);
-                    PerimeterDefenseShield.logIncident(req, 'SCRAPER_FLOOD', `Rate limit exceeded: ${tracker.count} requests in 1s`);
-                    return res.status(429).json({
-                        error: "429 Too Many Requests: Scraping burst detected. Access temporarily suspended."
-                    });
+            // 6. Anti-Scraping Burst Limiter (exempt static assets, logos, media streams, and image proxies)
+            const isExemptAssetOrStream =
+                STATIC_OR_MEDIA_EXT_REGEX.test(normalizedPath) ||
+                normalizedPath.startsWith('/assets/') ||
+                normalizedPath.startsWith('/logos/') ||
+                normalizedPath.startsWith('/live.php') ||
+                normalizedPath.startsWith('/stream_proxy.php') ||
+                normalizedPath.startsWith('/api/comics/proxy-image') ||
+                normalizedPath.startsWith('/api/admin/') ||
+                normalizedPath.startsWith('/api/play_stream/');
+
+            if (!isExemptAssetOrStream) {
+                const now = Date.now();
+                let tracker = requestWindowMap.get(ip);
+                if (!tracker || (now - tracker.windowStart) > BURST_WINDOW_MS) {
+                    tracker = { count: 1, windowStart: now };
+                    requestWindowMap.set(ip, tracker);
+                } else {
+                    tracker.count++;
+                    if (tracker.count > BURST_LIMIT) {
+                        PerimeterDefenseShield.scrapersTerminated++;
+                        PerimeterDefenseShield.banIp(ip, `Excessive Scraping Burst (${tracker.count} req/s)`, TEMP_BAN_DURATION_MS);
+                        PerimeterDefenseShield.logIncident(req, 'SCRAPER_FLOOD', `Rate limit exceeded: ${tracker.count} requests in 1s`);
+                        return res.status(429).json({
+                            error: "429 Too Many Requests: Scraping burst detected. Access temporarily suspended."
+                        });
+                    }
                 }
             }
 

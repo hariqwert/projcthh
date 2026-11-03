@@ -181,13 +181,13 @@ button,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  z-index: 10;
+  z-index: 200;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .arcade-header.hidden,
 #ui[data-screen="play"] ~ .arcade-header,
-#ui:has(#hud.on) ~ .arcade-header {
+body:has(#ui[data-screen="play"]) .arcade-header {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -895,13 +895,13 @@ kbd {
 <body>
 
 <div class="arcade-header">
-  <a href="/hero.html" class="nav-btn" title="Return to Portal">
+  <a href="/hero.html" id="nav-portal-home" class="nav-btn" title="Return to Home Portal">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 12H5M12 19l-7-7 7-7"/>
+      <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/>
     </svg>
-    <span>Aetheris Portal</span>
+    <span>Home / Portal</span>
   </a>
-  <a href="/offline.html" class="nav-btn" title="Go to Offline Center">
+  <a href="/offline.html" id="nav-offline-center" class="nav-btn" title="Go to Offline Center">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="10"/>
       <path d="m4.93 4.93 14.14 14.14"/>
@@ -925,19 +925,49 @@ window.__CORE_URL = '/assets/games/subway/core.glb';
 window.__SCENERY_URL = '/assets/games/subway/scenery.glb';
 
 (function () {
+  var CACHE_NAME = 'aetheris-pwa-v12';
+  var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
+
+  // Direct CacheStorage-First wrapper for Subway 3D assets (works even before SW claims client)
+  if (nativeFetch && 'caches' in window) {
+    window.fetch = function (input, init) {
+      var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+      if (urlStr && urlStr.indexOf('/assets/games/subway/') !== -1) {
+        return caches.match(urlStr, { ignoreSearch: true }).then(function (cached) {
+          if (cached && cached.ok) {
+            return cached.clone();
+          }
+          return nativeFetch(input, init).then(function (res) {
+            if (res && res.status === 200) {
+              var cloneForCache = res.clone();
+              caches.open(CACHE_NAME).then(function (cache) {
+                cache.put(urlStr, cloneForCache).catch(function () {});
+              }).catch(function () {});
+            }
+            return res;
+          });
+        }).catch(function () {
+          return nativeFetch(input, init);
+        });
+      }
+      return nativeFetch(input, init);
+    };
+  }
+
   var bar = document.getElementById('ld-bar'), txt = document.getElementById('ld-text');
   var shown = 0;
   function set(p, label) {
-    if (p > shown) shown = Math.min(1, p);
+    if (typeof p === 'number' && !isNaN(p) && p > shown) shown = Math.min(1, p);
     if (bar) bar.style.transform = 'scaleX(' + shown + ')';
     if (txt) txt.textContent = (label || 'Loading') + ' ' + Math.floor(shown * 100) + '%';
   }
   set(0.1, 'Connecting 3D Engine');
 
   function fetchStream(url) {
-    return fetch(url).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
-      var total = parseInt(r.headers.get('content-length') || '972716', 10);
+    return window.fetch(url).then(function (r) {
+      if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : 'ERR') + ' ' + url);
+      var backupClone = r.clone ? r.clone() : null;
+      var total = parseInt((r.headers && r.headers.get('content-length')) || '972716', 10) || 972716;
       if (!r.body || !r.body.getReader) {
         return r.arrayBuffer().then(function (b) {
           set(0.85, 'Finalizing Meshes');
@@ -960,11 +990,19 @@ window.__SCENERY_URL = '/assets/games/subway/scenery.glb';
           }
           chunks.push(res.value);
           received += res.value.length;
-          set(0.1 + 0.8 * (received / total), 'Streaming Models');
+          set(0.1 + 0.8 * Math.min(1, received / total), 'Streaming Models');
           return pump();
         });
       }
-      return pump();
+      return pump().catch(function () {
+        if (backupClone) {
+          return backupClone.arrayBuffer().then(function (b) {
+            set(0.85, 'Finalizing Meshes');
+            return b;
+          });
+        }
+        throw new Error('Failed to read stream ' + url);
+      });
     });
   }
 
@@ -988,19 +1026,162 @@ window.__SCENERY_URL = '/assets/games/subway/scenery.glb';
 </script>
 
 <!-- Standalone High-Speed Bundled Engine (World Tour: Mumbai Edition) -->
-<script src="/assets/games/subway/subway-bundle.js?v=2.7.0"></script>
+<script src="/assets/games/subway/subway-bundle.js?v=2.8.0"></script>
 
-<!-- PWA Offline Service Worker Registration -->
+<!-- Defensive Object3D polyfill and Three.js Engine for Developer Mode -->
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/sw.js').then(function (reg) {
+(function() {
+  var patch = function(t) {
+    if (!t) return;
+    if (t.Object3D && t.Object3D.prototype) {
+      if (!t.Object3D.prototype.removeFromParent) {
+        t.Object3D.prototype.removeFromParent = function() {
+          if (this.parent) this.parent.remove(this);
+          return this;
+        };
+      }
+      if (!t.Object3D.prototype.intersectsFrustum) {
+        t.Object3D.prototype.intersectsFrustum = function(f) {
+          return !f || typeof f.intersectsObject !== 'function' ? true : f.intersectsObject(this);
+        };
+      }
+      if (!t.Object3D.prototype.onBeforeShadow) t.Object3D.prototype.onBeforeShadow = function() {};
+      if (!t.Object3D.prototype.onAfterShadow) t.Object3D.prototype.onAfterShadow = function() {};
+      if (!t.Object3D.prototype.onBeforeRender) t.Object3D.prototype.onBeforeRender = function() {};
+      if (!t.Object3D.prototype.onAfterRender) t.Object3D.prototype.onAfterRender = function() {};
+    }
+    if (t.Mesh && t.Mesh.prototype) {
+      if (!t.Mesh.prototype.intersectsFrustum) {
+        t.Mesh.prototype.intersectsFrustum = function(f) {
+          return !f || typeof f.intersectsObject !== 'function' ? true : f.intersectsObject(this);
+        };
+      }
+      if (!t.Mesh.prototype.onBeforeShadow) t.Mesh.prototype.onBeforeShadow = function() {};
+      if (!t.Mesh.prototype.onAfterShadow) t.Mesh.prototype.onAfterShadow = function() {};
+    }
+    if (t.Material && t.Material.prototype) {
+      if (!t.Material.prototype.onBeforeRender) t.Material.prototype.onBeforeRender = function() {};
+      if (!t.Material.prototype.onAfterRender) t.Material.prototype.onAfterRender = function() {};
+      if (!t.Material.prototype.onBeforeShadow) t.Material.prototype.onBeforeShadow = function() {};
+      if (!t.Material.prototype.onAfterShadow) t.Material.prototype.onAfterShadow = function() {};
+    }
+    if (t.Matrix4 && t.Matrix4.prototype && !t.Matrix4.prototype.determinantAffine) {
+      t.Matrix4.prototype.determinantAffine = function() {
+        var e = this.elements, t0 = e[0], n = e[4], i = e[8], r = e[1], o = e[5], a = e[9], l = e[2], c = e[6], h = e[10];
+        return t0 * (o * h - a * c) - n * (r * h - a * l) + i * (r * c - o * l);
+      };
+    }
+  };
+  var _t = window.THREE;
+  try {
+    Object.defineProperty(window, 'THREE', {
+      configurable: true,
+      enumerable: true,
+      get: function() { return _t; },
+      set: function(v) {
+        _t = v;
+        patch(v);
+      }
+    });
+  } catch(e) {}
+  if (_t) patch(_t);
+})();
+</script>
+<script src="/assets/games/subway/three.min.js"></script>
+<script src="/assets/games/subway/open-world-dev.js?v=3.0.0"></script>
+
+<!-- PWA Offline Service Worker & Direct Cache Seeder -->
+<script>
+(function () {
+  var CACHE_NAME = 'aetheris-pwa-v12';
+  var OFFLINE_ASSETS = [
+    '/subway.html',
+    '/offline.html',
+    '/hero.html',
+    '/assets/games/subway/three.min.js',
+    '/assets/games/subway/subway-bundle.js?v=2.8.0',
+    '/assets/games/subway/open-world-dev.js?v=3.0.0',
+    '/assets/games/subway/core.glb',
+    '/assets/games/subway/scenery.glb',
+    '/assets/games/subway/promo_mumbai_sunset.jpg',
+    '/assets/games/subway/promo_mumbai_night.jpg'
+  ];
+
+  // Ensure top Home / Portal and Offline Center buttons always respond on touch & desktop
+  var portalBtn = document.getElementById('nav-portal-home');
+  if (portalBtn) {
+    var goPortal = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!navigator.onLine && 'caches' in window) {
+        caches.match('/hero.html', { ignoreSearch: true }).then(function (m) {
+          window.location.href = (m && m.ok) ? '/hero.html' : '/offline.html';
+        }).catch(function () {
+          window.location.href = '/offline.html';
+        });
+      } else {
+        window.location.href = '/hero.html';
+      }
+    };
+    portalBtn.addEventListener('click', goPortal);
+    portalBtn.addEventListener('touchend', goPortal, { passive: false });
+  }
+
+  var offlineBtn = document.getElementById('nav-offline-center');
+  if (offlineBtn) {
+    var goOffline = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href = '/offline.html';
+    };
+    offlineBtn.addEventListener('click', goOffline);
+    offlineBtn.addEventListener('touchend', goOffline, { passive: false });
+  }
+
+  function seedDirectOfflineCache() {
+    if (!('caches' in window) || !navigator.onLine) return;
+    caches.open(CACHE_NAME).then(function (cache) {
+      OFFLINE_ASSETS.forEach(function (url) {
+        cache.match(url, { ignoreSearch: false }).then(function (existing) {
+          if (existing && existing.ok) return;
+          fetch(url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
+            if (!res || res.status !== 200) return;
+            res.arrayBuffer().then(function (buf) {
+              var headers = new Headers(res.headers);
+              headers.delete('Cache-Control');
+              headers.delete('Pragma');
+              headers.delete('Expires');
+              var clean = new Response(buf, { status: 200, headers: headers });
+              cache.put(url, clean.clone()).catch(function () {});
+              if (url === '/subway.html') cache.put('/subway', clean.clone()).catch(function () {});
+              if (url === '/offline.html') cache.put('/offline', clean.clone()).catch(function () {});
+              if (url.indexOf('subway-bundle.js') !== -1) cache.put('/assets/games/subway/subway-bundle.js', clean.clone()).catch(function () {});
+              if (url.indexOf('open-world-dev.js') !== -1) cache.put('/assets/games/subway/open-world-dev.js', clean.clone()).catch(function () {});
+            }).catch(function () {});
+          }).catch(function () {});
+        }).catch(function () {});
+      });
+    }).catch(function () {});
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (reg) {
       console.log('[PWA] Subway Surfers offline service worker ready:', reg.scope);
+      if (reg.active) {
+        reg.active.postMessage({ type: 'WARM_SUBWAY_CACHE' });
+      }
     }).catch(function (err) {
       console.warn('[PWA] Service worker registration error:', err);
     });
-  });
-}
+  }
+
+  if (document.readyState === 'complete') {
+    seedDirectOfflineCache();
+  } else {
+    window.addEventListener('load', seedDirectOfflineCache);
+  }
+})();
 </script>
+<script src="/watchdog.js"></script>
 </body>
 </html>

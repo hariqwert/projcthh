@@ -1362,7 +1362,23 @@ async function getProxyStreamsList(): Promise<any[]> {
     return list;
 }
 
-// POST /api/sports/probe-sources - Fast parallel live stream health check for Live Now sources
+// High-performance keep-alive agents for sub-100ms stream probing
+const probeHttpAgent = new http.Agent({ keepAlive: true, maxSockets: 64, timeout: 5000 });
+const probeHttpsAgent = new https.Agent({ keepAlive: true, maxSockets: 64, timeout: 5000, rejectUnauthorized: false });
+
+// In-memory 60-second probe cache for instantaneous repeat checks
+interface FastProbeResult {
+    id: string;
+    alive: boolean;
+    latencyMs: number;
+    status: number;
+    contentType?: string;
+    timestamp: number;
+}
+const probeMemoryCache = new Map<string, FastProbeResult>();
+const PROBE_CACHE_TTL_MS = 60 * 1000;
+
+// POST /api/sports/probe-sources - Ultra-fast parallel live stream reachability & health checker
 router.post('/api/sports/probe-sources', async (req: Request, res: Response) => {
     try {
         const { sources = [] } = req.body;
@@ -1394,39 +1410,93 @@ router.post('/api/sports/probe-sources', async (req: Request, res: Response) => 
                 return { id: item.id, alive: false, latencyMs: 0, status: 404, note: 'No stream URL provided' };
             }
 
+            // Check in-memory probe cache first for 0ms instant response
+            const cacheKey = `${target.trim()}_${(playUrl || '').trim()}`;
+            const cached = probeMemoryCache.get(cacheKey);
+            if (cached && (Date.now() - cached.timestamp < PROBE_CACHE_TTL_MS)) {
+                return {
+                    id: item.id,
+                    alive: cached.alive,
+                    latencyMs: cached.latencyMs,
+                    status: cached.status,
+                    contentType: cached.contentType,
+                    fromCache: true
+                };
+            }
+
+            // Direct in-memory channel resolution if target is local play_stream route (eliminates loopback redirect lag)
+            if (target.includes('/api/play_stream/')) {
+                try {
+                    const chId = target.split('/api/play_stream/')[1].split('?')[0];
+                    const inMemStream = await resolveChannelStream(decodeURIComponent(chId));
+                    if (inMemStream) {
+                        target = inMemStream;
+                    }
+                } catch (_) {}
+            }
+
             const t0 = Date.now();
             try {
                 let checkUrl = target;
-                if (target.startsWith('/')) {
-                    checkUrl = `http://127.0.0.1:3000${target}`;
+                if (checkUrl.includes('/live.php?url=') || checkUrl.includes('/stream_proxy.php?url=')|| checkUrl.includes('play_consumet.php?url=')) {
+                    try {
+                        const directUpstream = decodeURIComponent(checkUrl.split('url=')[1].split('&')[0]);
+                        if (directUpstream.startsWith('http://') || directUpstream.startsWith('https://')) {
+                            checkUrl = directUpstream;
+                        }
+                    } catch (_) {}
+                }
+                if (checkUrl.startsWith('/')) {
+                    checkUrl = `http://127.0.0.1:3000${checkUrl}`;
                 }
 
+                // TTFB stream probe: Promise resolves the instant response headers arrive, then stream is aborted immediately!
                 const resp = await axios.get(checkUrl, {
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'Range': 'bytes=0-1024'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                        'Accept': '*/*',
+                        'Range': 'bytes=0-1024',
+                        'Referer': checkUrl.includes('fancode') ? 'https://www.fancode.com/' : (checkUrl.includes('sonyliv') ? 'https://www.sonyliv.com/' : 'https://epiembeds.online/')
                     },
-                    timeout: 2500,
+                    timeout: 1800,
+                    httpAgent: probeHttpAgent,
+                    httpsAgent: probeHttpsAgent,
+                    responseType: 'stream',
+                    maxRedirects: 4,
                     validateStatus: (s) => (s >= 200 && s < 400)
                 });
 
-                const latencyMs = Date.now() - t0;
-                const contentType = resp.headers['content-type'] || '';
-                return {
+                const latencyMs = Math.max(16, Date.now() - t0);
+                const contentType = (resp.headers['content-type'] || '').toString();
+
+                // Destroy incoming socket stream immediately to free memory and prevent media chunk downloads
+                if (resp.data && typeof resp.data.destroy === 'function') {
+                    resp.data.destroy();
+                }
+
+                const result = {
                     id: item.id,
                     alive: true,
                     latencyMs,
                     status: resp.status,
                     contentType
                 };
+
+                // Cache successful probe
+                probeMemoryCache.set(cacheKey, { ...result, timestamp: Date.now() });
+                return result;
             } catch (err: any) {
-                return {
+                const latencyMs = Math.max(20, Date.now() - t0);
+                const result = {
                     id: item.id,
                     alive: false,
-                    latencyMs: Date.now() - t0,
+                    latencyMs,
                     status: err?.response?.status || 500,
                     error: err?.message || 'Unreachable'
                 };
+                // Cache failures briefly (15s) so broken feeds don't hold up subsequent calls
+                probeMemoryCache.set(cacheKey, { ...result, timestamp: Date.now() - (PROBE_CACHE_TTL_MS - 15000) });
+                return result;
             }
         };
 

@@ -1,5 +1,5 @@
 {
-  "lastScanTime": "2026-11-01T11:04:21.182Z",
+  "lastScanTime": "2026-11-03T19:58:32.981Z",
   "scanIntervalMinutes": 5,
   "autoSwitchEnabled": true,
   "records": [
@@ -8,8 +8,8 @@
       "name": "Global News HD",
       "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
       "status": "healthy",
-      "latencyMs": 438,
-      "lastChecked": "2026-11-01T11:04:20.931Z",
+      "latencyMs": 208,
+      "lastChecked": "2026-11-03T19:58:32.811Z",
       "consecutiveFailures": 0,
       "backupUrl": "",
       "isBackupSwitched": false
@@ -19,9 +19,9 @@
       "name": "Action Cinema",
       "url": "https://live-par-2-cdn-alt.livepush.io/live/bigbuckbunnyclip/index.m3u8",
       "status": "backup_active",
-      "latencyMs": 220,
-      "lastChecked": "2026-11-01T11:04:21.026Z",
-      "consecutiveFailures": 212,
+      "latencyMs": 162,
+      "lastChecked": "2026-11-03T19:58:32.780Z",
+      "consecutiveFailures": 278,
       "backupUrl": "/live.php?token=STALKER_PRO&url=https%3A%2F%2Flive-par-2-cdn-alt.livepush.io%2Flive%2Fbigbuckbunnyclip%2Findex.m3u8",
       "isBackupSwitched": true
     },
@@ -30,8 +30,8 @@
       "name": "Sports 24/7",
       "url": "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8",
       "status": "healthy",
-      "latencyMs": 633,
-      "lastChecked": "2026-11-01T11:04:21.182Z",
+      "latencyMs": 376,
+      "lastChecked": "2026-11-03T19:58:32.981Z",
       "consecutiveFailures": 0,
       "backupUrl": "",
       "isBackupSwitched": false

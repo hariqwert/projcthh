@@ -1,17 +1,21 @@
-const CACHE_NAME = 'aetheris-pwa-v10';
+const CACHE_NAME = 'aetheris-pwa-v12';
 const OFFLINE_URL = '/offline.html';
+const SUBWAY_URL = '/subway.html';
 
 const STATIC_ASSETS = [
   '/',
+  '/hero.html',
   '/offline.html',
+  '/offline',
   '/subway.html',
+  '/subway',
   '/manifest.json',
-  '/aetheris_infinity.svg',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',
   '/apple-touch-icon.png',
   // Subway Surfers: Mumbai 3D (100% Offline PWA Play)
+  '/assets/games/subway/subway-bundle.js?v=2.8.0',
   '/assets/games/subway/subway-bundle.js?v=2.7.0',
   '/assets/games/subway/subway-bundle.js',
   '/assets/games/subway/core.glb',
@@ -19,22 +23,78 @@ const STATIC_ASSETS = [
   '/assets/games/subway/promo_mumbai_sunset.jpg',
   '/assets/games/subway/promo_mumbai_night.jpg',
   '/assets/games/subway/GLTFLoader.js',
-  '/assets/games/subway/three.min.js'
+  '/assets/games/subway/three.min.js',
+  '/assets/games/subway/open-world-dev.js?v=3.0.0',
+  '/assets/games/subway/open-world-dev.js'
 ];
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      for (const url of STATIC_ASSETS) {
-        try {
-          await cache.add(url);
-        } catch (err) {
-          console.warn('[SW Install] Pre-cache skip:', url, err?.message || err);
+async function cacheCleanResponse(cache, url, res) {
+  if (!res || res.status !== 200) return;
+  const headers = new Headers(res.headers);
+  headers.delete('Cache-Control');
+  headers.delete('Pragma');
+  headers.delete('Expires');
+  const body = await res.clone().arrayBuffer();
+  const cleanRes = new Response(body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers
+  });
+  await cache.put(url, cleanRes.clone());
+
+  // Also alias clean paths for subway & offline & bundle
+  if (url === '/subway.html') {
+    await cache.put('/subway', cleanRes.clone());
+  } else if (url === '/offline.html') {
+    await cache.put('/offline', cleanRes.clone());
+  } else if (url.includes('subway-bundle.js')) {
+    await cache.put('/assets/games/subway/subway-bundle.js', cleanRes.clone());
+    await cache.put('/assets/games/subway/subway-bundle.js?v=2.8.0', cleanRes.clone());
+  } else if (url.includes('open-world-dev.js')) {
+    await cache.put('/assets/games/subway/open-world-dev.js', cleanRes.clone());
+    await cache.put('/assets/games/subway/open-world-dev.js?v=3.0.0', cleanRes.clone());
+  }
+}
+
+async function precacheAllAssets() {
+  const cache = await caches.open(CACHE_NAME);
+  const primaryUrls = [
+    '/subway.html',
+    '/offline.html',
+    '/assets/games/subway/three.min.js',
+    '/assets/games/subway/subway-bundle.js?v=2.8.0',
+    '/assets/games/subway/open-world-dev.js?v=3.0.0',
+    '/assets/games/subway/core.glb',
+    '/assets/games/subway/scenery.glb',
+    '/assets/games/subway/promo_mumbai_sunset.jpg',
+    '/assets/games/subway/promo_mumbai_night.jpg',
+    '/assets/games/subway/GLTFLoader.js',
+    '/assets/games/subway/three.min.js',
+    '/manifest.json',
+    '/pwa-192x192.png',
+    '/pwa-512x512.png',
+    '/pwa-maskable-512x512.png',
+    '/apple-touch-icon.png',
+    '/'
+  ];
+
+  await Promise.allSettled(
+    primaryUrls.map(async (url) => {
+      try {
+        const res = await fetch(url, { cache: 'no-cache', credentials: 'same-origin' });
+        if (res && res.status === 200) {
+          await cacheCleanResponse(cache, url, res);
         }
+      } catch (err) {
+        console.warn('[SW Precache] Skip:', url, err?.message || err);
       }
     })
   );
+}
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil(precacheAllAssets());
 });
 
 self.addEventListener('activate', (event) => {
@@ -49,6 +109,15 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  } else if (event.data.type === 'WARM_SUBWAY_CACHE') {
+    event.waitUntil(precacheAllAssets());
+  }
 });
 
 function getEmergencyOfflineHtml() {
@@ -81,11 +150,32 @@ function getEmergencyOfflineHtml() {
 </html>`;
 }
 
+function fetchWithTimeout(request, timeoutMs = 3500) {
+  return new Promise((resolve, reject) => {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(() => {
+      if (controller) controller.abort();
+      reject(new Error('Network timeout'));
+    }, timeoutMs);
+
+    fetch(request, controller ? { cache: 'no-cache', signal: controller.signal } : { cache: 'no-cache' })
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
 
   // Never cache live video streams, HLS/DASH manifests, or dynamic API calls
   if (
@@ -100,63 +190,165 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const acceptHeader = req.headers.get('accept') || '';
-  const isNavigation = req.mode === 'navigate' || acceptHeader.includes('text/html') || url.pathname === '/' || url.pathname.endsWith('.html');
+  const isSubwayPage = url.pathname === '/subway.html' || url.pathname === '/subway';
+  const isOfflinePage = url.pathname === '/offline.html' || url.pathname === '/offline';
 
-  // For HTML navigation: Network-First falling back to specific cached page or /subway.html or /offline.html
+  // 1. Instant Cache-First + Background Revalidate for /subway.html and /offline.html
+  if (isSubwayPage || isOfflinePage) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const canonicalPath = isSubwayPage ? SUBWAY_URL : OFFLINE_URL;
+        const cached =
+          (await cache.match(canonicalPath, { ignoreSearch: true })) ||
+          (await cache.match(url.pathname, { ignoreSearch: true })) ||
+          (await cache.match(req, { ignoreSearch: true }));
+
+        const networkUpdate = fetchWithTimeout(canonicalPath, 3000)
+          .then(async (res) => {
+            if (res && res.status === 200) {
+              await cacheCleanResponse(cache, canonicalPath, res.clone());
+              return res;
+            }
+            return null;
+          })
+          .catch(() => null);
+
+        if (cached) {
+          event.waitUntil(networkUpdate);
+          return cached;
+        }
+
+        const fresh = await networkUpdate;
+        if (fresh) return fresh;
+
+        const fallback =
+          (await cache.match(SUBWAY_URL, { ignoreSearch: true })) ||
+          (await cache.match(OFFLINE_URL, { ignoreSearch: true }));
+        if (fallback) return fallback;
+
+        return new Response(getEmergencyOfflineHtml(), {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
+      })()
+    );
+    return;
+  }
+
+  // 2. Cache-First for all Subway Surfers 3D models, bundles, textures, and PWA static assets
+  const isStaticOrSubwayAsset =
+    url.pathname.startsWith('/assets/games/subway/') ||
+    STATIC_ASSETS.some((asset) => url.pathname === asset || url.pathname === asset.split('?')[0]);
+
+  if (isStaticOrSubwayAsset && !url.pathname.endsWith('.html') && url.pathname !== '/') {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        // Match exact versioned URL first so version bumps (?v=2.8.0) fetch fresh code when online
+        const exactCached = await cache.match(req, { ignoreSearch: false });
+        if (exactCached) return exactCached;
+
+        if (self.navigator && self.navigator.onLine === false) {
+          const anyCached =
+            (await cache.match(req, { ignoreSearch: true })) ||
+            (await cache.match(url.pathname, { ignoreSearch: true }));
+          if (anyCached) return anyCached;
+        }
+
+        try {
+          const networkRes = await fetch(req);
+          if (networkRes && networkRes.status === 200) {
+            await cacheCleanResponse(cache, url.pathname + url.search, networkRes.clone());
+          }
+          return networkRes;
+        } catch (err) {
+          const retryCached =
+            (await cache.match(req, { ignoreSearch: true })) ||
+            (await cache.match(url.pathname, { ignoreSearch: true }));
+          if (retryCached) return retryCached;
+          throw err;
+        }
+      })()
+    );
+    return;
+  }
+
+  const acceptHeader = req.headers.get('accept') || '';
+  const isNavigation =
+    req.mode === 'navigate' ||
+    acceptHeader.includes('text/html') ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html');
+
+  // 3. For HTML navigation: Fast Network-First with timeout falling back to cached page or /offline.html
   if (isNavigation) {
     event.respondWith(
-      fetch(req, { cache: 'no-store' })
-        .then((res) => {
-          if (res && res.status === 200 && (res.type === 'basic' || res.type === 'default')) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE_NAME);
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
 
-          // 1. If user requested Subway Surfers (/subway or /subway.html)
-          if (url.pathname === '/subway' || url.pathname === '/subway.html' || url.pathname.includes('subway')) {
-            const subwayMatch = (await cache.match('/subway.html', { ignoreSearch: true })) || (await cache.match(req, { ignoreSearch: true }));
-            if (subwayMatch) return subwayMatch;
-          }
+        if (self.navigator && self.navigator.onLine === false) {
+          const exactOfflineMatch =
+            (await cache.match(req, { ignoreSearch: true })) ||
+            (await cache.match(url.pathname, { ignoreSearch: true }));
+          if (exactOfflineMatch) return exactOfflineMatch;
 
-          // 2. Check if the exact requested URL was previously cached
-          const exactMatch = (await cache.match(req, { ignoreSearch: true })) || (await cache.match(url.pathname, { ignoreSearch: true }));
-          if (exactMatch) return exactMatch;
+          const offlinePage = await cache.match(OFFLINE_URL, { ignoreSearch: true });
+          if (offlinePage) return offlinePage;
 
-          // 3. Check /offline.html
-          const offlineFallback = (await cache.match(OFFLINE_URL, { ignoreSearch: true })) || (await cache.match('/offline.html', { ignoreSearch: true }));
-          if (offlineFallback) return offlineFallback;
+          const subwayPage = await cache.match(SUBWAY_URL, { ignoreSearch: true });
+          if (subwayPage) return subwayPage;
 
-          // 4. Emergency rich offline fallback HTML
           return new Response(getEmergencyOfflineHtml(), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' }
           });
-        })
+        }
+
+        try {
+          const res = await fetchWithTimeout(req, 3500);
+          if (res && res.status === 200 && (res.type === 'basic' || res.type === 'default')) {
+            const copy = res.clone();
+            cache.put(req, copy).catch(() => {});
+            return res;
+          }
+          throw new Error('Non-200 navigation response: ' + (res ? res.status : 'null'));
+        } catch (err) {
+          const exactMatch =
+            (await cache.match(req, { ignoreSearch: true })) ||
+            (await cache.match(url.pathname, { ignoreSearch: true }));
+          if (exactMatch) return exactMatch;
+
+          const offlineFallback = await cache.match(OFFLINE_URL, { ignoreSearch: true });
+          if (offlineFallback) return offlineFallback;
+
+          const subwayFallback = await cache.match(SUBWAY_URL, { ignoreSearch: true });
+          if (subwayFallback) return subwayFallback;
+
+          return new Response(getEmergencyOfflineHtml(), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+          });
+        }
+      })()
     );
     return;
   }
 
-  // Static assets and 3D Game models/bundles: Cache-First for instant offline play
-  const isStaticOrSubway = STATIC_ASSETS.some(asset => url.pathname === asset || url.pathname === asset.split('?')[0]) || url.pathname.startsWith('/assets/games/subway/');
-  if (isStaticOrSubway) {
-    event.respondWith(
-      caches.match(req, { ignoreSearch: true }).then((cached) => {
+  // 4. General same-origin static assets fallback (JS, CSS, images, fonts, GLB)
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const res = await fetch(req);
+        if (res && res.status === 200 && (res.type === 'basic' || res.type === 'default')) {
+          cache.put(req, res.clone()).catch(() => {});
+        }
+        return res;
+      } catch (err) {
+        const cached =
+          (await cache.match(req, { ignoreSearch: true })) ||
+          (await cache.match(url.pathname, { ignoreSearch: true }));
         if (cached) return cached;
-        return fetch(req)
-          .then((networkRes) => {
-            if (networkRes && networkRes.status === 200) {
-              const copy = networkRes.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
-            }
-            return networkRes;
-          })
-          .catch(() => cached);
-      })
-    );
-    return;
-  }
+        throw err;
+      }
+    })()
+  );
 });

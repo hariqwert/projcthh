@@ -19,11 +19,24 @@ export interface UIHandlers {
 
 const ICON = {
   pause: '<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  home: '<svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg>',
   sound: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   muted: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   coin: '<span class="coin-ico"></span>',
 };
 const POWER_ICON: Record<PowerKind, string> = { magnet: '🧲', shoes: '👟', double: '×2', star: '★', jet: '🚀' };
+
+function navigateToPortalHome() {
+  if (!navigator.onLine && 'caches' in window) {
+    caches.match('/hero.html', { ignoreSearch: true }).then((cached) => {
+      window.location.href = cached ? '/hero.html' : '/offline.html';
+    }).catch(() => {
+      window.location.href = '/offline.html';
+    });
+    return;
+  }
+  window.location.href = '/hero.html';
+}
 
 export class UI {
   root: HTMLElement;
@@ -31,6 +44,7 @@ export class UI {
   screen: Screen = 'start';
   private hintTimer = 0;
   private toastTimer = 0;
+  private lastScreenChange = 0;
   touch = matchMedia('(pointer: coarse)').matches;
   private last = { score: -1, coins: -1, stars: -1, mult: -1, power: '' };
 
@@ -41,6 +55,7 @@ export class UI {
       <div class="hud" id="hud">
         <div class="hud-left">
           <button class="icon-btn" id="btn-pause" aria-label="pause" title="Pause Game">${ICON.pause}</button>
+          <button class="icon-btn" id="btn-hud-home" aria-label="home" title="Home Menu">${ICON.home}</button>
           <button class="icon-btn" id="btn-mute" aria-label="mute" title="Toggle Sound"></button>
         </div>
         <div class="hud-right">
@@ -85,6 +100,7 @@ export class UI {
             <button class="chip" id="btn-lang"></button>
             <button class="chip" id="btn-mute2"></button>
             <button class="chip" id="btn-fullscreen">⛶ Fullscreen</button>
+            <button class="chip" id="btn-portal-home">🏠 Exit to Portal</button>
           </div>
         </div>
       </section>
@@ -96,6 +112,7 @@ export class UI {
           <button class="big" id="btn-resume" data-k="resume">Resume Run</button>
           <button class="ghost" id="btn-restart" data-k="restart">Restart</button>
           <button class="ghost" id="btn-home" data-k="home">Main Menu</button>
+          <button class="ghost" id="btn-portal-exit">🏠 Exit to Portal</button>
         </div>
       </section>
 
@@ -116,6 +133,7 @@ export class UI {
             <button class="ghost" id="btn-leaderboard2" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px">🏆 Leaderboard</button>
             <button class="ghost" id="btn-home2" data-k="home" style="flex:1">Main Menu</button>
           </div>
+          <button class="ghost" id="btn-portal-exit2" style="width:100%">🏠 Exit to Portal</button>
         </div>
       </section>
 
@@ -195,7 +213,7 @@ export class UI {
       } catch {}
     };
 
-    // Ultra-reliable cross-platform tap handler: handles mouse click, touch, and pointer events
+    // Ultra-reliable cross-platform tap handler: prevents ghost clicks across screen transitions
     const tap = (id: string, fn: () => void) => {
       const btn = this.el[id] || document.getElementById(id);
       if (!btn) return;
@@ -208,23 +226,30 @@ export class UI {
         e.stopPropagation();
         if (handled) return;
         handled = true;
-        setTimeout(() => { handled = false; }, 120);
+        setTimeout(() => { handled = false; }, 280);
         vibrate();
         fn();
       };
 
       btn.addEventListener('pointerdown', (e) => e.stopPropagation());
       btn.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-      btn.addEventListener('pointerup', onTrigger);
+      btn.addEventListener('touchend', onTrigger, { passive: false });
       btn.addEventListener('click', onTrigger);
     };
 
-    tap('btn-play', () => h.play());
+    tap('btn-play', () => {
+      if (performance.now() - this.lastScreenChange < 250) return;
+      h.play();
+    });
     tap('btn-pause', () => h.pause());
+    tap('btn-hud-home', () => h.home());
     tap('btn-resume', () => h.resume());
     tap('btn-restart', () => h.restart());
     tap('btn-home', () => h.home());
     tap('btn-home2', () => h.home());
+    tap('btn-portal-home', () => navigateToPortalHome());
+    tap('btn-portal-exit', () => navigateToPortalHome());
+    tap('btn-portal-exit2', () => navigateToPortalHome());
     tap('btn-again', () => h.restart());
     tap('btn-mute', () => h.toggleMute());
     tap('btn-mute2', () => h.toggleMute());
@@ -238,6 +263,7 @@ export class UI {
       this.el['s-leaderboard']?.classList.add('on');
     });
     tap('btn-lb-close', () => {
+      this.lastScreenChange = performance.now();
       this.el['s-leaderboard']?.classList.remove('on');
     });
 
@@ -245,6 +271,7 @@ export class UI {
       this.el['s-controls']?.classList.add('on');
     });
     tap('btn-ctrl-close', () => {
+      this.lastScreenChange = performance.now();
       this.el['s-controls']?.classList.remove('on');
     });
 
@@ -253,6 +280,7 @@ export class UI {
       this.el['s-character']?.classList.add('on');
     });
     tap('btn-char-close', () => {
+      this.lastScreenChange = performance.now();
       this.el['s-character']?.classList.remove('on');
     });
 
@@ -271,15 +299,6 @@ export class UI {
       this.texts();
       h.langChanged();
     });
-
-    // Background panel tap handler to start run if clicked outside any button/chip
-    const handleStartBg = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('button, select, a, .chip, .big, .ghost, .icon-btn, .nav-btn, .lb-panel, .char-card')) return;
-      vibrate();
-      h.play();
-    };
-    this.el['s-start'].addEventListener('click', handleStartBg);
 
     this.setMuted(muted);
     this.texts();
@@ -337,15 +356,16 @@ export class UI {
   }
 
   show(s: Screen) {
+    this.lastScreenChange = performance.now();
     this.screen = s;
     this.root.dataset.screen = s;
 
-    // The top arcade navigation (Offline Center & Aetheris Portal) is ONLY visible when NOT playing the game
+    // The top arcade navigation (Home Portal & Offline Center) is visible whenever NOT actively playing
     const header = document.querySelector('.arcade-header') as HTMLElement;
     if (header) {
-      const isStart = (s === 'start');
-      header.classList.toggle('hidden', !isStart);
-      header.style.display = isStart ? 'flex' : 'none';
+      const showHeader = (s !== 'play');
+      header.classList.toggle('hidden', !showHeader);
+      header.style.display = showHeader ? 'flex' : 'none';
     }
 
     if (this.el['s-leaderboard']) this.el['s-leaderboard'].classList.remove('on');
@@ -356,7 +376,7 @@ export class UI {
       const el = this.el['s-' + k];
       if (el) el.classList.toggle('on', s === k);
     }
-    if (this.el.hud) this.el.hud.classList.toggle('on', s === 'play' || s === 'pause');
+    if (this.el.hud) this.el.hud.classList.toggle('on', s === 'play');
     if (s !== 'play') this.hint('');
     if (s === 'start') this.el['btn-play']?.focus({ preventScroll: true });
     if (s === 'over') this.el['btn-again']?.focus({ preventScroll: true });

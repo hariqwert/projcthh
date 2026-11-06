@@ -2,8 +2,9 @@ import axios from 'axios';
 import { URL } from 'url';
 
 // Dynamic Movies4u Mirror Registry & Auto-Discovery Engine
-export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new4.movies4u.garden/';
+export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new5.movies4u.garden/';
 export const MOVIES4U_COMPANION_INDEXES = [
+    'https://new5.movies4u.garden',
     'https://new4.movies4u.garden',
     'https://new3.movies4u.garden',
     'https://movies4u.cm',
@@ -13,7 +14,7 @@ export const MOVIES4U_COMPANION_INDEXES = [
 ];
 
 export let movies4uActiveMirrors: string[] = [
-    'https://new4.movies4u.garden',
+    'https://new5.movies4u.garden',
     'https://movies4u.cm'
 ];
 
@@ -39,12 +40,12 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
     }
 
     if (isDiscoveringMirrors) {
-        return { primary: movies4uActiveMirrors[0] || 'https://new4.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
+        return { primary: movies4uActiveMirrors[0] || 'https://new5.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
     }
 
     isDiscoveringMirrors = true;
     try {
-        const candidates = ['https://new4.movies4u.garden', 'https://movies4u.cm', 'https://new3.movies4u.garden', 'https://movies4u.ws'];
+        const candidates = ['https://new5.movies4u.garden', 'https://new4.movies4u.garden', 'https://movies4u.cm', 'https://new3.movies4u.garden', 'https://movies4u.ws'];
         const verified: string[] = [];
 
         await Promise.all(candidates.map(async (origin) => {
@@ -53,9 +54,12 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
                 const res = await axios.get(probeUrl, {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+                        'Referer': `${origin}/search.html?q=Inception`,
+                        'Sec-Fetch-Site': 'same-origin',
+                        'Sec-Fetch-Mode': 'cors',
                         'Accept': 'application/json, text/javascript, */*; q=0.01'
                     },
-                    timeout: 3000,
+                    timeout: 4000,
                     maxRedirects: 0,
                     validateStatus: (status) => status === 200
                 });
@@ -85,7 +89,7 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
         isDiscoveringMirrors = false;
     }
 
-    return { primary: movies4uActiveMirrors[0] || 'https://new4.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: false };
+    return { primary: movies4uActiveMirrors[0] || 'https://new5.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: false };
 }
 
 // Initial background startup discovery
@@ -114,7 +118,7 @@ export async function getDirectM3u8FromMorenciusId(fileIdOrUrl: string, mirrorOr
         const rawId = fileIdOrUrl.includes('/')
             ? (fileIdOrUrl.split('?')[0].split('#')[0].split('/').filter(Boolean).pop() || '')
             : fileIdOrUrl;
-        const refererUrl = mirrorOrigin || movies4uActiveMirrors[0] || 'https://new1.movies4u.garden/';
+        const refererUrl = mirrorOrigin || movies4uActiveMirrors[0] || 'https://new5.movies4u.garden/';
         
         // Prioritize active, highly-responsive domains (m4uplay.quest / vidhidefast / vidhidevip)
         const candidateEmbedUrls: string[] = [];
@@ -508,24 +512,21 @@ export async function resolveMovieHlsStream(params: {
 
     const queryWithEp = (mediaType === 'tv' && cleanBaseTitle) ? `${cleanBaseTitle} S${season} E${episode}` : (cleanBaseTitle || targetTitle);
 
-    // --- TIER 1: Morencius / Movies4u Direct M3U8 / Embed Resolution ---
+    // --- TIER 1: Morencius / Movies4u Direct M3U8 Resolution ---
     if (rawId && !/^\d+$/.test(rawId) && !rawId.startsWith('tt')) {
         try {
             const m3u8Data = await getDirectM3u8FromMorenciusId(rawId);
-            if (m3u8Data.ok) {
-                const embedUrl = m3u8Data.embedUrl || `https://m4uplay.quest/file/${m3u8Data.m4uId || rawId}`;
-                const playUrl = m3u8Data.m3u8Url
-                    ? `/play.php?url=${encodeURIComponent(m3u8Data.m3u8Url)}&name=${encodeURIComponent(queryWithEp || rawId)}&source=consumet.html`
-                    : `/play_media.html?url=${encodeURIComponent(embedUrl)}&title=${encodeURIComponent(queryWithEp || rawId)}`;
+            if (m3u8Data.ok && m3u8Data.m3u8Url) {
+                const proxiedStream = `/stream_proxy.php?url=${encodeURIComponent(m3u8Data.m3u8Url)}`;
                 return {
                     ok: true,
                     query: queryWithEp || rawId,
                     m4uId: m3u8Data.m4uId || rawId,
-                    embedUrl,
-                    m3u8Url: m3u8Data.m3u8Url || null,
+                    m3u8Url: m3u8Data.m3u8Url,
+                    subM3u8Url: proxiedStream,
                     subtitles: m3u8Data.subtitles || [],
                     duration: m3u8Data.duration,
-                    playUrl,
+                    playUrl: `/play.php?url=${encodeURIComponent(proxiedStream)}&name=${encodeURIComponent(queryWithEp || rawId)}&source=consumet.html`,
                     source: 'movies4u_direct'
                 };
             }
@@ -541,18 +542,18 @@ export async function resolveMovieHlsStream(params: {
                 try {
                     let targetPageUrl = '';
 
-                    // 1. Primary approach: Query new6 AJAX lookup.php endpoint
+                    // 1. Primary approach: Query AJAX lookup.php endpoint
                     try {
                         const lookupUrl = `${cleanBase}/lookup.php?q=${encodeURIComponent(searchQuery)}&page=1&per_page=15`;
                         const lookupRes = await axios.get(lookupUrl, {
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-                                'Referer': `${cleanBase}/?s=${encodeURIComponent(searchQuery)}`,
+                                'Referer': `${cleanBase}/search.html?q=${encodeURIComponent(searchQuery)}`,
                                 'Accept': 'application/json, text/javascript, */*; q=0.01',
                                 'Sec-Fetch-Site': 'same-origin',
                                 'Sec-Fetch-Mode': 'cors'
                             },
-                            timeout: 4000
+                            timeout: 4500
                         });
 
                         const hits = lookupRes.data?.hits;
@@ -581,6 +582,7 @@ export async function resolveMovieHlsStream(params: {
                         const searchRes = await axios.get(searchUrl, {
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+                                'Referer': `${cleanBase}/search.html?q=${encodeURIComponent(searchQuery)}`,
                                 'Accept': 'text/html,application/xhtml+xml'
                             },
                             timeout: 3500
@@ -597,7 +599,7 @@ export async function resolveMovieHlsStream(params: {
                         const pageRes = await axios.get(targetPageUrl, {
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-                                'Referer': `${cleanBase}/?s=${encodeURIComponent(searchQuery)}`
+                                'Referer': `${cleanBase}/search.html?q=${encodeURIComponent(searchQuery)}`
                             },
                             timeout: 4500
                         });
@@ -620,25 +622,23 @@ export async function resolveMovieHlsStream(params: {
                             const rawEmbed = selectBestMovies4uEmbed(embedMatches, pageHtml, mediaType === 'tv' ? episode : undefined, mediaType === 'tv' ? season : undefined);
                             const m3u8Data = await getDirectM3u8FromMorenciusId(rawEmbed, cleanBase);
                             const m4uId = m3u8Data.m4uId || rawEmbed.split('/').pop() || '';
-                            const embedUrl = m3u8Data.embedUrl || `https://m4uplay.quest/embed/${m4uId}`;
-                            const proxiedStream = (m3u8Data.m3u8Url && m3u8Data.m3u8Url.startsWith('http'))
-                                ? `/stream_proxy.php?url=${encodeURIComponent(m3u8Data.m3u8Url)}`
-                                : m3u8Data.m3u8Url;
-                            const playUrl = m3u8Data.m3u8Url
-                                ? `/play.php?url=${encodeURIComponent(proxiedStream)}&name=${encodeURIComponent(queryWithEp)}&source=consumet.html`
-                                : `/play_media.html?url=${encodeURIComponent(embedUrl)}&title=${encodeURIComponent(queryWithEp)}`;
-                            return {
-                                ok: true,
-                                query: queryWithEp,
-                                m4uId,
-                                embedUrl,
-                                m3u8Url: m3u8Data.m3u8Url || null,
-                                subM3u8Url: proxiedStream,
-                                subtitles: m3u8Data.subtitles || [],
-                                duration: m3u8Data.duration,
-                                playUrl,
-                                source: 'movies4u_search'
-                            };
+                            if (m3u8Data.m3u8Url) {
+                                const proxiedStream = (m3u8Data.m3u8Url && m3u8Data.m3u8Url.startsWith('http'))
+                                    ? `/stream_proxy.php?url=${encodeURIComponent(m3u8Data.m3u8Url)}`
+                                    : m3u8Data.m3u8Url;
+                                const playUrl = `/play.php?url=${encodeURIComponent(proxiedStream)}&name=${encodeURIComponent(queryWithEp)}&source=consumet.html`;
+                                return {
+                                    ok: true,
+                                    query: queryWithEp,
+                                    m4uId,
+                                    m3u8Url: m3u8Data.m3u8Url,
+                                    subM3u8Url: proxiedStream,
+                                    subtitles: m3u8Data.subtitles || [],
+                                    duration: m3u8Data.duration,
+                                    playUrl,
+                                    source: 'movies4u_direct_stream'
+                                };
+                            }
                         }
                     }
                 } catch(e) {}
@@ -762,13 +762,11 @@ export async function scrapeMovies4uCluster(params: {
         episode
     });
 
-    if (res && res.ok) {
+    if (res && res.ok && res.m3u8Url) {
         const directM3u8 = res.m3u8Url || '';
         const proxiedM3u8 = directM3u8 && directM3u8.startsWith('http')
             ? `/stream_proxy.php?url=${encodeURIComponent(directM3u8)}`
             : directM3u8;
-
-        const primaryStream = proxiedM3u8 || directM3u8;
 
         const sources: Array<{ url: string; quality: string; type: string; label: string; name: string; rawUrl?: string; proxyUrl?: string; referrer?: string; skipProxy?: boolean }> = [];
         // Prioritize ultra-fast direct CDN with open CORS (AceK CDN)
@@ -798,24 +796,13 @@ export async function scrapeMovies4uCluster(params: {
             });
         }
 
-        // Always provide embed source as fallback if res.embedUrl is available
-        if (res.embedUrl) {
-            sources.push({
-                url: res.embedUrl,
-                quality: '1080p Auto',
-                type: 'embed',
-                label: 'Movie 4U (Direct Embed Player)',
-                name: 'Movie 4U Embed'
-            });
-        }
-
         if (sources.length > 0) {
             return {
                 success: true,
                 serverId: 'm4u',
                 serverName: 'Movie 4U (Direct M3U8 / Multi-Audio)',
                 scraperName: 'Movie 4U',
-                primaryM3u8: directM3u8 || proxiedM3u8 || (sources[0].type === 'embed' ? undefined : sources[0].url),
+                primaryM3u8: directM3u8 || proxiedM3u8,
                 directM3u8: directM3u8 || undefined,
                 quality: '1080p',
                 sources,
@@ -825,5 +812,5 @@ export async function scrapeMovies4uCluster(params: {
         }
     }
 
-    throw new Error(`Movie 4U returned no stream for "${title || rawId}"`);
+    throw new Error(`Movie 4U returned no direct M3U8 stream for "${title || rawId}"`);
 }

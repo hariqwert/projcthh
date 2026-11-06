@@ -1408,6 +1408,24 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             <div class="text-[9px] text-zinc-400 font-normal truncate">Direct 720p/360p MP4</div>
                         </div>
                     </button>
+                    <button type="button" onclick="switchServerCluster('anivexa')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-purple-500/15 border border-purple-500/30 text-white hover:bg-purple-500/25">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                <span>Kitsune Anivexa</span>
+                                <span class="text-[9px] bg-purple-500/30 text-purple-200 px-1 py-0.5 rounded font-mono font-bold">1080p Engine</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Source Sub/Dub</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('reanime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-indigo-500/15 border border-indigo-500/30 text-white hover:bg-indigo-500/25">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                <span>ReAnime</span>
+                                <span class="text-[9px] bg-indigo-500/30 text-indigo-200 px-1 py-0.5 rounded font-mono font-bold">FlixCloud</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted HLS & Subs</div>
+                        </div>
+                    </button>
                     <button type="button" onclick="switchServerCluster('bing_anime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
                         <div class="truncate">
                             <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
@@ -2114,6 +2132,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                ));
         const ANIME_SPECIAL_SERVERS = [
             { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
+            { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' },
+            { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' },
             { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' },
             { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' },
             { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP' },
@@ -2608,7 +2628,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['megaplay_buzz', 'animepahe', 'anivexa', 'reanime', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
                     ? ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
                     : ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
@@ -4326,16 +4346,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    const animeAllowed = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    const animeAllowed = ['megaplay_buzz', 'anivexa', 'reanime', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
                     let list = isAnime 
                         ? data.servers.filter(s => animeAllowed.includes(s.id))
                         : data.servers;
-                    // Ensure megaplay_buzz and animepahe are unconditionally at the top of the server list
+                    // Ensure megaplay_buzz, anivexa, reanime, animepahe are unconditionally at the top of the server list
                     const hasMega = list.some(s => s.id === 'megaplay_buzz');
+                    const hasAnivexa = list.some(s => s.id === 'anivexa');
+                    const hasReanime = list.some(s => s.id === 'reanime');
                     const hasPahe = list.some(s => s.id === 'animepahe');
                     const prepend = [];
                     const hasBing = list.some(s => s.id === 'bing_anime');
                     if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });
+                    if (!hasAnivexa) prepend.push({ id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' });
+                    if (!hasReanime) prepend.push({ id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' });
                     if (!hasPahe) prepend.push({ id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' });
                     if (!hasBing) prepend.push({ id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' });
                     availableServers = [...prepend, ...list];

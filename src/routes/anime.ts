@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import anivexaRouter from './anivexa';
 import {
     searchAnimeSalt,
     resolveKitsuEnglishTitle,
@@ -22,6 +23,9 @@ import {
 } from '../services/tokyoInsiderService';
 
 const router = Router();
+
+// Mount Anivexa / Kitsune Anime Multi-Provider Scraper Engine
+router.use('/anivexa', anivexaRouter);
 
 // --- 1. Search Anime via AnimeSalt ---
 router.get('/search', async (req: Request, res: Response) => {

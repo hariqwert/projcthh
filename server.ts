@@ -5,6 +5,7 @@ import { JtvService } from './src/services/jtvService';
 import bingrRouter from './src/routes/bingr';
 import peakstreamRouter from "./src/routes/peakstream";
 import animeRouter from './src/routes/anime';
+import anivexaRouter from './src/routes/anivexa';
 import { streamicRouter } from './src/routes/streamic';
 import kisskhRouter from './src/routes/kisskhM3u';
 import asiaflixRouter from './src/routes/asiaflixM3u';
@@ -22,6 +23,7 @@ import { getCineProStreams, CINEPRO_PROVIDERS } from './src/services/cineproServ
 import cineproM3uRouter from './src/routes/cineproM3u';
 import nasaRouter from './src/routes/nasa';
 import express, { Request, Response, NextFunction } from 'express';
+import compression from 'compression';
 import { EventEmitter } from 'events';
 import { spawn, execFile } from 'child_process';
 import cors from 'cors';
@@ -414,14 +416,26 @@ const verifyAdminPassword = (password: string): boolean => {
 export let systemStatus: 'active' | 'offline' = 'active';
 export let features = systemState.features;
 
-// Load System Config from DB
+let _cachedAdminDb: any = null;
+let _cachedAdminDbTime = 0;
+
+// Load System Config from DB with high-speed in-memory cache
 function loadSystemConfig(overrideData: any = null) {
     const dbFile = path.join(process.cwd(), 'doctor_strange', 'admin_db.json');
     let db: any = {};
+    const now = Date.now();
     
-    if (fs.existsSync(dbFile)) {
+    if (overrideData) {
+        _cachedAdminDb = null;
+    }
+
+    if (!overrideData && _cachedAdminDb && (now - _cachedAdminDbTime < 1500)) {
+        db = _cachedAdminDb;
+    } else if (fs.existsSync(dbFile)) {
         try {
             db = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+            _cachedAdminDb = db;
+            _cachedAdminDbTime = now;
         } catch (e) {
             console.error('[SystemConfig] Failed to parse local admin_db.json:', e);
         }
@@ -1274,6 +1288,150 @@ const app = express();
 app.use(PerimeterDefenseShield.middleware());
 app.disable('x-powered-by');
 
+// High-speed HTTP payload compression (brotli/gzip) - accelerates all HTML, JSON, JS, CSS
+app.use(compression({
+    level: 6,
+    threshold: 1024,
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) return false;
+        const contentType = String(res.getHeader('Content-Type') || '').toLowerCase();
+        if (contentType.includes('video/') || contentType.includes('audio/') || contentType.includes('event-stream') || contentType.includes('application/octet-stream')) {
+            return false;
+        }
+        return compression.filter(req, res);
+    }
+}));
+
+// ==========================================================================
+// ANTI-KASPERSKY DEFENSE & HTML ACCELERATOR SYSTEM
+// 1. Permanently strips all Kaspersky Anti-Virus / KIS script injections
+// 2. Injects client-side Anti-Kaspersky Shield & MutationObserver in <head>
+// 3. Injects DNS preconnect hints for high-speed CDN loading
+// 4. Compresses all text/html/json/js payloads for instant page delivery
+// ==========================================================================
+export const ANTI_KASPERSKY_SHIELD_SNIPPET = `<script id="stalker-anti-kaspersky-shield">
+(function(){
+    'use strict';
+    try {
+        var noop = function(){};
+        var dummy = { isBlocked: true, run: noop, init: noop, check: noop, postMessage: noop, on: noop, emit: noop, ping: noop, pong: noop };
+        ['KasperskyLab', 'KIS', 'KAV', '__kaspersky', 'KasperskyAntiVirus'].forEach(function(k){
+            try {
+                Object.defineProperty(window, k, { get: function(){ return dummy; }, set: noop, configurable: false });
+            } catch(e){}
+        });
+    } catch(e){}
+
+    try {
+        var purgeKaspersky = function(n) {
+            if (!n || n.nodeType !== 1) return;
+            var s = (n.src || n.href || '').toLowerCase();
+            var t = (n.textContent || '').toLowerCase();
+            if (s.indexOf('kaspersky') !== -1 || s.indexOf('kis.v2') !== -1 || s.indexOf('28200') !== -1 || s.indexOf('28201') !== -1 ||
+                t.indexOf('kasperskylab') !== -1 || t.indexOf('kis.v2') !== -1 || (n.id && n.id.toLowerCase().indexOf('kaspersky') !== -1)) {
+                try {
+                    if (n.parentNode) n.parentNode.removeChild(n);
+                    else if (typeof n.remove === 'function') n.remove();
+                } catch(e){}
+            }
+        };
+        var obs = new MutationObserver(function(mutations){
+            for (var i = 0; i < mutations.length; i++){
+                var added = mutations[i].addedNodes;
+                for (var j = 0; j < added.length; j++) purgeKaspersky(added[j]);
+            }
+        });
+        obs.observe(document.documentElement || document, { childList: true, subtree: true });
+    } catch(e){}
+
+    try {
+        var _WS = window.WebSocket;
+        if (_WS) {
+            window.WebSocket = function(url, protocols) {
+                var u = String(url || '').toLowerCase();
+                if (u.indexOf('kaspersky') !== -1 || u.indexOf('28200') !== -1 || u.indexOf('28201') !== -1 || u.indexOf('kis.v2') !== -1) {
+                    return { close: noop, send: noop, addEventListener: noop, removeEventListener: noop };
+                }
+                return protocols ? new _WS(url, protocols) : new _WS(url);
+            };
+            window.WebSocket.prototype = _WS.prototype;
+        }
+    } catch(e){}
+})();
+</script>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://unpkg.com">`;
+
+export function sanitizeAndAccelerateHtml(html: string): string {
+    if (!html || typeof html !== 'string') return '';
+    let cleaned = html
+        .replace(/<script[^>]*kaspersky[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<script[^>]*kapersky[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<script[^>]*kis\.v2\.scr\.kaspersky-labs\.com[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<script[^>]*127\.0\.0\.1:2820\d[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<script[^>]*localhost:2820\d[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<link[^>]*kaspersky[^>]*>/gi, '')
+        .replace(/<link[^>]*kapersky[^>]*>/gi, '')
+        .replace(/<link[^>]*kis\.v2\.scr\.kaspersky-labs\.com[^>]*>/gi, '')
+        .replace(/<link[^>]*127\.0\.0\.1:2820\d[^>]*>/gi, '')
+        .replace(/<style[^>]*kaspersky[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<!--\s*kaspersky[\s\S]*?-->/gi, '')
+        .replace(/\sdata-(?:kav|kis|kaspersky)-[a-z0-9_-]+="[^"]*"/gi, '');
+
+    if (!cleaned.includes('stalker-anti-kaspersky-shield')) {
+        if (/<head[^>]*>/i.test(cleaned)) {
+            cleaned = cleaned.replace(/<head[^>]*>/i, (match) => `${match}\n${ANTI_KASPERSKY_SHIELD_SNIPPET}`);
+        } else if (/<html[^>]*>/i.test(cleaned)) {
+            cleaned = cleaned.replace(/<html[^>]*>/i, (match) => `${match}\n<head>${ANTI_KASPERSKY_SHIELD_SNIPPET}</head>`);
+        } else {
+            cleaned = `${ANTI_KASPERSKY_SHIELD_SNIPPET}\n${cleaned}`;
+        }
+    }
+
+    if (!cleaned.includes('watchdog.js') && !cleaned.includes('TRIPLE-LOCK SECURITY CITADEL') && !cleaned.includes('protected_admin')) {
+        if (cleaned.includes('</body>')) {
+            cleaned = cleaned.replace('</body>', '<script src="/watchdog.js" defer></script></body>');
+        }
+    }
+    return cleaned;
+}
+
+// Universal Outbound HTML Sanitizer & Accelerator Middleware (catches res.send and res.sendFile)
+app.use((req: Request, res: Response, next: NextFunction) => {
+    const origSend = res.send.bind(res);
+    res.send = function(body: any): Response {
+        const contentType = String(res.getHeader('Content-Type') || '').toLowerCase();
+        const isHtml = contentType.includes('text/html') || 
+            (typeof body === 'string' && (body.trimStart().startsWith('<!DOCTYPE') || body.trimStart().startsWith('<html') || body.includes('</head>') || body.includes('</body>')));
+        
+        if (isHtml && typeof body === 'string') {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            body = sanitizeAndAccelerateHtml(body);
+        }
+        return origSend(body);
+    };
+
+    const origSendFile = res.sendFile.bind(res);
+    (res as any).sendFile = function(filePath: string, options?: any, callback?: any) {
+        if (typeof filePath === 'string' && (filePath.endsWith('.html') || filePath.endsWith('.htm'))) {
+            try {
+                if (fs.existsSync(filePath)) {
+                    let content = fs.readFileSync(filePath, 'utf8');
+                    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                    return res.send(sanitizeAndAccelerateHtml(content));
+                }
+            } catch(e) {}
+        }
+        return origSendFile(filePath, options, callback);
+    };
+
+    next();
+});
+
 // ==========================================================================
 // ZERO-TRUST SOURCE CODE & SECRETS HARDENING FIREWALL
 // ==========================================================================
@@ -1282,11 +1440,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.removeHeader('X-Powered-By');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    
+    // Strict script-src allowlist blocking Kaspersky and unauthorized local proxy injectors
+    const cspScriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://challenges.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com https://ajax.googleapis.com https://code.jquery.com https://www.youtube.com https://s.ytimg.com https://*.google.com https://*.gstatic.com blob: data:;";
+
     if (req.path !== '/music.html' && req.path !== '/music' && req.path !== '/r.html' && req.path !== '/r' && req.path !== '/player.html' && !req.path.startsWith('/player/')) {
         res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-        res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: http://*.gstatic.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob: http://*.gstatic.com; frame-src 'self' https:;");
+        res.setHeader('Content-Security-Policy', `default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; ${cspScriptSrc} style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob: http://*.gstatic.com; frame-src 'self' https:;`);
     } else {
-        res.setHeader('Content-Security-Policy', "frame-ancestors *; default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: http://*.gstatic.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob: http://*.gstatic.com;");
+        res.setHeader('Content-Security-Policy', `frame-ancestors *; default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https: wss:; ${cspScriptSrc} style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https: wss: blob: http://*.gstatic.com;`);
     }
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -1596,6 +1758,10 @@ app.use((req, res, next) => {
                          req.path.startsWith('/sports.m3u') ||
                          req.path.startsWith('/api/sports') ||
                          req.path.startsWith('/consumet') ||
+                          req.path.startsWith('/api/anime') ||
+                          req.path.startsWith('/api/bingr') ||
+                          req.path.startsWith('/api/anivexa') ||
+                          req.path.startsWith('/anivexa') ||
                          req.path.startsWith('/api/play_stream') ||
                          req.path.startsWith('/api/resolve_stream') ||
                          req.path.startsWith('/playlist.php') ||
@@ -5364,11 +5530,9 @@ function handleShieldedScriptRequest(req: Request, res: Response, filePaths: str
         return res.status(404).type('application/javascript').send('/* [Citadel Shield] Asset not found */');
     }
 
-    // 3. Serve protected packed script with anti-cache & security headers
+    // 3. Serve protected packed script with optimal caching headers for speed
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
 
@@ -5439,10 +5603,24 @@ app.get(['/security_guard.js', '/public/security_guard.js', '/dist/security_guar
     ], 0x3b);
 });
 
-// Serve uploaded maintenance media files and static assets with HTTP range request support
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads'), { index: false }));
-app.use('/assets', express.static(path.join(process.cwd(), 'assets'), { index: false }));
-app.use(express.static(path.join(process.cwd(), 'public'), { index: false }));
+// High-speed static asset delivery with browser caching & ETags
+export const fastStaticAssetOptions = {
+    index: false,
+    maxAge: '1d',
+    etag: true,
+    lastModified: true,
+    setHeaders: (res: Response, filePath: string) => {
+        if (filePath.endsWith('.html') || filePath.endsWith('.php')) {
+            res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+        }
+    }
+};
+
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads'), fastStaticAssetOptions));
+app.use('/assets', express.static(path.join(process.cwd(), 'assets'), fastStaticAssetOptions));
+app.use(express.static(path.join(process.cwd(), 'public'), fastStaticAssetOptions));
 
 // Audio CORS Bypass Proxy Endpoint
 
@@ -9583,6 +9761,9 @@ app.use('/api/bingr', bingrRouter);
 app.use('/api/peakstream', peakstreamRouter);
 app.use('/api/anime', animeRouter);
 app.use('/api/anime-scraper', animeRouter);
+app.use('/api/anime/anivexa', anivexaRouter);
+app.use('/api/anivexa', anivexaRouter);
+app.use('/anivexa', anivexaRouter);
 app.use('/api/streamic', streamicRouter);
 app.use('/api/kisskh', kisskhRouter);
 app.use('/kisskh', kisskhRouter);
@@ -10667,19 +10848,7 @@ function getActivePortal(req?: Request) {
 
 // Outbound HTML sanitization to strip Kaspersky and unauthorized AV injections + ensure global watchdog
 export function sanitizeOutboundHtml(html: string): string {
-    if (!html || typeof html !== 'string') return '';
-    let cleaned = html
-        .replace(/<script[^>]*kaspersky[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<script[^>]*kis\.v2\.scr\.kaspersky-labs\.com[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<link[^>]*kaspersky[^>]*>/gi, '')
-        .replace(/<link[^>]*kis\.v2\.scr\.kaspersky-labs\.com[^>]*>/gi, '');
-
-    if (!cleaned.includes('watchdog.js') && !cleaned.includes('TRIPLE-LOCK SECURITY CITADEL') && !cleaned.includes('protected_admin')) {
-        if (cleaned.includes('</body>')) {
-            cleaned = cleaned.replace('</body>', '<script src="/watchdog.js"></script></body>');
-        }
-    }
-    return cleaned;
+    return sanitizeAndAccelerateHtml(html);
 }
 
 export function servePerimeterGate(reqOrRes: Request | Response, maybeRes?: Response) {
@@ -11281,30 +11450,23 @@ function servePhpFile(filePath: string, res: Response, replacements: Record<stri
     content = content.replace(/<\?php[\s\S]*?\?>/g, '');
     content = content.replace(/<\?=[\s\S]*?\?>/g, '');
 
-    // Strip local Kaspersky Anti-Virus script injections from being rendered
-    content = content.replace(/<script[^>]*kaspersky[^>]*>[\s\S]*?<\/script>/gi, '');
-    content = content.replace(/<script[^>]*kapersky[^>]*>[\s\S]*?<\/script>/gi, '');
-    content = content.replace(/<script[^>]*kis\.v2\.scr\.kaspersky-labs\.com[^>]*>[\s\S]*?<\/script>/gi, '');
-
-
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    // Always include Aetheris AI, Anti-Inspect Security Guard and Watchdog across ALL pages and players
+    // Always include Aetheris AI, Anti-Inspect Security Guard and Watchdog across ALL pages with defer for fast non-blocking parsing
     const aiScripts = `
     <link rel="stylesheet" href="/assets/local-ai.css?v=2.0">
-    <link rel="stylesheet" href="/local-ai.css?v=2.0">
-    <script src="/assets/local-ai.js?v=2.0"></script>
-    <script src="/local-ai.js?v=2.0"></script>
-    <script src="/security_guard.js?v=1.0"></script>
-    <script src="/watchdog.js" id="maintenance-watchdog"></script>
+    <script src="/assets/local-ai.js?v=2.0" defer></script>
+    <script src="/security_guard.js?v=1.0" defer></script>
+    <script src="/watchdog.js" id="maintenance-watchdog" defer></script>
     `;
     if (content.includes('</body>')) {
         content = content.replace('</body>', `${aiScripts}\n</body>`);
     } else {
         content += aiScripts;
     }
+    content = sanitizeAndAccelerateHtml(content);
     res.send(content);
 }
 
@@ -11335,9 +11497,9 @@ app.get('/local-ai.css', (req, res) => {
     res.sendFile(finalPath);
 });
 
-// Serve assets and public directory
-app.use('/assets', express.static(path.join(process.cwd(), 'assets')));
-app.use(express.static(path.join(process.cwd(), 'public'), { index: false }));
+// Serve assets and public directory with fastStaticAssetOptions
+app.use('/assets', express.static(path.join(process.cwd(), 'assets'), fastStaticAssetOptions));
+app.use(express.static(path.join(process.cwd(), 'public'), fastStaticAssetOptions));
 
 app.get(['/sw.js', '/service-worker.js'], (req, res) => {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');

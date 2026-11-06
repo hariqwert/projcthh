@@ -5,7 +5,8 @@ import path from 'path';
 import { URL } from 'url';
 import axios from 'axios';
 import nacl from 'tweetnacl';
-import { scrapeAnimeEpisode, resolveMalIdFromTitle, fetchAniSkipTimes, resolveZokoStream, resolveRavokStream } from './animeScraperService';
+import { scrapeAnimeEpisode, resolveMalIdFromTitle, fetchAniSkipTimes, resolveZokoStream, resolveRavokStream, fetchAniListEpisodes } from './animeScraperService';
+import { fetchAnivexaBestStream, fetchAnivexaWatch } from './anivexaService';
 import { resolveTokyoInsiderStream } from './tokyoInsiderService';
 import { resolveRareAnimeStream } from './rareAnimesService';
 import { scrapeMegaPlayAnime, getMegaPlayToken } from './megaPlayService';
@@ -307,6 +308,9 @@ export function normalizeServerId(rawSrv?: string): string | undefined {
         'bing_anime': 'bing_anime',
         'binganime': 'bing_anime',
         'bing-anime': 'bing_anime',
+        'anivexa': 'anivexa',
+        'kitsune': 'anivexa',
+        'reanime': 'reanime',
         'framex': 'framex',
         'framextv': 'framex',
         'polaris': 's70',
@@ -1578,6 +1582,8 @@ export const BINGR_SERVERS: BingrServerCluster[] = [
     { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL', priority: 1 },
     { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP', priority: 2 },
     { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP', priority: 3 },
+    { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p)', cc: 'JP', priority: 4 },
+    { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Subs)', cc: 'JP', priority: 5 },
     { id: 'moviebox', name: 'MovieBox Online (Direct CDN MP4)', cc: 'US', priority: 4 },
     { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP', priority: 5 },
     { id: 'hianime', name: 'HiAnime (MegaPlay Anime Scraper)', cc: 'JP', priority: 24 },
@@ -2857,6 +2863,73 @@ export async function scrapeBingrStream(params: {
                         console.warn('[BingrAnime] FrameX fallback notice:', e.message);
                     }
                 }
+
+                // Step D: Fallback to Anivexa / Kitsune Engine (ReAnime, Anikoto, Aniwaves, etc.)
+                if (sources.length === 0) {
+                    try {
+                        let aniId = anilistIdNum;
+                        if (!aniId && effectiveTitle) {
+                            const found = await fetchAniListEpisodes({ title: effectiveTitle }).catch(() => null);
+                            if (found && found.id) aniId = Number(found.id);
+                        }
+                        if (aniId) {
+                            const anivexaRes = await fetchAnivexaBestStream(aniId, e, 'sub');
+                            if (anivexaRes && anivexaRes.success && anivexaRes.streams.length > 0) {
+                                scraperName = `Bing Anime (Anivexa ${anivexaRes.provider.toUpperCase()} 1080p)`;
+                                sources = anivexaRes.streams.map((s: any) => ({
+                                    url: s.proxiedUrl || s.url,
+                                    rawUrl: s.url,
+                                    proxyUrl: s.proxiedUrl,
+                                    quality: '1080p',
+                                    type: 'application/x-mpegurl',
+                                    label: `Anivexa (${s.server}) ${s.audio.toUpperCase()}`,
+                                    name: `Anivexa | ${s.server} ${s.audio.toUpperCase()}`,
+                                    skipProxy: true
+                                }));
+                                subtitles = (anivexaRes.subtitles || []).map((sub: any) => ({
+                                    lang: sub.lang || sub.srclang || 'en',
+                                    label: sub.label || 'English',
+                                    url: sub.url || sub.file
+                                }));
+                            }
+                        }
+                    } catch (e: any) {
+                        console.warn('[BingrAnime] Anivexa fallback notice:', e.message);
+                    }
+                }
+            } else if (serverId === 'anivexa' || serverId === 'kitsune' || serverId === 'reanime') {
+                scraperName = 'Kitsune / Anivexa Engine (Multi-Provider 1080p)';
+                const effectiveTitle = requestedTitle || mediaTitle || '';
+                let aniId = params.anilistId ? Number(params.anilistId) : (type === 'anime' && tmdbId ? tmdbId : undefined);
+                if (!aniId && effectiveTitle) {
+                    const found = await fetchAniListEpisodes({ title: effectiveTitle }).catch(() => null);
+                    if (found && found.id) aniId = Number(found.id);
+                }
+                if (aniId) {
+                    const targetProv = serverId === 'reanime' ? 'reanime' : 'reanime';
+                    let anivexaRes = await fetchAnivexaWatch(targetProv, aniId, 'sub', e);
+                    if (!anivexaRes.success || anivexaRes.streams.length === 0) {
+                        anivexaRes = await fetchAnivexaBestStream(aniId, e, 'sub');
+                    }
+                    if (anivexaRes.success && anivexaRes.streams.length > 0) {
+                        scraperName = `Kitsune Anivexa (${anivexaRes.provider.toUpperCase()} 1080p)`;
+                        sources = anivexaRes.streams.map((s: any) => ({
+                            url: s.proxiedUrl || s.url,
+                            rawUrl: s.url,
+                            proxyUrl: s.proxiedUrl,
+                            quality: '1080p',
+                            type: 'application/x-mpegurl',
+                            label: `Kitsune ${s.server} (${s.audio.toUpperCase()})`,
+                            name: `Kitsune | ${s.server}`,
+                            skipProxy: true
+                        }));
+                        subtitles = (anivexaRes.subtitles || []).map((sub: any) => ({
+                            lang: sub.lang || sub.srclang || 'en',
+                            label: sub.label || 'English',
+                            url: sub.url || sub.file
+                        }));
+                    }
+                }
             } else if (serverId === 'megaplay' || serverId === 'hianime' || serverId === 'hianime_dub' || serverId === 'megaplay_dub') {
                 const isDubReq = serverId.includes('dub') || (params as any).dub === true || (params as any).type === 'dub';
                 if (!malId && (requestedTitle || mediaTitle)) {
@@ -3721,8 +3794,8 @@ export async function scrapeBingrStream(params: {
         }
 
         if (isAnimeTarget) {
-            // Tier 1: MegaPlay Buzz, AnimePahe, Bing Anime, TokyoInsider First Priority
-            const animePriorityTier = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
+            // Tier 1: MegaPlay Buzz, AnimePahe, Bing Anime, Anivexa, ReAnime, TokyoInsider First Priority
+            const animePriorityTier = ['megaplay_buzz', 'animepahe', 'anivexa', 'reanime', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
             successResult = await raceTierForDirectStream(animePriorityTier, 11000);
 
             // Tier 2: Specialized anime scrapers & multi-source hubs

@@ -14,6 +14,7 @@ export interface BoundDevice {
     status: 'authorized' | 'revoked' | 'banned';
     bannedUntil?: number;
     banReason?: string;
+    permanent?: boolean;
 }
 
 const BOUND_DEVICES_FILE = path.join(process.cwd(), 'doctor_strange', 'bound_devices.json');
@@ -22,7 +23,7 @@ const BANNED_DEVICES_FILE = path.join(process.cwd(), 'doctor_strange', 'banned_d
 // In-memory cache of bound devices
 let boundDevicesMap = new Map<string, BoundDevice>();
 // In-memory registry of device bans (by deviceId or deviceFingerprint)
-let bannedDevicesMap = new Map<string, { bannedUntil: number; reason: string; deviceId?: string; deviceFingerprint?: string }>();
+let bannedDevicesMap = new Map<string, { bannedUntil: number; reason: string; deviceId?: string; deviceFingerprint?: string; permanent?: boolean }>();
 
 function loadBannedDevices(): void {
     try {
@@ -37,7 +38,7 @@ function loadBannedDevices(): void {
             bannedDevicesMap.clear();
             const now = Date.now();
             for (const item of data) {
-                if (item && item.bannedUntil > now) {
+                if (item && (item.permanent || item.bannedUntil > now)) {
                     if (item.deviceId) bannedDevicesMap.set(item.deviceId, item);
                     if (item.deviceFingerprint) bannedDevicesMap.set(item.deviceFingerprint, item);
                 }
@@ -50,7 +51,9 @@ function loadBannedDevices(): void {
 
 function persistBannedDevices(): void {
     try {
-        const unique = Array.from(new Set(bannedDevicesMap.values()));
+        const now = Date.now();
+        const unique = Array.from(new Set(bannedDevicesMap.values()))
+            .filter(item => item && (item.permanent || item.bannedUntil > now));
         fs.writeFileSync(BANNED_DEVICES_FILE, JSON.stringify(unique, null, 2), 'utf8');
     } catch (e) {}
 }
@@ -178,16 +181,25 @@ export function isDeviceAuthorized(deviceId: string, fingerprint?: string): bool
 /**
  * Checks if a device ID or fingerprint is quarantined / banned
  */
-export function isDeviceBanned(deviceId?: string, fingerprint?: string): { banned: boolean; reason?: string; remainingSeconds?: number } {
+export function isDeviceBanned(deviceId?: string, fingerprint?: string): { banned: boolean; reason?: string; remainingSeconds?: number; permanent?: boolean } {
     const now = Date.now();
     const targets = [deviceId, fingerprint].filter(Boolean) as string[];
 
     for (const target of targets) {
         const record = bannedDevicesMap.get(target);
         if (record) {
+            if (record.permanent || record.bannedUntil === 0) {
+                return {
+                    banned: true,
+                    permanent: true,
+                    reason: record.reason,
+                    remainingSeconds: -1
+                };
+            }
             if (record.bannedUntil > now) {
                 return {
                     banned: true,
+                    permanent: false,
                     reason: record.reason,
                     remainingSeconds: Math.ceil((record.bannedUntil - now) / 1000)
                 };
@@ -201,16 +213,23 @@ export function isDeviceBanned(deviceId?: string, fingerprint?: string): { banne
 }
 
 /**
- * Bans a device ID and/or fingerprint for a specific duration (default 24h)
+ * Bans a device ID and/or fingerprint for a specific duration (default 24h) or permanently
  */
-export function banDevice(deviceId?: string, fingerprint?: string, reason: string = 'Brute Force Quarantine', durationMs: number = 24 * 60 * 60 * 1000): void {
+export function banDevice(
+    deviceId?: string, 
+    fingerprint?: string, 
+    reason: string = 'Brute Force Quarantine', 
+    durationMs: number = 24 * 60 * 60 * 1000,
+    permanent: boolean = false
+): void {
     const now = Date.now();
-    const bannedUntil = now + durationMs;
+    const bannedUntil = permanent ? 0 : now + durationMs;
     const banRecord = {
         bannedUntil,
         reason,
         deviceId,
-        deviceFingerprint: fingerprint
+        deviceFingerprint: fingerprint,
+        permanent: !!permanent
     };
 
     if (deviceId) {
@@ -220,6 +239,7 @@ export function banDevice(deviceId?: string, fingerprint?: string, reason: strin
             dev.status = 'banned';
             dev.bannedUntil = bannedUntil;
             dev.banReason = reason;
+            dev.permanent = !!permanent;
             persistBoundDevices();
         }
     }
@@ -228,7 +248,8 @@ export function banDevice(deviceId?: string, fingerprint?: string, reason: strin
     }
 
     persistBannedDevices();
-    console.warn(`[DEVICE BINDING] 🚫 DEVICE BANNED: ${deviceId || ''} / ${fingerprint ? fingerprint.slice(0, 16) + '...' : ''} for ${Math.round(durationMs / 60000)}m. Reason: ${reason}`);
+    const durDesc = permanent ? 'PERMANENTLY' : `for ${Math.round(durationMs / 60000)}m`;
+    console.warn(`[DEVICE BINDING] 🚫 DEVICE BANNED: ${deviceId || ''} / ${fingerprint ? fingerprint.slice(0, 16) + '...' : ''} ${durDesc}. Reason: ${reason}`);
 }
 
 /**
@@ -245,6 +266,7 @@ export function unbanDevice(deviceId?: string, fingerprint?: string): boolean {
             dev.status = 'authorized';
             delete dev.bannedUntil;
             delete dev.banReason;
+            delete dev.permanent;
             persistBoundDevices();
             unbanned = true;
         }
@@ -257,18 +279,19 @@ export function unbanDevice(deviceId?: string, fingerprint?: string): boolean {
 /**
  * List all active device bans
  */
-export function getAllBannedDevices(): Array<{ deviceId?: string; deviceFingerprint?: string; reason: string; remainingMinutes: number }> {
+export function getAllBannedDevices(): Array<{ deviceId?: string; deviceFingerprint?: string; reason: string; remainingMinutes: number; permanent?: boolean }> {
     const now = Date.now();
     const unique = Array.from(new Set(bannedDevicesMap.values()));
-    const results: Array<{ deviceId?: string; deviceFingerprint?: string; reason: string; remainingMinutes: number }> = [];
+    const results: Array<{ deviceId?: string; deviceFingerprint?: string; reason: string; remainingMinutes: number; permanent?: boolean }> = [];
 
     for (const record of unique) {
-        if (record.bannedUntil > now) {
+        if (record.permanent || record.bannedUntil > now) {
             results.push({
                 deviceId: record.deviceId,
                 deviceFingerprint: record.deviceFingerprint,
                 reason: record.reason,
-                remainingMinutes: Math.ceil((record.bannedUntil - now) / 60000)
+                permanent: !!record.permanent,
+                remainingMinutes: record.permanent ? -1 : Math.ceil((record.bannedUntil - now) / 60000)
             });
         }
     }

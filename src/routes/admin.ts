@@ -990,6 +990,15 @@ router.get('/perimeter/status', requireAdmin, (req: Request, res: Response) => {
     });
 });
 
+// GET /perimeter/export-blocklist - Export active blocked IPs for Fail2ban, iptables, nftables, or ipset
+router.get('/perimeter/export-blocklist', requireAdmin, (req: Request, res: Response) => {
+    const format = String(req.query.format || 'plain') as any;
+    const content = PerimeterDefenseShield.exportBlocklist(format);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `inline; filename="stalker_blocklist_${format}.txt"`);
+    res.send(content);
+});
+
 // POST /perimeter/unban - Unban an IP from dynamic firewall
 router.post('/perimeter/unban', requireAdmin, (req: Request, res: Response) => {
     const { ip } = req.body || {};
@@ -1000,20 +1009,20 @@ router.post('/perimeter/unban', requireAdmin, (req: Request, res: Response) => {
 
 // POST /perimeter/ban-ip - Manually ban an IP in Perimeter Defense
 router.post('/perimeter/ban-ip', requireAdmin, (req: Request, res: Response) => {
-    const { ip, reason = 'Manual Admin Quarantine', durationMinutes = 1440 } = req.body || {};
+    const { ip, reason = 'Manual Admin Quarantine', durationMinutes = 1440, permanent = false } = req.body || {};
     if (!ip) return res.status(400).json({ status: "error", message: "ip is required" });
-    PerimeterDefenseShield.banIp(String(ip), String(reason), Number(durationMinutes) * 60 * 1000);
-    return res.json({ status: "success", banned: true, ip, reason, durationMinutes });
+    PerimeterDefenseShield.banIp(String(ip), String(reason), Number(durationMinutes) * 60 * 1000, !!permanent);
+    return res.json({ status: "success", banned: true, ip, reason, durationMinutes, permanent: !!permanent });
 });
 
 // POST /perimeter/ban-mac - Manually ban a MAC address in Perimeter Defense
 router.post('/perimeter/ban-mac', requireAdmin, (req: Request, res: Response) => {
-    const { mac, reason = 'Manual Admin MAC Quarantine', durationMinutes = 1440 } = req.body || {};
+    const { mac, reason = 'Manual Admin MAC Quarantine', durationMinutes = 1440, permanent = false } = req.body || {};
     if (!mac) return res.status(400).json({ status: "error", message: "mac is required" });
     const norm = PerimeterDefenseShield.normalizeMac(String(mac));
     if (!norm) return res.status(400).json({ status: "error", message: "Invalid MAC format. Expecting 12 hex digits or XX:XX:XX:XX:XX:XX" });
-    PerimeterDefenseShield.banMac(norm, String(reason), Number(durationMinutes) * 60 * 1000);
-    return res.json({ status: "success", banned: true, mac: norm, reason, durationMinutes });
+    PerimeterDefenseShield.banMac(norm, String(reason), Number(durationMinutes) * 60 * 1000, !!permanent);
+    return res.json({ status: "success", banned: true, mac: norm, reason, durationMinutes, permanent: !!permanent });
 });
 
 // POST /perimeter/unban-mac - Unban a MAC address
@@ -1026,10 +1035,16 @@ router.post('/perimeter/unban-mac', requireAdmin, (req: Request, res: Response) 
 
 // POST /perimeter/ban-device - Manually ban a Hardware Device ID or Fingerprint
 router.post('/perimeter/ban-device', requireAdmin, (req: Request, res: Response) => {
-    const { deviceId, deviceFingerprint, reason = 'Manual Admin Device Quarantine', durationMinutes = 1440 } = req.body || {};
+    const { deviceId, deviceFingerprint, reason = 'Manual Admin Device Quarantine', durationMinutes = 1440, permanent = false } = req.body || {};
     if (!deviceId && !deviceFingerprint) return res.status(400).json({ status: "error", message: "deviceId or deviceFingerprint is required" });
-    PerimeterDefenseShield.banDevice(deviceId ? String(deviceId) : undefined, deviceFingerprint ? String(deviceFingerprint) : undefined, String(reason), Number(durationMinutes) * 60 * 1000);
-    return res.json({ status: "success", banned: true, deviceId, deviceFingerprint, reason, durationMinutes });
+    PerimeterDefenseShield.banDevice(
+        deviceId ? String(deviceId) : undefined, 
+        deviceFingerprint ? String(deviceFingerprint) : undefined, 
+        String(reason), 
+        Number(durationMinutes) * 60 * 1000,
+        !!permanent
+    );
+    return res.json({ status: "success", banned: true, deviceId, deviceFingerprint, reason, durationMinutes, permanent: !!permanent });
 });
 
 // POST /perimeter/unban-device - Unban a Hardware Device

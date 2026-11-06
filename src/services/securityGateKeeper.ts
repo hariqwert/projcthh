@@ -345,4 +345,33 @@ export class SecurityGateKeeper {
             return { valid: false };
         }
     }
+
+    /**
+     * Systematic garbage collection of stale attempt records to prevent in-memory map bloat
+     */
+    static sweepStaleMemory(): void {
+        const now = Date.now();
+        const purgeStale = (map: Map<string, AttemptRecord>) => {
+            for (const [key, record] of map.entries()) {
+                const isLockExpired = !record.lockedUntil || record.lockedUntil <= now;
+                const isWindowExpired = (now - record.lastAttemptAt) > ATTEMPT_WINDOW_MS;
+                if (isLockExpired && isWindowExpired) {
+                    map.delete(key);
+                }
+            }
+            // Enforce hard cap of 10,000 entries
+            if (map.size > 10000) {
+                let deleted = 0;
+                for (const key of map.keys()) {
+                    map.delete(key);
+                    deleted++;
+                    if (deleted >= 2500) break;
+                }
+            }
+        };
+
+        purgeStale(ipAttempts);
+        purgeStale(deviceAttempts);
+        purgeStale(macAttempts);
+    }
 }

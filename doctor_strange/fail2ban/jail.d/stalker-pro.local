@@ -1,0 +1,12 @@
+# Fail2ban jail for Stalker Pro 2.0 Perimeter Defense Shield
+# Path: /etc/fail2ban/jail.d/stalker-pro.local
+# Drops attacker IPs directly in Linux kernel (iptables / nftables / ipset)
+
+[stalker-pro]
+enabled   = true
+filter    = stalker-pro
+logpath   = %(doctor_strange_dir)s/perimeter_threats.log
+maxretry  = 1
+findtime  = 600
+bantime   = 86400
+banaction = iptables-multiport[name=StalkerPro, port="http,https,3000,8080,8090", protocol=tcp]

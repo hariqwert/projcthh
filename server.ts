@@ -1070,8 +1070,8 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
             if (inp) inp.value = currentPin;
             updateSlots();
 
-            // Auto-submit when Master 2FA PIN 2325 is entered or on 6 digits
-            if (currentPin === '2325' || currentPin.length === 6) {
+            // Auto-submit when 6-digit PIN is entered
+            if (currentPin.length === 6) {
                 setTimeout(function() {
                     submitUnlock();
                 }, 160);
@@ -1101,7 +1101,7 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
         function handleInputSync(val) {
             currentPin = String(val || '').slice(0, 6);
             updateSlots();
-            if (currentPin === '2325' || currentPin.length === 6) {
+            if (currentPin.length === 6) {
                 setTimeout(function() {
                     submitUnlock();
                 }, 160);
@@ -7567,10 +7567,8 @@ app.post('/api/system/verify-m3u-vault', async (req: Request, res: Response) => 
     const cleanPass = String(password || '').trim();
     const currentLockPass = String(systemState.siteLockPassword || '202012').trim();
 
-    // Verify passcode against Master Gate Key, site lock pass, admin master pass, or master PINs
-    const isValid = ['2008', '202012', '2325', '232512'].includes(cleanPass) ||
-                    verifyMasterPin(cleanPass, currentLockPass) ||
-                    verifyAdminPassword(cleanPass);
+    // Verify passcode strictly against current configured site lock PIN or admin master password
+    const isValid = verifyMasterPin(cleanPass, currentLockPass) || verifyAdminPassword(cleanPass);
 
     if (!isValid) {
         const fail = SecurityGateKeeper.recordFailure(clientIp, 'm3u_vault_pin', cleanPass.slice(0, 3) + '***', identifiers);

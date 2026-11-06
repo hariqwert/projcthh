@@ -91,19 +91,23 @@ loadBoundDevices();
 loadBannedDevices();
 
 /**
- * Verify if input PIN matches Master 2FA PINs or Configured Site Lock PIN
+ * Strictly verify if input PIN matches the configured Site Lock PIN
+ * Uses constant-time timing-safe comparison to prevent side-channel timing attacks.
+ * No hardcoded backdoors or secondary PIN bypasses.
  */
 export function verifyMasterPin(inputPin: string, configuredPin: string = '202012'): boolean {
     const cleanInput = String(inputPin || '').trim();
-    // Authorized Master 2FA PINs: 2325 (short), 232512 (extended), and current configured siteLockPassword
-    const allowedPins = [
-        '2325',
-        '232512',
-        String(configuredPin || '').trim(),
-        '202012'
-    ].filter(Boolean);
+    const targetPin = String(configuredPin || process.env.SITE_LOCK_PIN || '202012').trim();
 
-    return allowedPins.includes(cleanInput);
+    if (!cleanInput || !targetPin) return false;
+
+    if (cleanInput.length !== targetPin.length) return false;
+
+    try {
+        return crypto.timingSafeEqual(Buffer.from(cleanInput, 'utf8'), Buffer.from(targetPin, 'utf8'));
+    } catch {
+        return cleanInput === targetPin;
+    }
 }
 
 /**
@@ -147,34 +151,35 @@ export function bindDevice(params: {
 }
 
 /**
- * Verify if device is valid and bound
+ * Verify if device is valid and currently authorized
+ * Strict enforcement: Missing, revoked, or non-matching devices are strictly rejected.
+ * No automatic re-binding on unknown devices.
  */
 export function isDeviceAuthorized(deviceId: string, fingerprint?: string): boolean {
     if (!deviceId) return false;
-    // Check if device or fingerprint is banned
+
+    // 1. Check if device or fingerprint is banned in quarantine
     const banCheck = isDeviceBanned(deviceId, fingerprint);
     if (banCheck.banned) return false;
 
+    // 2. Lookup bound device registry
     let dev = boundDevicesMap.get(deviceId);
     if (!dev) {
         loadBoundDevices();
         dev = boundDevicesMap.get(deviceId);
     }
-    // If device is explicitly revoked or banned by admin, reject
-    if (dev && (dev.status === 'revoked' || dev.status === 'banned')) return false;
-    if (dev && fingerprint && dev.deviceFingerprint && dev.deviceFingerprint !== fingerprint) {
+
+    // 3. Reject if device is not in registry (must explicitly authenticate with valid PIN first)
+    if (!dev) return false;
+
+    // 4. Reject if device is explicitly revoked or banned
+    if (dev.status !== 'authorized') return false;
+
+    // 5. Reject if hardware fingerprint mismatch detected
+    if (fingerprint && dev.deviceFingerprint && dev.deviceFingerprint !== fingerprint) {
         return false;
     }
-    // If container restarted and bound_devices.json was ephemeral, auto-rebind valid signed token device
-    if (!dev && fingerprint) {
-        bindDevice({
-            deviceId,
-            deviceFingerprint: fingerprint,
-            deviceLabel: 'Restored Bound Device',
-            ip: '0.0.0.0',
-            userAgent: 'Restored Session'
-        });
-    }
+
     return true;
 }
 

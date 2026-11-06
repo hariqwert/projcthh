@@ -18,5 +18,15 @@
     "firstBoundAt": 1793635978067,
     "lastSeenAt": 1793635978067,
     "status": "authorized"
+  },
+  {
+    "deviceId": "test-legit-device-1793994665086",
+    "deviceLabel": "Legit Test Phone",
+    "deviceFingerprint": "legit-fp-1793994665086",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 Test",
+    "firstBoundAt": 1793994665086,
+    "lastSeenAt": 1793994665086,
+    "status": "revoked"
   }
 ]

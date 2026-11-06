@@ -55,6 +55,7 @@
     "tweetnacl": "^1.0.3",
     "typescript": "^7.0.2",
     "wreq-js": "^3.2.0",
+    "xz-decompress": "^0.2.3",
     "yt-search": "^2.13.1",
     "ytdl-core": "^4.11.5",
     "zustand": "4.5.5"

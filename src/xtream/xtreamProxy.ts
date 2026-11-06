@@ -8,7 +8,7 @@ import { spawn } from 'child_process';
 import { httpAgent, httpsAgent } from './xtreamAgent';
 import { XtreamAPI } from './XtreamAPI';
 import { StalkerAPI } from '../stalkerAPI';
-import { isSafeUrl } from '../proxy';
+import { isSafeUrl, isStreamingTargetAllowed } from '../proxy';
 
 function setXtreamCorsHeaders(res: Response) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -309,10 +309,51 @@ export async function handleXtreamStream(req: Request, res: Response) {
         if (xurl.length > 4096) {
             return res.status(400).send('Request parameter too large');
         }
-        const decodedUrl = xtreamDecode(xurl);
-        if (!await isSafeUrl(decodedUrl)) {
-            return res.status(403).send('Access Denied: Unsafe URL detected.');
+        let decodedUrl: string;
+        try {
+            decodedUrl = xtreamDecode(xurl);
+        } catch {
+            return res.status(400).send('Invalid xurl base64 encoding');
         }
+
+        let targetUrl: URL;
+        try {
+            targetUrl = new URL(decodedUrl);
+        } catch {
+            return res.status(400).send('Invalid decoded xurl target');
+        }
+
+        // 1. Strict SSRF check against private IP ranges and cloud metadata
+        if (!await isSafeUrl(decodedUrl)) {
+            return res.status(403).send('Access Denied: Unsafe or prohibited URL target.');
+        }
+
+        // 2. Strict Host Authorization: Must belong to active Xtream portal or approved streaming CDN
+        let isAuthorizedHost = false;
+        try {
+            const portalHost = new URL(account.portalUrl).hostname.toLowerCase();
+            const targetHost = targetUrl.hostname.toLowerCase();
+            if (targetHost === portalHost || targetHost.endsWith('.' + portalHost)) {
+                isAuthorizedHost = true;
+            }
+        } catch (_) {}
+
+        if (!isAuthorizedHost && !isStreamingTargetAllowed(targetUrl)) {
+            return res.status(403).send('Access Denied: Target host is not authorized for Xtream proxying.');
+        }
+
+        // 3. Strict Media Stream Content Type / Path Validation
+        const targetPath = targetUrl.pathname.toLowerCase();
+        const isMediaStream = /\.(m3u8|mpd|ts|m4s|mp4|mkv|aac|m4a|key)$/i.test(targetPath) ||
+                              targetPath.includes('/live/') ||
+                              targetPath.includes('/movie/') ||
+                              targetPath.includes('/series/') ||
+                              targetPath.includes('/hls/') ||
+                              targetPath.includes('/play/');
+        if (!isMediaStream) {
+            return res.status(403).send('Access Denied: Only authenticated media stream resources may be proxied.');
+        }
+
         return pipeDirectBinary(decodedUrl, req, res, api);
     }
 

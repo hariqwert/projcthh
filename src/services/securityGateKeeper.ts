@@ -6,6 +6,7 @@ import { JWT_SECRET, getClientIp } from '../middleware/auth';
 import fs from 'fs';
 import path from 'path';
 import { saveAndSyncAdminDB } from './firestoreSyncService';
+import { PerimeterDefenseShield } from './perimeterDefense';
 
 const DB_FILE = path.join(process.cwd(), 'doctor_strange', 'admin_db.json');
 
@@ -18,77 +19,157 @@ interface AttemptRecord {
 
 // In-memory sliding window failure tracking
 const ipAttempts = new Map<string, AttemptRecord>();
+const deviceAttempts = new Map<string, AttemptRecord>();
+const macAttempts = new Map<string, AttemptRecord>();
 
 // Max failed attempts before lockout
 const MAX_ATTEMPTS = 5;
 // Window for failed attempts (15 minutes)
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
-// Lockout duration (15 minutes)
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+// Lockout duration (24 hours quarantine upon exceeding max attempts)
+const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000;
 
 export class SecurityGateKeeper {
     /**
-     * Checks if an IP is currently locked out
+     * Checks if an IP or hardware device or MAC is currently locked out or banned
      */
-    static isIpLockedOut(ip: string): { locked: boolean; remainingSeconds: number } {
+    static isIpLockedOut(ip: string, identifiers?: { deviceId?: string; deviceFingerprint?: string; mac?: string }): { locked: boolean; remainingSeconds: number; reason?: string } {
         const cleanIp = (ip || '').replace('::ffff:', '').trim();
-        const record = ipAttempts.get(cleanIp);
-        if (!record) return { locked: false, remainingSeconds: 0 };
+
+        // 1. Check Perimeter Defense IP ban
+        const periIpBan = PerimeterDefenseShield.isIpBanned(cleanIp);
+        if (periIpBan.banned) {
+            return { locked: true, remainingSeconds: periIpBan.remainingSeconds || 86400, reason: periIpBan.reason };
+        }
+
+        // 2. Check MAC ban if provided
+        if (identifiers?.mac) {
+            const macBan = PerimeterDefenseShield.isMacBanned(identifiers.mac);
+            if (macBan.banned) {
+                return { locked: true, remainingSeconds: macBan.remainingSeconds || 86400, reason: `MAC Quarantine: ${macBan.reason}` };
+            }
+        }
+
+        // 3. Check Device ban if provided
+        if (identifiers?.deviceId || identifiers?.deviceFingerprint) {
+            const devBan = PerimeterDefenseShield.isDeviceBanned(identifiers.deviceId, identifiers.deviceFingerprint);
+            if (devBan.banned) {
+                return { locked: true, remainingSeconds: devBan.remainingSeconds || 86400, reason: `Device Quarantine: ${devBan.reason}` };
+            }
+        }
 
         const now = Date.now();
-        if (record.lockedUntil && record.lockedUntil > now) {
+
+        // 4. Check IP attempt record
+        const record = ipAttempts.get(cleanIp);
+        if (record && record.lockedUntil && record.lockedUntil > now) {
             const remainingSeconds = Math.ceil((record.lockedUntil - now) / 1000);
-            return { locked: true, remainingSeconds };
+            return { locked: true, remainingSeconds, reason: "Brute-force lockout active on IP" };
         }
 
-        // If lockout expired, reset
-        if (record.lockedUntil && record.lockedUntil <= now) {
-            ipAttempts.delete(cleanIp);
-            return { locked: false, remainingSeconds: 0 };
+        // 5. Check Device attempt record
+        if (identifiers?.deviceId) {
+            const devRec = deviceAttempts.get(identifiers.deviceId);
+            if (devRec && devRec.lockedUntil && devRec.lockedUntil > now) {
+                const remainingSeconds = Math.ceil((devRec.lockedUntil - now) / 1000);
+                return { locked: true, remainingSeconds, reason: "Brute-force lockout active on Hardware Device" };
+            }
         }
 
-        // Check if window has expired
-        if (now - record.firstAttemptAt > ATTEMPT_WINDOW_MS) {
-            ipAttempts.delete(cleanIp);
-            return { locked: false, remainingSeconds: 0 };
+        // 6. Check MAC attempt record
+        if (identifiers?.mac) {
+            const macRec = macAttempts.get(identifiers.mac);
+            if (macRec && macRec.lockedUntil && macRec.lockedUntil > now) {
+                const remainingSeconds = Math.ceil((macRec.lockedUntil - now) / 1000);
+                return { locked: true, remainingSeconds, reason: "Brute-force lockout active on MAC Address" };
+            }
         }
 
         return { locked: false, remainingSeconds: 0 };
     }
 
     /**
-     * Records a failed attempt for an IP across any gate
+     * Records a failed attempt across IP, Device, and MAC dimensions
      */
-    static recordFailure(ip: string, action: string, identifier?: string): { attempts: number; isLockedOut: boolean; lockoutSeconds: number } {
+    static recordFailure(
+        ip: string, 
+        action: string, 
+        identifier?: string,
+        identifiers?: { deviceId?: string; deviceFingerprint?: string; mac?: string }
+    ): { attempts: number; isLockedOut: boolean; lockoutSeconds: number } {
         const cleanIp = (ip || '').replace('::ffff:', '').trim();
         const now = Date.now();
-        let record = ipAttempts.get(cleanIp);
 
-        if (!record || (now - record.firstAttemptAt > ATTEMPT_WINDOW_MS && !record.lockedUntil)) {
-            record = {
-                count: 1,
-                firstAttemptAt: now,
-                lastAttemptAt: now
-            };
-        } else {
-            record.count += 1;
-            record.lastAttemptAt = now;
+        // Helper to update attempt buckets
+        const updateAttempt = (map: Map<string, AttemptRecord>, key: string): AttemptRecord => {
+            let rec = map.get(key);
+            if (!rec || (now - rec.firstAttemptAt > ATTEMPT_WINDOW_MS && !rec.lockedUntil)) {
+                rec = { count: 1, firstAttemptAt: now, lastAttemptAt: now };
+            } else {
+                rec.count += 1;
+                rec.lastAttemptAt = now;
+            }
+            map.set(key, rec);
+            return rec;
+        };
+
+        const ipRecord = updateAttempt(ipAttempts, cleanIp);
+        let maxCount = ipRecord.count;
+
+        if (identifiers?.deviceId) {
+            const devRec = updateAttempt(deviceAttempts, identifiers.deviceId);
+            if (devRec.count > maxCount) maxCount = devRec.count;
+        }
+        if (identifiers?.deviceFingerprint) {
+            const fpRec = updateAttempt(deviceAttempts, identifiers.deviceFingerprint);
+            if (fpRec.count > maxCount) maxCount = fpRec.count;
+        }
+        if (identifiers?.mac) {
+            const macRec = updateAttempt(macAttempts, identifiers.mac);
+            if (macRec.count > maxCount) maxCount = macRec.count;
         }
 
-        if (record.count >= MAX_ATTEMPTS) {
-            record.lockedUntil = now + LOCKOUT_DURATION_MS;
-            ipAttempts.set(cleanIp, record);
+        // If threshold reached, enforce multi-vector ban across IP, Device, and MAC
+        if (maxCount >= MAX_ATTEMPTS) {
+            const lockedUntil = now + LOCKOUT_DURATION_MS;
+            ipRecord.lockedUntil = lockedUntil;
+            ipAttempts.set(cleanIp, ipRecord);
 
-            // Persist security incident in DB
+            const banReason = `Brute Force Quarantine: ${maxCount} Failed Attempts on ${action}`;
+
+            // 1. IP Ban in Perimeter Defense (24h)
+            PerimeterDefenseShield.banIp(cleanIp, banReason, LOCKOUT_DURATION_MS);
+
+            // 2. Hardware Device Ban (24h)
+            if (identifiers?.deviceId || identifiers?.deviceFingerprint) {
+                if (identifiers.deviceId) {
+                    const devRec = deviceAttempts.get(identifiers.deviceId) || { count: maxCount, firstAttemptAt: now, lastAttemptAt: now };
+                    devRec.lockedUntil = lockedUntil;
+                    deviceAttempts.set(identifiers.deviceId, devRec);
+                }
+                PerimeterDefenseShield.banDevice(identifiers.deviceId, identifiers.deviceFingerprint, banReason, LOCKOUT_DURATION_MS);
+            }
+
+            // 3. MAC Address Ban (24h)
+            if (identifiers?.mac) {
+                const macRec = macAttempts.get(identifiers.mac) || { count: maxCount, firstAttemptAt: now, lastAttemptAt: now };
+                macRec.lockedUntil = lockedUntil;
+                macAttempts.set(identifiers.mac, macRec);
+                PerimeterDefenseShield.banMac(identifiers.mac, banReason, LOCKOUT_DURATION_MS);
+            }
+
+            // Persist incident in admin DB
             try {
                 if (fs.existsSync(DB_FILE)) {
                     const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
                     if (!db.incidents) db.incidents = [];
                     db.incidents.unshift({
                         ip: cleanIp,
+                        mac: identifiers?.mac,
+                        deviceId: identifiers?.deviceId,
                         username: identifier || action,
                         timestamp: now,
-                        reason: `Brute Force: ${record.count} Failed Attempts on ${action} (Locked out for 15 min)`
+                        reason: banReason
                     });
                     if (db.incidents.length > 50) db.incidents = db.incidents.slice(0, 50);
                     saveAndSyncAdminDB(db);
@@ -97,20 +178,21 @@ export class SecurityGateKeeper {
                 console.error('[GATE-KEEPER] Failed to save incident to DB:', err);
             }
 
-            console.error(`[CITADEL SECURITY] IP ${cleanIp} has exceeded ${MAX_ATTEMPTS} failed attempts on ${action}. LOCKED OUT for 15 minutes.`);
-            return { attempts: record.count, isLockedOut: true, lockoutSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000) };
+            console.error(`[PERIMETER DEFENSE] 🚫 BRUTE FORCE ENFORCEMENT: Quarantined IP ${cleanIp}, Device: ${identifiers?.deviceId || 'none'}, MAC: ${identifiers?.mac || 'none'} for 24 hours. (${action})`);
+            return { attempts: maxCount, isLockedOut: true, lockoutSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000) };
         }
 
-        ipAttempts.set(cleanIp, record);
-        return { attempts: record.count, isLockedOut: false, lockoutSeconds: 0 };
+        return { attempts: maxCount, isLockedOut: false, lockoutSeconds: 0 };
     }
 
     /**
      * Clears failure count on successful authentication
      */
-    static recordSuccess(ip: string): void {
+    static recordSuccess(ip: string, identifiers?: { deviceId?: string; mac?: string }): void {
         const cleanIp = (ip || '').replace('::ffff:', '').trim();
         ipAttempts.delete(cleanIp);
+        if (identifiers?.deviceId) deviceAttempts.delete(identifiers.deviceId);
+        if (identifiers?.mac) macAttempts.delete(identifiers.mac);
     }
 
     /**

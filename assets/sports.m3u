@@ -365,11 +365,9 @@ __HOSTURL__/live.php?url=https%3A%2F%2F932y4x26ljv8-hls-live.5centscdn.com%2Fvic
 #KODIPROP:inputstream.adaptive.license_type=clearkey
 #KODIPROP:inputstream.adaptive.license_key=843f85752e2954af864cde2858b94b07:5fb0421f5dd5b71a58fc2d98d2d4f8c0,a2c8b5715edd55bc8e36ab716d159140:0ea9f97a39ecdb94d701ddbf56cb6893,3e7dbec6224c5e1fba4ce631a91648c9:8c86df34c90c57c5400dfd161ca02a98,d7ef4c20ac365150b4773544faa07587:f8ff141b8e1cd71159b17f58487cf2e5,4f5964c9c3ce51f0a8571a1eb34a93d2:9a6b33496edfa58e9e27a95ebc0438e8
 __HOSTURL__/live.php?token=STALKER_PRO&id=mdtv-1641&m3u=1
-#EXTINF:-1 tvg-name="ENG | Eavion Eagles Vs Paratus Jets" tvg-logo="https://images.fancode.com/aig/match/v1793950443609/4250744_CASACARDS_SPORTY_APP.png" group-title="Fancode-Cricket",ENG | Eavion Eagles Vs Paratus Jets
-__HOSTURL__/live.php?url=https%3A%2F%2Fproxy-web-sage.vercel.app%2Fapi%2Flive-proxy%3Furl%3Dhttps%253A%252F%252Fdai-fancode.pages.dev%252Fmumbai%252F4250744_english_hls_81a1313bc412301_1ta-di_h264%252Findex.m3u8
 #EXTINF:-1 tvg-name="ENG | Court 1" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/Rolex-Paris-Masters_fc-web.jpg" group-title="Fancode-Cricket",ENG | Court 1
 __HOSTURL__/live.php?url=https%3A%2F%2Fproxy-web-sage.vercel.app%2Fapi%2Flive-proxy%3Furl%3Dhttps%253A%252F%252Fdai-fancode.pages.dev%252Fmumbai%252F4250564_english_hls_bebd41166254849_1ta-di_h264%252Findex.m3u8
-#EXTINF:-1 tvg-name="ENG | World Feed" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/Rolex-Paris-Masters_fc-web.jpg" group-title="Fancode-Cricket",ENG | World Feed
+#EXTINF:-1 tvg-name="ENG | Fritz Vs Alcaraz" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/Taylor-Fritz-vs-Carlos-Alcaraz_fc-web.jpg" group-title="Fancode-Cricket",ENG | Fritz Vs Alcaraz
 __HOSTURL__/live.php?url=https%3A%2F%2Fproxy-web-sage.vercel.app%2Fapi%2Flive-proxy%3Furl%3Dhttps%253A%252F%252Fdai-fancode.pages.dev%252Fmumbai%252F4250565_english_hls_acd6c8cd9352595_1ta-di_h264%252Findex.m3u8
 #EXTINF:-1 tvg-name="Lucknow Falcons Vs Meerut Mavericks" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/4248350_53029_MER_LCK_FC-Web.png" group-title="Fancode-Cricket",Lucknow Falcons Vs Meerut Mavericks
 __HOSTURL__/live.php?url=https%3A%2F%2Fproxy-web-sage.vercel.app%2Fapi%2Flive-proxy%3Furl%3Dhttps%253A%252F%252Fin-mc-flive.fancode.com%252Fmumbai%252F4248350_hindi_hls_a546ddcc9a88485_1ta-di_h264%252Findex.m3u8

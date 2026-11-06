@@ -998,6 +998,48 @@ router.post('/perimeter/unban', requireAdmin, (req: Request, res: Response) => {
     return res.json({ status: "success", unbanned: ok, ip });
 });
 
+// POST /perimeter/ban-ip - Manually ban an IP in Perimeter Defense
+router.post('/perimeter/ban-ip', requireAdmin, (req: Request, res: Response) => {
+    const { ip, reason = 'Manual Admin Quarantine', durationMinutes = 1440 } = req.body || {};
+    if (!ip) return res.status(400).json({ status: "error", message: "ip is required" });
+    PerimeterDefenseShield.banIp(String(ip), String(reason), Number(durationMinutes) * 60 * 1000);
+    return res.json({ status: "success", banned: true, ip, reason, durationMinutes });
+});
+
+// POST /perimeter/ban-mac - Manually ban a MAC address in Perimeter Defense
+router.post('/perimeter/ban-mac', requireAdmin, (req: Request, res: Response) => {
+    const { mac, reason = 'Manual Admin MAC Quarantine', durationMinutes = 1440 } = req.body || {};
+    if (!mac) return res.status(400).json({ status: "error", message: "mac is required" });
+    const norm = PerimeterDefenseShield.normalizeMac(String(mac));
+    if (!norm) return res.status(400).json({ status: "error", message: "Invalid MAC format. Expecting 12 hex digits or XX:XX:XX:XX:XX:XX" });
+    PerimeterDefenseShield.banMac(norm, String(reason), Number(durationMinutes) * 60 * 1000);
+    return res.json({ status: "success", banned: true, mac: norm, reason, durationMinutes });
+});
+
+// POST /perimeter/unban-mac - Unban a MAC address
+router.post('/perimeter/unban-mac', requireAdmin, (req: Request, res: Response) => {
+    const { mac } = req.body || {};
+    if (!mac) return res.status(400).json({ status: "error", message: "mac is required" });
+    const ok = PerimeterDefenseShield.unbanMac(String(mac));
+    return res.json({ status: "success", unbanned: ok, mac });
+});
+
+// POST /perimeter/ban-device - Manually ban a Hardware Device ID or Fingerprint
+router.post('/perimeter/ban-device', requireAdmin, (req: Request, res: Response) => {
+    const { deviceId, deviceFingerprint, reason = 'Manual Admin Device Quarantine', durationMinutes = 1440 } = req.body || {};
+    if (!deviceId && !deviceFingerprint) return res.status(400).json({ status: "error", message: "deviceId or deviceFingerprint is required" });
+    PerimeterDefenseShield.banDevice(deviceId ? String(deviceId) : undefined, deviceFingerprint ? String(deviceFingerprint) : undefined, String(reason), Number(durationMinutes) * 60 * 1000);
+    return res.json({ status: "success", banned: true, deviceId, deviceFingerprint, reason, durationMinutes });
+});
+
+// POST /perimeter/unban-device - Unban a Hardware Device
+router.post('/perimeter/unban-device', requireAdmin, (req: Request, res: Response) => {
+    const { deviceId, deviceFingerprint } = req.body || {};
+    if (!deviceId && !deviceFingerprint) return res.status(400).json({ status: "error", message: "deviceId or deviceFingerprint is required" });
+    const ok = PerimeterDefenseShield.unbanDevice(deviceId ? String(deviceId) : undefined, deviceFingerprint ? String(deviceFingerprint) : undefined);
+    return res.json({ status: "success", unbanned: ok, deviceId, deviceFingerprint });
+});
+
 // POST /maintenance - Update Maintenance Mode
 router.post('/maintenance', requireAdmin, (req: Request, res: Response) => {
     const db = getDB();
@@ -1545,17 +1587,27 @@ router.get('/gate-status', (req: Request, res: Response) => {
  * 0. Tier 1 Perimeter Gate Verification (Pre-Auth)
  */
 router.post('/gate-verify', async (req: Request, res: Response) => {
-    const { passcode, pin, password, turnstileResponse } = req.body;
+    const { passcode, pin, password, turnstileResponse, deviceId, deviceFingerprint } = req.body;
     const clientIp = getClientIp(req);
     const cleanPass = String(passcode || pin || password || '').trim();
 
-    // 1. Enforce Sliding-Window Lockout
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp);
+    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
+    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
+    const activeDevId = deviceId || extractedDev.deviceId;
+    const activeDevFp = deviceFingerprint || extractedDev.deviceFingerprint;
+    const identifiers = {
+        deviceId: activeDevId,
+        deviceFingerprint: activeDevFp,
+        mac: extractedMac || undefined
+    };
+
+    // 1. Enforce Sliding-Window Lockout across IP, Hardware Device, and MAC
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
     if (lockoutCheck.locked) {
         res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
         return res.status(423).json({
             status: "error",
-            message: `SECURITY LOCKOUT: Too many failed security attempts. Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
             retryAfter: lockoutCheck.remainingSeconds
         });
     }
@@ -1577,13 +1629,13 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
     // 2. Strict Turnstile Siteverify Verification
     const captchaResult = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
     if (!captchaResult.success) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_turnstile');
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_turnstile', undefined, identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         if (fail.isLockedOut) {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1613,7 +1665,7 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
 
     if (isValid) {
         console.log(`[PERIMETER-GATE] IP ${clientIp} successfully unlocked Perimeter Gate 1`);
-        SecurityGateKeeper.recordSuccess(clientIp);
+        SecurityGateKeeper.recordSuccess(clientIp, identifiers);
 
         const gateToken = jwt.sign(
             { ip: clientIp, role: 'perimeter_cleared' },
@@ -1633,7 +1685,7 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
             message: "Perimeter authorization granted."
         });
     } else {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_passcode');
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_passcode', cleanPass.slice(0, 2) + '***', identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         console.warn(`[SECURITY WARN] Perimeter Gate failure (${fail.attempts}/5) from IP: ${clientIp}`);
 
@@ -1641,7 +1693,7 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1657,16 +1709,25 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
  * 1. Admin Login Endpoint (IP-Bound with Strict Gate 1 Enforcement)
  */
 router.post('/login', async (req: Request, res: Response) => {
-    const { username, password, turnstileResponse } = req.body;
+    const { username, password, turnstileResponse, deviceId, deviceFingerprint } = req.body;
     const clientIp = getClientIp(req);
+    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
+    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
+    const activeDevId = deviceId || extractedDev.deviceId;
+    const activeDevFp = deviceFingerprint || extractedDev.deviceFingerprint;
+    const identifiers = {
+        deviceId: activeDevId,
+        deviceFingerprint: activeDevFp,
+        mac: extractedMac || undefined
+    };
 
-    // 1. Enforce Sliding-Window Lockout
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp);
+    // 1. Enforce Sliding-Window Lockout across IP, Hardware Device, and MAC
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
     if (lockoutCheck.locked) {
         res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
         return res.status(423).json({
             status: "error",
-            message: `SECURITY LOCKOUT: Too many failed security attempts. Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
             retryAfter: lockoutCheck.remainingSeconds
         });
     }
@@ -1674,7 +1735,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // 2. Strict Gate 1 Perimeter Verification (Cannot bypass Gate 1)
     const gate1Check = SecurityGateKeeper.verifyGate1(req);
     if (!gate1Check.valid) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_missing_perimeter');
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_missing_perimeter', undefined, identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         return res.status(403).json({
             status: "error",
@@ -1699,13 +1760,13 @@ router.post('/login', async (req: Request, res: Response) => {
     // 3. Strict Turnstile Siteverify Verification
     const captchaResult = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
     if (!captchaResult.success) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_turnstile');
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_turnstile', undefined, identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         if (fail.isLockedOut) {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP and Hardware Device for 24 hours.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1749,7 +1810,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     if (userMatches && isPasswordCorrect) {
         console.log(`[STAGE-1-SUCCESS] User "${cleanUsername}" passed credential check from ${clientIp}. Issuing 2FA challenge token.`);
-        SecurityGateKeeper.recordSuccess(clientIp);
+        SecurityGateKeeper.recordSuccess(clientIp, identifiers);
 
         const challengeToken = jwt.sign(
             { ip: clientIp, stage: '2fa_challenge', user: adminUser },
@@ -1764,7 +1825,7 @@ router.post('/login', async (req: Request, res: Response) => {
             message: "Stage 1 verification passed. Please enter your 6-digit Security PIN for Device Binding."
         });
     } else {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_login', cleanUsername);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_login', cleanUsername, identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
 
         console.warn(`[SECURITY WARN] Unauthorized login attempt (${fail.attempts}/5) from IP: ${clientIp} using Username: "${username}"`);
@@ -1773,7 +1834,7 @@ router.post('/login', async (req: Request, res: Response) => {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1789,16 +1850,25 @@ router.post('/login', async (req: Request, res: Response) => {
  * 1b. Stage 2: Two-Way Verification & Device Binding Endpoint (Strict Gate 1 & 2 Enforcement)
  */
 router.post('/verify-2fa', async (req: Request, res: Response) => {
-    const { challengeToken, pin, deviceFingerprint, turnstileResponse } = req.body;
+    const { challengeToken, pin, deviceFingerprint, deviceId, turnstileResponse } = req.body;
     const clientIp = getClientIp(req);
+    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
+    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
+    const activeDevId = deviceId || extractedDev.deviceId;
+    const activeDevFp = deviceFingerprint || extractedDev.deviceFingerprint;
+    const identifiers = {
+        deviceId: activeDevId,
+        deviceFingerprint: activeDevFp,
+        mac: extractedMac || undefined
+    };
 
     // 1. Enforce Sliding-Window Lockout
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp);
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
     if (lockoutCheck.locked) {
         res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
         return res.status(423).json({
             status: "error",
-            message: `SECURITY LOCKOUT: Too many failed security attempts. Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
             retryAfter: lockoutCheck.remainingSeconds
         });
     }
@@ -1806,7 +1876,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     // 2. Strict Gate 1 Perimeter Verification (Must still be active)
     const gate1Check = SecurityGateKeeper.verifyGate1(req);
     if (!gate1Check.valid) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_missing_perimeter');
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_missing_perimeter', undefined, identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         return res.status(403).json({
             status: "error",
@@ -1831,13 +1901,13 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     // 3. Strict Turnstile Siteverify Verification
     const captchaResult = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
     if (!captchaResult.success) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_turnstile');
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_turnstile', undefined, identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         if (fail.isLockedOut) {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP and Hardware Device for 24 hours.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1885,7 +1955,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     if (!isValidPin) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_pin');
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_pin', cleanPin.slice(0, 2) + '***', identifiers);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         console.warn(`[SECURITY WARN] Security PIN failure (${fail.attempts}/5) from IP: ${clientIp}`);
 
@@ -1893,7 +1963,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1905,7 +1975,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     // Reset failure tracking on full gate clearance
-    SecurityGateKeeper.recordSuccess(clientIp);
+    SecurityGateKeeper.recordSuccess(clientIp, identifiers);
 
     const adminUser = payload.user || (process.env.ADMIN_USER || 'hari').trim();
     // Device signature is stored as soft telemetry only

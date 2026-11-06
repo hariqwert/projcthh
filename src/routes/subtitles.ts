@@ -3,7 +3,9 @@ import express, { Request, Response } from 'express';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import zlib from 'zlib';
+import { XzReadableStream } from 'xz-decompress';
 import { resolveMalIdFromTitle, resolveZokoStream } from '../services/animeScraperService';
+import { fetchAnivexaWatch, fetchAnivexaBestStream } from '../services/anivexaService';
 
 const router = express.Router();
 
@@ -160,6 +162,26 @@ router.get('/vtt', async (req: Request, res: Response) => {
                 }
             } catch (zErr) {
                 console.warn('Zip decompression failed, trying text decode:', zErr);
+            }
+        }
+
+        if (!rawText) {
+            // Check if data is XZ compressed (e.g. from AnimeTosho: 0xfd 0x37 0x7a 0x58 0x5a)
+            if (buf.length > 6 && buf[0] === 0xfd && buf[1] === 0x37 && buf[2] === 0x7a && buf[3] === 0x58 && buf[4] === 0x5a) {
+                try {
+                    const u8 = new Uint8Array(buf);
+                    const stream = new ReadableStream({
+                        start(controller) {
+                            controller.enqueue(u8);
+                            controller.close();
+                        }
+                    });
+                    const decompressedStream = new XzReadableStream(stream);
+                    const resp = new Response(decompressedStream);
+                    rawText = await resp.text();
+                } catch (xzErr) {
+                    console.warn('XZ decompression failed, trying gzip/inflate:', xzErr);
+                }
             }
         }
 
@@ -575,44 +597,149 @@ async function fetchKitsunekkoMirror(query: string, season?: string, episode?: s
     return subs.slice(0, 35);
 }
 
-// 3. Anime Tosho Helper (Automated Anime Subtitles & Attachments)
-async function fetchAnimeTosho(query: string): Promise<any[]> {
+// 3. Anime Tosho Helper (Automated Anime Subtitles & Attachments via Official JSON Feed + Attachment Demux)
+async function fetchAnimeTosho(query: string, season?: string, episode?: string): Promise<any[]> {
     const subs: any[] = [];
     if (!query || !query.trim()) return subs;
 
     try {
         const cleanQuery = query.replace(/[\[\]\(\)\-\.]/g, ' ').replace(/\s+/g, ' ').trim();
-        const url = `https://animetosho.org/search?q=${encodeURIComponent(cleanQuery)}`;
+        const epNum = episode ? parseInt(episode, 10) : undefined;
+        const epStr = epNum !== undefined ? String(epNum).padStart(2, '0') : '';
+        const searchQuery = (season && episode) ? `${cleanQuery} S${season.padStart(2, '0')}E${epStr}` : (epNum !== undefined ? `${cleanQuery} ${epStr}` : cleanQuery);
+
+        const url = `https://feed.animetosho.net/json?q=${encodeURIComponent(searchQuery)}`;
         const res = await axios.get(url, {
             timeout: 6000,
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
             validateStatus: () => true
         });
 
-        if (res.status === 200 && typeof res.data === 'string') {
-            const $ = cheerio.load(res.data);
-            $('.home_list_entry').slice(0, 20).each((_, el) => {
-                const title = $(el).find('.link a').text().trim() || $(el).find('.link').text().trim();
-                const dlLink = $(el).find('a[href*=".torrent"], a[href*="storage"], a[href*="attach"]').attr('href');
-                if (title && dlLink) {
-                    const cleanT = cleanReleaseTitle(title);
-                    const lang = title.toLowerCase().includes('dual') || title.toLowerCase().includes('eng') ? 'English / Japanese' : 'Japanese';
-                    subs.push({
-                        id: `at-${Math.random().toString(36).substring(2, 8)}`,
-                        display: cleanT ? `${lang} (${cleanT.substring(0, 36)})` : lang,
-                        language: lang,
-                        langCode: lang.includes('English') ? 'en' : 'ja',
-                        url: `/api/subtitles/vtt?url=${encodeURIComponent(dlLink)}`,
-                        rawUrl: dlLink,
-                        format: 'ASS/SRT',
-                        source: 'External Subtitles'
+        if (res.status === 200 && Array.isArray(res.data) && res.data.length > 0) {
+            const topEntries = res.data.slice(0, 3);
+            for (const item of topEntries) {
+                if (!item.link) continue;
+                try {
+                    const viewRes = await axios.get(item.link, {
+                        timeout: 5000,
+                        headers: { 'User-Agent': 'Mozilla/5.0' },
+                        validateStatus: () => true
                     });
-                }
-            });
+                    if (viewRes.status === 200 && typeof viewRes.data === 'string') {
+                        const $ = cheerio.load(viewRes.data);
+                        $('a[href*="/subs/file/"]').each((_, a) => {
+                            const rawLabel = $(a).text().trim();
+                            const href = $(a).attr('href');
+                            if (!href) return;
+                            const fullUrl = href.startsWith('http') ? href : `https://animetosho.net${href}`;
+
+                            const lowLabel = rawLabel.toLowerCase();
+                            let langName = 'English';
+                            let langCode = 'en';
+
+                            if (lowLabel.includes('spa') || lowLabel.includes('latin') || lowLabel.includes('spanish')) {
+                                langName = 'Spanish'; langCode = 'es';
+                            } else if (lowLabel.includes('fre') || lowLabel.includes('french')) {
+                                langName = 'French'; langCode = 'fr';
+                            } else if (lowLabel.includes('ger') || lowLabel.includes('german') || lowLabel.includes('deu')) {
+                                langName = 'German'; langCode = 'de';
+                            } else if (lowLabel.includes('ita') || lowLabel.includes('italian')) {
+                                langName = 'Italian'; langCode = 'it';
+                            } else if (lowLabel.includes('por') || lowLabel.includes('brazilian') || lowLabel.includes('portuguese')) {
+                                langName = 'Portuguese'; langCode = 'pt';
+                            } else if (lowLabel.includes('ara') || lowLabel.includes('arabic')) {
+                                langName = 'Arabic'; langCode = 'ar';
+                            } else if (lowLabel.includes('ind') || lowLabel.includes('indonesian')) {
+                                langName = 'Indonesian'; langCode = 'id';
+                            } else if (lowLabel.includes('tha') || lowLabel.includes('thai')) {
+                                langName = 'Thai'; langCode = 'th';
+                            } else if (lowLabel.includes('vie') || lowLabel.includes('vietnamese')) {
+                                langName = 'Vietnamese'; langCode = 'vi';
+                            } else if (lowLabel.includes('rus') || lowLabel.includes('russian')) {
+                                langName = 'Russian'; langCode = 'ru';
+                            } else if (lowLabel.includes('jpn') || lowLabel.includes('japanese') || lowLabel.includes('ja')) {
+                                langName = 'Japanese'; langCode = 'ja';
+                            }
+
+                            const format = lowLabel.includes('srt') ? 'SRT' : 'ASS';
+                            const display = `${langName} (${rawLabel.replace(/\[.*?\]/g, '').trim() || 'AnimeTosho Full Sub'})`;
+
+                            subs.push({
+                                id: `at-${Math.random().toString(36).substring(2, 8)}`,
+                                display,
+                                language: langName,
+                                langCode,
+                                url: `/api/subtitles/vtt?url=${encodeURIComponent(fullUrl)}`,
+                                rawUrl: fullUrl,
+                                format,
+                                source: 'External Subtitles'
+                            });
+                        });
+                    }
+                } catch (_) {}
+            }
         }
     } catch (e: any) {
         console.warn('Anime Tosho fetch notice:', e?.message || e);
     }
+    return subs;
+}
+
+// 8. Kitsune / Anivexa Native Anime Subtitle Provider (Direct Multi-Language WebVTT/ASS Subtitles)
+async function fetchAnivexaSubtitles(query: string, episode?: string, malId?: string): Promise<any[]> {
+    const subs: any[] = [];
+    if (!query) return subs;
+
+    try {
+        const ep = episode ? parseInt(episode, 10) : 1;
+        let aniId: number | undefined;
+
+        if (malId && /^\d+$/.test(malId.trim())) {
+            aniId = parseInt(malId.trim(), 10);
+        }
+
+        if (!aniId) {
+            const resolved = await resolveMalIdFromTitle(query).catch(() => null);
+            if (resolved) aniId = Number(resolved);
+        }
+
+        if (aniId) {
+            const aniRes = await fetchAnivexaWatch('reanime', aniId, 'sub', ep).catch(() => null);
+            if (aniRes && aniRes.success && Array.isArray(aniRes.subtitles) && aniRes.subtitles.length > 0) {
+                aniRes.subtitles.forEach((s: any) => {
+                    const label = s.label || s.lang || 'English';
+                    const rawUrl = s.file || s.url;
+                    if (!rawUrl) return;
+
+                    const lowLabel = label.toLowerCase();
+                    let langCode = s.srclang || 'en';
+                    let langName = label;
+
+                    if (lowLabel.includes('english') || lowLabel.includes('eng')) { langName = 'English'; langCode = 'en'; }
+                    else if (lowLabel.includes('spanish') || lowLabel.includes('spa')) { langName = 'Spanish'; langCode = 'es'; }
+                    else if (lowLabel.includes('french') || lowLabel.includes('fre') || lowLabel.includes('fra')) { langName = 'French'; langCode = 'fr'; }
+                    else if (lowLabel.includes('german') || lowLabel.includes('ger') || lowLabel.includes('deu')) { langName = 'German'; langCode = 'de'; }
+                    else if (lowLabel.includes('portuguese') || lowLabel.includes('por')) { langName = 'Portuguese'; langCode = 'pt'; }
+                    else if (lowLabel.includes('italian') || lowLabel.includes('ita')) { langName = 'Italian'; langCode = 'it'; }
+                    else if (lowLabel.includes('arabic') || lowLabel.includes('ara')) { langName = 'Arabic'; langCode = 'ar'; }
+
+                    subs.push({
+                        id: `ani-${Math.random().toString(36).substring(2, 8)}`,
+                        display: `${langName} (${label})`,
+                        language: langName,
+                        langCode,
+                        url: s.url || `/api/subtitles/vtt?url=${encodeURIComponent(rawUrl)}`,
+                        rawUrl,
+                        format: rawUrl.endsWith('.ass') ? 'ASS' : 'VTT',
+                        source: 'External Subtitles'
+                    });
+                });
+            }
+        }
+    } catch (e: any) {
+        console.warn('[AnivexaSubtitles] Fetch notice:', e?.message || e);
+    }
+
     return subs;
 }
 
@@ -818,17 +945,22 @@ router.get('/fetch', async (req: Request, res: Response) => {
         tasks.push(fetchZokoAnimeSubtitles(title, season, episode, malId));
     }
 
-    // 5. Anime Tosho (Encode-Synced Anime Subtitle Releases)
+    // 5. Anime Tosho (Encode-Synced Anime Subtitle Releases & Demuxed ASS/SRT Attachments)
     if (provider === 'all' || provider === 'animetosho' || provider === 'anime') {
-        tasks.push(fetchAnimeTosho(title));
+        tasks.push(fetchAnimeTosho(title, season, episode));
     }
 
-    // 6. SubDL
+    // 6. Kitsune / Anivexa Native Anime Subtitles (FlixCloud / MegaCloud Soft Subs in 10+ Languages)
+    if (provider === 'all' || provider === 'anivexa' || provider === 'anime') {
+        tasks.push(fetchAnivexaSubtitles(title, episode, malId));
+    }
+
+    // 7. SubDL
     if (provider === 'all' || provider === 'subdl') {
         tasks.push(fetchSubDL(title, imdbId));
     }
 
-    // 7. MSone (Only when explicitly queried)
+    // 8. MSone (Only when explicitly queried)
     if (provider === 'msone') {
         tasks.push(fetchMSone(title));
     }
@@ -844,7 +976,7 @@ router.get('/fetch', async (req: Request, res: Response) => {
     subtitles = subtitles.map(s => {
         let cleanDisp = (s.display || '')
             .replace(/\[[^\]]*\]\s*/g, '')
-            .replace(/\((OpenSubs|OpenSubtitles|AnimeTosho|Kitsunekko|Kitsunekko Mirror|SubDL|MSone|Wyzie|YTS|YIFY)\)/gi, '')
+            .replace(/\((OpenSubs|OpenSubtitles|AnimeTosho|Kitsunekko|Kitsunekko Mirror|SubDL|MSone|Wyzie|YTS|YIFY|Anivexa)\)/gi, '')
             .trim();
         return {
             ...s,

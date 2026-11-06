@@ -4,7 +4,7 @@ import https from 'https';
 import { spawn, ChildProcess } from 'child_process';
 import { URL } from 'url';
 import { addStreamingIp, removeStreamingIp, shouldSendUserIp } from '../../server';
-import { isSafeUrl } from '../proxy';
+import { isSafeUrl, isStreamingTargetAllowed } from '../proxy';
 
 const router = Router();
 
@@ -160,8 +160,16 @@ function streamWithRedirects(
  * /api/internal-stream
  * Loop-back helper endpoint for custom M3U TS streams.
  * Hides upstream DNS/headers from FFmpeg and provides a clean MPEG-TS feed.
+ * STRICTLY RESTRICTED TO INTERNAL LOOPBACK CALLS ONLY.
  */
 router.get('/api/internal-stream', async (req: Request, res: Response) => {
+    // 1. Strict loopback restriction: block any external client from abusing internal stream relay
+    const rawIp = (req.socket.remoteAddress || req.ip || '').replace(/^::ffff:/, '').trim();
+    const isLoopback = rawIp === '127.0.0.1' || rawIp === '::1' || rawIp === 'localhost';
+    if (!isLoopback) {
+        return res.status(403).send('Forbidden: /api/internal-stream is strictly restricted to local internal processes.');
+    }
+
     const urlStr = (req.query.url as string || '').trim();
     const referer = (req.query.referer as string || '').trim();
     const userAgent = sanitizeUserAgent(req.query.userAgent);
@@ -177,7 +185,6 @@ router.get('/api/internal-stream', async (req: Request, res: Response) => {
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'video/mp2t');
-
 
     const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
     const cleanIp = Array.isArray(clientIp) ? clientIp[0] : (clientIp as string).replace('::ffff:', '');
@@ -215,9 +222,16 @@ router.get('/api/stream-proxy', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Missing stream URL' });
     }
 
-    if (!await isSafeStreamUrl(urlStr)) {
-        console.warn(`[CustomM3U stream-proxy] SSRF protection blocked URL: ${urlStr}`);
-        return res.status(403).json({ error: 'Forbidden stream URL destination' });
+    let parsedStreamUrl: URL;
+    try {
+        parsedStreamUrl = new URL(urlStr);
+    } catch {
+        return res.status(400).json({ error: 'Invalid stream URL format' });
+    }
+
+    if (!await isSafeStreamUrl(urlStr) || !isStreamingTargetAllowed(parsedStreamUrl)) {
+        console.warn(`[CustomM3U stream-proxy] SSRF or Unauthorized host blocked: ${urlStr}`);
+        return res.status(403).json({ error: 'Forbidden stream URL destination or unauthorized host' });
     }
 
     res.setHeader('Access-Control-Allow-Origin', '*');

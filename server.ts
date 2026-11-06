@@ -7387,10 +7387,41 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
     const { password, deviceId, deviceFingerprint, deviceLabel, publicKey, turnstileResponse } = req.body || {};
     const clientIp = getRequestClientIp(req);
 
+    // Multi-dimensional identification for brute force defense
+    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
+    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
+    const activeDeviceId = deviceId || extractedDev.deviceId;
+    const activeFingerprint = deviceFingerprint || extractedDev.deviceFingerprint;
+    const identifiers = {
+        deviceId: activeDeviceId,
+        deviceFingerprint: activeFingerprint,
+        mac: extractedMac || undefined
+    };
+
+    // 1. Enforce Perimeter Lockout across IP, Hardware Device, and MAC
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
+    if (lockoutCheck.locked) {
+        res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
+        return res.status(423).json({
+            status: "error",
+            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            retryAfter: lockoutCheck.remainingSeconds
+        });
+    }
+
     // Verify Cloudflare Turnstile CAPTCHA if configured
     if (SecurityGateKeeper.isTurnstileConfigured()) {
         const captchaRes = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
         if (!captchaRes.success) {
+            const fail = SecurityGateKeeper.recordFailure(clientIp, 'site_unlock_turnstile', undefined, identifiers);
+            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
+            if (fail.isLockedOut) {
+                return res.status(423).json({
+                    status: "error",
+                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                    retryAfter: fail.lockoutSeconds
+                });
+            }
             return res.status(400).json({
                 status: "error",
                 message: captchaRes.error || "Cloudflare Turnstile verification failed. Please complete the CAPTCHA."
@@ -7404,15 +7435,32 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
     // Verify against Master PIN 2FA (2325, 232512), configured PIN, or admin master password
     const isValid = verifyMasterPin(cleanPass, currentLockPass) || verifyAdminPassword(cleanPass);
     if (!isValid) {
-        logServerEvent('AUTH', `Failed unlock attempt with invalid PIN from IP ${clientIp}`, {
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'site_pin_lock', cleanPass.slice(0, 3) + '***', identifiers);
+        await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
+
+        logServerEvent('AUTH', `Failed unlock attempt with invalid PIN (${fail.attempts}/5) from IP ${clientIp}`, {
             ip: clientIp,
-            userAgent: req.headers['user-agent'] as string
+            userAgent: req.headers['user-agent'] as string,
+            deviceId: activeDeviceId,
+            mac: extractedMac || undefined
         });
+
+        if (fail.isLockedOut) {
+            return res.status(423).json({
+                status: "error",
+                message: "SECURITY LOCKOUT: Too many failed PIN attempts. Your IP, Hardware Device, and MAC address have been quarantined by Perimeter Defense for 24 hours.",
+                retryAfter: fail.lockoutSeconds
+            });
+        }
+
         return res.status(401).json({
             status: "error",
-            message: "Incorrect Master PIN or Passcode. Access denied."
+            message: `Incorrect Master PIN or Passcode. (${fail.attempts}/5 attempts used before quarantine)`
         });
     }
+
+    // Clear failed attempt tracking on successful PIN unlock
+    SecurityGateKeeper.recordSuccess(clientIp, identifiers);
 
     // Two-Way Identification: Bind hardware device signature for this specific client only
     let boundDevId = deviceId;
@@ -7471,13 +7519,44 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
 
 // Verify & Decrypt Stream M3U Vault (Ctrl+9 Stream Terminal in Players)
 app.post('/api/system/verify-m3u-vault', async (req: Request, res: Response) => {
-    const { password, turnstileResponse } = req.body || {};
+    const { password, turnstileResponse, deviceId, deviceFingerprint } = req.body || {};
     const clientIp = getRequestClientIp(req);
+
+    // Multi-dimensional identification for brute force defense
+    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
+    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
+    const activeDeviceId = deviceId || extractedDev.deviceId;
+    const activeFingerprint = deviceFingerprint || extractedDev.deviceFingerprint;
+    const identifiers = {
+        deviceId: activeDeviceId,
+        deviceFingerprint: activeFingerprint,
+        mac: extractedMac || undefined
+    };
+
+    // 1. Enforce Perimeter Lockout across IP, Hardware Device, and MAC
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
+    if (lockoutCheck.locked) {
+        res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
+        return res.status(423).json({
+            status: "error",
+            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            retryAfter: lockoutCheck.remainingSeconds
+        });
+    }
 
     // Verify Cloudflare Turnstile CAPTCHA if configured
     if (SecurityGateKeeper.isTurnstileConfigured()) {
         const captchaRes = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
         if (!captchaRes.success) {
+            const fail = SecurityGateKeeper.recordFailure(clientIp, 'vault_turnstile', undefined, identifiers);
+            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
+            if (fail.isLockedOut) {
+                return res.status(423).json({
+                    status: "error",
+                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                    retryAfter: fail.lockoutSeconds
+                });
+            }
             return res.status(400).json({
                 status: "error",
                 message: captchaRes.error || "Cloudflare Turnstile CAPTCHA verification failed. Please complete the CAPTCHA."
@@ -7494,12 +7573,31 @@ app.post('/api/system/verify-m3u-vault', async (req: Request, res: Response) => 
                     verifyAdminPassword(cleanPass);
 
     if (!isValid) {
-        logServerEvent('AUTH', `M3U Vault Access Denied for IP ${clientIp} - Invalid Passcode`, { ip: clientIp });
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'm3u_vault_pin', cleanPass.slice(0, 3) + '***', identifiers);
+        await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
+
+        logServerEvent('AUTH', `M3U Vault Access Denied (${fail.attempts}/5) for IP ${clientIp} - Invalid Passcode`, { 
+            ip: clientIp,
+            deviceId: activeDeviceId,
+            mac: extractedMac || undefined
+        });
+
+        if (fail.isLockedOut) {
+            return res.status(423).json({
+                status: "error",
+                message: "SECURITY LOCKOUT: Too many failed passcode attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                retryAfter: fail.lockoutSeconds
+            });
+        }
+
         return res.status(401).json({
             status: "error",
-            message: "ACCESS DENIED: Invalid Cryptographic Authorization Passcode."
+            message: `ACCESS DENIED: Invalid Cryptographic Authorization Passcode. (${fail.attempts}/5 attempts used)`
         });
     }
+
+    // Clear failure tracking on success
+    SecurityGateKeeper.recordSuccess(clientIp, identifiers);
 
     logServerEvent('AUTH', `M3U Stream Terminal Decrypted successfully by IP ${clientIp}`, { ip: clientIp });
     return res.json({
@@ -9009,6 +9107,12 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
         }
     }
 
+    // Strict header allowlist: only permit safe media streaming headers, stripping CRLF and forbidden headers
+    const ALLOWED_PIPE_HEADERS = new Set([
+        'user-agent', 'referer', 'origin', 'range', 'accept',
+        'accept-encoding', 'accept-language', 'x-playback-session-id',
+        'x-api-key', 'x-requested-with'
+    ]);
     let pipeHeaders: Record<string, string> = {};
     if (target.includes('|')) {
         const pipeIdx = target.indexOf('|');
@@ -9020,7 +9124,9 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
             if (eqIdx > 0) {
                 const k = decodeURIComponent(p.slice(0, eqIdx)).trim();
                 const v = decodeURIComponent(p.slice(eqIdx + 1)).trim();
-                pipeHeaders[k] = v;
+                if (ALLOWED_PIPE_HEADERS.has(k.toLowerCase()) && !v.includes('\r') && !v.includes('\n')) {
+                    pipeHeaders[k] = v;
+                }
             }
         }
     }
@@ -12365,6 +12471,25 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         const clientIp = Array.isArray(rawIp) ? rawIp[0] : (rawIp as string).split(',')[0].trim();
         const currentIp = clientIp.replace('::ffff:', '');
         
+        const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
+        const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
+        const identifiers = {
+            deviceId: extractedDev.deviceId,
+            deviceFingerprint: extractedDev.deviceFingerprint,
+            mac: extractedMac || undefined
+        };
+
+        // 1. Enforce Sliding-Window Lockout across IP, Hardware Device, and MAC
+        const lockoutCheck = SecurityGateKeeper.isIpLockedOut(currentIp, identifiers);
+        if (lockoutCheck.locked) {
+            res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
+            return res.status(423).json({
+                status: "error",
+                message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
+                retryAfter: lockoutCheck.remainingSeconds
+            });
+        }
+
         const username = (params.username || params.admin_user || params.user || '').toString().trim();
         const password = (params.password || params.admin_pass_input || params.pass || '').toString().trim();
 
@@ -12372,6 +12497,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         
         if (username && password && verifyAdminCredentials(username, password)) {
             console.log(`[AUTH] Admin login SUCCESS for IP: ${currentIp}`);
+            SecurityGateKeeper.recordSuccess(currentIp, identifiers);
             const token = jwt.sign({ role: 'admin', ip: currentIp, user: username }, JWT_SECRET, { expiresIn: '12h' });
             setSecureCookie(req, res, 'admin_auth', token, {
                 maxAge: 12 * 60 * 60 * 1000,
@@ -12380,7 +12506,21 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
             return res.json({ status: "success", session: "active", session_secret: token, token });
         } else {
             console.warn(`[AUTH] Admin login FAILED for IP: ${currentIp} - Invalid Credentials`);
-            return res.status(401).json({ status: "error", message: "Invalid Admin Username or Password" });
+            const fail = SecurityGateKeeper.recordFailure(currentIp, 'stalker_admin_login', username, identifiers);
+            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
+
+            if (fail.isLockedOut) {
+                return res.status(423).json({
+                    status: "error",
+                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                    retryAfter: fail.lockoutSeconds
+                });
+            }
+
+            return res.status(401).json({ 
+                status: "error", 
+                message: `Invalid Admin Username or Password (${fail.attempts}/5 attempts used before quarantine)` 
+            });
         }
     }
 
@@ -12389,6 +12529,25 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         const clientIp = Array.isArray(rawIp) ? rawIp[0] : (rawIp as string).split(',')[0].trim();
         const currentIp = clientIp.replace('::ffff:', '');
         
+        const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
+        const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
+        const identifiers = {
+            deviceId: extractedDev.deviceId,
+            deviceFingerprint: extractedDev.deviceFingerprint,
+            mac: extractedMac || undefined
+        };
+
+        // 1. Enforce Sliding-Window Lockout
+        const lockoutCheck = SecurityGateKeeper.isIpLockedOut(currentIp, identifiers);
+        if (lockoutCheck.locked) {
+            res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
+            return res.status(423).json({
+                status: "error",
+                message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
+                retryAfter: lockoutCheck.remainingSeconds
+            });
+        }
+
         const passcode = (params.passcode || params.pin || params.password || '').toString().trim();
         const gatePass = process.env.ADMIN_GATE_PASS || process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || '2008';
         const gatePassHash = process.env.ADMIN_PASS_HASH || '$2b$10$XU2SnQWK0eNdT0exkreSQONDlStSJRuwPJTYLc/KoxuKi3U3EGkLW';
@@ -12405,6 +12564,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         }
 
         if (isValid) {
+            SecurityGateKeeper.recordSuccess(currentIp, identifiers);
             const token = jwt.sign({ role: 'perimeter_cleared', ip: currentIp }, JWT_SECRET, { expiresIn: '24h' });
             setSecureCookie(req, res, 'admin_gate_auth', token, {
                 maxAge: 24 * 60 * 60 * 1000,
@@ -12412,7 +12572,21 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
             });
             return res.json({ status: "success", gate_token: token, message: "Perimeter authorization granted" });
         } else {
-            return res.status(401).json({ status: "error", message: "Invalid Perimeter Passcode" });
+            const fail = SecurityGateKeeper.recordFailure(currentIp, 'stalker_gate_verify', passcode.slice(0, 3) + '***', identifiers);
+            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
+
+            if (fail.isLockedOut) {
+                return res.status(423).json({
+                    status: "error",
+                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                    retryAfter: fail.lockoutSeconds
+                });
+            }
+
+            return res.status(401).json({ 
+                status: "error", 
+                message: `Invalid Perimeter Passcode (${fail.attempts}/5 attempts used before quarantine)` 
+            });
         }
     }
 
@@ -13464,9 +13638,28 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
 import zlib from 'zlib';
 
 app.get('/api/epg-proxy', async (req: Request, res: Response) => {
-    const epgUrl = req.query.url as string;
+    const epgUrl = (req.query.url as string || '').trim();
     if (!epgUrl) {
         return res.status(400).json({ error: 'url parameter is required' });
+    }
+
+    // 1. Strict SSRF check against private IP ranges, loopbacks, and cloud metadata
+    if (!await isSafeUrl(epgUrl)) {
+        return res.status(403).json({ error: 'Access Denied: Unsafe or prohibited EPG URL target' });
+    }
+
+    let parsedEpgUrl: URL;
+    try {
+        parsedEpgUrl = new URL(epgUrl);
+    } catch {
+        return res.status(400).json({ error: 'Invalid EPG URL format' });
+    }
+
+    // 2. Strict format validation: only permit XMLTV, GZ, and JSON EPG formats
+    const epgPath = parsedEpgUrl.pathname.toLowerCase();
+    const isEpgFormat = epgPath.endsWith('.xml') || epgPath.endsWith('.gz') || epgPath.endsWith('.json') || epgPath.includes('/epg') || epgPath.includes('xmltv');
+    if (!isEpgFormat) {
+        return res.status(403).json({ error: 'Access Denied: Target does not appear to be an EPG feed (.xml, .gz, .json, xmltv)' });
     }
 
     const CACHE_DIR = path.join(process.cwd(), 'cache_stalker');
@@ -13529,6 +13722,16 @@ app.get('/api/epg-json', async (req: Request, res: Response) => {
     }
     
     const urls = urlsStr.split(',').map(u => u.trim()).filter(Boolean);
+    if (urls.length === 0 || urls.length > 20) {
+        return res.status(400).json({ error: 'Provide between 1 and 20 EPG URLs' });
+    }
+
+    // SSRF Validation for all incoming EPG URLs
+    for (const u of urls) {
+        if (!await isSafeUrl(u)) {
+            return res.status(403).json({ error: `Access Denied: Unsafe EPG URL target: ${u}` });
+        }
+    }
     const hash = crypto.createHash('md5').update(urls.join(',')).digest('hex');
     const CACHE_DIR = path.join(process.cwd(), 'cache_stalker');
     if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
@@ -13699,11 +13902,21 @@ app.options('/xtream.php', (req, res) => {
 });
 // youtube mounted above
 
-// Per-IP rate limit on xurl proxy path (120 requests/min)
+// Per-IP rate limit and access enforcement on /xtream.php
 const _xtreamRateBuckets = new Map<string, { count: number; reset: number }>();
 app.use('/xtream.php', (req: Request, res: Response, next: any) => {
-    if (!req.query.xurl) return next(); // only rate-limit the open-proxy xurl path
-    const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim();
+    const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim().replace(/^::ffff:/, '');
+
+    // 1. If Site Lock is engaged, require valid authorization token or session
+    if (systemState.siteLockMode && !isSiteUnlocked(req) && !isAdminAuthenticated(req)) {
+        return res.status(423).json({
+            status: "locked",
+            error: "423 Locked: Quantum PIN Lock clearance required to access media proxy.",
+            locked: true
+        });
+    }
+
+    if (!req.query.xurl) return next(); // only rate-limit the stream proxy xurl path
     const now = Date.now();
     let bucket = _xtreamRateBuckets.get(ip);
     if (!bucket || now > bucket.reset) {
@@ -13713,7 +13926,8 @@ app.use('/xtream.php', (req: Request, res: Response, next: any) => {
     bucket.count++;
     if (bucket.count > 120) {
         res.setHeader('Retry-After', Math.ceil((bucket.reset - now) / 1000).toString());
-        return res.status(429).send('Too Many Requests');
+        PerimeterDefenseShield.banIp(ip, 'Excessive Xtream Proxy Requests (120 req/min limit exceeded)', 15 * 60 * 1000);
+        return res.status(429).send('429 Too Many Requests: Rate limit exceeded. Temporary cooldown engaged.');
     }
     // Prune old buckets every ~1000 requests
     if (_xtreamRateBuckets.size > 1000) {

@@ -433,6 +433,7 @@ const ALLOWED_STREAMING_DOMAINS = [
     'vidrift.in',
     'vidrift.net',
     'milkyway.cymru',
+    'animetosho.net',
     'swish.com',
     'smashystream.com',
     'filemoon.sx',
@@ -482,21 +483,40 @@ const ALLOWED_STREAMING_DOMAINS = [
 export function isStreamingTargetAllowed(targetUrl: URL): boolean {
     try {
         const host = targetUrl.hostname.toLowerCase();
+        
+        // Local loopback: only allow explicit server media routes, block arbitrary internal endpoints
         if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0') {
-            return true;
+            const safeLocalPaths = ['/live.php', '/api/mdtv/', '/api/live/', '/api/proxy/', '/stream_proxy.php', '/api/play_stream/'];
+            return safeLocalPaths.some(p => targetUrl.pathname.startsWith(p));
         }
-        if (host.endsWith('.space') || host.endsWith('.cymru')) {
-            return true;
-        }
+
+        // Check against strictly authorized streaming CDN domains and subdomains
         if (ALLOWED_STREAMING_DOMAINS.some(domain => host === domain || host.endsWith('.' + domain))) {
             return true;
         }
-        const pathAndQuery = (targetUrl.pathname + targetUrl.search).toLowerCase();
-        const isMediaFile = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key)(\?|&|$|%26|%3f)/i.test(pathAndQuery) ||
-            (/(?:seg-\d+|[a-f0-9]{32})\.(?:jpg|png|html|js|css|ts)/i.test(pathAndQuery));
-        if (isMediaFile) {
+
+        // Active Stalker / Xtream Portal hostname authorization
+        try {
+            const activeStalker = StalkerAPI.getActivePortal ? StalkerAPI.getActivePortal() : null;
+            if (activeStalker && activeStalker.URL) {
+                const portalHost = new URL(activeStalker.URL).hostname.toLowerCase();
+                if (host === portalHost || host.endsWith('.' + portalHost)) return true;
+            }
+        } catch (_) {}
+
+        // Enforce valid public media stream extension strictly on pathname (never search / query params)
+        const pathname = targetUrl.pathname.toLowerCase();
+        const isStrictMediaExtension = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key)$/i.test(pathname) ||
+            /(?:seg-\d+|[a-f0-9]{32})\.(?:ts|m4s|mp4)/i.test(pathname);
+
+        // Media files on standard web ports only
+        const port = targetUrl.port;
+        const isStandardPort = !port || port === '80' || port === '443' || port === '8080' || port === '8443' || port === '8880';
+
+        if (isStrictMediaExtension && isStandardPort && !isPrivateOrBlockedIp(host)) {
             return true;
         }
+
         return false;
     } catch {
         return false;

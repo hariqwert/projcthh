@@ -296,9 +296,10 @@ export async function fetchAnivexaWatch(
             if (sub?.kind === 'thumbnails' || fileUrl.includes('thumbnails')) continue;
             seenSubs.add(fileUrl);
             const label = sub?.label || sub?.lang || sub?.language || 'English';
+            const vttProxiedUrl = `/api/subtitles/vtt?url=${encodeURIComponent(fileUrl)}`;
             subtitles.push({
                 file: fileUrl,
-                url: fileUrl,
+                url: vttProxiedUrl,
                 label,
                 lang: label,
                 srclang: sub?.srclang || sub?.lang || 'en',

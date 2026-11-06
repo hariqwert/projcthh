@@ -431,6 +431,8 @@ const ALLOWED_STREAMING_DOMAINS = [
     'movies4u.quest',
     'acekem.cfd',
     'vidrift.in',
+    'vidrift.net',
+    'milkyway.cymru',
     'swish.com',
     'smashystream.com',
     'filemoon.sx',
@@ -483,7 +485,7 @@ export function isStreamingTargetAllowed(targetUrl: URL): boolean {
         if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0') {
             return true;
         }
-        if (host.endsWith('.space')) {
+        if (host.endsWith('.space') || host.endsWith('.cymru')) {
             return true;
         }
         if (ALLOWED_STREAMING_DOMAINS.some(domain => host === domain || host.endsWith('.' + domain))) {

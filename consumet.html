@@ -7337,7 +7337,7 @@ async function openBingrPlayer(item = null, epNum = null, triggerBtn = null) {
     const s = selectedSeason || 1;
     const e = selectedEpisode || 1;
     const queryTitle = (type === 'tv' || type === 'anime') ? `${rawTitle} S${s} E${e}` : rawTitle;
-    const defaultSrv = isAnime ? 'bing_anime' : 'm4u';
+    const defaultSrv = isAnime ? 'anivexa' : 's30';
     const imdbId = targetItem.imdb_id || targetItem.imdbId || (targetItem.external_ids && targetItem.external_ids.imdb_id) || (window._currentDetailsData && window._currentDetailsData.external_ids && window._currentDetailsData.external_ids.imdb_id) || '';
     const imdbParam = imdbId ? `&imdb=${encodeURIComponent(imdbId)}&imdbId=${encodeURIComponent(imdbId)}` : '';
     const malParam = malId ? `&malId=${encodeURIComponent(malId)}&mal_id=${encodeURIComponent(malId)}` : '';

@@ -81,6 +81,7 @@ export function getCdnHeaders(url?: string): CdnHeaders {
         lower.includes('embed.vidrift.in') ||
         lower.includes('vidrift.net') ||
         lower.includes('mb.vidrift.net') ||
+        lower.includes('milkyway.cymru') ||
         lower.includes('reelvault.click')
     ) {
         return {
@@ -1744,6 +1745,8 @@ export interface BingrStreamSource {
     skipProxy?: boolean;
     headers?: Record<string, string>;
     audioTracks?: any[];
+    isDub?: boolean;
+    audio?: string;
 }
 
 export interface BingrScrapeResult {
@@ -2907,27 +2910,72 @@ export async function scrapeBingrStream(params: {
                 }
                 if (aniId) {
                     const targetProv = serverId === 'reanime' ? 'reanime' : 'reanime';
-                    let anivexaRes = await fetchAnivexaWatch(targetProv, aniId, 'sub', e);
-                    if (!anivexaRes.success || anivexaRes.streams.length === 0) {
-                        anivexaRes = await fetchAnivexaBestStream(aniId, e, 'sub');
-                    }
-                    if (anivexaRes.success && anivexaRes.streams.length > 0) {
-                        scraperName = `Kitsune Anivexa (${anivexaRes.provider.toUpperCase()} 1080p)`;
-                        sources = anivexaRes.streams.map((s: any) => ({
+                    const isDubReq = (params as any).dub === true || (params as any).audio === 'dub' || (params as any).type === 'dub';
+
+                    // Fetch both sub and dub concurrently for instant dual-audio selection in player
+                    const [subRes, dubRes] = await Promise.all([
+                        fetchAnivexaWatch(targetProv, aniId, 'sub', e).then(r => (!r.success || r.streams.length === 0 ? fetchAnivexaBestStream(aniId, e, 'sub') : r)).catch(() => null),
+                        fetchAnivexaWatch(targetProv, aniId, 'dub', e).then(r => (!r.success || r.streams.length === 0 ? fetchAnivexaBestStream(aniId, e, 'dub') : r)).catch(() => null)
+                    ]);
+
+                    const primaryAudioRes = isDubReq ? (dubRes?.success && dubRes.streams.length > 0 ? dubRes : subRes) : (subRes?.success && subRes.streams.length > 0 ? subRes : dubRes);
+                    const secondaryAudioRes = primaryAudioRes === dubRes ? subRes : dubRes;
+
+                    if (primaryAudioRes && primaryAudioRes.success && primaryAudioRes.streams.length > 0) {
+                        scraperName = `Kitsune Anivexa (${primaryAudioRes.provider.toUpperCase()} 1080p)`;
+                        const isPrimaryDub = primaryAudioRes.audio === 'dub';
+
+                        // 1. Primary audio stream tracks
+                        sources = primaryAudioRes.streams.map((s: any) => ({
                             url: s.proxiedUrl || s.url,
                             rawUrl: s.url,
                             proxyUrl: s.proxiedUrl,
                             quality: '1080p',
                             type: 'application/x-mpegurl',
-                            label: `Kitsune ${s.server} (${s.audio.toUpperCase()})`,
-                            name: `Kitsune | ${s.server}`,
+                            label: `Kitsune ${s.server} [${isPrimaryDub ? 'English DUB' : 'Japanese SUB'}]`,
+                            name: `Kitsune | ${s.server} [${isPrimaryDub ? 'DUB' : 'SUB'}]`,
+                            language: isPrimaryDub ? 'English Dub' : 'Japanese Sub',
+                            isDub: isPrimaryDub,
                             skipProxy: true
                         }));
-                        subtitles = (anivexaRes.subtitles || []).map((sub: any) => ({
-                            lang: sub.lang || sub.srclang || 'en',
-                            label: sub.label || 'English',
-                            url: sub.url || sub.file
-                        }));
+
+                        // 2. Secondary audio stream tracks (allows user to switch between Japanese Sub and English Dub)
+                        if (secondaryAudioRes && secondaryAudioRes.success && secondaryAudioRes.streams.length > 0) {
+                            const isSecDub = secondaryAudioRes.audio === 'dub';
+                            secondaryAudioRes.streams.forEach((s: any) => {
+                                sources.push({
+                                    url: s.proxiedUrl || s.url,
+                                    rawUrl: s.url,
+                                    proxyUrl: s.proxiedUrl,
+                                    quality: '1080p',
+                                    type: 'application/x-mpegurl',
+                                    label: `Kitsune ${s.server} [${isSecDub ? 'English DUB' : 'Japanese SUB'}]`,
+                                    name: `Kitsune | ${s.server} [${isSecDub ? 'DUB' : 'SUB'}]`,
+                                    language: isSecDub ? 'English Dub' : 'Japanese Sub',
+                                    isDub: isSecDub,
+                                    skipProxy: true
+                                });
+                            });
+                        }
+
+                        // 3. Merged subtitles
+                        const allSubs = [
+                            ...(primaryAudioRes.subtitles || []),
+                            ...(secondaryAudioRes?.subtitles || [])
+                        ];
+                        const seenSubUrls = new Set<string>();
+                        subtitles = [];
+                        for (const sub of allSubs) {
+                            const u = sub.url || sub.file;
+                            if (u && !seenSubUrls.has(u)) {
+                                seenSubUrls.add(u);
+                                subtitles.push({
+                                    lang: sub.lang || sub.srclang || 'en',
+                                    label: sub.label || 'English',
+                                    url: u
+                                });
+                            }
+                        }
                     }
                 }
             } else if (serverId === 'megaplay' || serverId === 'hianime' || serverId === 'hianime_dub' || serverId === 'megaplay_dub') {
@@ -3513,6 +3561,7 @@ export async function scrapeBingrStream(params: {
                                              s.url.includes('amberandash.space') ||
                                              s.url.includes('opalescentorchard.space') ||
                                              s.url.includes('vidrift.net') ||
+                                             s.url.includes('milkyway.cymru') ||
                                              serverId === 's62' ||
                                              s.url.includes('dramahot.top') ||
                                              serverId === 'hianime' ||
@@ -3623,6 +3672,16 @@ export async function scrapeBingrStream(params: {
                     }
                     if (!durCheck.isValid) {
                         console.warn(`[BingrScraper] Duration warning on ${serverId}: ${durCheck.reason}`);
+                        if (!strictSrv && durCheck.actual && durCheck.expected && durCheck.actual < 15 && durCheck.expected >= 30) {
+                            attempts.push({
+                                serverId,
+                                serverName: serverMeta.name,
+                                status: 'duration_rejected',
+                                latencyMs,
+                                error: `Sample/clip rejected (${Math.round(durCheck.actual)}m vs expected ${durCheck.expected}m): ${durCheck.reason}`
+                            });
+                            return null;
+                        }
                     }
                 }
 
@@ -3794,20 +3853,40 @@ export async function scrapeBingrStream(params: {
         }
 
         if (isAnimeTarget) {
-            // Tier 1: MegaPlay Buzz, AnimePahe, Bing Anime, Anivexa, ReAnime, TokyoInsider First Priority
-            const animePriorityTier = ['megaplay_buzz', 'animepahe', 'anivexa', 'reanime', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
-            successResult = await raceTierForDirectStream(animePriorityTier, 11000);
+            // Priority 1: Check Anivexa / ReAnime directly first
+            const primaryAnime = await tryServer('anivexa');
+            if (primaryAnime && checkDirect(primaryAnime)) {
+                successResult = primaryAnime;
+            } else {
+                const reanimeRes = await tryServer('reanime');
+                if (reanimeRes && checkDirect(reanimeRes)) {
+                    successResult = reanimeRes;
+                }
+            }
 
-            // Tier 2: Specialized anime scrapers & multi-source hubs
+            // Priority 2: Race remaining specialized anime scrapers if Anivexa was unavailable
             if (!successResult) {
-                const animeTier = ['bing_anime', 'hianime', 'animesalt', 'aniembed', 'zanix', 'flux', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                const animePriorityTier = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
+                successResult = await raceTierForDirectStream(animePriorityTier, 11000);
+            }
+
+            // Priority 3: Fallback hubs
+            if (!successResult) {
+                const animeTier = ['aniembed', 'zanix', 'flux', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
                 successResult = await raceTierForDirectStream(animeTier, 5000);
             }
         } else if (type === 'movie') {
-            // Fast parallel race across prioritized movie sequence:
-            // vidlink, vidrift, m4u, filmu, two_embed, smashy, s62 (bastion), s80 (moscow), s30 (nova)
-            const moviePriorityServers = filterTier(['vidlink', 'vidrift', 'm4u', 'filmu', 'two_embed', 'smashy', 's62', 's80', 's30']);
-            successResult = await raceTierForDirectStream(moviePriorityServers, 11000);
+            // Priority 1: Check s30 (Nova / Prism - full 1080p feature film) directly first
+            const novaRes = await tryServer('s30');
+            if (novaRes && checkDirect(novaRes)) {
+                successResult = novaRes;
+            }
+
+            // Priority 2: Fast parallel race across prioritized movie sequence
+            if (!successResult) {
+                const moviePriorityServers = filterTier(['vidlink', 'vidrift', 'm4u', 'filmu', 'two_embed', 'smashy', 's62', 's80']);
+                successResult = await raceTierForDirectStream(moviePriorityServers, 11000);
+            }
 
             // Fallback: If top priority servers did not yield a direct stream, race the remaining movie servers
             if (!successResult) {

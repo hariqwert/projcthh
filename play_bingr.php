@@ -1910,8 +1910,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         const MEDIA_TITLE = urlParams.get('title') || urlParams.get('name') || (rawTitleFromPhp && !rawTitleFromPhp.includes('{{') ? rawTitleFromPhp : 'Cinema Presentation');
         let MEDIA_SEASON = parseInt(urlParams.get('s') || urlParams.get('season') || '<?php echo $s; ?>', 10) || 1;
         let MEDIA_EPISODE = parseInt(urlParams.get('e') || urlParams.get('episode') || '<?php echo $e; ?>', 10) || 1;
-        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || 'vidlink';
-        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61') CURRENT_SERVER = 'vidlink';
+        const isAnimeReq = MEDIA_TYPE === 'anime' || Boolean(urlParams.get('malId')) || Boolean(urlParams.get('anilistId'));
+        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || (isAnimeReq ? 'anivexa' : 's30');
+        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61' || !CURRENT_SERVER) CURRENT_SERVER = (isAnimeReq ? 'anivexa' : 's30');
         let DIRECT_STREAM_URL = urlParams.get('url') || '<?php echo addslashes($directUrl); ?>';
         if (DIRECT_STREAM_URL === '{{URL}}') DIRECT_STREAM_URL = '';
         const SOURCE_ORIGIN = urlParams.get('source') || '<?php echo addslashes($source); ?>' || 'consumet.html';
@@ -2131,9 +2132,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                    window.location.search.includes('srv=asiaflix')
                                ));
         const ANIME_SPECIAL_SERVERS = [
-            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
             { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' },
             { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' },
+            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
             { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' },
             { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' },
             { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP' },
@@ -2155,27 +2156,21 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         if (isAnimeContent) {
             const animeIds = ANIME_SPECIAL_SERVERS.map(s => s.id);
             if (!CURRENT_SERVER || !animeIds.includes(CURRENT_SERVER)) {
-                CURRENT_SERVER = 'megaplay_buzz';
+                CURRENT_SERVER = 'anivexa';
             }
         }
 
         const DEFAULT_SERVERS = isAnimeContent ? ANIME_SPECIAL_SERVERS : [
-            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
-            { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' },
-            { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' },
-            { id: 'tokyoinsider', name: 'TokyoInsider (Direct 1080p MP4 / High-Speed CDN)', cc: 'JP' },
-            { id: 'moviebox', name: 'MovieBox Online (Direct CDN MP4)', cc: 'US' },
+            { id: 's30', name: 'Nova (Direct Fast HLS / Prism 1080p)', cc: 'US' },
             { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US' },
             { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN' },
             { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN' },
+            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
             { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted)', cc: 'IN' },
             { id: 'two_embed', name: '2Embed (Swish / 2vCDN Direct HLS)', cc: 'US' },
-            { id: 'zanix', name: 'Zanix Anime (FlixEra & NovusCloud)', cc: 'TR' },
-            { id: 'flux', name: 'Flux (VidBinge & SudoFlix Direct HLS)', cc: 'US' },
             { id: 'smashy', name: 'SmashyStream (Multi-Host / Filemoon & Wish HLS)', cc: 'US' },
             { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN' },
             { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US' },
-            { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US' },
             { id: 's31', name: 'Orion (Worker CDN Direct)', cc: 'US' },
             { id: 'sm_hub', name: 'SM Movie Hub Pro (Direct VOD/MKV/Dual Audio)', cc: 'BD' },
             { id: 's70', name: 'Polaris (Multi-Language Dubs / HLS)', cc: 'US' },
@@ -2419,7 +2414,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     season: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_SEASON : undefined,
                     episode: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_EPISODE : undefined,
                     srv: serverId,
-                    strictSrv: isManual,
+                    strictSrv: isManual || Boolean(urlParams.get('srv')),
                     malId: MAL_ID || undefined,
                     anilistId: ANILIST_ID || undefined
                 };
@@ -2628,10 +2623,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['megaplay_buzz', 'animepahe', 'anivexa', 'reanime', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
-                    ? ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
-                    : ['vidlink', 'vidrift', 'two_embed', 'flux', 'm4u', 'filmu', 's62', 's80', 's30', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
+                    ? ['s30', 'vidlink', 'vidrift', 'm4u', 'two_embed', 'flux', 'filmu', 's62', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
+                    : ['s30', 'vidlink', 'vidrift', 'm4u', 'two_embed', 'flux', 'filmu', 's62', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
             // Find next unattempted direct server in priority sequence (never stuck on failed servers)
             const nextServer = fallbackOrder.find(srv => !failedServers.has(srv));
             if (nextServer) {

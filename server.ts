@@ -1761,6 +1761,7 @@ app.use((req, res, next) => {
                           req.path.startsWith('/api/anime') ||
                           req.path.startsWith('/api/bingr') ||
                           req.path.startsWith('/api/anivexa') ||
+                          req.path.startsWith('/api/subtitles') ||
                           req.path.startsWith('/anivexa') ||
                          req.path.startsWith('/api/play_stream') ||
                          req.path.startsWith('/api/resolve_stream') ||
@@ -8579,7 +8580,7 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         headers['User-Agent'] = 'VLC/3.0.20 LibVLC/3.0.20';
         delete headers['Referer'];
         delete headers['Origin'];
-    } else if (u.hostname.includes('reelvault') || u.hostname.includes('vidrift')) {
+    } else if (u.hostname.includes('reelvault') || u.hostname.includes('vidrift') || u.hostname.includes('milkyway')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://embed.vidrift.in/';
         headers['Origin'] = 'https://embed.vidrift.in';
@@ -11984,7 +11985,7 @@ app.get(['/play_bingr.php', '/play_bing.php', '/play_bingr', '/play_bing', '/bin
     let anilistId = (req.query.anilistId as string) || (req.query.anilist_id as string) || '';
     let malId = (req.query.malId as string) || (req.query.mal_id as string) || (req.query.mal as string) || '';
     const isAnimeTarget = type === 'anime' || Boolean(malId) || Boolean(anilistId);
-    let srv = (req.query.srv as string) || (isAnimeTarget ? 'bing_anime' : (type === 'tv' ? 's40' : 'm4u'));
+    let srv = (req.query.srv as string) || (isAnimeTarget ? 'anivexa' : (type === 'tv' ? 's30' : 's30'));
     let source = (req.query.source as string) || 'consumet.html';
 
     if (stream_url && stream_url.startsWith('http') && !(await isSafeUrl(stream_url))) {

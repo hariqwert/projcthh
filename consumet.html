@@ -5587,34 +5587,13 @@ function debounceSearch() {
         renderSearchTrendingChips();
         return;
     }
-    const query = input.value.trim();
-    // Show spinner immediately to confirm keystroke
+    // Show spinner in input box to confirm keystroke without wiping the DOM
     toggleSearchSpinner(true);
 
-    // Show sleek typing/debounce indicator while user types and waits for 1000ms
-    const resultsContainer = document.getElementById('searchResults');
-    if (resultsContainer && !resultsContainer.querySelector('.search-debounce-indicator')) {
-        resultsContainer.innerHTML = `
-            <div class="search-debounce-indicator flex flex-col items-center justify-center py-16 sm:py-24 gap-4 animate-fade-in text-center">
-                <div class="relative flex items-center justify-center">
-                    <div class="w-12 h-12 rounded-full border-2 border-sky-400/20 border-t-sky-400 animate-spin"></div>
-                    <svg class="w-5 h-5 text-sky-400 absolute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                </div>
-                <div class="space-y-1.5 max-w-md px-4">
-                    <div class="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-white tracking-wide">
-                        <span>Searching for</span>
-                        <span class="px-2.5 py-0.5 rounded-lg bg-sky-500/15 border border-sky-400/30 text-sky-300 font-extrabold truncate max-w-[220px]">"${safeEscapeHtml(query)}"</span>
-                    </div>
-                    <p class="text-[11px] sm:text-xs text-neutral-400 font-medium">Scanning movies, series, anime, sports & channels...</p>
-                </div>
-            </div>
-        `;
-    }
-
-    // Exact 1000ms (1 second) debounce mechanism
+    // High-speed 200ms debounce (eliminates the 1000ms lag delay)
     searchTimeout = setTimeout(() => {
         requestAnimationFrame(() => executeSearch());
-    }, 1000);
+    }, 200);
 }
 
 async function executeSearch() {

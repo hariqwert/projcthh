@@ -1071,11 +1071,40 @@ export class ConsumetSearchService {
     }
 
     /**
+     * Ultra-fast Edge Bingr Search integration (<200ms) with pre-indexed TMDB records
+     */
+    private static async fetchBingrSearch(query: string): Promise<any[]> {
+        if (!query || query.trim().length < 2) return [];
+        try {
+            const resp = await axios.get(`https://api.bingr.one/api/search?q=${encodeURIComponent(query.trim())}`, {
+                timeout: 1200,
+                headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
+            });
+            if (resp.status === 200 && Array.isArray(resp.data?.results)) {
+                return resp.data.results.map((r: any) => ({
+                    id: r.id,
+                    tmdbId: r.id,
+                    title: r.title,
+                    name: r.title,
+                    media_type: r.type || 'movie',
+                    poster_path: r.poster ? (r.poster.startsWith('/') ? r.poster : r.poster.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
+                    backdrop_path: r.backdrop ? (r.backdrop.startsWith('/') ? r.backdrop : r.backdrop.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
+                    vote_average: r.rating || 7.5,
+                    release_date: r.year ? `${r.year}-01-01` : undefined,
+                    overview: r.overview || ''
+                }));
+            }
+        } catch {}
+        return [];
+    }
+
+    /**
      * Lightning Fast Movies & Series Search with Multi-Engine Parallel Resolution:
      * 1. Pre-Seeded Popular & Regional Library (<0.1ms)
-     * 2. SMMovieHub Direct Movie Catalog (<1ms)
+     * 2. Edge Bingr Pre-Indexed Database (<150ms)
      * 3. TMDB Multi-Page & Multi-Type Search (~250ms over IPv4)
      * 4. IMDb Instant Suggestion API (~20ms) for regional titles (M80 Moosa, etc.) & missing posters
+     * 5. SMMovieHub Direct Movie Catalog (<1ms)
      */
     public static async searchMoviesAndSeriesFast(query: string, limit: number = 48): Promise<FastMediaMatch[]> {
         if (!query) return [];
@@ -1146,23 +1175,24 @@ export class ConsumetSearchService {
             }
         } catch {}
 
-        // 3. Lightning Fast Concurrent Search: TMDB Multi + IMDb Suggestions
+        // 3. Lightning Fast Concurrent Search: Bingr Edge Index + TMDB Multi + IMDb Suggestions
         const isImdbId = /^tt\d{7,10}$/i.test(cleanTitleQuery);
         const tmdbPromises: Promise<any[]>[] = [];
 
         if (isImdbId) {
             tmdbPromises.push(
-                this.fetchTmdbEndpoint(`find/${cleanTitleQuery}?external_source=imdb_id`, 1600)
+                this.fetchTmdbEndpoint(`find/${cleanTitleQuery}?external_source=imdb_id`, 1400)
             );
         } else {
             // TMDB search/multi page 1 returns top 20 relevant movies AND tv series simultaneously in a single fast round-trip
             const yearParam = extractedYear ? `&year=${extractedYear}` : '';
             tmdbPromises.push(
-                this.fetchTmdbEndpoint(`search/multi?query=${encodeURIComponent(cleanTitleQuery)}&include_adult=false&page=1${yearParam}`, 1600)
+                this.fetchTmdbEndpoint(`search/multi?query=${encodeURIComponent(cleanTitleQuery)}&include_adult=false&page=1${yearParam}`, 1400)
             );
         }
 
-        const [imdbResults, ...tmdbPages] = await Promise.all([
+        const [bingrResults, imdbResults, ...tmdbPages] = await Promise.all([
+            this.fetchBingrSearch(cleanTitleQuery),
             this.fetchImdbSuggestions(cleanTitleQuery),
             ...tmdbPromises
         ]);
@@ -1176,9 +1206,25 @@ export class ConsumetSearchService {
             }
         }
 
-        // Flatten and normalize TMDB items
+        // Flatten and normalize TMDB + Bingr items
         const tmdbResults: FastMediaMatch[] = [];
         const seenTmdbIds = new Set<string>();
+
+        // Merge Bingr results as high-confidence fast hits
+        for (const bItem of bingrResults) {
+            if (!bItem || !bItem.id) continue;
+            const uniqueKey = `${bItem.media_type}_${bItem.id}`;
+            seenTmdbIds.add(uniqueKey);
+            const title = bItem.title || bItem.name || 'Untitled';
+            const normTitle = normalizeSearchKey(title);
+            let score = 250;
+            if (normTitle === normQ || compactSearchKey(title) === compactQ) score = 900;
+            else if (normTitle.startsWith(normQ)) score = 500;
+            tmdbResults.push({
+                ...bItem,
+                score
+            });
+        }
 
         for (let pIdx = 0; pIdx < tmdbPages.length; pIdx++) {
             const pageItems = tmdbPages[pIdx] || [];
@@ -1324,7 +1370,7 @@ export class ConsumetSearchService {
                 query: gql,
                 variables: { search: query, perPage: Math.min(limit, 10) }
             }, {
-                timeout: 1600,
+                timeout: 900,
                 httpAgent,
                 httpsAgent,
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }

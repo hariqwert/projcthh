@@ -16,6 +16,7 @@ import { fetchSonyLivEvents } from '../services/sonylivService';
 import { getMix1TvChannels } from '../services/mix1tvService';
 import { fetchWillowEvents } from '../services/willowService';
 import { fetchPrimeEvents } from '../services/primeService';
+import { generateFootlinksM3u, getFootlinksData } from '../services/footlinksService';
 
 const router = Router();
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours for the channel list itself
@@ -1504,6 +1505,38 @@ router.post('/api/sports/probe-sources', async (req: Request, res: Response) => 
         return res.json({ status: 'success', results });
     } catch (e: any) {
         return res.status(500).json({ status: 'error', message: e?.message || 'Probe failed' });
+    }
+});
+
+/**
+ * GET /footlinks.m3u & /api/sports/footlinks.m3u
+ * Dynamic live sports playlist scraped and parsed from Footlinks (SPORTLINK TV)
+ */
+router.get(['/footlinks.m3u', '/api/sports/footlinks.m3u'], async (req: Request, res: Response) => {
+    try {
+        const host = req.get('host') || 'localhost:3000';
+        const protocol = req.protocol || 'http';
+        const baseUrl = `${protocol}://${host}`;
+        const m3uContent = await generateFootlinksM3u(baseUrl);
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
+        res.setHeader('Content-Disposition', 'inline; filename="footlinks.m3u"');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.send(m3uContent);
+    } catch (err: any) {
+        return res.status(500).send('#EXTM3U\n# Error generating Footlinks playlist: ' + (err?.message || err));
+    }
+});
+
+/**
+ * GET /api/sports/footlinks/events
+ * Returns JSON of current live events and multi-stream sources
+ */
+router.get('/api/sports/footlinks/events', async (req: Request, res: Response) => {
+    try {
+        const events = await getFootlinksData();
+        return res.json({ status: 'success', count: events.length, events });
+    } catch (err: any) {
+        return res.status(500).json({ status: 'error', message: err?.message || 'Failed to fetch events' });
     }
 });
 

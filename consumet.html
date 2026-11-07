@@ -9072,6 +9072,11 @@ async function loadLiveSportsSchedule(force = false) {
                     source: 'footlinks',
                     isFootlinks: true,
                     badge: 'SPORTLINK',
+                    homeTeamName: fl.homeTeamName || undefined,
+                    awayTeamName: fl.awayTeamName || undefined,
+                    homeTeamLogo: fl.homeTeamLogo || undefined,
+                    awayTeamLogo: fl.awayTeamLogo || undefined,
+                    tournamentLogo: fl.tournamentLogo || fl.logo || undefined,
                     thumbnail: fl.thumbnail || fl.logo,
                     logo: fl.logo || fl.thumbnail,
                     userHasChannel: true,
@@ -10067,6 +10072,66 @@ const KNOWN_TEAM_THEMES = {
     'barcelona': { from: '#004D98', to: '#A50044', text: '#EDBB00', border: '#EDBB00' }
 };
 
+const KNOWN_TEAM_LOGOS = {
+    'arsenal': 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg',
+    'chelsea': 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg',
+    'liverpool': 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg',
+    'manchester city': 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg',
+    'man city': 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg',
+    'manchester united': 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg',
+    'man utd': 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg',
+    'tottenham': 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg',
+    'newcastle': 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg',
+    'aston villa': 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg',
+    'nottingham forest': 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg',
+    'nottingham': 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg',
+    'bologna': 'https://upload.wikimedia.org/wikipedia/en/5/5b/Bologna_F.C._1909_logo.svg',
+    'parma': 'https://upload.wikimedia.org/wikipedia/en/a/a2/Parma_Calcio_1913_logo.svg',
+    'real madrid': 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg',
+    'barcelona': 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
+    'bayern': 'https://upload.wikimedia.org/wikipedia/commons/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg',
+    'psg': 'https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg',
+    'juventus': 'https://upload.wikimedia.org/wikipedia/commons/b/bc/Juventus_FC_2017_icon_%28black%29.svg',
+    'inter': 'https://upload.wikimedia.org/wikipedia/commons/0/05/FC_Internazionale_Milano_2021.svg',
+    'milan': 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg',
+    'atletico': 'https://upload.wikimedia.org/wikipedia/en/f/f4/Atletico_Madrid_2017_logo.svg',
+    'dortmund': 'https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg',
+    // Cricket
+    'india': 'https://upload.wikimedia.org/wikipedia/en/8/8d/Cricket_India_Crest.svg',
+    'australia': 'https://upload.wikimedia.org/wikipedia/en/3/3a/Cricket_Australia_logo.svg',
+    'england': 'https://upload.wikimedia.org/wikipedia/en/c/ce/England_and_Wales_Cricket_Board_logo.svg',
+    'pakistan': 'https://upload.wikimedia.org/wikipedia/en/d/df/Pakistan_Cricket_Board_Logo.svg',
+    'south africa': 'https://upload.wikimedia.org/wikipedia/en/5/56/Cricket_South_Africa_logo.svg',
+    'new zealand': 'https://upload.wikimedia.org/wikipedia/en/8/8a/New_Zealand_Cricket_logo.svg',
+    'sri lanka': 'https://upload.wikimedia.org/wikipedia/en/2/29/Sri_Lanka_Cricket_Logo.svg',
+    'bangladesh': 'https://upload.wikimedia.org/wikipedia/en/8/87/Bangladesh_Cricket_Board_Logo.svg',
+    'afghanistan': 'https://upload.wikimedia.org/wikipedia/en/a/a2/Afghanistan_Cricket_Board_logo.svg',
+    'west indies': 'https://upload.wikimedia.org/wikipedia/en/9/9b/Cricket_West_Indies_Logo_2017.svg',
+    // IPL
+    'csk': 'https://upload.wikimedia.org/wikipedia/en/2/2b/Chennai_Super_Kings_Logo.svg',
+    'chennai': 'https://upload.wikimedia.org/wikipedia/en/2/2b/Chennai_Super_Kings_Logo.svg',
+    'mumbai indians': 'https://upload.wikimedia.org/wikipedia/en/c/cd/Mumbai_Indians_Logo.svg',
+    'rcb': 'https://upload.wikimedia.org/wikipedia/en/2/2a/Royal_Challengers_Bangalore_2020.svg',
+    'bangalore': 'https://upload.wikimedia.org/wikipedia/en/2/2a/Royal_Challengers_Bangalore_2020.svg',
+    'kkr': 'https://upload.wikimedia.org/wikipedia/en/4/4c/Kolkata_Knight_Riders_Logo.svg',
+    'kolkata': 'https://upload.wikimedia.org/wikipedia/en/4/4c/Kolkata_Knight_Riders_Logo.svg',
+    'rajasthan': 'https://upload.wikimedia.org/wikipedia/en/6/60/Rajasthan_Royals_Logo.svg',
+    'delhi': 'https://upload.wikimedia.org/wikipedia/en/f/f5/Delhi_Capitals_Logo.svg',
+    'hyderabad': 'https://upload.wikimedia.org/wikipedia/en/e/eb/Sunrisers_Hyderabad.svg',
+    'punjab': 'https://upload.wikimedia.org/wikipedia/en/1/1c/Punjab_Kings_Logo.svg',
+    'gujarat': 'https://upload.wikimedia.org/wikipedia/en/0/09/Gujarat_Titans_Logo.svg',
+    'lucknow': 'https://upload.wikimedia.org/wikipedia/en/a/a9/Lucknow_Super_Giants_IPL_Logo.svg'
+};
+
+function getKnownTeamLogo(name) {
+    if (!name) return '';
+    const lower = name.toLowerCase().trim();
+    for (const [k, v] of Object.entries(KNOWN_TEAM_LOGOS)) {
+        if (lower.includes(k) || k.includes(lower)) return v;
+    }
+    return '';
+}
+
 function getTeamTheme(name) {
     if (!name) return { from: '#27272A', to: '#18181B', text: '#FFFFFF', border: '#3F3F46' };
     const lower = name.toLowerCase();
@@ -10124,8 +10189,8 @@ function buildSportsModalBannerHtml(event) {
         const clock = event.liveScore?.clock || (isLive ? 'LIVE' : (event.timeIST ? event.timeIST + ' IST' : 'Scheduled'));
 
         return `
-            <div class="w-full h-32 sm:h-36 rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-between px-3 sm:px-6 select-none">
-                <!-- Atmospheric Stadium Light Backdrop (Soft subtle blur, never a stretched square) -->
+            <div class="w-full h-28 sm:h-32 rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-between px-3 sm:px-6 select-none">
+                <!-- Atmospheric Stadium Light Backdrop (Soft subtle blur, never an oversized square) -->
                 ${bgPoster ? `
                     <img loading="lazy" decoding="async" src="${bgPoster}" alt="" class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-15 pointer-events-none scale-125" onerror="this.style.display='none';">
                 ` : ''}
@@ -10133,7 +10198,7 @@ function buildSportsModalBannerHtml(event) {
 
                 <!-- Team 1 / Home Column -->
                 <div class="flex-1 flex flex-col items-center justify-center text-center min-w-0 z-10 px-1">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center overflow-hidden shadow-xl p-1.5 bg-black/60 border border-white/20">
+                    <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center overflow-hidden shadow-xl p-1.5 bg-black/60 border border-white/20">
                         ${logo1 ? `
                             <img loading="lazy" decoding="async" src="${logo1}" alt="${team1}" class="w-full h-full object-contain" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
                         ` : ''}
@@ -10141,7 +10206,7 @@ function buildSportsModalBannerHtml(event) {
                             ${init1}
                         </div>
                     </div>
-                    <span class="text-xs sm:text-sm font-bold text-white truncate max-w-full mt-1.5 drop-shadow-md">${team1}</span>
+                    <span class="text-xs sm:text-sm font-bold text-white truncate max-w-full mt-1 drop-shadow-md">${team1}</span>
                 </div>
 
                 <!-- Center Matchup / Score Pillar -->
@@ -10151,22 +10216,22 @@ function buildSportsModalBannerHtml(event) {
                     </span>
                     ${hasScores ? `
                         <div class="flex items-center gap-2 my-0.5">
-                            <span class="text-2xl sm:text-3xl font-mono font-black text-amber-400 drop-shadow">${homeScore}</span>
-                            <span class="text-sm font-mono text-zinc-500 font-bold">:</span>
-                            <span class="text-2xl sm:text-3xl font-mono font-black text-amber-400 drop-shadow">${awayScore}</span>
+                            <span class="text-xl sm:text-2xl font-mono font-black text-amber-400 drop-shadow">${homeScore}</span>
+                            <span class="text-xs font-mono text-zinc-500 font-bold">:</span>
+                            <span class="text-xl sm:text-2xl font-mono font-black text-amber-400 drop-shadow">${awayScore}</span>
                         </div>
-                        <span class="text-[10px] font-mono font-black uppercase tracking-wider text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 flex items-center gap-1.5">
+                        <span class="text-[9px] font-mono font-black uppercase tracking-wider text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 flex items-center gap-1">
                             ${isLive ? '<span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>' : ''} ${clock}
                         </span>
                     ` : `
-                        <div class="px-3 py-1 rounded-xl bg-white/10 border border-white/15 text-xs font-mono font-black text-sky-300 my-1">VS</div>
-                        <span class="text-[11px] font-bold text-zinc-300 mt-0.5">${event.timeIST ? event.timeIST + ' IST' : 'Match Fixture'}</span>
+                        <div class="px-2.5 py-0.5 rounded-xl bg-white/10 border border-white/15 text-xs font-mono font-black text-sky-300 my-0.5">VS</div>
+                        <span class="text-[10px] font-bold text-zinc-300 mt-0.5">${event.timeIST ? event.timeIST + ' IST' : 'Match Fixture'}</span>
                     `}
                 </div>
 
                 <!-- Team 2 / Away Column -->
                 <div class="flex-1 flex flex-col items-center justify-center text-center min-w-0 z-10 px-1">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center overflow-hidden shadow-xl p-1.5 bg-black/60 border border-white/20">
+                    <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center overflow-hidden shadow-xl p-1.5 bg-black/60 border border-white/20">
                         ${logo2 ? `
                             <img loading="lazy" decoding="async" src="${logo2}" alt="${team2}" class="w-full h-full object-contain" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
                         ` : ''}
@@ -10174,7 +10239,7 @@ function buildSportsModalBannerHtml(event) {
                             ${init2}
                         </div>
                     </div>
-                    <span class="text-xs sm:text-sm font-bold text-white truncate max-w-full mt-1.5 drop-shadow-md">${team2}</span>
+                    <span class="text-xs sm:text-sm font-bold text-white truncate max-w-full mt-1 drop-shadow-md">${team2}</span>
                 </div>
             </div>
         `;
@@ -10182,13 +10247,13 @@ function buildSportsModalBannerHtml(event) {
 
     // Single-event, racing, or channel card - Sleek horizontal broadcast header (never an oversized square)
     return `
-        <div class="w-full h-32 sm:h-36 rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-between px-4 sm:px-6 select-none">
+        <div class="w-full h-28 sm:h-32 rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-between px-4 sm:px-6 select-none">
             ${bgPoster ? `
                 <img loading="lazy" decoding="async" src="${bgPoster}" alt="" class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-15 pointer-events-none scale-125" onerror="this.style.display='none';">
             ` : ''}
             <div class="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/95 pointer-events-none"></div>
             <div class="relative z-10 flex items-center gap-4 max-w-full">
-                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-black/80 border border-white/20 p-2 shrink-0 flex items-center justify-center shadow-xl">
+                <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/80 border border-white/20 p-2 shrink-0 flex items-center justify-center shadow-xl">
                     <img loading="lazy" decoding="async" src="${bgPoster || '/stalker_pro_infinity.svg'}" alt="${event.title}" class="w-full h-full object-contain" onerror="this.src='/stalker_pro_infinity.svg';">
                 </div>
                 <div class="min-w-0 flex-1">
@@ -10208,36 +10273,45 @@ function buildSportsModalBannerHtml(event) {
 
 // 2. Universal VS Match Thumbnail Builder
 function buildVsMatchThumbnailHtml(e, isHero = false) {
-    const parsed = parseTeamsFromTitle(e.title || '');
+    if (!e) return '';
+
+    // 1. Official Broadcast Match Poster (Priority 1 for cards and hero)
+    // FanCode, SonyLIV, Willow, Star Sports, Streamic & promotional CDN posters
+    const candidateThumb = (e.thumbnail || e.poster || e.image || e.bgUrl || e.backdrop || '').trim();
+    const isGeneric = candidateThumb.includes('unique-tournament') ||
+        candidateThumb.includes('FC_Sports_Default') ||
+        candidateThumb.includes('ui-avatars.com') ||
+        candidateThumb.includes('default_sports') ||
+        candidateThumb.includes('stalker_pro_infinity') ||
+        candidateThumb.includes('/assets/logos/');
+
+    const hasBroadcastPoster = Boolean(candidateThumb && !isGeneric && candidateThumb.startsWith('http'));
+
+    if (hasBroadcastPoster) {
+        return `
+            <div class="w-full h-full relative overflow-hidden bg-slate-900 flex items-center justify-center">
+                <img loading="lazy" decoding="async" src="${candidateThumb}" alt="" class="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-125 pointer-events-none">
+                <img loading="lazy" decoding="async" src="${candidateThumb}" alt="${e.title || ''}" class="relative z-10 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80';">
+                <div class="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent pointer-events-none"></div>
+            </div>
+        `;
+    }
+
+    // 2. 2-Team Matchup (When no official broadcast poster is available)
+    const parsed = (typeof parseTeamsFromTitle === 'function') ? parseTeamsFromTitle(e.title || '') : null;
     const t1Name = e.homeTeamName || e.event?.teamA || e.teamA || (parsed ? parsed.team1 : '');
     const t2Name = e.awayTeamName || e.event?.teamB || e.teamB || (parsed ? parsed.team2 : '');
     const logo1 = e.homeTeamLogo || e.event?.teamAFlag || e.teamAFlag || (typeof getKnownTeamLogo === 'function' ? getKnownTeamLogo(t1Name) : '') || '';
     const logo2 = e.awayTeamLogo || e.event?.teamBFlag || e.teamBFlag || (typeof getKnownTeamLogo === 'function' ? getKnownTeamLogo(t2Name) : '') || '';
     const hasMatchup = !!(t1Name && t2Name) || !!(logo1 && logo2);
 
-    const hasRealThumbnail = Boolean(e.thumbnail &&
-        !e.thumbnail.includes('ui-avatars.com') &&
-        !e.thumbnail.includes('FC_Sports_Default') &&
-        !e.thumbnail.includes('unique-tournament'));
-
-    // Only fallback to single thumbnail when there is genuinely no 2-team matchup
-    if (!hasMatchup && hasRealThumbnail) {
-        return `
-            <div class="w-full h-full relative overflow-hidden bg-slate-900 flex items-center justify-center">
-                <img loading="lazy" decoding="async" src="${e.thumbnail}" alt="" class="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-125 pointer-events-none">
-                <img loading="lazy" decoding="async" src="${e.thumbnail}" alt="${e.title || ''}" class="relative z-10 w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80';">
-                <div class="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent pointer-events-none"></div>
-            </div>
-        `;
-    }
-
     if (hasMatchup) {
-        const team1 = t1Name || 'Team A';
-        const team2 = t2Name || 'Team B';
-        const theme1 = getTeamTheme(team1);
-        const theme2 = getTeamTheme(team2);
-        const init1 = getTeamInitials(team1);
-        const init2 = getTeamInitials(team2);
+        const team1 = t1Name || 'Team 1';
+        const team2 = t2Name || 'Team 2';
+        const theme1 = (typeof getTeamTheme === 'function') ? getTeamTheme(team1) : { from: '#1E3A8A', to: '#0F172A', text: '#FFFFFF' };
+        const theme2 = (typeof getTeamTheme === 'function') ? getTeamTheme(team2) : { from: '#991B1B', to: '#450A0A', text: '#FFFFFF' };
+        const init1 = (typeof getTeamInitials === 'function') ? getTeamInitials(team1) : team1.substring(0, 3).toUpperCase();
+        const init2 = (typeof getTeamInitials === 'function') ? getTeamInitials(team2) : team2.substring(0, 3).toUpperCase();
         const logoSize = isHero ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-11 h-11 sm:w-12 sm:h-12';
 
         return `
@@ -10265,8 +10339,9 @@ function buildVsMatchThumbnailHtml(e, isHero = false) {
         `;
     }
 
-    if (e.isAddedChannel || e.isAddon) {
-        const logoUrl = e.logo || e.thumbnail || '';
+    // 3. Live TV Channel / Addon / 24x7 Broadcast
+    if (e.isAddedChannel || e.isAddon || e.isMdtv) {
+        const logoUrl = e.logo || candidateThumb || '';
         const fallbackLogo = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(e.title || 'Channel') + '&background=000000&color=ef4444&size=256&bold=true';
         return `
             <div class="w-full h-full relative overflow-hidden bg-gradient-to-br from-zinc-950 via-black to-zinc-900 flex flex-col items-center justify-center p-3 select-none">
@@ -10274,24 +10349,19 @@ function buildVsMatchThumbnailHtml(e, isHero = false) {
                     <img src="${logoUrl || fallbackLogo}" alt="${e.title}" loading="lazy" decoding="async" class="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" onerror="this.onerror=null; this.src='${fallbackLogo}';">
                 </div>
                 <span class="text-[10px] font-black uppercase tracking-wider text-rose-300 mt-2 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 truncate max-w-[90%]">
-                    ${e.league || (e.isMdtv ? 'MDTV ClearKey' : 'Added Channel')}
+                    ${e.league || (e.isMdtv ? 'MDTV ClearKey' : 'Live Channel')}
                 </span>
             </div>
         `;
     }
 
-    // Solo tournament / single team / racing / MMA card (Full Uncropped Poster)
-    const poster = e.thumbnail || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80';
+    // 4. Default high-resolution sports stadium poster
+    const defaultPoster = candidateThumb || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80';
     return `
         <div class="w-full h-full relative overflow-hidden bg-[#070510] flex items-center justify-center">
-            <img loading="lazy" decoding="async" src="${poster}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover blur-xl opacity-55 scale-125 pointer-events-none">
-            <img loading="lazy" decoding="async" src="${poster}" alt="${e.title}" class="relative z-10 w-full h-full object-contain p-1.5 group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80'">
+            <img loading="lazy" decoding="async" src="${defaultPoster}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-125 pointer-events-none">
+            <img loading="lazy" decoding="async" src="${defaultPoster}" alt="${e.title || ''}" class="relative z-10 w-full h-full object-cover p-0 group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80'">
             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none"></div>
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span class="text-3xl sm:text-4xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] opacity-70 group-hover:opacity-100 transition-opacity">
-                    ${e.sportEmoji || '🏆'}
-                </span>
-            </div>
         </div>
     `;
 }

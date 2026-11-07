@@ -1550,36 +1550,36 @@ export async function scrapeBingrNextGen(params: {
 }
 
 export const BINGR_SERVERS: BingrServerCluster[] = [
-    { id: 'prism', name: 'Prism (Multi-Audio 1080p / Direct CDN)', cc: 'GL', priority: 1 },
-    { id: 'citadel', name: 'Citadel (Multi-Audio HLS / StreamRip)', cc: 'US', priority: 2 },
-    { id: 'evion', name: 'Edge (HD Direct Stream)', cc: 'US', priority: 3 },
-    { id: 'pulse', name: 'Pulse (HD Direct Stream)', cc: 'US', priority: 4 },
-    { id: 'volt', name: 'Volt (HD Direct Stream)', cc: 'US', priority: 5 },
-    { id: 'nimbus', name: 'Nimbus (HD Direct Stream)', cc: 'US', priority: 6 },
-    { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 7 },
+    { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 1 },
     { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN', priority: 2 },
     { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 3 },
-    { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted Stream)', cc: 'IN', priority: 4 },
-    { id: 'two_embed', name: '2Embed (Swish / 2vCDN Direct HLS)', cc: 'US', priority: 5 },
-    { id: 'smashy', name: 'SmashyStream (Multi-Host / Filemoon & Wish HLS)', cc: 'US', priority: 6 },
-    { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN', priority: 7 },
-    { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US', priority: 8 },
-    { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US', priority: 9 },
-    { id: 's31', name: 'Orion (Worker CDN Direct)', cc: 'US', priority: 10 },
-    { id: 'sm_hub', name: 'SM Movie Hub Pro (Direct VOD/MKV/Dual Audio)', cc: 'BD', priority: 11 },
-    { id: 's70', name: 'Polaris (Multi-Language Dubs / HLS)', cc: 'US', priority: 12 },
-    { id: 'framex', name: 'FrameX TV (Multi-Source 4K/1080p Movies, TV & Anime)', cc: 'US', priority: 13 },
-    { id: 's81', name: 'Novo (Direct StreamRip / High-Speed HLS)', cc: 'US', priority: 14 },
-    { id: 's40', name: 'Aphelion (DarkMatter / Dedicated TV Series HLS)', cc: 'GL', priority: 15 },
-    { id: 's3', name: 'Edmunds (High Reliability Proxy / 1080p)', cc: 'US', priority: 16 },
-    { id: 'vidsrc', name: 'VidSrc (Universal Multi-Source Streamer)', cc: 'US', priority: 17 },
-    { id: 's60', name: 'Vertex (Direct CDN)', cc: 'US', priority: 18 },
-    { id: 's63', name: 'Hallyu (Asian & International HLS)', cc: 'KR', priority: 19 },
-    { id: 's61', name: 'Corvus (Multi-Source Hub / 1080p)', cc: 'US', priority: 20 },
-    { id: 'cinepro', name: 'CinePro Core (OMSS Multi-Provider 4K/1080p)', cc: 'US', priority: 21 },
-    { id: 'aniembed', name: 'AniEmbed (Dual Audio JP/EN HLS)', cc: 'JP', priority: 22 },
-    { id: 'zanix', name: 'Zanix Anime (FlixEra & NovusCloud Multi-Audio)', cc: 'TR', priority: 23 },
-    { id: 'flux', name: 'Flux (VidBinge & SudoFlix Direct 1080p HLS)', cc: 'US', priority: 24 },
+    { id: 'prism', name: 'Prism (Multi-Audio 1080p / Direct CDN)', cc: 'GL', priority: 4 },
+    { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US', priority: 5 },
+    { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US', priority: 6 },
+    { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted Stream)', cc: 'IN', priority: 7 },
+    { id: 'two_embed', name: '2Embed (Swish / 2vCDN Direct HLS)', cc: 'US', priority: 8 },
+    { id: 'smashy', name: 'SmashyStream (Multi-Host / Filemoon & Wish HLS)', cc: 'US', priority: 9 },
+    { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN', priority: 10 },
+    { id: 'flux', name: 'Flux (VidBinge & SudoFlix Direct 1080p HLS)', cc: 'US', priority: 11 },
+    { id: 's31', name: 'Orion (Worker CDN Direct)', cc: 'US', priority: 12 },
+    { id: 'sm_hub', name: 'SM Movie Hub Pro (Direct VOD/MKV/Dual Audio)', cc: 'BD', priority: 13 },
+    { id: 's70', name: 'Polaris (Multi-Language Dubs / HLS)', cc: 'US', priority: 14 },
+    { id: 'framex', name: 'FrameX TV (Multi-Source 4K/1080p Movies, TV & Anime)', cc: 'US', priority: 15 },
+    { id: 's81', name: 'Novo (Direct StreamRip / High-Speed HLS)', cc: 'US', priority: 16 },
+    { id: 's40', name: 'Aphelion (DarkMatter / Dedicated TV Series HLS)', cc: 'GL', priority: 17 },
+    { id: 's3', name: 'Edmunds (High Reliability Proxy / 1080p)', cc: 'US', priority: 18 },
+    { id: 'vidsrc', name: 'VidSrc (Universal Multi-Source Streamer)', cc: 'US', priority: 19 },
+    { id: 's60', name: 'Vertex (Direct CDN)', cc: 'US', priority: 20 },
+    { id: 's63', name: 'Hallyu (Asian & International HLS)', cc: 'KR', priority: 21 },
+    { id: 's61', name: 'Corvus (Multi-Source Hub / 1080p)', cc: 'US', priority: 22 },
+    { id: 'cinepro', name: 'CinePro Core (OMSS Multi-Provider 4K/1080p)', cc: 'US', priority: 23 },
+    { id: 'citadel', name: 'Citadel (Multi-Audio HLS / StreamRip)', cc: 'US', priority: 24 },
+    { id: 'evion', name: 'Edge (HD Direct Stream)', cc: 'US', priority: 25 },
+    { id: 'pulse', name: 'Pulse (HD Direct Stream)', cc: 'US', priority: 26 },
+    { id: 'volt', name: 'Volt (HD Direct Stream)', cc: 'US', priority: 27 },
+    { id: 'nimbus', name: 'Nimbus (HD Direct Stream)', cc: 'US', priority: 28 },
+    { id: 'aniembed', name: 'AniEmbed (Dual Audio JP/EN HLS)', cc: 'JP', priority: 29 },
+    { id: 'zanix', name: 'Zanix Anime (FlixEra & NovusCloud Multi-Audio)', cc: 'TR', priority: 30 },
     { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL', priority: 1 },
     { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP', priority: 2 },
     { id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP', priority: 3 },
@@ -3876,27 +3876,68 @@ export async function scrapeBingrStream(params: {
                 successResult = await raceTierForDirectStream(animeTier, 5000);
             }
         } else if (type === 'movie') {
-            // Priority 1: Check s30 (Nova / Prism - full 1080p feature film) directly first
-            const novaRes = await tryServer('s30');
-            if (novaRes && checkDirect(novaRes)) {
-                successResult = novaRes;
+            // Priority sequence for movies:
+            // 1. Vidlink (Decrypted 1080p Direct CDN)
+            const vidlinkRes = await tryServer('vidlink');
+            if (vidlinkRes && checkDirect(vidlinkRes)) {
+                successResult = vidlinkRes;
             }
 
-            // Priority 2: Fast parallel race across prioritized movie sequence
+            // 2. Vidrift (Decrypted Multi-Provider HLS)
             if (!successResult) {
-                const moviePriorityServers = filterTier(['vidlink', 'vidrift', 'm4u', 'filmu', 'two_embed', 'smashy', 's62', 's80']);
+                const vidriftRes = await tryServer('vidrift');
+                if (vidriftRes && checkDirect(vidriftRes)) {
+                    successResult = vidriftRes;
+                }
+            }
+
+            // 3. Movie 4U (m4u - Direct M3U8 Master)
+            if (!successResult) {
+                const m4uRes = await tryServer('m4u');
+                if (m4uRes && checkDirect(m4uRes)) {
+                    successResult = m4uRes;
+                }
+            }
+
+            // 4. Prism (Multi-Audio 1080p / Direct CDN)
+            if (!successResult) {
+                const prismRes = await tryServer('prism');
+                if (prismRes && checkDirect(prismRes)) {
+                    successResult = prismRes;
+                }
+            }
+
+            // 5. Moscow (s80 - Fast Direct HLS / StreamRip)
+            if (!successResult) {
+                const s80Res = await tryServer('s80');
+                if (s80Res && checkDirect(s80Res)) {
+                    successResult = s80Res;
+                }
+            }
+
+            // 6. Nova (s30 - Direct Fast HLS)
+            if (!successResult) {
+                const novaRes = await tryServer('s30');
+                if (novaRes && checkDirect(novaRes)) {
+                    successResult = novaRes;
+                }
+            }
+
+            // Priority 7: Fast parallel race across prioritized secondary movie sequence
+            if (!successResult) {
+                const moviePriorityServers = filterTier(['filmu', 'two_embed', 'smashy', 's62', 'flux']);
                 successResult = await raceTierForDirectStream(moviePriorityServers, 11000);
             }
 
             // Fallback: If top priority servers did not yield a direct stream, race the remaining movie servers
             if (!successResult) {
-                const remainingMovieServers = ['flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro'];
+                const remainingMovieServers = ['s31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro'];
                 successResult = await raceTierForDirectStream(remainingMovieServers, 4000);
             }
         } else {
             // TV series default cascade:
-            // vidlink, vidrift, m4u, filmu, two_embed, smashy, s62 (bastion), s80 (moscow), s30 (nova)
-            const tvTier1 = filterTier(['vidlink', 'vidrift', 'm4u', 'filmu', 'two_embed', 'smashy', 's62', 's80', 's30']);
+            // vidlink, vidrift, m4u, prism, s80 (moscow), s30 (nova), etc.
+            const tvTier1 = filterTier(['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62']);
             const tvTier2 = ['flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61'];
 
             successResult = await raceTierForDirectStream(tvTier1, 11000);

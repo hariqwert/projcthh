@@ -1911,8 +1911,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let MEDIA_SEASON = parseInt(urlParams.get('s') || urlParams.get('season') || '<?php echo $s; ?>', 10) || 1;
         let MEDIA_EPISODE = parseInt(urlParams.get('e') || urlParams.get('episode') || '<?php echo $e; ?>', 10) || 1;
         const isAnimeReq = MEDIA_TYPE === 'anime' || Boolean(urlParams.get('malId')) || Boolean(urlParams.get('anilistId'));
-        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || (isAnimeReq ? 'anivexa' : 's30');
-        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61' || !CURRENT_SERVER) CURRENT_SERVER = (isAnimeReq ? 'anivexa' : 's30');
+        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || (isAnimeReq ? 'anivexa' : 'vidlink');
+        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61' || !CURRENT_SERVER) CURRENT_SERVER = (isAnimeReq ? 'anivexa' : 'vidlink');
         let DIRECT_STREAM_URL = urlParams.get('url') || '<?php echo addslashes($directUrl); ?>';
         if (DIRECT_STREAM_URL === '{{URL}}') DIRECT_STREAM_URL = '';
         const SOURCE_ORIGIN = urlParams.get('source') || '<?php echo addslashes($source); ?>' || 'consumet.html';
@@ -2161,16 +2161,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         const DEFAULT_SERVERS = isAnimeContent ? ANIME_SPECIAL_SERVERS : [
-            { id: 's30', name: 'Nova (Direct Fast HLS / Prism 1080p)', cc: 'US' },
             { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US' },
             { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN' },
             { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN' },
-            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
+            { id: 'prism', name: 'Prism (Multi-Audio 1080p / Direct CDN)', cc: 'GL' },
+            { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US' },
+            { id: 's30', name: 'Nova (Direct Fast HLS / Prism 1080p)', cc: 'US' },
             { id: 'filmu', name: 'Filmu / Vidly (Native HLS / Decrypted)', cc: 'IN' },
             { id: 'two_embed', name: '2Embed (Swish / 2vCDN Direct HLS)', cc: 'US' },
             { id: 'smashy', name: 'SmashyStream (Multi-Host / Filemoon & Wish HLS)', cc: 'US' },
             { id: 's62', name: 'Bastion (Multi-Audio HLS / Fast Direct)', cc: 'IN' },
-            { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US' },
+            { id: 'flux', name: 'Flux (VidBinge & SudoFlix Direct 1080p)', cc: 'US' },
+            { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
             { id: 's31', name: 'Orion (Worker CDN Direct)', cc: 'US' },
             { id: 'sm_hub', name: 'SM Movie Hub Pro (Direct VOD/MKV/Dual Audio)', cc: 'BD' },
             { id: 's70', name: 'Polaris (Multi-Language Dubs / HLS)', cc: 'US' },
@@ -2625,8 +2627,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const fallbackOrder = isAnimeMode
                 ? ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
-                    ? ['s30', 'vidlink', 'vidrift', 'm4u', 'two_embed', 'flux', 'filmu', 's62', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
-                    : ['s30', 'vidlink', 'vidrift', 'm4u', 'two_embed', 'flux', 'filmu', 's62', 's80', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
+                    ? ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'two_embed', 'flux', 'filmu', 's62', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
+                    : ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62', 'flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
             // Find next unattempted direct server in priority sequence (never stuck on failed servers)
             const nextServer = fallbackOrder.find(srv => !failedServers.has(srv));
             if (nextServer) {
@@ -3643,19 +3645,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             </div>
                             ${CURRENT_SERVER === 'm4u' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
-                        <button type="button" onclick="switchServerCluster('filmu')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'filmu' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                        <button type="button" onclick="switchServerCluster('prism')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'prism' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Filmu / Vidly</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Native HLS</div>
+                                <div class="truncate text-white font-bold text-[11px]">Prism</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Audio 1080p CDN</div>
                             </div>
-                            ${CURRENT_SERVER === 'filmu' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s62')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's62' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Bastion (s62)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Dual Audio & Dubs</div>
-                            </div>
-                            ${CURRENT_SERVER === 's62' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                            ${CURRENT_SERVER === 'prism' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('s80')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's80' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
@@ -3670,6 +3665,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                 <div class="text-[9px] text-zinc-400 font-normal truncate">Fast Direct HLS</div>
                             </div>
                             ${CURRENT_SERVER === 's30' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('filmu')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'filmu' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Filmu / Vidly</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Native HLS</div>
+                            </div>
+                            ${CURRENT_SERVER === 'filmu' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
+                        <button type="button" onclick="switchServerCluster('s62')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's62' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">Bastion (s62)</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">Dual Audio & Dubs</div>
+                            </div>
+                            ${CURRENT_SERVER === 's62' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
                         <button type="button" onclick="switchServerCluster('s31')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's31' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">

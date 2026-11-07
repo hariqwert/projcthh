@@ -32,15 +32,13 @@ export interface CineProStreamResult {
     message?: string;
 }
 
-// OMSS-compliant CinePro Core providers list
+// OMSS-compliant CinePro Core providers list (verified active mirrors)
 export const CINEPRO_PROVIDERS = [
-    { id: 'cinepro_core', name: 'CinePro Core 4K', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vidsrc.vip/embed/tv/${id}/${s}/${e}` : `https://vidsrc.vip/embed/movie/${id}` },
-    { id: 'videasy', name: 'VidEasy Ultra', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://player.videasy.net/tv/${id}/${s}/${e}` : `https://player.videasy.net/movie/${id}` },
-    { id: 'vixsrc', name: 'VixSrc 1080P', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vixsrc.to/embed/tv/${id}/${s}/${e}` : `https://vixsrc.to/embed/movie/${id}` },
-    { id: 'vidzee', name: 'VidZee Fast', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vidzee.org/embed/tv/${id}/${s}/${e}` : `https://vidzee.org/embed/movie/${id}` },
-    { id: 'autoembed', name: 'AutoEmbed 4K', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://autoembed.cc/embed/movie/${id}` },
-    { id: 'vidsrc_pro', name: 'VidSrc Pro', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vidsrc.pro/embed/tv/${id}/${s}/${e}` : `https://vidsrc.pro/embed/movie/${id}` },
-    { id: 'vidlink', name: 'VidLink Pro', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true` : `https://vidlink.pro/movie/${id}?autoplay=true` }
+    { id: 'vidlink', name: 'VidLink Pro 4K', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true` : `https://vidlink.pro/movie/${id}?autoplay=true` },
+    { id: 'autoembed', name: 'AutoEmbed 1080P', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://autoembed.co/tv/tmdb/${id}-${s}-${e}` : `https://autoembed.co/movie/tmdb/${id}` },
+    { id: 'vidsrc_pm', name: 'VidSrc VIP 1080P', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}` : `https://vidsrc.pm/embed/movie/${id}` },
+    { id: 'smashy', name: 'SmashyStream Multi-Host', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}` : `https://embed.smashystream.com/playere.php?tmdb=${id}` },
+    { id: 'vidly', name: 'Vidly Pro Multi-Audio', embedPattern: (type: string, id: string | number, s = 1, e = 1) => type === 'tv' ? `https://vidly.pro/embed/tv/${id}/${s}/${e}` : `https://vidly.pro/embed/movie/${id}` }
 ];
 
 /**
@@ -51,36 +49,39 @@ export async function getCineProStreams(
     type: 'movie' | 'tv' = 'movie',
     season = 1,
     episode = 1,
-    providerId = 'cinepro_core'
+    providerId = 'vidlink'
 ): Promise<CineProStreamResult> {
     const prov = CINEPRO_PROVIDERS.find(p => p.id === providerId) || CINEPRO_PROVIDERS[0];
     const embedUrl = prov.embedPattern(type, tmdbId, season, episode);
 
     const sources: CineProSource[] = [];
 
-    // 1. Resolve Direct HLS .m3u8 Streams
+    // 1. Resolve Direct HLS .m3u8 Streams across top resilient clusters
     let directHlsUrl: string | undefined = undefined;
-    try {
-        const directRes: any = type === 'tv'
-            ? await scrapeTvEpisode(tmdbId, season, episode, { srv: 's40' })
-            : await scrapeMovie(tmdbId, { srv: 's40' });
+    const candidateClusters = ['vidlink', 'prism', 's80', 's30', 'm4u', 's40'];
+    for (const srv of candidateClusters) {
+        try {
+            const directRes: any = type === 'tv'
+                ? await scrapeTvEpisode(tmdbId, season, episode, { srv })
+                : await scrapeMovie(tmdbId, { srv });
 
-        if (directRes?.sources && directRes.sources.length > 0) {
-            directRes.sources.forEach((s: any) => {
-                if (s.url && (s.url.includes('.m3u8') || s.type === 'application/x-mpegurl')) {
-                    if (!directHlsUrl) directHlsUrl = s.url;
-                    sources.push({
-                        name: `CinePro Direct ${s.label || s.name || 'HLS 1080p'}`,
-                        provider: 'cinepro_direct_hls',
-                        url: s.url,
-                        quality: s.quality || '1080p',
-                        type: 'hls'
+            if (directRes?.sources && directRes.sources.length > 0) {
+                const validSources = directRes.sources.filter((s: any) => s.url && (s.url.includes('.m3u8') || s.type === 'application/x-mpegurl'));
+                if (validSources.length > 0) {
+                    validSources.forEach((s: any) => {
+                        if (!directHlsUrl) directHlsUrl = s.url;
+                        sources.push({
+                            name: `CinePro Direct ${s.label || s.name || 'HLS 1080p'}`,
+                            provider: 'cinepro_direct_hls',
+                            url: s.url,
+                            quality: s.quality || '1080p',
+                            type: 'hls'
+                        });
                     });
+                    break; // Successfully obtained direct streams
                 }
-            });
-        }
-    } catch (e: any) {
-        console.error('[CinePro Direct Scraper] Failed to resolve direct HLS:', e?.message);
+            }
+        } catch (_) {}
     }
 
     // 2. Include OMSS Provider Embed Fallbacks

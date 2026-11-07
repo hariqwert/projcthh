@@ -477,7 +477,12 @@ const ALLOWED_STREAMING_DOMAINS = [
     'fetchbox.space',
     'dokicloud.one',
     'rabbitstream.net',
-    'megacloud.tv'
+    'megacloud.tv',
+    'sageandsolstice.space',
+    'stellarconductornexus.com',
+    'vidsrc.buzz',
+    'videm.buzz',
+    'videm.cc'
 ];
 
 export function isStreamingTargetAllowed(targetUrl: URL): boolean {

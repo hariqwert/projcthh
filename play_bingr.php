@@ -3757,6 +3757,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             </div>
                             ${CURRENT_SERVER === 's61' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
+                        <button type="button" onclick="switchServerCluster('cinepro')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'cinepro' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                            <div class="truncate">
+                                <div class="truncate text-white font-bold text-[11px]">CinePro Core</div>
+                                <div class="text-[9px] text-zinc-400 font-normal truncate">OMSS 4K/1080p Streamer</div>
+                            </div>
+                            ${CURRENT_SERVER === 'cinepro' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        </button>
                     </div>
                 </div>
 

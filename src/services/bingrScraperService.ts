@@ -351,6 +351,9 @@ export function normalizeServerId(rawSrv?: string): string | undefined {
         'movies4u': 'm4u',
         'm4u': 'm4u',
         'cinepro': 'cinepro',
+        'cine pro': 'cinepro',
+        'cine_pro': 'cinepro',
+        'cine-pro': 'cinepro',
         'sm_hub': 'sm_hub',
         'smmovies': 'sm_hub',
         'smhub': 'sm_hub',
@@ -359,6 +362,10 @@ export function normalizeServerId(rawSrv?: string): string | undefined {
         'sm-movie-pro': 'sm_hub',
         'sm movie': 'sm_hub',
         'smmoviepro': 'sm_hub',
+        'moviespro': 'sm_hub',
+        'movies_pro': 'sm_hub',
+        'moviepro': 'sm_hub',
+        'movie_pro': 'sm_hub',
         'tokyoinsider': 'tokyoinsider',
         'tokyo': 'tokyoinsider',
         'tokyo-insider': 'tokyoinsider',
@@ -763,8 +770,8 @@ export async function scrapeVidsrcStream(params: {
         const e = params.episode || 1;
         const isTv = params.type === 'tv' || params.type === 'anime';
 
-        // Base domain cascade (vidsrc.sh -> vidsrc.to -> vidsrc.me)
-        const vsDomains = ['https://vidsrc.sh', 'https://vidsrc.to', 'https://vidsrc.net', 'https://vidsrc.me'];
+        // Base domain cascade (verified active mirrors)
+        const vsDomains = ['https://vidsrc.pm', 'https://vidsrc.sh', 'https://vidsrc.to'];
         let rawUrls: string[] = [];
         let subtitlesList: any[] = [];
 
@@ -838,6 +845,36 @@ export async function scrapeVidsrcStream(params: {
                     rawUrls = j.data.stream_urls;
                 }
 
+                // Authenticate stream URLs with just-in-time session tokens from stream host
+                if (rawUrls.length > 0) {
+                    if (pCfg.apiToken) {
+                        const authenticatedUrls: string[] = [];
+                        for (const raw of rawUrls) {
+                            try {
+                                const origin = new URL(raw).origin;
+                                const tokenUrl = `${origin}/generate.php?api_token=${encodeURIComponent(pCfg.apiToken)}`;
+                                const tokRes = await axios.get(tokenUrl, {
+                                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                                    timeout: 3000
+                                });
+                                let token = String(tokRes.data || '').trim();
+                                try {
+                                    const parsed = JSON.parse(token);
+                                    token = parsed.token || parsed.data || parsed.string || parsed.result || token;
+                                } catch (_) {}
+                                if (token) {
+                                    authenticatedUrls.push(raw + (raw.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token));
+                                } else {
+                                    authenticatedUrls.push(raw);
+                                }
+                            } catch (_) {
+                                authenticatedUrls.push(raw);
+                            }
+                        }
+                        rawUrls = authenticatedUrls;
+                    }
+                }
+
                 if (Array.isArray(j.data?.subtitles) || Array.isArray(j.default_subs)) {
                     subtitlesList = (j.data?.subtitles || j.default_subs || []).map((sub: any) => ({
                         lang: sub.lang || sub.label || 'en',
@@ -857,6 +894,7 @@ export async function scrapeVidsrcStream(params: {
                 sources.push({
                     url: `/stream_proxy.php?url=${encodeURIComponent(raw)}`,
                     rawUrl: raw,
+                    directUrl: raw,
                     quality: '1080p',
                     type: 'application/x-mpegurl',
                     label: `VidSrc Multi-Source 1080p #${i + 1}`,
@@ -866,6 +904,22 @@ export async function scrapeVidsrcStream(params: {
                     skipProxy: false
                 });
             }
+        }
+
+        if (sources.length === 0) {
+            const fallbackEmbed = isTv
+                ? `https://vidsrc.pm/embed/tv/${params.id}/${s}/${e}`
+                : `https://vidsrc.pm/embed/movie/${params.id}`;
+            sources.push({
+                url: fallbackEmbed,
+                rawUrl: fallbackEmbed,
+                quality: '1080p',
+                type: 'embed',
+                label: 'VidSrc VIP (Official Embed)',
+                provider: 'vidsrc',
+                isEmbed: true,
+                isDirectM3u: false
+            });
         }
 
         return {
@@ -947,7 +1001,9 @@ export async function scrape2EmbedStream(params: {
                                         timeout: 4500
                                     });
                                     if (playRes.data && playRes.data.url) {
-                                        const streamRel = playRes.data.url;
+                                        const streamRel = String(playRes.data.url);
+                                        // Ignore bot challenge / captcha redirects
+                                        if (streamRel.includes('cap.php') || !streamRel.includes('.m3u8')) continue;
                                         const directM3u = streamRel.startsWith('http') ? streamRel : `https://vidsrc.buzz${streamRel}`;
                                         sources.push({
                                             url: `/stream_proxy.php?url=${encodeURIComponent(directM3u)}&referer=${encodeURIComponent('https://vidsrc.buzz/')}`,
@@ -1038,6 +1094,20 @@ export async function scrape2EmbedStream(params: {
                     }
                 }
             } catch (_) {}
+        }
+
+        if (sources.length === 0) {
+            sources.push({
+                url: embedUrl,
+                rawUrl: embedUrl,
+                quality: '1080p',
+                type: 'embed',
+                label: '2Embed (Official Embed)',
+                provider: 'two_embed',
+                isEmbed: true,
+                isDirectM3u: false,
+                referrer: 'https://www.2embed.cc/'
+            });
         }
 
         return {

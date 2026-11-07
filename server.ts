@@ -77,6 +77,7 @@ import { resolveRareAnimeStream, searchRareAnimes } from './src/services/rareAni
 import { fetchWillowEvents } from './src/services/willowService';
 import { fetchPrimeEvents } from './src/services/primeService';
 import { getFormattedFootlinksEvents } from './src/services/footlinksService';
+import { initAllChannelsAutoUpdate } from './src/services/allChannelsService';
 import { getMegaPlayToken } from './src/services/megaPlayService';
 import { verifyMasterPin, bindDevice, isDeviceAuthorized, touchDevice, getAllBoundDevices, revokeDevice, revokeAllDevices } from './src/services/deviceBindingService';
 import { logServerEvent, queryServerLogs, clearAllLogs, exportLogsAsText, getAllDetailedSessions, endUserStreamSession, trackUserStreamSession } from './src/services/loggerService';
@@ -1762,6 +1763,8 @@ app.use((req, res, next) => {
                           req.path.startsWith('/api/live_events') ||
                           req.path.startsWith('/api/live-events') ||
                           req.path.startsWith('/api/live/events') ||
+                          req.path.startsWith('/api/allchannels') ||
+                          req.path.startsWith('/allchannels.m3u') ||
                          req.path.startsWith('/consumet') ||
                          req.path.startsWith('/api/consumet') ||
                          req.path.startsWith('/api/media') ||
@@ -14046,6 +14049,7 @@ async function startServer() {
     try {
         initLiveM3uAutoUpdate();
         initSmMovieAutoUpdate();
+initAllChannelsAutoUpdate();
     } catch (e: any) {}
     setInterval(() => {
         console.log('[GitHub Auto-Sync] 25-minute interval reached. Updating all GitHub M3U & JSON sources...');

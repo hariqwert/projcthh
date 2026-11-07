@@ -17,6 +17,7 @@ import { getMix1TvChannels } from '../services/mix1tvService';
 import { fetchWillowEvents } from '../services/willowService';
 import { fetchPrimeEvents } from '../services/primeService';
 import { generateFootlinksM3u, getFootlinksData } from '../services/footlinksService';
+import { getAllChannelsData, generateAllChannelsM3u } from '../services/allChannelsService';
 
 const router = Router();
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours for the channel list itself
@@ -1537,6 +1538,47 @@ router.get('/api/sports/footlinks/events', async (req: Request, res: Response) =
         return res.json({ status: 'success', count: events.length, events });
     } catch (err: any) {
         return res.status(500).json({ status: 'error', message: err?.message || 'Failed to fetch events' });
+    }
+});
+
+/**
+ * GET /api/allchannels/channels
+ * Returns JSON catalog of SM-IPTV Combined Live TV (1,352+ channels)
+ */
+router.get('/api/allchannels/channels', async (req: Request, res: Response) => {
+    try {
+        const force = req.query.refresh === '1';
+        const data = await getAllChannelsData(force);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=600');
+        return res.json({
+            status: 'success',
+            count: data.totalCount,
+            categories: data.categories,
+            channels: data.channels,
+            timestamp: data.timestamp
+        });
+    } catch (err: any) {
+        return res.status(500).json({ status: 'error', message: err?.message || 'Failed to load All Channels' });
+    }
+});
+
+/**
+ * GET /allchannels.m3u & /api/allchannels/playlist.m3u
+ * Exports Combined Live TV M3U playlist with all categories
+ */
+router.get(['/allchannels.m3u', '/api/allchannels/playlist.m3u'], async (req: Request, res: Response) => {
+    try {
+        const host = req.get('host') || 'localhost:3000';
+        const protocol = req.protocol || 'http';
+        const baseUrl = `${protocol}://${host}`;
+        const m3uContent = await generateAllChannelsM3u(baseUrl);
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
+        res.setHeader('Content-Disposition', 'inline; filename="allchannels.m3u"');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.send(m3uContent);
+    } catch (err: any) {
+        return res.status(500).send('#EXTM3U\n# Error generating All Channels playlist: ' + (err?.message || err));
     }
 });
 

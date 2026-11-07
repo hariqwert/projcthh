@@ -2223,7 +2223,7 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
         </div>
     </div>
 
-    <!-- Live TV Source Switcher (JioTV Network vs GitHub Live.m3u) -->
+    <!-- Live TV Source Switcher (JioTV Network vs GitHub Live.m3u vs All Channels) -->
     <div class="flex items-center justify-between gap-3 flex-wrap">
         <div class="flex items-center gap-1.5 bg-[#0e0e12] p-1.5 rounded-xl border border-white/[0.08]">
             <button type="button" onclick="switchLiveTvCatalog('jiotv')" id="btn-livetv-src-jiotv" class="px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-black shadow-sm flex items-center gap-2">
@@ -2233,6 +2233,10 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
             <button type="button" onclick="switchLiveTvCatalog('livem3u')" id="btn-livetv-src-livem3u" class="px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
                 Live Events (GitHub)
+            </button>
+            <button type="button" onclick="switchLiveTvCatalog('allchannels')" id="btn-livetv-src-allchannels" class="px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                All Channels
             </button>
         </div>
     </div>
@@ -12984,9 +12988,14 @@ window.liveM3uAllChannels = [];
 window.liveM3uCategoriesList = [];
 window.liveM3uActiveCategory = 'all';
 
+window.allChannelsList = [];
+window.allChannelsCategoriesList = [];
+window.allChannelsActiveCategory = 'all';
+
 async function switchLiveTvCatalog(source) {
     if (source === 'mix1tv' || source === 'airtel') source = 'jiotv';
     if (window.liveTvCurrentSource === source) {
+        if (source === 'allchannels' && window.allChannelsList.length > 0) return;
         if (source === 'livem3u' && window.liveM3uAllChannels.length > 0) return;
         if (source === 'jiotv' && window.jtvAllChannels.length > 0) return;
     }
@@ -12997,24 +13006,72 @@ async function switchLiveTvCatalog(source) {
 
     const btnJio = document.getElementById('btn-livetv-src-jiotv');
     const btnLiveM3u = document.getElementById('btn-livetv-src-livem3u');
+    const btnAllChannels = document.getElementById('btn-livetv-src-allchannels');
     const livem3uBadge = document.getElementById('livem3uM3uBadge');
     const subtitle = document.getElementById('jtvHeaderSubtitle');
     const indicator = document.getElementById('jtvHeaderIndicator');
 
-    if (source === 'livem3u') {
-        if (btnJio) btnJio.className = "px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2";
-        if (btnLiveM3u) btnLiveM3u.className = "px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-black shadow-sm flex items-center gap-2";
+    const activeBtnCls = "px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-black shadow-sm flex items-center gap-2";
+    const inactiveBtnCls = "px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2";
+
+    if (source === 'allchannels') {
+        if (btnJio) btnJio.className = inactiveBtnCls;
+        if (btnLiveM3u) btnLiveM3u.className = inactiveBtnCls;
+        if (btnAllChannels) btnAllChannels.className = activeBtnCls;
+        if (livem3uBadge) { livem3uBadge.classList.add('hidden'); livem3uBadge.classList.remove('flex'); }
+        if (subtitle) subtitle.textContent = "SM-IPTV Combined Live TV Master Catalog • 15 Min Auto-Update • HLS & Direct Streams";
+        if (indicator) { indicator.className = "w-3 h-8 bg-amber-400 rounded-full"; }
+        await loadAllChannelsCatalog();
+    } else if (source === 'livem3u') {
+        if (btnJio) btnJio.className = inactiveBtnCls;
+        if (btnLiveM3u) btnLiveM3u.className = activeBtnCls;
+        if (btnAllChannels) btnAllChannels.className = inactiveBtnCls;
         if (livem3uBadge) { livem3uBadge.classList.remove('hidden'); livem3uBadge.classList.add('flex'); }
         if (subtitle) subtitle.textContent = "Auto-updating GitHub Live.m3u Feed • 25 Min Refresh • MPD (ClearKey DRM) & HLS";
         if (indicator) { indicator.className = "w-3 h-8 bg-indigo-500 rounded-full"; }
         await loadLiveM3uCatalog();
     } else {
-        if (btnJio) btnJio.className = "px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-black shadow-sm flex items-center gap-2";
-        if (btnLiveM3u) btnLiveM3u.className = "px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2";
+        if (btnJio) btnJio.className = activeBtnCls;
+        if (btnLiveM3u) btnLiveM3u.className = inactiveBtnCls;
+        if (btnAllChannels) btnAllChannels.className = inactiveBtnCls;
         if (livem3uBadge) { livem3uBadge.classList.add('hidden'); livem3uBadge.classList.remove('flex'); }
         if (subtitle) subtitle.textContent = "High-definition live channels with automatic token renewal & ClearKey DRM";
         if (indicator) { indicator.className = "w-3 h-8 bg-emerald-500 rounded-full"; }
         await loadLiveTvCatalog();
+    }
+}
+
+async function loadAllChannelsCatalog() {
+    const gridEl = document.getElementById('jtvChannelGrid');
+    if (!gridEl) return;
+
+    try {
+        if (window.allChannelsList.length === 0) {
+            gridEl.innerHTML = `
+                <div class="col-span-full py-24 text-center">
+                    <div class="w-10 h-10 rounded-full border-2 border-amber-400/30 border-t-amber-400 animate-spin mx-auto mb-3"></div>
+                    <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Loading Combined All Channels (SM-IPTV)...</p>
+                </div>
+            `;
+
+            const res = await fetch('/api/allchannels/channels');
+            const data = await res.json();
+            window.allChannelsList = data.channels || [];
+            window.allChannelsCategoriesList = data.categories || [];
+        }
+
+        const countBadge = document.getElementById('jtvTotalCountBadge');
+        if (countBadge) countBadge.textContent = `${window.allChannelsList.length.toLocaleString()} CHANNELS (ALL CHANNELS)`;
+
+        renderLiveTvCategoryPills();
+        renderLiveTvChannelsGrid(true);
+    } catch (err) {
+        console.error("[AllChannels] Failed to load channels:", err);
+        gridEl.innerHTML = `
+            <div class="col-span-full py-16 text-center text-red-400 text-xs font-bold">
+                Failed to load All Channels. Please try refreshing.
+            </div>
+        `;
     }
 }
 
@@ -13115,15 +13172,21 @@ function renderLiveTvCategoryPills() {
 
     const isMix1Tv = window.liveTvCurrentSource === 'mix1tv' || window.liveTvCurrentSource === 'airtel';
     const isLiveM3u = window.liveTvCurrentSource === 'livem3u';
-    const categories = isMix1Tv ? window.mix1tvCategoriesList : (isLiveM3u ? window.liveM3uCategoriesList : window.jtvCategoriesList);
-    const activeCat = isMix1Tv ? window.mix1tvActiveCategory : (isLiveM3u ? window.liveM3uActiveCategory : window.jtvActiveCategory);
-    const channels = isMix1Tv ? window.mix1tvAllChannels : (isLiveM3u ? window.liveM3uAllChannels : window.jtvAllChannels);
+    const isAllChannels = window.liveTvCurrentSource === 'allchannels';
+    const categories = isAllChannels ? window.allChannelsCategoriesList : (isMix1Tv ? window.mix1tvCategoriesList : (isLiveM3u ? window.liveM3uCategoriesList : window.jtvCategoriesList));
+    const activeCat = isAllChannels ? window.allChannelsActiveCategory : (isMix1Tv ? window.mix1tvActiveCategory : (isLiveM3u ? window.liveM3uActiveCategory : window.jtvActiveCategory));
+    const channels = isAllChannels ? window.allChannelsList : (isMix1Tv ? window.mix1tvAllChannels : (isLiveM3u ? window.liveM3uAllChannels : window.jtvAllChannels));
 
     let html = '';
-    if (isLiveM3u) {
+    if (isAllChannels) {
         html += `<button onclick="switchLiveTvCatalog('jiotv')" id="jtv-pill-jiotv-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">JioTV Network</button>`;
+        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live Events</button>`;
+    } else if (isLiveM3u) {
+        html += `<button onclick="switchLiveTvCatalog('jiotv')" id="jtv-pill-jiotv-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">JioTV Network</button>`;
+        html += `<button onclick="switchLiveTvCatalog('allchannels')" id="jtv-pill-allchan-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">All Channels</button>`;
     } else {
-        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live.m3u Events</button>`;
+        html += `<button onclick="switchLiveTvCatalog('allchannels')" id="jtv-pill-allchan-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">All Channels</button>`;
+        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live Events</button>`;
     }
 
     const totalChannels = channels.length;
@@ -13151,6 +13214,8 @@ function filterLiveTvCategory(catName) {
         window.mix1tvActiveCategory = catName;
     } else if (window.liveTvCurrentSource === 'livem3u') {
         window.liveM3uActiveCategory = catName;
+    } else if (window.liveTvCurrentSource === 'allchannels') {
+        window.allChannelsActiveCategory = catName;
     } else {
         window.jtvActiveCategory = catName;
     }
@@ -13194,11 +13259,15 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
     const source = window.liveTvCurrentSource;
     const isMix1Tv = source === 'mix1tv' || source === 'airtel';
     const isLiveM3u = source === 'livem3u';
+    const isAllChannels = source === 'allchannels';
     const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
 
     let channels = window.jtvAllChannels;
     let activeCategory = window.jtvActiveCategory;
-    if (isMix1Tv) {
+    if (isAllChannels) {
+        channels = window.allChannelsList;
+        activeCategory = window.allChannelsActiveCategory;
+    } else if (isMix1Tv) {
         channels = window.mix1tvAllChannels;
         activeCategory = window.mix1tvActiveCategory;
     } else if (isLiveM3u) {
@@ -13230,7 +13299,9 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
 
     let cardsHtml = displayChannels.map(c => {
         let playUrl = '';
-        if (isLiveM3u) {
+        if (isAllChannels) {
+            playUrl = c.play_url || `/play_consumet.php?channel_id=${encodeURIComponent(c.id)}&url=${encodeURIComponent(c.stream_url)}&name=${encodeURIComponent(c.name)}&source=allchannels&type=hls`;
+        } else if (isLiveM3u) {
             playUrl = c.play_url || `/play_consumet.php?channel_id=${encodeURIComponent(c.id)}&url=${encodeURIComponent(c.stream_url)}&name=${encodeURIComponent(c.name)}&source=livem3u&type=${c.type || 'hls'}`;
         } else {
             const isHls = c.source === 'sonyliv' || c.source === 'hotstar' || (c.stream_url && c.stream_url.includes('.m3u8')) || (c.full_stream_url && c.full_stream_url.includes('.m3u8'));
@@ -13238,7 +13309,7 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
             playUrl = `/play_consumet.php?channel_id=jtv-${encodeURIComponent(c.id)}&url=${encodeURIComponent(manifestTarget)}&key_id=${encodeURIComponent(c.key_id || '')}&key=${encodeURIComponent(c.key || '')}&name=${encodeURIComponent(c.name)}&source=consumet.html&type=${isHls ? 'hls' : 'dash'}`;
         }
         const logo = c.logo || '';
-        const catLabel = c.category || (isLiveM3u ? 'Live Event' : 'HD Channel');
+        const catLabel = c.category || (isAllChannels ? 'Live TV' : (isLiveM3u ? 'Live Event' : 'HD Channel'));
 
         return `
             <div onclick="openLiveNowEventDirect('${playUrl}', 'livetv')" class="livetv-ott-card group relative rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between">

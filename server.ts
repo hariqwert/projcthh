@@ -9162,7 +9162,7 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
     const ALLOWED_PIPE_HEADERS = new Set([
         'user-agent', 'referer', 'origin', 'range', 'accept',
         'accept-encoding', 'accept-language', 'x-playback-session-id',
-        'x-api-key', 'x-requested-with'
+        'x-api-key', 'x-requested-with', 'cookie'
     ]);
     let pipeHeaders: Record<string, string> = {};
     if (target.includes('|')) {

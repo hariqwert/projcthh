@@ -458,41 +458,15 @@ export async function scrapeVidlinkStream(params: {
             axios.get(url, { headers: { ...baseHeaders, 'X-Playback-Environment': 'standard' }, timeout: 5000 })
         ]);
 
-        if (dashRes.status === 'fulfilled' && dashRes.value.data?.stream) {
-            const st = dashRes.value.data.stream;
-            if (st.playlist) {
-                let proxyUrl = `/stream_proxy.php?url=${encodeURIComponent(st.playlist)}`;
-                if (st.playlistHeaders?.Cookie) {
-                    proxyUrl = `/stream_proxy.php?url=${encodeURIComponent(st.playlist + '|Cookie=' + encodeURIComponent(st.playlistHeaders.Cookie))}`;
-                }
-                sources.push({
-                    url: proxyUrl,
-                    rawUrl: st.playlist,
-                    directUrl: st.playlist,
-                    quality: 'Adaptive Multi-Audio',
-                    type: 'application/dash+xml',
-                    label: 'VidLink Master (Multi-Audio HLS/DASH)',
-                    provider: 'vidlink',
-                    isDirectM3u: true,
-                    skipProxy: false
-                });
-            }
-            if (Array.isArray(st.captions)) {
-                for (const c of st.captions) {
-                    subtitles.push({
-                        lang: c.language || 'en',
-                        url: c.url,
-                        label: c.language || 'English'
-                    });
-                }
-            }
-        }
+        const directSources: any[] = [];
+        const dashSources: any[] = [];
 
         if (fileRes.status === 'fulfilled' && fileRes.value.data?.stream?.qualities) {
             const qObj = fileRes.value.data.stream.qualities;
+            const sortedQualities = Object.keys(qObj).sort((a, b) => (parseInt(b) || 0) - (parseInt(a) || 0));
             const h264Items: any[] = [];
             const hevcItems: any[] = [];
-            for (const q of Object.keys(qObj)) {
+            for (const q of sortedQualities) {
                 const item = qObj[q];
                 if (item && item.url) {
                     const isHevc = item.codecName === 'hevc' || item.url.includes('/h265/') || item.url.includes('hevc');
@@ -511,9 +485,9 @@ export async function scrapeVidlinkStream(params: {
                     else h264Items.push(entry);
                 }
             }
-            sources.push(...h264Items, ...hevcItems);
+            directSources.push(...h264Items, ...hevcItems);
 
-            if (subtitles.length === 0 && Array.isArray(fileRes.value.data?.stream?.captions)) {
+            if (Array.isArray(fileRes.value.data?.stream?.captions)) {
                 for (const c of fileRes.value.data.stream.captions) {
                     subtitles.push({
                         lang: c.language || 'en',
@@ -523,6 +497,38 @@ export async function scrapeVidlinkStream(params: {
                 }
             }
         }
+
+        if (dashRes.status === 'fulfilled' && dashRes.value.data?.stream) {
+            const st = dashRes.value.data.stream;
+            if (st.playlist) {
+                let proxyUrl = `/stream_proxy.php?url=${encodeURIComponent(st.playlist)}`;
+                if (st.playlistHeaders?.Cookie) {
+                    proxyUrl = `/stream_proxy.php?url=${encodeURIComponent(st.playlist + '|Cookie=' + encodeURIComponent(st.playlistHeaders.Cookie))}`;
+                }
+                dashSources.push({
+                    url: proxyUrl,
+                    rawUrl: st.playlist,
+                    directUrl: st.playlist,
+                    quality: 'Adaptive Multi-Audio',
+                    type: 'application/dash+xml',
+                    label: 'VidLink Master (Multi-Audio HLS/DASH)',
+                    provider: 'vidlink',
+                    isDirectM3u: true,
+                    skipProxy: false
+                });
+            }
+            if (subtitles.length === 0 && Array.isArray(st.captions)) {
+                for (const c of st.captions) {
+                    subtitles.push({
+                        lang: c.language || 'en',
+                        url: c.url,
+                        label: c.language || 'English'
+                    });
+                }
+            }
+        }
+
+        sources.push(...directSources, ...dashSources);
 
         return { success: sources.length > 0, sources, subtitles };
     } catch (e: any) {

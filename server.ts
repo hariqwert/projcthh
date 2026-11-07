@@ -1759,6 +1759,15 @@ app.use((req, res, next) => {
                          req.path === '/stalker_pro_infinity.svg' ||
                          req.path.startsWith('/sports.m3u') ||
                          req.path.startsWith('/api/sports') ||
+                          req.path.startsWith('/api/sonyliv') ||
+                          req.path.startsWith('/api/fancode') ||
+                          req.path.startsWith('/api/willow') ||
+                          req.path.startsWith('/api/prime') ||
+                          req.path.startsWith('/api/streamic') ||
+                          req.path.startsWith('/api/tim') ||
+                          req.path.startsWith('/api/jtv') ||
+                          req.path.startsWith('/api/zee') ||
+                          req.path.startsWith('/api/spotlight-studio') ||
                           req.path.startsWith('/footlinks.m3u') ||
                           req.path.startsWith('/api/live_events') ||
                           req.path.startsWith('/api/live-events') ||
@@ -7801,6 +7810,11 @@ app.get(['/api/live_events', '/api/live-events'], async (req: Request, res: Resp
                         category: fe.category,
                         isLiveEvent: true,
                         isFootlinks: true,
+                        isAdminEvent: false,
+                        isLive: fe.isLive,
+                        isEnded: fe.isEnded,
+                        status: fe.status,
+                        countdown: fe.countdown,
                         playUrl: fe.playUrl,
                         streams: fe.streams
                     });

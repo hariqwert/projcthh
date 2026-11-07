@@ -76,7 +76,11 @@ export async function generateFootlinksM3u(baseUrl = 'http://localhost:3000'): P
         const cat = info.category || info.name || ev.cat || 'Live Sports';
         const teamA = info.teamA || '';
         const teamB = info.teamB || '';
-        const matchTitle = (teamA && teamB) ? `${teamA} vs ${teamB}` : (ev.title || info.type || 'Live Match');
+        const cleanA = (teamA || '').trim();
+        const cleanB = (teamB || '').trim();
+        const matchTitle = (cleanA && cleanB && cleanA.toLowerCase() !== cleanB.toLowerCase())
+            ? `${cleanA} vs ${cleanB}`
+            : (ev.title || info.type || cleanA || 'Live Match');
         const logo = info.logo || info.teamAFlag || '';
 
         const streams = ev.streams || [];
@@ -116,6 +120,7 @@ export interface FormattedFootlinksEvent {
     timeIST: string;
     status: string;
     isLive: boolean;
+    isEnded?: boolean;
     url: string;
     stream_url: string;
     logo: string;
@@ -153,7 +158,11 @@ export async function getFormattedFootlinksEvents(): Promise<FormattedFootlinksE
         const cat = info.category || info.name || ev.cat || 'Live Sports';
         const teamA = info.teamA || '';
         const teamB = info.teamB || '';
-        const matchTitle = (teamA && teamB) ? `${teamA} vs ${teamB}` : (ev.title || info.type || 'Live Match');
+        const cleanA = (teamA || '').trim();
+        const cleanB = (teamB || '').trim();
+        const matchTitle = (cleanA && cleanB && cleanA.toLowerCase() !== cleanB.toLowerCase())
+            ? `${cleanA} vs ${cleanB}`
+            : (ev.title || info.type || cleanA || 'Live Match');
         const logo = info.logo || info.teamAFlag || info.teamBFlag || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6U1hs_95YIb02AiDL1JAgkqMNrA1SkPMUatqqPsO2ZqtNZdmj79TQ71k&s=10';
 
         const streams = (ev.streams || []).filter(s => {
@@ -198,6 +207,43 @@ export async function getFormattedFootlinksEvents(): Promise<FormattedFootlinksE
 
         const primary = formattedStreams[0];
 
+        let isLive = true;
+        let isEnded = false;
+        let statusStr = 'LIVE';
+        let countdownStr = 'LIVE NOW';
+        const now = Date.now();
+
+        if (info.startTimeIST) {
+            try {
+                const sStr = info.startTimeIST.replace(/\s*IST/i, ' +05:30');
+                const sMs = new Date(sStr).getTime();
+                let eMs = 0;
+                if (info.endTimeIST) {
+                    const eStr = info.endTimeIST.replace(/\s*IST/i, ' +05:30');
+                    eMs = new Date(eStr).getTime();
+                } else if (!isNaN(sMs)) {
+                    eMs = sMs + (3 * 3600 * 1000);
+                }
+
+                if (!isNaN(sMs)) {
+                    if (now < sMs) {
+                        isLive = false;
+                        statusStr = 'UPCOMING';
+                        countdownStr = info.startTimeIST;
+                    } else if (eMs > 0 && now > eMs) {
+                        isLive = false;
+                        isEnded = true;
+                        statusStr = 'ENDED';
+                        countdownStr = 'CONCLUDED';
+                    } else {
+                        isLive = true;
+                        statusStr = 'LIVE';
+                        countdownStr = 'LIVE NOW';
+                    }
+                }
+            } catch (_) {}
+        }
+
         formatted.push({
             id: `footlinks_${ev.id}`,
             name: matchTitle,
@@ -207,10 +253,11 @@ export async function getFormattedFootlinksEvents(): Promise<FormattedFootlinksE
             group: cat,
             sportName: cat,
             tournament: info.type || info.name || 'SPORTLINK TV',
-            time: 'LIVE NOW',
-            timeIST: info.startTimeIST || 'LIVE NOW',
-            status: ev.status === 'live' ? 'LIVE' : (ev.status || 'LIVE'),
-            isLive: true,
+            time: isLive ? 'LIVE NOW' : (countdownStr || 'UPCOMING'),
+            timeIST: info.startTimeIST || (isLive ? 'LIVE NOW' : 'UPCOMING'),
+            status: statusStr,
+            isLive: isLive,
+            isEnded: isEnded,
             url: primary.url,
             stream_url: primary.streamUrl,
             logo: logo,
@@ -222,8 +269,8 @@ export async function getFormattedFootlinksEvents(): Promise<FormattedFootlinksE
             badge: 'FOOTLINKS',
             playUrl: primary.playUrl,
             isFootlinks: true,
-            canWatch: true,
-            countdown: 'LIVE NOW',
+            canWatch: !isEnded,
+            countdown: countdownStr,
             streams: formattedStreams
         });
     }

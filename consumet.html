@@ -4094,9 +4094,12 @@ async function loadHomeSpotlight() {
         if (combinedCandidateEvents.length > 0) {
             const validAdminEvents = combinedCandidateEvents.filter(e => 
                 e && (e.title || e.name) && (e.url || e.streamUrl) && 
-                (!isLinearChannel(e) || Boolean(e.inHomeSpotlight) || Boolean(e.isMainHomeSpotlight)) &&
+                (Boolean(e.inHomeSpotlight) || Boolean(e.isMainHomeSpotlight) || (e.isAdminEvent && !e.isFootlinks)) &&
                 !String(e.id || '').startsWith('tim_') &&
+                !String(e.id || '').startsWith('footlinks_') &&
                 e.source !== 'timstreams' &&
+                e.source !== 'footlinks' &&
+                !e.isFootlinks &&
                 !String(e.url || '').includes('tim_')
             ).slice(0, 8);
             if (validAdminEvents.length > 0) {
@@ -8994,7 +8997,11 @@ async function loadLiveSportsSchedule(force = false) {
         if (footlinksArr.length > 0) {
             const seenFootlinks = new Set(allEvents.map(e => (e.id || '') + ' ' + (e.title || '')));
             footlinksArr.forEach(fl => {
-                const flTitle = (fl.title || fl.name || 'Live Sports').trim();
+                let flTitle = (fl.title || fl.name || 'Live Sports').trim();
+                const dupMatch = flTitle.match(/^([a-z0-9\s]+?)\s+(?:vs\.?|v)\s+([a-z0-9\s]+)$/i);
+                if (dupMatch && dupMatch[1].trim().toLowerCase() === dupMatch[2].trim().toLowerCase()) {
+                    flTitle = dupMatch[1].trim();
+                }
                 const checkKey = `${fl.id || ''} ${flTitle}`;
                 if (seenFootlinks.has(checkKey)) return;
                 seenFootlinks.add(checkKey);
@@ -9012,6 +9019,8 @@ async function loadLiveSportsSchedule(force = false) {
                 const primaryStream = flStreams[0] || {};
                 const primaryPlay = primaryStream.playUrl || fl.playUrl || '#';
                 const primaryUrl = primaryStream.streamUrl || primaryStream.url || fl.stream_url || fl.url || '';
+                const flIsLive = fl.isLive !== false && !fl.isEnded;
+                const flIsEnded = !!fl.isEnded;
 
                 allEvents.push({
                     id: fl.id || `footlinks_${flTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
@@ -9025,15 +9034,15 @@ async function loadLiveSportsSchedule(force = false) {
                     startTime: Math.floor(Date.now() / 1000),
                     endTime: Math.floor(Date.now() / 1000) + 14400,
                     durationMinutes: 240,
-                    timeIST: fl.timeIST || 'LIVE NOW',
+                    timeIST: fl.timeIST || (flIsLive ? 'LIVE NOW' : 'UPCOMING'),
                     dateIST: 'Today',
-                    fullIST: 'Today, LIVE NOW',
-                    status: 'LIVE',
-                    isLive: true,
-                    isStartingSoon: false,
-                    isEnded: false,
-                    canWatch: true,
-                    countdown: 'LIVE NOW',
+                    fullIST: flIsLive ? 'Today, LIVE NOW' : (fl.timeIST || 'Upcoming'),
+                    status: fl.status || (flIsEnded ? 'ENDED' : (flIsLive ? 'LIVE' : 'UPCOMING')),
+                    isLive: flIsLive,
+                    isStartingSoon: !flIsLive && !flIsEnded,
+                    isEnded: flIsEnded,
+                    canWatch: !flIsEnded,
+                    countdown: fl.countdown || (flIsLive ? 'LIVE NOW' : (fl.timeIST || 'UPCOMING')),
                     hasEnglish: true,
                     isFamous: true,
                     source: 'footlinks',
@@ -10844,16 +10853,20 @@ function getSpotlightEventImportance(e) {
         score += 2200;
     }
 
-    // 7. Flagship provider hierarchy
+    // 7. Flagship provider hierarchy (SonyLIV, Willow, FanCode, Prime Video lead Spotlight)
     const src = (e.source || '').toLowerCase();
     const bdg = (e.badge || '').toLowerCase();
-    if (e.isSonyLiv || src.includes('sonyliv') || bdg === 'sony') score += 450;
+    if (e.isSonyLiv || src.includes('sonyliv') || bdg === 'sony') score += 2500;
     else if (e.isWillow || src.includes('willow') || bdg === 'willow') {
-        score += 400;
-        if (e.isLatestWillow || e.isLatestLiveEvent) score += 300;
+        score += 2200;
+        if (e.isLatestWillow || e.isLatestLiveEvent) score += 400;
     }
-    else if (e.isFanCode || src.includes('fancode') || bdg === 'fancode') score += 350;
-    else if (e.isPrime || src.includes('prime') || bdg === 'prime') score += 300;
+    else if (e.isFanCode || src.includes('fancode') || bdg === 'fancode') score += 1800;
+    else if (e.isPrime || src.includes('prime') || bdg === 'prime') score += 1600;
+    else if (e.isFootlinks || src === 'footlinks' || bdg.includes('sportlink') || bdg.includes('footlinks')) {
+        // Scraped Footlinks events receive baseline ranking so they never displace official flagship broadcasts
+        score -= 1500;
+    }
     else score += 100;
 
     // Special MAL match priority
@@ -10884,6 +10897,12 @@ function renderLiveNowHeroSpotlight(events) {
         if (e.isAddedChannel || e.isAddon || e.isMdtv || e.isSpecialChannel) return false;
         if (/\(live\s*sports\)/i.test(e.title || e.rawTitle || '')) return false;
         if (window.liveNowActiveSource !== 'livem3u' && (e.isLiveM3u || e.source === 'livem3u' || String(e.id || '').startsWith('livem3u_'))) return false;
+        
+        // Filter out duplicate identical team vs team titles e.g. "Formula 1 vs Formula 1", "NPL vs NPL", "MotoGP vs MotoGP"
+        const cleanTitle = (e.title || e.rawTitle || '').trim();
+        const dupVsMatch = cleanTitle.match(/^([a-z0-9\s]+?)\s+(?:vs\.?|v)\s+([a-z0-9\s]+)$/i);
+        if (dupVsMatch && dupVsMatch[1].trim().toLowerCase() === dupVsMatch[2].trim().toLowerCase()) return false;
+
         return !/(namibia\s*v(?:s\.?)?\s*zimbabwe|zimbabwe\s*v(?:s\.?)?\s*namibia|4248459|cricbuzz\s*-\s*aq|stream\.kliv\.in|placeholder|testtapmad|crichd|1st\s*test\s*australia|caribbean\s*premier\s*league|the\s*hundred\s*2026|5th\s*odi\s*afghanistan|sports\s*live\s*vs\s*sports\s*live|playerado|crichdsee|player0003|cricgo|demo|dummy|sample|offline|expired)/i.test((e.title || '') + ' ' + (e.rawTitle || '') + ' ' + (e.primaryChannelName || '') + ' ' + (e.id || ''));
     });
     if (!validEvents || !validEvents.length) {

@@ -16,7 +16,7 @@ import { fetchSonyLivEvents } from '../services/sonylivService';
 import { getMix1TvChannels } from '../services/mix1tvService';
 import { fetchWillowEvents } from '../services/willowService';
 import { fetchPrimeEvents } from '../services/primeService';
-import { generateFootlinksM3u, getFootlinksData } from '../services/footlinksService';
+import { generateFootlinksM3u, getFootlinksData, getFormattedFootlinksEvents } from '../services/footlinksService';
 import { getAllChannelsData, generateAllChannelsM3u } from '../services/allChannelsService';
 
 const router = Router();
@@ -1538,6 +1538,37 @@ router.get('/api/sports/footlinks/events', async (req: Request, res: Response) =
         return res.json({ status: 'success', count: events.length, events });
     } catch (err: any) {
         return res.status(500).json({ status: 'error', message: err?.message || 'Failed to fetch events' });
+    }
+});
+
+/**
+ * GET /api/sportlink/channels & /api/footlinks/channels
+ * Returns JSON catalog of SportLink live matches and multi-stream channels with categories
+ */
+router.get(['/api/sportlink/channels', '/api/footlinks/channels'], async (req: Request, res: Response) => {
+    try {
+        const events = await getFormattedFootlinksEvents();
+        const catMap = new Map<string, number>();
+        events.forEach(e => {
+            const cat = e.category || 'Live Sports';
+            catMap.set(cat, (catMap.get(cat) || 0) + 1);
+        });
+
+        const categories = Array.from(catMap.entries()).map(([name, count]) => ({
+            name,
+            count
+        })).sort((a, b) => b.count - a.count);
+
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=60');
+        return res.json({
+            status: 'success',
+            count: events.length,
+            categories,
+            channels: events
+        });
+    } catch (err: any) {
+        return res.status(500).json({ status: 'error', message: err?.message || 'Failed to fetch sportlink channels' });
     }
 });
 

@@ -1759,6 +1759,8 @@ app.use((req, res, next) => {
                          req.path === '/stalker_pro_infinity.svg' ||
                          req.path.startsWith('/sports.m3u') ||
                          req.path.startsWith('/api/sports') ||
+                          req.path.startsWith('/api/sportlink') ||
+                          req.path.startsWith('/api/footlinks') ||
                           req.path.startsWith('/api/sonyliv') ||
                           req.path.startsWith('/api/fancode') ||
                           req.path.startsWith('/api/willow') ||

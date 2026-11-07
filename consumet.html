@@ -2223,18 +2223,22 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
         </div>
     </div>
 
-    <!-- Live TV Source Switcher (JioTV Network vs GitHub Live.m3u vs All Channels) -->
+    <!-- Live TV Source Switcher (JioTV Network vs GitHub Live.m3u vs All Channels vs SportLink) -->
     <div class="flex items-center justify-between gap-3 flex-wrap">
-        <div class="flex items-center gap-1.5 bg-[#0e0e12] p-1.5 rounded-xl border border-white/[0.08]">
-            <button type="button" onclick="switchLiveTvCatalog('jiotv')" id="btn-livetv-src-jiotv" class="px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-black shadow-sm flex items-center gap-2">
+        <div class="flex items-center gap-1.5 bg-[#0e0e12] p-1.5 rounded-xl border border-white/[0.08] overflow-x-auto no-scrollbar">
+            <button type="button" onclick="switchLiveTvCatalog('jiotv')" id="btn-livetv-src-jiotv" class="px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-black shadow-sm flex items-center gap-2 shrink-0">
                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                 JioTV Network
             </button>
-            <button type="button" onclick="switchLiveTvCatalog('livem3u')" id="btn-livetv-src-livem3u" class="px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2">
+            <button type="button" onclick="switchLiveTvCatalog('sportlink')" id="btn-livetv-src-sportlink" class="px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2 shrink-0">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                SportLink Live
+            </button>
+            <button type="button" onclick="switchLiveTvCatalog('livem3u')" id="btn-livetv-src-livem3u" class="px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2 shrink-0">
                 <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
                 Live Events (GitHub)
             </button>
-            <button type="button" onclick="switchLiveTvCatalog('allchannels')" id="btn-livetv-src-allchannels" class="px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2">
+            <button type="button" onclick="switchLiveTvCatalog('allchannels')" id="btn-livetv-src-allchannels" class="px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2 shrink-0">
                 <span class="w-2 h-2 rounded-full bg-amber-400"></span>
                 All Channels
             </button>
@@ -2306,6 +2310,7 @@ No EPG data has been retrieved yet. Click the <strong>Load Program Guide</strong
         <!-- Clean OTT Network Filter Bar (No Gimmick Icons) -->
         <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-3 border-t border-white/[0.07] text-xs">
             <button id="livenow-source-all" onclick="setLiveNowSourceFilter('all')" class="px-3.5 py-1.5 rounded-xl font-semibold bg-white text-slate-950 transition-all shrink-0">All Networks</button>
+            <button id="livenow-source-sportlink" onclick="setLiveNowSourceFilter('sportlink')" class="px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/65 text-slate-200 hover:text-white border border-white/10 transition-all shrink-0 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>SportLink <span id="liveNowSportlinkCountBadge" class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-white/10 text-slate-200">0</span></button>
             <button id="livenow-source-sony" onclick="setLiveNowSourceFilter('sony')" class="px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/65 text-slate-200 hover:text-white border border-white/10 transition-all shrink-0">SonyLIV</button>
             <button id="livenow-source-willow" onclick="setLiveNowSourceFilter('willow')" class="px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/65 text-slate-200 hover:text-white border border-white/10 transition-all shrink-0 flex items-center gap-1.5">Willow Cricket <span id="liveNowWillowCountBadge" class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-white/10 text-slate-200">0</span></button>
             <button id="livenow-source-fancode" onclick="setLiveNowSourceFilter('fancode')" class="px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/65 text-slate-200 hover:text-white border border-white/10 transition-all shrink-0">FanCode</button>
@@ -8273,7 +8278,7 @@ window.liveNowClockTimer = null;
 
 function setLiveNowSourceFilter(source) {
     window.liveNowActiveSource = source;
-    const sources = ['all', 'sony', 'willow', 'fancode', 'prime', 'tim', 'livem3u', 'added', 'mdtv', 'fixtures', 'containers'];
+    const sources = ['all', 'sportlink', 'sony', 'willow', 'fancode', 'prime', 'tim', 'livem3u', 'added', 'mdtv', 'fixtures', 'containers'];
     sources.forEach(s => {
         const btn = document.getElementById(`livenow-source-${s}`);
         if (!btn) return;
@@ -8574,7 +8579,7 @@ async function loadLiveSportsSchedule(force = false) {
             ? Promise.resolve({ status: 'success', channels: window.timStreamsList })
             : safeFetchJson(`/api/sports/timstreams/channels`, 3500);
 
-        const [streamicRes, timEventsRes, timDirectRes, liveM3uEventsRes, jtvEventsRes, addedChannelsRes, adminSportsRes, highlightsRes, zeeRes, fancodeLiveRes, sonylivLiveRes, timChannelsRes, willowLiveRes, primeLiveRes, googleResultsRes] = await Promise.allSettled([
+        const [streamicRes, timEventsRes, timDirectRes, liveM3uEventsRes, jtvEventsRes, addedChannelsRes, adminSportsRes, highlightsRes, zeeRes, fancodeLiveRes, sonylivLiveRes, timChannelsRes, willowLiveRes, primeLiveRes, sportlinkRes, googleResultsRes] = await Promise.allSettled([
             safeFetchJson(`/api/streamic/schedule${force ? '?force=1' : ''}`),
             safeFetchJson(`/api/sports/live-events`),
             safeFetchJson(`/api/tim/events${force ? '?refresh=1' : ''}`),
@@ -8589,6 +8594,7 @@ async function loadLiveSportsSchedule(force = false) {
             timChannelsPromise,
             safeFetchJson(`/api/willow/events`),
             safeFetchJson(`/api/prime/events${force ? '?refresh=1' : ''}`),
+            safeFetchJson(`/api/sportlink/channels`),
             Promise.resolve(null)
         ]);
 
@@ -8630,10 +8636,18 @@ async function loadLiveSportsSchedule(force = false) {
             primeCountBadge.textContent = window.primeLiveMatches.length;
         }
 
-        if (timEventsRes.status === 'fulfilled' && Array.isArray(timEventsRes.value?.footlinksEvents)) {
+        if (sportlinkRes.status === 'fulfilled' && (Array.isArray(sportlinkRes.value?.channels) || Array.isArray(sportlinkRes.value?.events))) {
+            window.footlinksLiveMatches = sportlinkRes.value.channels || sportlinkRes.value.events || [];
+            window.sportlinkAllChannels = window.footlinksLiveMatches;
+        } else if (timEventsRes.status === 'fulfilled' && Array.isArray(timEventsRes.value?.footlinksEvents)) {
             window.footlinksLiveMatches = timEventsRes.value.footlinksEvents;
-        } else {
+            window.sportlinkAllChannels = window.footlinksLiveMatches;
+        } else if (!window.footlinksLiveMatches) {
             window.footlinksLiveMatches = [];
+        }
+        const sportlinkCountBadge = document.getElementById('liveNowSportlinkCountBadge');
+        if (sportlinkCountBadge) {
+            sportlinkCountBadge.textContent = window.footlinksLiveMatches.length;
         }
 
         let allEvents = [];
@@ -9054,6 +9068,8 @@ async function loadLiveSportsSchedule(force = false) {
                     primaryPlayUrl: primaryPlay,
                     primaryM3u8Url: primaryUrl,
                     primaryChannelName: primaryStream.name || primaryStream.title || flTitle,
+                    streams: flStreams,
+                    sources: flStreams,
                     channels: flStreams.map(s => ({
                         channelName: s.name || s.title || 'Live Stream',
                         language: 'English',
@@ -9115,6 +9131,9 @@ async function loadLiveSportsSchedule(force = false) {
                     } catch (_) {}
                 }
 
+                let evLogo = (ev.logo || '').replace(/&amp;/g, '&').trim();
+                if (evLogo && evLogo.startsWith('/')) evLogo = `https://timstreams.co.rw${evLogo}`;
+
                 const mappedObj = {
                     id: `tim_ev_${slug}`,
                     title: ev.name || ev.title || 'TimStreams Event',
@@ -9140,7 +9159,8 @@ async function loadLiveSportsSchedule(force = false) {
                     isFamous: true,
                     source: 'timstreams',
                     isTimStreams: true,
-                    thumbnail: ev.logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
+                    thumbnail: evLogo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
+                    logo: evLogo || '',
                     userHasChannel: true,
                     primaryPlayUrl: pUrl,
                     primaryM3u8Url: rawLiveUrl,
@@ -9913,6 +9933,8 @@ function getFilteredLiveNowEvents() {
             list = list.filter(e => e.source === 'willow' || e.isWillow || (e.id && e.id.includes('willow')) || (e.badge === 'WILLOW') || (e.title && /willow/i.test(e.title)));
         } else if (window.liveNowActiveSource === 'fancode') {
             list = list.filter(e => e.isFanCode || e.source === 'FANCODE_LIVE' || e.badge === 'FANCODE' || (e.id && e.id.startsWith('fancode_')) || (e.title && /fancode/i.test(e.title)));
+        } else if (window.liveNowActiveSource === 'sportlink') {
+            list = list.filter(e => e.isFootlinks || e.source === 'footlinks' || e.badge === 'SPORTLINK' || (e.id && String(e.id).startsWith('footlinks_')));
         } else if (window.liveNowActiveSource === 'prime') {
             list = list.filter(isPrimeSportsEvent);
         } else if (window.liveNowActiveSource === 'tim' || window.liveNowActiveSource === 'timstreams') {
@@ -10195,6 +10217,25 @@ function collectAllEventSources(event) {
         });
     };
 
+    // 0. SportLink / Footlinks Multi-Stream Server Feeds
+    if (Array.isArray(event.streams) && event.streams.length > 0) {
+        event.streams.forEach((s, i) => {
+            if (!s) return;
+            const playLink = s.playUrl || `/play_consumet.php?channel_id=${encodeURIComponent(event.id || 'sportlink')}_${i}&url=${encodeURIComponent(s.streamUrl || s.url)}&key_id=${encodeURIComponent(s.key_id || '')}&key=${encodeURIComponent(s.key || '')}&name=${encodeURIComponent((event.title || event.name || 'Live') + ' - ' + (s.name || s.title || `Stream ${i + 1}`))}&source=sportlink&type=${s.type || s.manifest_type || 'dash'}`;
+            addSourceItem({
+                sourceId: `sportlink_${s.id || i + 1}`,
+                sourceName: s.name || s.title || `Server ${i + 1} (${(s.type || 'DASH').toUpperCase()})`,
+                language: 'Multi-Audio / Live',
+                isEnglish: true,
+                streamUrl: s.streamUrl || s.url,
+                playUrl: playLink,
+                quality: s.type === 'dash' ? '1080p ClearKey DRM' : '1080p FHD',
+                badge: s.name || `Server ${i + 1}`,
+                streams: []
+            }, i);
+        });
+    }
+
     // 1. Explicit multi-source array (SonyLIV / FanCode / JTV / Multi-Source)
     if (Array.isArray(event.sources)) {
         event.sources.forEach((s, i) => addSourceItem(s, i));
@@ -10252,7 +10293,7 @@ function collectAllEventSources(event) {
 
 function openSportMatchOvalModal(eventId, initialTab = 'watch') {
     if (Date.now() - (window._lastSwipeTimestamp || 0) < 350) return;
-    const list = (window.liveNowEvents || []).concat(window.lastFilteredLiveEvents || []);
+    const list = (window.liveNowEvents || []).concat(window.lastFilteredLiveEvents || []).concat(window.sportlinkAllChannels || []).concat(window.footlinksLiveMatches || []);
     const event = list.find(e => String(e?.id) === String(eventId));
     if (!event) return;
 
@@ -11945,6 +11986,14 @@ function renderLiveNowGrid() {
             shelvesHtml += createShelf('TimStreams 24/7 Sports Channels', timChannelsList, true);
         }
 
+        // 6C. 🌟 SportLink Multi-Stream Sports (ClearKey DRM & HLS Multi-Server Events)
+        const activeSportlinkList = (window.footlinksLiveMatches && window.footlinksLiveMatches.length > 0 && (!window.liveNowActiveSource || window.liveNowActiveSource === 'all' || window.liveNowActiveSource === 'sportlink'))
+            ? window.footlinksLiveMatches
+            : events.filter(e => (e.source === 'footlinks' || e.isFootlinks || String(e.id || '').startsWith('footlinks_')) && !e.isAddedChannel);
+        if (activeSportlinkList.length > 0) {
+            shelvesHtml += createShelf('SportLink Multi-Stream Sports', activeSportlinkList, true);
+        }
+
         // 7. 🔴 Live Now (Live Sports Data / Live.m3u - Direct from src/services/liveM3uService.ts, not as backups)
         const liveM3uList = (window.liveM3uEvents && window.liveM3uEvents.length > 0 && (!window.liveNowActiveSource || window.liveNowActiveSource === 'all' || window.liveNowActiveSource === 'livem3u'))
             ? window.liveM3uEvents
@@ -12991,12 +13040,16 @@ function renderIplReplaysGrid(replays, gridEl) {
 // =========================================================================
 // 📺 MEGA LIVE TV CATALOG ENGINE & AIRTEL / GITHUB LIVE.M3U INTEGRATION
 // =========================================================================
-window.liveTvCurrentSource = 'jiotv'; // 'jiotv' | 'mix1tv' | 'livem3u'
+window.liveTvCurrentSource = 'jiotv'; // 'jiotv' | 'sportlink' | 'mix1tv' | 'livem3u' | 'allchannels'
 window.jtvAllChannels = [];
 window.jtvCategoriesList = [];
 window.jtvActiveCategory = 'all';
 window.jtvDisplayLimit = 120;
 let jtvScrollObserver = null;
+
+window.sportlinkAllChannels = [];
+window.sportlinkCategoriesList = [];
+window.sportlinkActiveCategory = 'all';
 
 window.mix1tvAllChannels = [];
 window.mix1tvCategoriesList = [];
@@ -13014,6 +13067,7 @@ window.allChannelsActiveCategory = 'all';
 async function switchLiveTvCatalog(source) {
     if (source === 'mix1tv' || source === 'airtel') source = 'jiotv';
     if (window.liveTvCurrentSource === source) {
+        if (source === 'sportlink' && window.sportlinkAllChannels.length > 0) return;
         if (source === 'allchannels' && window.allChannelsList.length > 0) return;
         if (source === 'livem3u' && window.liveM3uAllChannels.length > 0) return;
         if (source === 'jiotv' && window.jtvAllChannels.length > 0) return;
@@ -13024,6 +13078,7 @@ async function switchLiveTvCatalog(source) {
     if (searchInput) searchInput.value = '';
 
     const btnJio = document.getElementById('btn-livetv-src-jiotv');
+    const btnSportlink = document.getElementById('btn-livetv-src-sportlink');
     const btnLiveM3u = document.getElementById('btn-livetv-src-livem3u');
     const btnAllChannels = document.getElementById('btn-livetv-src-allchannels');
     const livem3uBadge = document.getElementById('livem3uM3uBadge');
@@ -13033,8 +13088,18 @@ async function switchLiveTvCatalog(source) {
     const activeBtnCls = "px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-black shadow-sm flex items-center gap-2";
     const inactiveBtnCls = "px-4 py-2 rounded-lg text-xs font-medium transition-all text-neutral-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-2";
 
-    if (source === 'allchannels') {
+    if (source === 'sportlink') {
         if (btnJio) btnJio.className = inactiveBtnCls;
+        if (btnSportlink) btnSportlink.className = activeBtnCls;
+        if (btnLiveM3u) btnLiveM3u.className = inactiveBtnCls;
+        if (btnAllChannels) btnAllChannels.className = inactiveBtnCls;
+        if (livem3uBadge) { livem3uBadge.classList.add('hidden'); livem3uBadge.classList.remove('flex'); }
+        if (subtitle) subtitle.textContent = "SportLink Real-Time Live Sports & Multi-Stream Servers (ClearKey DASH & HLS)";
+        if (indicator) { indicator.className = "w-3 h-8 bg-rose-500 rounded-full animate-pulse"; }
+        await loadSportlinkCatalog();
+    } else if (source === 'allchannels') {
+        if (btnJio) btnJio.className = inactiveBtnCls;
+        if (btnSportlink) btnSportlink.className = inactiveBtnCls;
         if (btnLiveM3u) btnLiveM3u.className = inactiveBtnCls;
         if (btnAllChannels) btnAllChannels.className = activeBtnCls;
         if (livem3uBadge) { livem3uBadge.classList.add('hidden'); livem3uBadge.classList.remove('flex'); }
@@ -13043,6 +13108,7 @@ async function switchLiveTvCatalog(source) {
         await loadAllChannelsCatalog();
     } else if (source === 'livem3u') {
         if (btnJio) btnJio.className = inactiveBtnCls;
+        if (btnSportlink) btnSportlink.className = inactiveBtnCls;
         if (btnLiveM3u) btnLiveM3u.className = activeBtnCls;
         if (btnAllChannels) btnAllChannels.className = inactiveBtnCls;
         if (livem3uBadge) { livem3uBadge.classList.remove('hidden'); livem3uBadge.classList.add('flex'); }
@@ -13051,12 +13117,47 @@ async function switchLiveTvCatalog(source) {
         await loadLiveM3uCatalog();
     } else {
         if (btnJio) btnJio.className = activeBtnCls;
+        if (btnSportlink) btnSportlink.className = inactiveBtnCls;
         if (btnLiveM3u) btnLiveM3u.className = inactiveBtnCls;
         if (btnAllChannels) btnAllChannels.className = inactiveBtnCls;
         if (livem3uBadge) { livem3uBadge.classList.add('hidden'); livem3uBadge.classList.remove('flex'); }
         if (subtitle) subtitle.textContent = "High-definition live channels with automatic token renewal & ClearKey DRM";
         if (indicator) { indicator.className = "w-3 h-8 bg-emerald-500 rounded-full"; }
         await loadLiveTvCatalog();
+    }
+}
+
+async function loadSportlinkCatalog() {
+    const gridEl = document.getElementById('jtvChannelGrid');
+    if (!gridEl) return;
+
+    try {
+        if (window.sportlinkAllChannels.length === 0) {
+            gridEl.innerHTML = `
+                <div class="col-span-full py-24 text-center">
+                    <div class="w-10 h-10 rounded-full border-2 border-rose-500/30 border-t-rose-500 animate-spin mx-auto mb-3"></div>
+                    <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Loading SportLink Multi-Stream Live Sports...</p>
+                </div>
+            `;
+
+            const res = await fetch('/api/sportlink/channels');
+            const data = await res.json();
+            window.sportlinkAllChannels = data.channels || [];
+            window.sportlinkCategoriesList = data.categories || [];
+        }
+
+        const countBadge = document.getElementById('jtvTotalCountBadge');
+        if (countBadge) countBadge.textContent = `${window.sportlinkAllChannels.length.toLocaleString()} MATCHES (SPORTLINK)`;
+
+        renderLiveTvCategoryPills();
+        renderLiveTvChannelsGrid(true);
+    } catch (err) {
+        console.error("[SportLink] Failed to load channels:", err);
+        gridEl.innerHTML = `
+            <div class="col-span-full py-16 text-center text-rose-400 text-xs font-bold">
+                Failed to load SportLink channels. Please try refreshing.
+            </div>
+        `;
     }
 }
 
@@ -13189,37 +13290,45 @@ function renderLiveTvCategoryPills() {
     const pillsEl = document.getElementById('jtvCategoryPills');
     if (!pillsEl) return;
 
+    const isSportlink = window.liveTvCurrentSource === 'sportlink';
     const isMix1Tv = window.liveTvCurrentSource === 'mix1tv' || window.liveTvCurrentSource === 'airtel';
     const isLiveM3u = window.liveTvCurrentSource === 'livem3u';
     const isAllChannels = window.liveTvCurrentSource === 'allchannels';
-    const categories = isAllChannels ? window.allChannelsCategoriesList : (isMix1Tv ? window.mix1tvCategoriesList : (isLiveM3u ? window.liveM3uCategoriesList : window.jtvCategoriesList));
-    const activeCat = isAllChannels ? window.allChannelsActiveCategory : (isMix1Tv ? window.mix1tvActiveCategory : (isLiveM3u ? window.liveM3uActiveCategory : window.jtvActiveCategory));
-    const channels = isAllChannels ? window.allChannelsList : (isMix1Tv ? window.mix1tvAllChannels : (isLiveM3u ? window.liveM3uAllChannels : window.jtvAllChannels));
+    const categories = isSportlink ? window.sportlinkCategoriesList : (isAllChannels ? window.allChannelsCategoriesList : (isMix1Tv ? window.mix1tvCategoriesList : (isLiveM3u ? window.liveM3uCategoriesList : window.jtvCategoriesList)));
+    const activeCat = isSportlink ? window.sportlinkActiveCategory : (isAllChannels ? window.allChannelsActiveCategory : (isMix1Tv ? window.mix1tvActiveCategory : (isLiveM3u ? window.liveM3uActiveCategory : window.jtvActiveCategory)));
+    const channels = isSportlink ? window.sportlinkAllChannels : (isAllChannels ? window.allChannelsList : (isMix1Tv ? window.mix1tvAllChannels : (isLiveM3u ? window.liveM3uAllChannels : window.jtvAllChannels)));
 
     let html = '';
-    if (isAllChannels) {
-        html += `<button onclick="switchLiveTvCatalog('jiotv')" id="jtv-pill-jiotv-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">JioTV Network</button>`;
-        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live Events</button>`;
+    if (isSportlink) {
+        html += `<button onclick="switchLiveTvCatalog('jiotv')" id="jtv-pill-jiotv-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">JioTV</button>`;
+        html += `<button onclick="switchLiveTvCatalog('allchannels')" id="jtv-pill-allchan-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">All Channels</button>`;
+        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live Events</button>`;
+    } else if (isAllChannels) {
+        html += `<button onclick="switchLiveTvCatalog('jiotv')" id="jtv-pill-jiotv-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">JioTV</button>`;
+        html += `<button onclick="switchLiveTvCatalog('sportlink')" id="jtv-pill-sportlink-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-rose-600/20 text-rose-300 hover:bg-white hover:text-slate-950 border border-rose-500/30">SportLink</button>`;
+        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live Events</button>`;
     } else if (isLiveM3u) {
-        html += `<button onclick="switchLiveTvCatalog('jiotv')" id="jtv-pill-jiotv-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">JioTV Network</button>`;
-        html += `<button onclick="switchLiveTvCatalog('allchannels')" id="jtv-pill-allchan-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">All Channels</button>`;
+        html += `<button onclick="switchLiveTvCatalog('jiotv')" id="jtv-pill-jiotv-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">JioTV</button>`;
+        html += `<button onclick="switchLiveTvCatalog('sportlink')" id="jtv-pill-sportlink-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-rose-600/20 text-rose-300 hover:bg-white hover:text-slate-950 border border-rose-500/30">SportLink</button>`;
+        html += `<button onclick="switchLiveTvCatalog('allchannels')" id="jtv-pill-allchan-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">All Channels</button>`;
     } else {
-        html += `<button onclick="switchLiveTvCatalog('allchannels')" id="jtv-pill-allchan-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">All Channels</button>`;
-        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live Events</button>`;
+        html += `<button onclick="switchLiveTvCatalog('sportlink')" id="jtv-pill-sportlink-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-rose-600/20 text-rose-300 hover:bg-white hover:text-slate-950 border border-rose-500/30">SportLink</button>`;
+        html += `<button onclick="switchLiveTvCatalog('allchannels')" id="jtv-pill-allchan-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">All Channels</button>`;
+        html += `<button onclick="switchLiveTvCatalog('livem3u')" id="jtv-pill-livem3u-quick" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all bg-slate-800/80 text-slate-200 hover:bg-white hover:text-slate-950 border border-white/10">Live Events</button>`;
     }
 
     const totalChannels = channels.length;
     const isAllActive = activeCat === 'all';
     html += `
-        <button onclick="filterLiveTvCategory('all')" id="jtv-pill-all" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${isAllActive ? 'bg-white text-slate-950 shadow-sm' : 'bg-slate-800/65 text-slate-300 hover:text-white border border-white/10'}">
-            All Channels (${totalChannels.toLocaleString()})
+        <button onclick="filterLiveTvCategory('all')" id="jtv-pill-all" class="px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${isAllActive ? 'bg-white text-slate-950 shadow-sm' : 'bg-slate-800/65 text-slate-300 hover:text-white border border-white/10'}">
+            All (${totalChannels.toLocaleString()})
         </button>
     `;
 
     for (const cat of categories) {
         const isActive = activeCat.toLowerCase() === cat.name.toLowerCase();
         html += `
-            <button onclick="filterLiveTvCategory('${cat.name.replace(/'/g, "\\'")}')" id="jtv-pill-${cat.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}" class="px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${isActive ? 'bg-white text-slate-950 font-semibold shadow-sm' : 'bg-slate-800/65 text-slate-300 hover:text-white border border-white/10'}">
+            <button onclick="filterLiveTvCategory('${cat.name.replace(/'/g, "\\'")}')" id="jtv-pill-${cat.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}" class="px-3 py-1 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${isActive ? 'bg-white text-slate-950 font-semibold shadow-sm' : 'bg-slate-800/65 text-slate-300 hover:text-white border border-white/10'}">
                 ${cat.name} (${cat.count})
             </button>
         `;
@@ -13229,7 +13338,9 @@ function renderLiveTvCategoryPills() {
 }
 
 function filterLiveTvCategory(catName) {
-    if (window.liveTvCurrentSource === 'mix1tv' || window.liveTvCurrentSource === 'airtel') {
+    if (window.liveTvCurrentSource === 'sportlink') {
+        window.sportlinkActiveCategory = catName;
+    } else if (window.liveTvCurrentSource === 'mix1tv' || window.liveTvCurrentSource === 'airtel') {
         window.mix1tvActiveCategory = catName;
     } else if (window.liveTvCurrentSource === 'livem3u') {
         window.liveM3uActiveCategory = catName;
@@ -13273,9 +13384,11 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
     const searchInput = document.getElementById('jtvSearchInput');
     if (!gridEl) return;
 
-    gridEl.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5";
+    // Small, tight, responsive square tiles (dense OTT guide layout)
+    gridEl.className = "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 sm:gap-2.5";
 
     const source = window.liveTvCurrentSource;
+    const isSportlink = source === 'sportlink';
     const isMix1Tv = source === 'mix1tv' || source === 'airtel';
     const isLiveM3u = source === 'livem3u';
     const isAllChannels = source === 'allchannels';
@@ -13283,7 +13396,10 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
 
     let channels = window.jtvAllChannels;
     let activeCategory = window.jtvActiveCategory;
-    if (isAllChannels) {
+    if (isSportlink) {
+        channels = window.sportlinkAllChannels;
+        activeCategory = window.sportlinkActiveCategory;
+    } else if (isAllChannels) {
         channels = window.allChannelsList;
         activeCategory = window.allChannelsActiveCategory;
     } else if (isMix1Tv) {
@@ -13300,6 +13416,7 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
     if (query) {
         channels = channels.filter(c =>
             (c.name || '').toLowerCase().includes(query) ||
+            (c.title || '').toLowerCase().includes(query) ||
             (c.category || '').toLowerCase().includes(query) ||
             (c.group || '').toLowerCase().includes(query) ||
             String(c.id).includes(query)
@@ -13318,7 +13435,9 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
 
     let cardsHtml = displayChannels.map(c => {
         let playUrl = '';
-        if (isAllChannels) {
+        if (isSportlink) {
+            playUrl = c.playUrl || (c.streams && c.streams[0]?.playUrl) || '#';
+        } else if (isAllChannels) {
             playUrl = c.play_url || `/play_consumet.php?channel_id=${encodeURIComponent(c.id)}&url=${encodeURIComponent(c.stream_url)}&name=${encodeURIComponent(c.name)}&source=allchannels&type=hls`;
         } else if (isLiveM3u) {
             playUrl = c.play_url || `/play_consumet.php?channel_id=${encodeURIComponent(c.id)}&url=${encodeURIComponent(c.stream_url)}&name=${encodeURIComponent(c.name)}&source=livem3u&type=${c.type || 'hls'}`;
@@ -13327,27 +13446,57 @@ function renderLiveTvChannelsGrid(resetScroll = false) {
             const manifestTarget = isHls ? (c.full_stream_url || c.stream_url) : (c.manifest_url || `/api/jtv/manifest/${c.id}.mpd`);
             playUrl = `/play_consumet.php?channel_id=jtv-${encodeURIComponent(c.id)}&url=${encodeURIComponent(manifestTarget)}&key_id=${encodeURIComponent(c.key_id || '')}&key=${encodeURIComponent(c.key || '')}&name=${encodeURIComponent(c.name)}&source=consumet.html&type=${isHls ? 'hls' : 'dash'}`;
         }
-        const logo = c.logo || '';
-        const catLabel = c.category || (isAllChannels ? 'Live TV' : (isLiveM3u ? 'Live Event' : 'HD Channel'));
+        const logo = c.logo || c.thumbnail || '';
+        const catLabel = c.category || (isSportlink ? 'SportLink Live' : (isAllChannels ? 'Live TV' : (isLiveM3u ? 'Live Event' : 'HD Channel')));
+        const chName = c.name || c.title || 'Channel';
+        const safeName = chName.replace(/'/g, "\\'");
+        const safePlayUrl = (playUrl || '').replace(/'/g, "\\'");
+        const safeId = encodeURIComponent(c.id || '');
+        const hasStreams = Array.isArray(c.streams) && c.streams.length > 0;
+        const streamCount = hasStreams ? c.streams.length : 1;
+
+        // Card action: For SportLink or items with multiple stream options, click opens the source selecting info modal!
+        const cardAction = (isSportlink || streamCount > 1)
+            ? `openSportMatchOvalModal(decodeURIComponent('${safeId}'), 'watch')`
+            : `openLiveNowEventDirect('${safePlayUrl}', 'livetv')`;
 
         return `
-            <div onclick="openLiveNowEventDirect('${playUrl}', 'livetv')" class="livetv-ott-card group relative rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between">
-                <div class="relative aspect-[16/10] w-full bg-slate-950/65 p-4 flex items-center justify-center overflow-hidden">
-                    <span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/25 text-[9px] font-semibold text-sky-300 uppercase tracking-wider flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>LIVE
+            <div onclick="${cardAction}" class="livetv-ott-card group relative rounded-xl overflow-hidden cursor-pointer flex flex-col justify-between bg-slate-900/60 border border-white/[0.08] hover:border-sky-400/50 hover:bg-slate-900/90 transition-all duration-200 shadow-sm hover:shadow-lg hover:shadow-sky-500/10">
+                <!-- Compact Square Frame (Aspect 4:3) -->
+                <div class="relative aspect-[4/3] w-full bg-slate-950/75 p-2 sm:p-2.5 flex items-center justify-center overflow-hidden">
+                    <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-400/25 text-[8px] font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1">
+                        <span class="w-1 h-1 rounded-full ${isSportlink ? 'bg-rose-500 animate-pulse' : 'bg-sky-400'}"></span>${isSportlink ? 'LIVE' : 'LIVE'}
                     </span>
-                    <button type="button" onclick="window.shareCardLink('${playUrl}', '${c.name.replace(/'/g, "\\'")}', 'channel', event)" class="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-slate-900/85 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/15 transition-all" title="Share Channel">
-                        <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                    <button type="button" onclick="event.stopPropagation(); window.shareCardLink('${safePlayUrl}', '${safeName}', 'channel', event)" class="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 p-1 rounded-md bg-slate-900/85 hover:bg-white text-slate-200 hover:text-slate-950 border border-white/15 transition-all" title="Share Channel">
+                        <i data-lucide="share-2" class="w-3 h-3"></i>
                     </button>
-                    ${logo ? `<img src="${logo}" alt="${c.name}" loading="lazy" decoding="async" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null; this.src='/stalker_pro_infinity.svg';">` : `<i data-lucide="tv" class="w-8 h-8 text-slate-500"></i>`}
-                    <div class="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-white text-slate-950 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg">
-                        <i data-lucide="play" class="w-3.5 h-3.5 fill-slate-950 ml-0.5"></i>
+                    ${logo ? `<img src="${logo}" alt="${safeName}" loading="lazy" decoding="async" class="max-h-11 sm:max-h-12 w-auto max-w-[85%] object-contain group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null; this.src='/stalker_pro_infinity.svg';">` : `<i data-lucide="tv" class="w-6 h-6 text-slate-500"></i>`}
+
+                    <!-- Hover Play / Source Select Overlay Button -->
+                    <div class="absolute bottom-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                        ${(isSportlink || streamCount > 1) ? `
+                            <button type="button" onclick="event.stopPropagation(); openSportMatchOvalModal(decodeURIComponent('${safeId}'), 'watch')" class="p-1 rounded-md bg-amber-500/90 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95" title="Open Source Selector Modal">
+                                <i data-lucide="layers" class="w-3 h-3"></i>
+                            </button>
+                        ` : ''}
+                        <button type="button" onclick="event.stopPropagation(); openLiveNowEventDirect('${safePlayUrl}', 'livetv')" class="w-6 h-6 rounded-full bg-white hover:bg-sky-400 text-slate-950 flex items-center justify-center shadow-lg transition-all active:scale-95" title="Direct Play">
+                            <i data-lucide="play" class="w-3 h-3 fill-slate-950 ml-0.5"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="p-3 bg-slate-900/75 border-t border-white/[0.07]">
-                    <span class="text-[10px] font-medium text-slate-400 block truncate">${catLabel}</span>
-                    <h4 class="text-xs sm:text-[13px] font-bold text-white group-hover:text-sky-300 transition-colors truncate mt-0.5" title="${c.name}">
-                        ${c.name}
+
+                <!-- Card Bottom Metadata Strip -->
+                <div class="p-2 bg-slate-900/85 border-t border-white/[0.06]">
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="text-[9px] font-semibold text-slate-400 block truncate">${catLabel}</span>
+                        ${streamCount > 1 ? `
+                            <span class="text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                                ${streamCount} SVR
+                            </span>
+                        ` : ''}
+                    </div>
+                    <h4 class="text-[11px] sm:text-xs font-bold text-white group-hover:text-sky-300 transition-colors truncate mt-0.5 leading-tight" title="${chName}">
+                        ${chName}
                     </h4>
                 </div>
             </div>
@@ -13544,14 +13693,18 @@ function renderSportsHome() {
             timEventsContainer.style.display = 'block';
             const b = document.getElementById('timStreamsEventsCountBadge');
             if (b) b.textContent = `${timEventsList.length} Live Scheduled Matches`;
-            renderSportsShelf(timEventsList.map(e => ({
-                name: e.title || e.name,
-                url: e.primaryPlayUrl || e.url || `/play_consumet.php?channel_id=${encodeURIComponent(e.id)}`,
-                stream_url: e.primaryM3u8Url || e.stream_url,
-                logo: e.thumbnail || e.logo || '',
-                genre: e.sportName || e.category || 'Live Match',
-                isTimStreamsEvent: true
-            })), 'sportsTimStreamsEventsShelf');
+            renderSportsShelf(timEventsList.map(e => {
+                let l = (e.thumbnail || e.logo || '').replace(/&amp;/g, '&').trim();
+                if (l.startsWith('/img/')) l = `https://timstreams.co.rw${l}`;
+                return {
+                    name: e.title || e.name,
+                    url: e.primaryPlayUrl || e.url || `/play_consumet.php?channel_id=${encodeURIComponent(e.id)}`,
+                    stream_url: e.primaryM3u8Url || e.stream_url,
+                    logo: l,
+                    genre: e.sportName || e.category || 'Live Match',
+                    isTimStreamsEvent: true
+                };
+            }), 'sportsTimStreamsEventsShelf');
         } else {
             // Lazy fetch if not yet in memory
             fetch('/api/tim/events').then(r => r.json()).then(data => {
@@ -13560,14 +13713,18 @@ function renderSportsHome() {
                     timEventsContainer.style.display = 'block';
                     const b = document.getElementById('timStreamsEventsCountBadge');
                     if (b) b.textContent = `${data.events.length} Live Scheduled Matches`;
-                    renderSportsShelf(data.events.map(e => ({
-                        name: e.name || e.title,
-                        url: e.playUrl || e.primaryPlayUrl || `/play_consumet.php?channel_id=${encodeURIComponent(e.id || e.url)}`,
-                        stream_url: e.streamUrl || e.primaryM3u8Url,
-                        logo: e.logo || '',
-                        genre: e.category || 'Live Match',
-                        isTimStreamsEvent: true
-                    })), 'sportsTimStreamsEventsShelf');
+                    renderSportsShelf(data.events.map(e => {
+                        let l = (e.logo || e.thumbnail || '').replace(/&amp;/g, '&').trim();
+                        if (l.startsWith('/img/')) l = `https://timstreams.co.rw${l}`;
+                        return {
+                            name: e.name || e.title,
+                            url: e.playUrl || e.primaryPlayUrl || `/play_consumet.php?channel_id=${encodeURIComponent(e.id || e.url)}`,
+                            stream_url: e.streamUrl || e.primaryM3u8Url,
+                            logo: l,
+                            genre: e.category || 'Live Match',
+                            isTimStreamsEvent: true
+                        };
+                    }), 'sportsTimStreamsEventsShelf');
                 }
             }).catch(() => {});
         }
@@ -13897,7 +14054,10 @@ function renderSportsHome() {
 function getSportsLogo(ch) {
 if (!ch) return 'https://ui-avatars.com/api/?name=Sports&background=05070a&color=10b981&size=256&bold=true';
 const title = (ch.name || ch.Name || '').replace(/⭐️/g, '').trim() || "Live Sports";
-let logo = ch.logo || ch.Logo || '';
+let logo = (ch.logo || ch.Logo || '').replace(/&amp;/g, '&').trim();
+if (logo.startsWith('/img/')) {
+    logo = `https://timstreams.co.rw${logo}`;
+}
 if (logo && (logo.startsWith('http://') || logo.startsWith('https://') || logo.startsWith('/assets/')) && !logo.includes('generic.png')) {
     return logo;
 }

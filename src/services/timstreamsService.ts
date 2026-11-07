@@ -177,10 +177,14 @@ function mapRawTimEvent(ev: any): TimLiveEvent {
         };
     });
     const eventName = (ev.name || 'Live Event').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+    let eventLogo = (ev.logo || '').replace(/&amp;/g, '&').trim();
+    if (eventLogo && eventLogo.startsWith('/')) {
+        eventLogo = `https://timstreams.co.rw${eventLogo}`;
+    }
     return {
         url: ev.url || '',
         name: eventName,
-        logo: ev.logo || '',
+        logo: eventLogo,
         genre: ev.genre,
         sub_genre: ev.sub_genre,
         time: ev.time,
@@ -327,9 +331,14 @@ export async function getTimChannels(forceRefresh = false): Promise<TimChannel[]
 
             const raw = res.data?.channels || res.data || [];
             if (Array.isArray(raw) && raw.length > 0) {
-                channelsCache = raw;
+                const cleaned = raw.map((c: any) => {
+                    let logo = (c.logo || c.poster || c.icon || '').replace(/&amp;/g, '&').trim();
+                    if (logo && logo.startsWith('/')) logo = `https://timstreams.co.rw${logo}`;
+                    return { ...c, logo };
+                });
+                channelsCache = cleaned;
                 channelsCacheTime = now;
-                return raw;
+                return cleaned;
             }
         } catch (e: any) {
             // Try next mirror

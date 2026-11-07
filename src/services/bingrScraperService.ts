@@ -3204,19 +3204,27 @@ export async function scrapeBingrStream(params: {
                     console.warn('[BingrScraper] FrameX error:', err?.message || err);
                 }
             } else if (serverId === 'm4u' || serverId === 'movies4u') {
-                const m4uRes = await scrapeMovies4uCluster({
-                    type: type as any,
-                    id: tmdbId,
-                    title: mediaTitle,
-                    year: mediaYear,
-                    season: s,
-                    episode: e
-                });
-                scraperName = m4uRes.scraperName || 'Movie 4U';
-                sources = m4uRes.sources || [];
-                subtitles = m4uRes.subtitles || [];
-                if (m4uRes.duration && m4uRes.duration > 0) {
-                    upstreamDurationSec = m4uRes.duration;
+                try {
+                    const m4uRes = await scrapeMovies4uCluster({
+                        type: type as any,
+                        id: tmdbId,
+                        title: mediaTitle,
+                        year: mediaYear,
+                        season: s,
+                        episode: e
+                    });
+                    if (m4uRes && m4uRes.success) {
+                        scraperName = m4uRes.scraperName || 'Movie 4U';
+                        sources = m4uRes.sources || [];
+                        subtitles = m4uRes.subtitles || [];
+                        if (m4uRes.duration && m4uRes.duration > 0) {
+                            upstreamDurationSec = m4uRes.duration;
+                        }
+                    } else if (m4uRes?.error) {
+                        console.warn('[BingrScraper] Movie 4U fallback:', m4uRes.error);
+                    }
+                } catch (err: any) {
+                    console.warn('[BingrScraper] Movies4u error:', err?.message || err);
                 }
             } else if (serverId === 'animesalt' || serverId === 'anime') {
                 const cleanTitle = (requestedTitle || mediaTitle || '').replace(/\s*\((?:anime|tv|series|\d{4})\)/gi, '').trim();

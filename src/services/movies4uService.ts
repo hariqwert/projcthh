@@ -812,5 +812,13 @@ export async function scrapeMovies4uCluster(params: {
         }
     }
 
-    throw new Error(`Movie 4U returned no direct M3U8 stream for "${title || rawId}"`);
+    return {
+        success: false,
+        serverId: 'm4u',
+        serverName: 'Movie 4U (Direct M3U8 / Multi-Audio)',
+        scraperName: 'Movie 4U',
+        sources: [],
+        subtitles: [],
+        error: `Movie 4U has no direct M3U8 online player for "${title || rawId}" (download archive only)`
+    };
 }

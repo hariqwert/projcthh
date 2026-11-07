@@ -14,6 +14,9 @@ export interface MovieBoxResult {
     error?: string;
 }
 
+let movieBoxCircuitTripUntil = 0;
+let movieBoxConsecutiveFailures = 0;
+
 /**
  * Scrape direct CDN MP4 streams from MovieBox Online / WeFeed BFF API
  */
@@ -22,6 +25,11 @@ export async function resolveMovieBoxStream(
     seasonNum: number = 1,
     episodeNum: number = 1
 ): Promise<MovieBoxResult> {
+    const now = Date.now();
+    if (now < movieBoxCircuitTripUntil) {
+        return { success: false, error: 'MovieBox upstream temporarily paused (circuit open)' };
+    }
+
     try {
         if (!titleOrUrl) return { success: false, error: 'Title or URL required' };
 
@@ -45,12 +53,12 @@ export async function resolveMovieBoxStream(
         if (detailPath) {
             try {
                 const detailUrl = `https://h5-api.aoneroom.com/wefeed-h5api-bff/detail?detailPath=${detailPath}`;
-                const dRes = await axios.get(detailUrl, { headers, timeout: 8000 });
+                const dRes = await axios.get(detailUrl, { headers, timeout: 2000 });
                 const subjectId = dRes.data?.data?.subject?.subjectId || '';
                 const title = dRes.data?.data?.subject?.title || titleOrUrl;
 
                 const playUrl = `https://h5-api.aoneroom.com/wefeed-h5api-bff/subject/play?subjectId=${subjectId}&se=${seasonNum}&ep=${episodeNum}&detailPath=${detailPath}`;
-                const pRes = await axios.get(playUrl, { headers, timeout: 8000 });
+                const pRes = await axios.get(playUrl, { headers, timeout: 2000 });
                 const rawStreams = pRes.data?.data?.streams || [];
 
                 if (rawStreams.length > 0) {
@@ -62,6 +70,7 @@ export async function resolveMovieBoxStream(
                     }));
 
                     if (streams.length > 0) {
+                        movieBoxConsecutiveFailures = 0;
                         return { success: true, streams, title };
                     }
                 }
@@ -81,11 +90,11 @@ export async function resolveMovieBoxStream(
 
         let pageRes: any = null;
         try {
-            pageRes = await axios.get(playUrl, { headers, timeout: 10000 });
+            pageRes = await axios.get(playUrl, { headers, timeout: 2000 });
         } catch (e: any) {
             if (titleOrUrl.toLowerCase().includes('terminal list')) {
                 playUrl = 'https://movieboxonline.net/play/the-terminal-list-YMJKCBXZ8B7?id=6377932688309244960';
-                pageRes = await axios.get(playUrl, { headers, timeout: 10000 }).catch(() => null);
+                pageRes = await axios.get(playUrl, { headers, timeout: 2000 }).catch(() => null);
             }
         }
 
@@ -101,6 +110,7 @@ export async function resolveMovieBoxStream(
                     label: `MovieBox CDN Direct MP4 #${idx + 1}`
                 }));
 
+                movieBoxConsecutiveFailures = 0;
                 return {
                     success: true,
                     streams,
@@ -109,9 +119,17 @@ export async function resolveMovieBoxStream(
             }
         }
 
+        movieBoxConsecutiveFailures++;
+        if (movieBoxConsecutiveFailures >= 2) {
+            movieBoxCircuitTripUntil = Date.now() + 5 * 60 * 1000; // trip for 5 minutes
+        }
         return { success: false, error: 'No direct streams found on MovieBox' };
 
     } catch (err: any) {
+        movieBoxConsecutiveFailures++;
+        if (movieBoxConsecutiveFailures >= 2) {
+            movieBoxCircuitTripUntil = Date.now() + 5 * 60 * 1000;
+        }
         return { success: false, error: err.message };
     }
 }

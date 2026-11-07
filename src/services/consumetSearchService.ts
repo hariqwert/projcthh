@@ -115,6 +115,32 @@ const POPULAR_MEDIA_SEED: FastMediaMatch[] = [
         cast: ["Dileep", "Bhavana", "Cochin Haneefa", "Jagathy Sreekumar", "Harisree Ashokan", "Oduvil Unnikrishnan"]
     },
     {
+        id: 62,
+        tmdbId: 62,
+        imdb_id: "tt0062622",
+        title: "2001: A Space Odyssey",
+        media_type: "movie",
+        poster_path: "/ve72VxNqjGM69Uky4WTo2bK6rfq.jpg",
+        backdrop_path: "/w5kFn4gK9sFv1s0Yj0q0oK1m9P6.jpg",
+        vote_average: 8.1,
+        release_date: "1968-04-02",
+        overview: "Humanity finds a mysterious object buried beneath the lunar surface and sets off on a voyage to Jupiter accompanied by the intelligent computer HAL 9000. Directed by Stanley Kubrick.",
+        original_language: "en",
+        cast: ["Keir Dullea", "Gary Lockwood", "William Sylvester", "Douglas Rain"]
+    },
+    {
+        id: 1368337,
+        tmdbId: 1368337,
+        title: "The Odyssey",
+        media_type: "movie",
+        poster_path: "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
+        backdrop_path: "/iDiTY1wA35YWzTmXLTtqaxtN6tc.jpg",
+        vote_average: 8.0,
+        release_date: "2026-07-15",
+        overview: "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point.",
+        original_language: "en"
+    },
+    {
         id: 1143248,
         title: "Aavesham",
         media_type: "movie",
@@ -1081,18 +1107,23 @@ export class ConsumetSearchService {
                 headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
             });
             if (resp.status === 200 && Array.isArray(resp.data?.results)) {
-                return resp.data.results.map((r: any) => ({
-                    id: r.id,
-                    tmdbId: r.id,
-                    title: r.title,
-                    name: r.title,
-                    media_type: r.type || 'movie',
-                    poster_path: r.poster ? (r.poster.startsWith('/') ? r.poster : r.poster.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
-                    backdrop_path: r.backdrop ? (r.backdrop.startsWith('/') ? r.backdrop : r.backdrop.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
-                    vote_average: r.rating || 7.5,
-                    release_date: r.year ? `${r.year}-01-01` : undefined,
-                    overview: r.overview || ''
-                }));
+                return resp.data.results.map((r: any) => {
+                    const isTv = (r.type === 'tv' || r.type === 'series');
+                    const mType = isTv ? 'tv' : 'movie';
+                    return {
+                        id: r.id,
+                        tmdbId: r.id,
+                        title: r.title,
+                        name: isTv ? r.title : undefined,
+                        media_type: mType,
+                        poster_path: r.poster ? (r.poster.startsWith('/') ? r.poster : r.poster.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
+                        backdrop_path: r.backdrop ? (r.backdrop.startsWith('/') ? r.backdrop : r.backdrop.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
+                        vote_average: r.rating || 7.5,
+                        release_date: r.year ? `${r.year}-01-01` : undefined,
+                        first_air_date: isTv && r.year ? `${r.year}-01-01` : undefined,
+                        overview: r.overview || ''
+                    };
+                });
             }
         } catch {}
         return [];
@@ -1266,13 +1297,13 @@ export class ConsumetSearchService {
                     tmdbId: item.id,
                     imdb_id: matchingImdb?.imdb_id,
                     title,
-                    name: item.name || title,
+                    name: mediaType === 'tv' ? (item.name || title) : undefined,
                     media_type: mediaType,
                     poster_path: posterPath,
                     backdrop_path: backdropPath,
                     vote_average: voteAvg,
                     release_date: releaseDate,
-                    first_air_date: item.first_air_date || (mediaType === 'tv' ? releaseDate : undefined),
+                    first_air_date: mediaType === 'tv' ? (item.first_air_date || releaseDate) : undefined,
                     overview,
                     original_language: item.original_language,
                     cast: matchingImdb?.cast,

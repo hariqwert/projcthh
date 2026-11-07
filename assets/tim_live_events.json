@@ -1,7 +1,352 @@
 [
   {
     "category": "Events",
-    "events": []
+    "events": [
+      {
+        "url": "11-6-26-the-dirt-track-at-charlotte",
+        "name": "11.6.26 | The Dirt Track at Charlotte",
+        "logo": "https://dirtvision.asset.viewlift.com/images/2026/11/04/11-6-26_Sponsored_1793830109429.png?impolicy=resize&amp;w=1920&amp;h=1080",
+        "genre": 2,
+        "sub_genre": 1,
+        "time": "2026-11-06T14:30",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "Dirtvision",
+            "url": "https://ehgembxe.cfd/iqjou2o7-3614",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "boston-celtics-v-charlotte-hornets-401909288",
+        "name": "Boston Celtics @ Charlotte Hornets",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909288.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T19:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/1fpeloln-3383",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "columbus-blue-jackets-v-buffalo-sabres-401892659",
+        "name": "Columbus Blue Jackets @ Buffalo Sabres",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nhl-401892659.png",
+        "genre": 11,
+        "sub_genre": 1,
+        "time": "2026-11-06T19:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "ESPN+",
+            "url": "https://ehgembxe.cfd/5dixnq35-3134",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "virginia-tech-hokies-v-smu-mustangs-401858288",
+        "name": "Virginia Tech Hokies @ SMU Mustangs",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/cfb-401858288.png",
+        "genre": 8,
+        "sub_genre": 2,
+        "time": "2026-11-06T19:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "ESPN",
+            "url": "https://ehgembxe.cfd/o9bl8cai-6166",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "washington-wizards-v-atlanta-hawks-401909287",
+        "name": "Washington Wizards @ Atlanta Hawks",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909287.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T19:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/mdat7uzz-661",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "philadelphia-76ers-v-cleveland-cavaliers-401909289",
+        "name": "Philadelphia 76ers @ Cleveland Cavaliers",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909289.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T19:30",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "Prime Video",
+            "url": "https://ehgembxe.cfd/a6fvgmth-6773",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "south-florida-bulls-v-east-carolina-pirates-401862818",
+        "name": "South Florida Bulls @ East Carolina Pirates",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/cfb-401862818.png",
+        "genre": 8,
+        "sub_genre": 2,
+        "time": "2026-11-06T19:30",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "ESPN2",
+            "url": "https://ehgembxe.cfd/33jhpzfr-1312",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "anaheim-ducks-v-calgary-flames-401892661",
+        "name": "Anaheim Ducks @ Calgary Flames",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nhl-401892661.png",
+        "genre": 11,
+        "sub_genre": 1,
+        "time": "2026-11-06T20:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "ESPN+",
+            "url": "https://ehgembxe.cfd/7rnr3xz1-7388",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "minnesota-timberwolves-v-new-orleans-pelicans-401909293",
+        "name": "Minnesota Timberwolves @ New Orleans Pelicans",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909293.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T20:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/yzvoh6k6-2598",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "oklahoma-city-thunder-v-memphis-grizzlies-401909291",
+        "name": "Oklahoma City Thunder @ Memphis Grizzlies",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909291.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T20:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/9cpxe97u-2387",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "san-jose-sharks-v-minnesota-wild-401892660",
+        "name": "San Jose Sharks @ Minnesota Wild",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nhl-401892660.png",
+        "genre": 11,
+        "sub_genre": 1,
+        "time": "2026-11-06T20:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NHL Net",
+            "url": "https://ehgembxe.cfd/kelcwql2-4128",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "toronto-raptors-v-milwaukee-bucks-401909292",
+        "name": "Toronto Raptors @ Milwaukee Bucks",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909292.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T20:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/xvgr7wx1-4026",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "utah-jazz-v-dallas-mavericks-401909290",
+        "name": "Utah Jazz @ Dallas Mavericks",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909290.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T20:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/vnfnapy3-9241",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "new-mexico-lobos-v-nevada-wolf-pack-401864533",
+        "name": "New Mexico Lobos @ Nevada Wolf Pack",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/cfb-401864533.png",
+        "genre": 8,
+        "sub_genre": 2,
+        "time": "2026-11-06T21:00",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "CBSSN",
+            "url": "https://ehgembxe.cfd/9c2jwr40-9362",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "one-fight-night-49-gabriel-vs-magomedov",
+        "name": "ONE Fight Night 49: Gabriel Vs. Magomedov",
+        "logo": "https://cdn.onefc.com/wp-content/uploads/2025/12/261107-BKK-OFN49-1800x1200px-1.jpg",
+        "genre": 3,
+        "time": "2026-11-06T21:00",
+        "isevent": true,
+        "vip": false,
+        "featured": true,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "Prime Video",
+            "url": "https://ehgembxe.cfd/6994p1oi-729",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "portland-trail-blazers-v-los-angeles-lakers-401909294",
+        "name": "Portland Trail Blazers @ Los Angeles Lakers",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909294.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T22:00",
+        "isevent": true,
+        "vip": false,
+        "featured": true,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "Prime Video",
+            "url": "https://ehgembxe.cfd/7ra5ok3j-745",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "san-antonio-spurs-v-sacramento-kings-401909295",
+        "name": "San Antonio Spurs @ Sacramento Kings",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/nba-401909295.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-06T22:00",
+        "isevent": true,
+        "vip": false,
+        "featured": true,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/9q9m5p7r-2686",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "india-vs-new-zealand",
+        "name": "India vs. New Zealand",
+        "logo": "https://static.cricbuzz.com/a/img/v1/1920x1080/i1/c1115719/preview-new-zealand-vs-india-2nd-odi.jpg",
+        "genre": 13,
+        "time": "2026-11-06T22:00",
+        "isevent": true,
+        "vip": false,
+        "featured": true,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "Sky Sport 1 NZ",
+            "url": "https://ehgembxe.cfd/8num3afh-9385",
+            "vip": false
+          }
+        ]
+      },
+      {
+        "url": "tcu-horned-frogs-v-arizona-wildcats-401856855",
+        "name": "TCU Horned Frogs @ Arizona Wildcats",
+        "logo": "https://1a8e9d59.imgggre.pages.dev/cfb-401856855.png",
+        "genre": 8,
+        "sub_genre": 2,
+        "time": "2026-11-06T22:15",
+        "isevent": true,
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "ESPN",
+            "url": "https://ehgembxe.cfd/o9bl8cai-6795",
+            "vip": false
+          }
+        ]
+      }
+    ]
   },
   {
     "category": "Replays",

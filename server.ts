@@ -1758,6 +1758,8 @@ app.use((req, res, next) => {
                          req.path.startsWith('/sports.m3u') ||
                          req.path.startsWith('/api/sports') ||
                          req.path.startsWith('/consumet') ||
+                         req.path.startsWith('/api/consumet') ||
+                         req.path.startsWith('/api/media') ||
                           req.path.startsWith('/api/anime') ||
                           req.path.startsWith('/api/bingr') ||
                           req.path.startsWith('/api/anivexa') ||

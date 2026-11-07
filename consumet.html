@@ -3408,15 +3408,20 @@ async function fetchTMDB(endpoint, params = {}, options = {}) {
     const reqIdNum = Number((endpoint.match(/\d+/) || [])[0]);
     const matchedFallback = _fallbackPool.find(item => item.id === reqIdNum) || (window._mediaQuickCache && window._mediaQuickCache[reqIdNum]) || (window._searchCache && window._searchCache[reqIdNum]);
     if (matchedFallback) {
+        const isMovieReq = endpoint.startsWith('movie/') || endpoint.includes('/movie') || matchedFallback.media_type === 'movie' || matchedFallback.type === 'movie';
+        const isTv = !isMovieReq && (matchedFallback.media_type === 'tv' || matchedFallback.type === 'tv' || Boolean(matchedFallback.first_air_date && !matchedFallback.release_date));
         return {
             ...matchedFallback,
+            media_type: isTv ? 'tv' : 'movie',
             results: _fallbackPool,
-            episodes: [
-                { episode_number: 1, name: "Chapter One: Premiere", overview: "Series opening episode in 4K HDR.", still_path: matchedFallback.backdrop_path || "/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg", runtime: 54 },
-                { episode_number: 2, name: "Chapter Two: The Reckoning", overview: "Tensions rise as new alliances form.", still_path: matchedFallback.backdrop_path || "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg", runtime: 52 },
-                { episode_number: 3, name: "Chapter Three: Horizon", overview: "A pivotal discovery changes everything.", still_path: matchedFallback.backdrop_path || "/yDHYTfA3R0jFYba16jBB1ef8oIt.jpg", runtime: 58 }
-            ],
-            number_of_seasons: 2,
+            ...(isTv ? {
+                episodes: [
+                    { episode_number: 1, name: "Chapter One: Premiere", overview: "Series opening episode in 4K HDR.", still_path: matchedFallback.backdrop_path || "/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg", runtime: 54 },
+                    { episode_number: 2, name: "Chapter Two: The Reckoning", overview: "Tensions rise as new alliances form.", still_path: matchedFallback.backdrop_path || "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg", runtime: 52 },
+                    { episode_number: 3, name: "Chapter Three: Horizon", overview: "A pivotal discovery changes everything.", still_path: matchedFallback.backdrop_path || "/yDHYTfA3R0jFYba16jBB1ef8oIt.jpg", runtime: 58 }
+                ],
+                number_of_seasons: 2,
+            } : {}),
             title: matchedFallback.title || matchedFallback.name || "Media Details",
             name: matchedFallback.name || matchedFallback.title || "Media Details",
             overview: matchedFallback.overview || "High-definition cinematic streaming.",
@@ -4182,7 +4187,9 @@ function renderSpotlightSlider(index = 0) {
     let overview = item.overview || "Experience high-definition cinematic streaming.";
     const rating = item.vote_average ? item.vote_average.toFixed(1) : '8.5';
     const year = (item.release_date || item.first_air_date || '').substring(0,4) || '2024';
-    const type = item.media_type || (item.name || item.first_air_date ? 'tv' : 'movie');
+    const type = (item.media_type === 'movie' || item.media_type === 'tv' || item.media_type === 'anime') 
+        ? item.media_type 
+        : (item.first_air_date && !item.release_date ? 'tv' : 'movie');
     window._mediaQuickCache = window._mediaQuickCache || {};
     window._mediaQuickCache[item.id] = {
         ...item,
@@ -5895,22 +5902,26 @@ function renderTMDBSearchResults(list, container, isSection = false) {
     list.forEach(item => {
         const title = item.title || item.name || "Untitled";
         const poster = item.poster_path ? (item.poster_path.startsWith('http') ? item.poster_path : `https://image.tmdb.org/t/p/w400${item.poster_path}`) : 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=300&h=450&fit=crop';
-        const type = item.media_type || (item.name || item.first_air_date ? 'tv' : 'movie');
+        const type = (item.media_type === 'movie' || item.media_type === 'tv' || item.media_type === 'anime')
+            ? item.media_type
+            : (item.first_air_date && !item.release_date ? 'tv' : 'movie');
         const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : 'NR';
         const year = (item.release_date || item.first_air_date || '').substring(0,4) || '';
         window._searchCache[item.id] = item;
+        window._searchCache[`${type}_${item.id}`] = item;
         window._mediaQuickCache = window._mediaQuickCache || {};
         window._mediaQuickCache[item.id] = item;
+        window._mediaQuickCache[`${type}_${item.id}`] = item;
         const lang = (item.original_language || '').toUpperCase();
         
         const card = document.createElement('div');
         card.className = "bg-zinc-950/90 border border-white/10 hover:border-red-500/60 rounded-2xl overflow-hidden cursor-pointer group transition-all duration-300 shadow-xl hover:-translate-y-1.5 flex flex-col";
         card.onclick = () => {
             closeSearchPalette();
-            const hasMalId = item.malId || item.mal_id || item.idMal;
-            if (hasMalId || type === 'anime') {
+            const isGenuineAnime = type === 'anime' || (item.isAnime && item.original_language === 'ja');
+            if (isGenuineAnime) {
                 openAnimeInfo({
-                    malId: hasMalId || item.id,
+                    malId: item.malId || item.id,
                     anilistId: item.anilistId || item.id,
                     id: item.id,
                     title: title,
@@ -6030,6 +6041,8 @@ function renderAnimeSearchResults(list, container, isSection = false) {
             anilistId: item.anilistId || item.id || id,
             id: id,
             isAnime: true,
+            media_type: 'anime',
+            original_language: 'ja',
             title: title,
             poster: poster,
             backdrop: item.backdrop_path || item.bannerImage || poster,
@@ -6039,7 +6052,10 @@ function renderAnimeSearchResults(list, container, isSection = false) {
             genres: item.genres || ['Anime']
         };
         window._animeCache[id] = animeObj;
-        window._searchCache[id] = animeObj;
+        window._searchCache['anime_' + id] = animeObj;
+        if (!window._searchCache[id] || window._searchCache[id].isAnime) {
+            window._searchCache[id] = animeObj;
+        }
         const card = document.createElement('div');
         card.className = "bg-zinc-950/90 border border-white/10 hover:border-indigo-500/60 rounded-2xl overflow-hidden cursor-pointer group transition-all duration-300 shadow-xl hover:-translate-y-1.5 flex flex-col";
         card.onclick = () => {
@@ -6228,12 +6244,12 @@ function renderUnifiedSearchResults(events, channels, movies, anime, container) 
         renderChannelsSearchResults(channels, fragment, true);
     }
 
-    if (anime && anime.length > 0) {
-        renderAnimeSearchResults(anime, fragment, true);
-    }
-
     if (movies && movies.length > 0) {
         renderTMDBSearchResults(movies, fragment, true);
+    }
+
+    if (anime && anime.length > 0) {
+        renderAnimeSearchResults(anime, fragment, true);
     }
 
     container.replaceChildren(fragment);
@@ -6645,14 +6661,20 @@ async function openDetails(id, type = 'movie', expectedTitle = '') {
                     const altTitle = altData.title || altData.name || altData.original_title || altData.original_name || '';
                     if (!expectedTitle || titlesRoughlyMatch(expectedTitle, altTitle)) {
                         data = altData;
-                        actualType = altType;
+                        if (normalizedReqType !== 'movie') {
+                            actualType = altType;
+                        }
                     }
                 }
             } catch(e2) {}
         }
-        if (data && window._searchCache && window._searchCache[id]) {
-            if (window._searchCache[id].anilistId) data.anilistId = window._searchCache[id].anilistId;
-            if (window._searchCache[id].malId) data.malId = window._searchCache[id].malId;
+        if (data && window._searchCache) {
+            const cachedAnime = window._searchCache[`anime_${id}`] || (window._searchCache[id]?.isAnime ? window._searchCache[id] : null);
+            if (cachedAnime && (requestedIsAnime || data.original_language === 'ja')) {
+                if (cachedAnime.anilistId) data.anilistId = cachedAnime.anilistId;
+                if (cachedAnime.malId) data.malId = cachedAnime.malId;
+                data.isAnime = true;
+            }
         }
         if (data) {
             const finalCacheKey = `${actualType}_${data.id || id}`;
@@ -6673,7 +6695,7 @@ async function openDetails(id, type = 'movie', expectedTitle = '') {
                 const findRes = await fetchWithTimeout(fetchTMDB(`find/${imdbId}`, { external_source: 'imdb_id' }));
                 const hit = (actualType === 'tv' ? (findRes?.tv_results?.[0] || findRes?.movie_results?.[0]) : (findRes?.movie_results?.[0] || findRes?.tv_results?.[0]));
                 if (hit && hit.id) {
-                    actualType = (findRes?.tv_results?.[0] && hit.id === findRes.tv_results[0].id) ? 'tv' : 'movie';
+                    actualType = (normalizedReqType === 'movie') ? 'movie' : ((findRes?.tv_results?.[0] && hit.id === findRes.tv_results[0].id) ? 'tv' : 'movie');
                     data = await fetchWithTimeout(fetchTMDB(`${actualType}/${hit.id}`, { append_to_response: "credits,videos,external_ids,images" }));
                     if (data) window._detailsDataCache[`${actualType}_${hit.id}`] = data;
                 }
@@ -6691,7 +6713,7 @@ async function openDetails(id, type = 'movie', expectedTitle = '') {
                 if (searchRes && searchRes.results && searchRes.results.length > 0) {
                     const validResults = searchRes.results.filter(r => r.media_type !== 'person');
                     const match = validResults.find(r => (r.media_type || actualType) === actualType && titlesRoughlyMatch(query, r.title || r.name)) || validResults[0] || searchRes.results[0];
-                    const matchedType = match.media_type || (match.first_air_date && !match.release_date ? 'tv' : actualType);
+                    const matchedType = (normalizedReqType === 'movie') ? 'movie' : (match.media_type || (match.first_air_date && !match.release_date ? 'tv' : actualType));
                     actualType = matchedType === 'tv' ? 'tv' : 'movie';
                     data = await fetchWithTimeout(fetchTMDB(`${actualType}/${match.id}`, { append_to_response: "credits,videos,external_ids,images" }));
                     if (data) window._detailsDataCache[`${actualType}_${match.id}`] = data;
@@ -6717,15 +6739,36 @@ async function openDetails(id, type = 'movie', expectedTitle = '') {
         return;
     }
 
+    // Strict Anime Detection:
+    // A title is ONLY anime if explicitly requested as anime, or confirmed Japanese animation!
+    const isJapaneseAnimation = Boolean(
+        data.original_language === 'ja' && (
+            (Array.isArray(data.genres) && data.genres.some(g => g.id === 16 || /anim/i.test(g.name || ''))) ||
+            (Array.isArray(data.genre_ids) && data.genre_ids.includes(16))
+        )
+    );
     const isDetectedAnime = Boolean(
         requestedIsAnime ||
-        data.isAnime ||
-        data.malId ||
-        data.anilistId ||
-        (data.original_language === 'ja' && Array.isArray(data.genres) && data.genres.some(g => g.id === 16 || /anim/i.test(g.name || '')))
+        (data.isAnime && (data.original_language === 'ja' || isJapaneseAnimation)) ||
+        isJapaneseAnimation
     );
-    if (data.seasons || data.number_of_seasons || (data.first_air_date && !data.release_date)) {
-        actualType = 'tv';
+
+    // Strict Movie vs TV determination:
+    if (normalizedReqType === 'movie') {
+        if (!data.release_date && data.first_air_date && Array.isArray(data.seasons) && data.seasons.filter(s => s.season_number > 0).length > 0) {
+            actualType = 'tv';
+        } else {
+            actualType = 'movie';
+        }
+    } else if (normalizedReqType === 'tv') {
+        if (data.release_date && !data.first_air_date && (!data.seasons || data.seasons.length === 0) && (!data.number_of_seasons || data.number_of_seasons === 0)) {
+            actualType = 'movie';
+        } else {
+            actualType = 'tv';
+        }
+    } else {
+        const hasValidSeasons = Array.isArray(data.seasons) && data.seasons.filter(s => s.season_number > 0).length > 0;
+        actualType = (hasValidSeasons || (data.first_air_date && !data.release_date)) ? 'tv' : 'movie';
     }
 
     selectedMedia = data;
@@ -7103,7 +7146,9 @@ async function changePlayerSeason(seasonVal) {
 async function populatePlayerEpisodes() {
     const item = selectedMedia;
     if (!item) return;
-    const type = item.media_type || (item.name || item.first_air_date ? 'tv' : 'movie');
+    const type = (item.media_type === 'movie' || item.media_type === 'tv' || item.media_type === 'anime') 
+        ? item.media_type 
+        : (item.first_air_date && !item.release_date ? 'tv' : 'movie');
     const container = document.getElementById('playerUpNextContainer');
     const list = document.getElementById('playerEpisodesList');
     if (type !== 'tv' || !item.id) {
@@ -7170,7 +7215,9 @@ async function populatePlayerEpisodes() {
 }
 async function populatePlayerRecommendations() {
     const item = selectedMedia;
-    const type = item.media_type || (item.name || item.first_air_date ? 'tv' : 'movie');
+    const type = (item.media_type === 'movie' || item.media_type === 'tv' || item.media_type === 'anime') 
+        ? item.media_type 
+        : (item.first_air_date && !item.release_date ? 'tv' : 'movie');
     const container = document.getElementById('playerRecommendationsContainer');
     if (!item || !item.id) {
         if (container) container.classList.add('hidden');
@@ -7247,9 +7294,14 @@ async function openHlsPlayer(item = null, epNum = null) {
         }
     }
     if (!rawTitle) rawTitle = "Cinema Presentation";
-    const malId = targetItem.malId || targetItem.mal_id || targetItem.idMal || (window.currentAnimeInfo && (window.currentAnimeInfo.malId || window.currentAnimeInfo.id));
-    const isAnime = Boolean(malId || targetItem.media_type === 'anime' || targetItem.type === 'anime' || targetItem.isAnime);
-    const type = isAnime ? 'anime' : (targetItem.media_type || targetItem.type || (targetItem.first_air_date ? 'tv' : 'movie'));
+    const isTargetAnime = Boolean(
+        targetItem.media_type === 'anime' ||
+        targetItem.type === 'anime' ||
+        (targetItem.isAnime && (targetItem.original_language === 'ja' || targetItem.malId))
+    );
+    const isAnime = isTargetAnime;
+    const malId = isAnime ? (targetItem.malId || targetItem.mal_id || targetItem.idMal || '') : '';
+    const type = isAnime ? 'anime' : (targetItem.media_type === 'movie' ? 'movie' : (targetItem.media_type || targetItem.type || (targetItem.first_air_date && !targetItem.release_date ? 'tv' : 'movie')));
     const tmdbId = targetItem.id || targetItem.tmdbId || '';
     const s = selectedSeason || 1;
     const e = selectedEpisode || 1;
@@ -7309,10 +7361,15 @@ async function openBingrPlayer(item = null, epNum = null, triggerBtn = null) {
     }
     if (!rawTitle) rawTitle = "Cinema Presentation";
 
-    const malId = targetItem.malId || targetItem.mal_id || targetItem.idMal || (window.currentAnimeInfo && (window.currentAnimeInfo.malId || window.currentAnimeInfo.id));
-    const anilistId = targetItem.anilistId || targetItem.anilist_id || (window.currentAnimeInfo && window.currentAnimeInfo.anilistId);
-    const isAnime = Boolean(malId || anilistId || targetItem.media_type === 'anime' || targetItem.type === 'anime' || targetItem.isAnime);
-    const type = isAnime ? 'anime' : (targetItem.media_type || targetItem.type || (targetItem.first_air_date ? 'tv' : 'movie'));
+    const isTargetAnime = Boolean(
+        targetItem.media_type === 'anime' ||
+        targetItem.type === 'anime' ||
+        (targetItem.isAnime && (targetItem.original_language === 'ja' || targetItem.malId))
+    );
+    const isAnime = isTargetAnime;
+    const malId = isAnime ? (targetItem.malId || targetItem.mal_id || targetItem.idMal || '') : '';
+    const anilistId = isAnime ? (targetItem.anilistId || targetItem.anilist_id || '') : '';
+    const type = isAnime ? 'anime' : (targetItem.media_type === 'movie' ? 'movie' : (targetItem.media_type || targetItem.type || (targetItem.first_air_date && !targetItem.release_date ? 'tv' : 'movie')));
     const s = selectedSeason || 1;
     const e = selectedEpisode || 1;
     const queryTitle = (type === 'tv' || type === 'anime') ? `${rawTitle} S${s} E${e}` : rawTitle;
@@ -7866,7 +7923,9 @@ function openFullscreenPlayer(overrideItem = null, sportsName = null) {
         }
     }
     if (!title) title = "Cinema Stream";
-    const type = item.media_type || (item.name || item.first_air_date ? 'tv' : 'movie');
+    const type = (item.media_type === 'movie' || item.media_type === 'tv' || item.media_type === 'anime') 
+        ? item.media_type 
+        : (item.first_air_date && !item.release_date ? 'tv' : 'movie');
     document.getElementById('playerTitleLabel').textContent = title;
     document.getElementById('playerSubtitleLabel').innerHTML = `<span class="inline-flex items-center gap-1 bg-red-600/20 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black tracking-wide text-[8px] sm:text-[9px]">&bull; 1080P HD / ${type === 'tv' ? `S${selectedSeason} E${selectedEpisode}` : 'MOVIE'}</span>`;
     
@@ -16462,24 +16521,21 @@ function saveToHistory(item, currentTime = 0, duration = 0) {
 
     const isSportsLive = _isSportsOrLiveHistoryItem(Object.assign({}, item, { duration: duration || item.duration }));
     const isAnimeItem = !isSportsLive && Boolean(
-        item.isAnime ||
-        item.type === 'anime' ||
         item.media_type === 'anime' ||
-        item.malId ||
-        item.mal_id ||
-        item.anilistId ||
+        item.type === 'anime' ||
+        (item.isAnime && (item.original_language === 'ja' || item.type === 'anime')) ||
         (item.original_language === 'ja' && (
             (Array.isArray(item.genre_ids) && item.genre_ids.includes(16)) ||
             (Array.isArray(item.genres) && item.genres.some(g => g.id === 16 || /anim/i.test(g.name || '')))
         ))
     );
-    const isTvItem = !isSportsLive && !isAnimeItem && Boolean(
+    const isTvItem = !isSportsLive && !isAnimeItem && (item.media_type !== 'movie') && Boolean(
         item.media_type === 'tv' ||
         item.media_type === 'series' ||
         item.type === 'tv' ||
         item.type === 'series' ||
-        item.seasons ||
-        item.number_of_seasons ||
+        (Array.isArray(item.seasons) && item.seasons.filter(s => s.season_number > 0).length > 0) ||
+        (item.number_of_seasons && !item.release_date) ||
         (item.first_air_date && !item.release_date) ||
         /\bS\d+\s*E\d+\b/i.test(resolvedTitle)
     );
@@ -16580,8 +16636,8 @@ function openDetailsModal(id, type = 'movie', expectedTitle = '', resumeTime = 0
         return;
     }
 
-    // 2. Anime -> Open Anime Info if non-TMDB or cached in _animeCache, otherwise openDetails as 'tv'
-    if (type === 'anime' || effectiveItem.isAnime) {
+    // 2. Anime -> Open Anime Info if genuine anime, otherwise openDetails as movie/tv
+    if (type === 'anime' || (effectiveItem.isAnime && (effectiveItem.original_language === 'ja' || effectiveItem.type === 'anime'))) {
         if (window._animeCache && window._animeCache[id]) {
             openAnimeInfo(window._animeCache[id]);
             return;
@@ -16591,7 +16647,9 @@ function openDetailsModal(id, type = 'movie', expectedTitle = '', resumeTime = 0
     }
 
     // 3. TV Series vs Movie
-    const targetType = (type === 'tv' || type === 'series' || effectiveItem.type === 'tv' || effectiveItem.media_type === 'tv') ? 'tv' : 'movie';
+    const targetType = (type === 'movie' || (!type && effectiveItem.media_type === 'movie'))
+        ? 'movie'
+        : ((type === 'tv' || type === 'series' || effectiveItem.type === 'tv' || effectiveItem.media_type === 'tv') ? 'tv' : 'movie');
     openDetails(id, targetType, expectedTitle);
 }
 window.openDetailsModal = openDetailsModal;

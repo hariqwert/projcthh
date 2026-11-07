@@ -2200,6 +2200,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let wasPlayingBeforeScrub = false;
         let availableServers = [];
         let playerMode = 'direct';
+        let failedServers = new Set();
+        let isCascading = false;
+        let hasValidatedDurationForCurrentStream = false;
+        const durationCheckedServers = new Set();
         let currentRotation = 0;
         let currentAspectMode = 0; // 0: contain, 1: cover, 2: fill, 3: zoom-120
         let sleepTimerInterval = null;
@@ -2570,7 +2574,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const streamUrl = streamCandidate;
 
                 // Guard: If backend cascaded into a server that client already marked as failed, advance immediately to avoid loops
-                if (data && data.serverId && failedServers.has(data.serverId)) {
+                if (!isManual && data && data.serverId && failedServers.has(data.serverId)) {
                     console.warn(`[Bingr Cascade Guard] Backend returned already-failed server "${data.serverId}". Advancing to next server...`);
                     failedServers.add(serverId);
                     cascadeFallback(serverId);
@@ -2652,11 +2656,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }
         }
 
-        let failedServers = new Set();
-        let isCascading = false;
-        let hasValidatedDurationForCurrentStream = false;
-        const durationCheckedServers = new Set();
-
         function validatePlayingStreamDuration() {
             if (hasValidatedDurationForCurrentStream) return true;
             if (!mainVideo || !isFinite(mainVideo.duration) || mainVideo.duration <= 0) return true;
@@ -2732,7 +2731,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 console.log(`[Bingr Cascade] Stepping down from "${failedServerId}" to "${nextServer}"...`);
                 CURRENT_SERVER = nextServer;
                 updateServerListUI();
-                fetchAndPlayStream(nextServer, true);
+                fetchAndPlayStream(nextServer, false);
             } else {
                 showLoading(false);
                 console.warn("[Fallback] Direct streams unavailable across primary clusters. Switching to embed mode...");

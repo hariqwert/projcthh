@@ -3668,44 +3668,17 @@ export async function scrapeBingrStream(params: {
                             (s as any).referrer = unwrapped.referer;
                         }
                     }
-                    const isMandatoryProxy = (
-                                             s.url.includes('hakunamatata.com') || 
-                                             s.url.includes('hakunaymatata.com') || 
-                                             s.url.includes('reelvault.click') || 
-                                             s.url.includes('streamrip.fun') ||
-                                             s.url.includes('rousav.tech') ||
-                                             s.url.includes('amberandash.space') ||
-                                             s.url.includes('opalescentorchard.space') ||
-                                             s.url.includes('vidrift.net') ||
-                                             s.url.includes('milkyway.cymru') ||
-                                             serverId === 's62' ||
-                                             s.url.includes('dramahot.top') ||
-                                             serverId === 'hianime' ||
-                                             serverId === 'prism' ||
-                                             serverId === 'citadel' ||
-                                             serverId === 'vidlink' ||
-                                             serverId === 'vidrift' ||
-                                             serverId === 'filmu' ||
-                                             serverId === 'vidsrc' ||
-                                             serverId === 'two_embed' ||
-                                             serverId === 'smashy' ||
-                                             serverId === 'aniembed'
-                                             ) && !(s as any).skipProxy && s.type !== 'embed';
-                    if (isMandatoryProxy) {
-                        const targetRaw = unwrapped.streamUrl || (s as any).rawUrl || s.url;
-                        (s as any).rawUrl = targetRaw;
-                        (s as any).directUrl = targetRaw;
+                    const targetRaw = unwrapped.streamUrl || (s as any).rawUrl || s.url;
+                    (s as any).rawUrl = targetRaw;
+                    (s as any).directUrl = targetRaw;
+
+                    const isSpecialLocal = s.url.startsWith('/') || s.url.startsWith('http://localhost') || s.url.startsWith('http://127.0.0.1');
+                    const shouldProxy = !isSpecialLocal && !(s as any).skipProxy && s.type !== 'embed' && (targetRaw.startsWith('http://') || targetRaw.startsWith('https://'));
+
+                    if (shouldProxy) {
                         if (!s.url.startsWith('/stream_proxy.php')) {
                             (s as any).proxyUrl = s.url;
                             s.url = `/stream_proxy.php?url=${encodeURIComponent(targetRaw)}`;
-                        }
-                    } else {
-                        const isFrameX = serverId === 'framex' || s.url.includes('framextv.tech') || (s as any).skipProxy;
-                        if (serverId !== 'bing_anime' && serverId !== 'animesalt' && !isFrameX) {
-                            if (unwrapped.streamUrl && unwrapped.streamUrl.startsWith('http') && s.url !== unwrapped.streamUrl) {
-                                (s as any).proxyUrl = s.url;
-                                s.url = unwrapped.streamUrl;
-                            }
                         }
                     }
                 }

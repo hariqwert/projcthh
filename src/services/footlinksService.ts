@@ -116,6 +116,12 @@ export interface FormattedFootlinksEvent {
     group: string;
     sportName?: string;
     tournament: string;
+    league?: string;
+    homeTeamName?: string;
+    awayTeamName?: string;
+    homeTeamLogo?: string;
+    awayTeamLogo?: string;
+    tournamentLogo?: string;
     time: string;
     timeIST: string;
     status: string;
@@ -253,6 +259,12 @@ export async function getFormattedFootlinksEvents(): Promise<FormattedFootlinksE
             group: cat,
             sportName: cat,
             tournament: info.type || info.name || 'SPORTLINK TV',
+            league: info.type || info.name || 'SPORTLINK TV',
+            homeTeamName: cleanA || undefined,
+            awayTeamName: cleanB || undefined,
+            homeTeamLogo: info.teamAFlag || undefined,
+            awayTeamLogo: info.teamBFlag || undefined,
+            tournamentLogo: info.logo || undefined,
             time: isLive ? 'LIVE NOW' : (countdownStr || 'UPCOMING'),
             timeIST: info.startTimeIST || (isLive ? 'LIVE NOW' : 'UPCOMING'),
             status: statusStr,

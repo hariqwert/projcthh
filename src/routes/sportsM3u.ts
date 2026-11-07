@@ -1534,7 +1534,7 @@ router.get(['/footlinks.m3u', '/api/sports/footlinks.m3u'], async (req: Request,
  */
 router.get('/api/sports/footlinks/events', async (req: Request, res: Response) => {
     try {
-        const events = await getFootlinksData();
+        const events = await getFormattedFootlinksEvents();
         return res.json({ status: 'success', count: events.length, events });
     } catch (err: any) {
         return res.status(500).json({ status: 'error', message: err?.message || 'Failed to fetch events' });

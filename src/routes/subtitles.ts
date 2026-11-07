@@ -286,7 +286,8 @@ async function fetchStremioOpenSubtitles(imdbId: string, season?: string, episod
                         url: `/api/subtitles/vtt?url=${encodeURIComponent(s.url)}`,
                         rawUrl: s.url,
                         format: 'SRT',
-                        source: 'External Subtitles'
+                        source: 'OpenSubtitles v3',
+                        provider: 'opensubtitles'
                     });
                 }
             });
@@ -329,7 +330,8 @@ async function fetchYtsSubtitles(imdbId: string, title?: string): Promise<any[]>
                         url: `/api/subtitles/vtt?url=${encodeURIComponent(zipUrl)}`,
                         rawUrl: zipUrl,
                         format: 'SRT',
-                        source: 'External Subtitles'
+                        source: 'YTS',
+                        provider: 'yts'
                     });
                 }
             });
@@ -392,7 +394,8 @@ async function fetchOpenSubtitles(query: string, imdbId?: string, season?: strin
                             format: item.SubFormat || 'SRT',
                             downloads: item.SubDownloadsCnt || 0,
                             rating: item.SubRating || '0.0',
-                            source: 'External Subtitles'
+                            source: 'OpenSubtitles',
+                            provider: 'opensubtitles'
                         });
                     }
                 });
@@ -445,7 +448,8 @@ async function fetchZokoAnimeSubtitles(title: string, season?: string, episode?:
                         rawUrl: s.src,
                         format: 'VTT',
                         isDefault: s.default || idx === 0,
-                        source: 'External Subtitles'
+                        source: 'Zoko',
+                        provider: 'zoko'
                     });
                 }
             });
@@ -585,7 +589,8 @@ async function fetchKitsunekkoMirror(query: string, season?: string, episode?: s
                         url: `/api/subtitles/vtt?url=${encodeURIComponent(href)}`,
                         rawUrl: href,
                         format: href.endsWith('.ass') ? 'ASS' : (href.endsWith('.zip') ? 'ZIP' : 'SRT'),
-                        source: 'External Subtitles'
+                        source: 'Kitsunekko',
+                        provider: 'kitsunekko'
                     });
                 });
             } catch (_) {}
@@ -672,7 +677,8 @@ async function fetchAnimeTosho(query: string, season?: string, episode?: string)
                                 url: `/api/subtitles/vtt?url=${encodeURIComponent(fullUrl)}`,
                                 rawUrl: fullUrl,
                                 format,
-                                source: 'External Subtitles'
+                                source: 'AnimeTosho',
+                                provider: 'animetosho'
                             });
                         });
                     }
@@ -731,7 +737,8 @@ async function fetchAnivexaSubtitles(query: string, episode?: string, malId?: st
                         url: s.url || `/api/subtitles/vtt?url=${encodeURIComponent(rawUrl)}`,
                         rawUrl,
                         format: rawUrl.endsWith('.ass') ? 'ASS' : 'VTT',
-                        source: 'External Subtitles'
+                        source: 'Anivexa',
+                        provider: 'anivexa'
                     });
                 });
             }
@@ -770,7 +777,8 @@ async function fetchSubDL(query: string, imdbId?: string): Promise<any[]> {
                         url: `/api/subtitles/vtt?url=${encodeURIComponent(subUrl)}`,
                         rawUrl: subUrl,
                         format: s.format || 'SRT',
-                        source: 'External Subtitles'
+                        source: 'SubDL',
+                        provider: 'subdl'
                     });
                 }
             });
@@ -819,7 +827,8 @@ async function fetchMSone(query: string): Promise<any[]> {
                     url: `/api/subtitles/msone?url=${encodeURIComponent(link)}`,
                     rawUrl: link,
                     format: 'ZIP/SRT',
-                    source: 'External Subtitles'
+                    source: 'MSone',
+                    provider: 'msone'
                 });
             }
         });
@@ -972,7 +981,7 @@ router.get('/fetch', async (req: Request, res: Response) => {
         }
     });
 
-    // Sanitize any remaining bracket tags or provider tags for zero UI branding
+    // Sanitize any remaining bracket tags or redundant provider tags for clean release title
     subtitles = subtitles.map(s => {
         let cleanDisp = (s.display || '')
             .replace(/\[[^\]]*\]\s*/g, '')
@@ -981,7 +990,8 @@ router.get('/fetch', async (req: Request, res: Response) => {
         return {
             ...s,
             display: cleanDisp || s.language || 'English',
-            source: 'External Subtitles'
+            source: s.source || 'External Subtitles',
+            provider: s.provider || (s.source || 'external').toLowerCase().replace(/\s+/g, '')
         };
     });
 
@@ -997,11 +1007,31 @@ router.get('/fetch', async (req: Request, res: Response) => {
     // Filter by language if specified
     let filtered = subtitles;
     if (lang && lang !== 'all') {
-        const targetLang = lang.toLowerCase();
-        filtered = subtitles.filter(s =>
-            s.language.toLowerCase().includes(targetLang) ||
-            s.langCode.toLowerCase().includes(targetLang)
-        );
+        const targetLang = lang.toLowerCase().trim();
+        filtered = subtitles.filter(s => {
+            const lName = (s.language || '').toLowerCase();
+            const lCode = (s.langCode || '').toLowerCase();
+            if (lCode === targetLang) return true;
+            if (lName === targetLang) return true;
+            if (targetLang === 'en' && (lName.includes('english') || lCode === 'eng')) return true;
+            if (targetLang === 'es' && (lName.includes('spanish') || lName.includes('español') || lCode === 'spa')) return true;
+            if (targetLang === 'fr' && (lName.includes('french') || lName.includes('français') || lCode === 'fre' || lCode === 'fra')) return true;
+            if (targetLang === 'de' && (lName.includes('german') || lName.includes('deutsch') || lCode === 'deu' || lCode === 'ger')) return true;
+            if (targetLang === 'hi' && (lName.includes('hindi') || lCode === 'hin')) return true;
+            if (targetLang === 'ar' && (lName.includes('arabic') || lCode === 'ara')) return true;
+            if (targetLang === 'ja' && (lName.includes('japanese') || lCode === 'jpn')) return true;
+            if (targetLang === 'pt' && (lName.includes('portuguese') || lCode === 'por' || lCode === 'pob')) return true;
+            if (targetLang === 'it' && (lName.includes('italian') || lCode === 'ita')) return true;
+            if (targetLang === 'ru' && (lName.includes('russian') || lCode === 'rus')) return true;
+            if (targetLang === 'ml' && (lName.includes('malayalam') || lCode === 'mal')) return true;
+            if (targetLang === 'id' && (lName.includes('indonesian') || lCode === 'ind')) return true;
+            if (targetLang === 'ko' && (lName.includes('korean') || lCode === 'kor')) return true;
+            if (targetLang === 'zh' && (lName.includes('chinese') || lCode === 'zho' || lCode === 'chi')) return true;
+            if (targetLang === 'tr' && (lName.includes('turkish') || lCode === 'tur')) return true;
+            if (targetLang === 'th' && (lName.includes('thai') || lCode === 'tha')) return true;
+            if (targetLang === 'vi' && (lName.includes('vietnamese') || lCode === 'vie')) return true;
+            return lName.startsWith(targetLang);
+        });
         if (filtered.length === 0) filtered = subtitles; // Fallback to all if specific language not found
     }
 

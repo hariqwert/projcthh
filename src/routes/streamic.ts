@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import {
     getLiveSportsSchedule,
     USER_STREAMABLE_CHANNELS,
-    buildTimPlayUrl
+    buildTimPlayUrl,
+    getLiveScoreForMatch
 } from '../services/streamicSportsService';
 
 export const streamicRouter = Router();
@@ -93,6 +94,26 @@ streamicRouter.get('/channels', async (req: Request, res: Response) => {
             status: 'success',
             total: channelMap.length,
             channels: channelMap
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message });
+    }
+});
+
+/**
+ * GET /api/streamic/score
+ * Instant live match scorecard, clock, timeline events, and team telemetry
+ */
+streamicRouter.get('/score', async (req: Request, res: Response) => {
+    try {
+        const title = (req.query.title || req.query.q || '') as string;
+        const category = (req.query.category || req.query.sport || '') as string;
+        const id = (req.query.id || '') as string;
+
+        const score = await getLiveScoreForMatch(title, category, id);
+        return res.json({
+            status: 'success',
+            score
         });
     } catch (e: any) {
         return res.status(500).json({ status: 'error', message: e?.message });

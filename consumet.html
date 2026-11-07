@@ -10333,12 +10333,12 @@ function openSportMatchOvalModal(eventId, initialTab = 'watch') {
         }
     }
 
-    // Populate VS Banner in Modal (Oval Stadium Showcase)
+    // Populate VS Banner in Modal (Sleek Stadium Oval Showcase with clean aspect ratio)
     const vsBanner = document.getElementById('sportsModalVsBanner');
     if (vsBanner) {
         vsBanner.innerHTML = `
-            <div class="rounded-full sm:rounded-[38px] p-3 sm:p-4 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-white/15 relative overflow-hidden shadow-inner flex items-center justify-between">
-                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.15),transparent_70%)] pointer-events-none"></div>
+            <div class="rounded-3xl sm:rounded-[36px] max-h-44 overflow-hidden bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-white/15 relative shadow-2xl flex items-center justify-center p-2.5">
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.18),transparent_70%)] pointer-events-none"></div>
                 ${buildVsMatchThumbnailHtml(event, true)}
             </div>
         `;
@@ -10376,43 +10376,36 @@ function openSportMatchOvalModal(eventId, initialTab = 'watch') {
         }
     }
 
-    // Tab 2: Scorecard
+    // Tab 2: Scorecard (Cricket, Football, Basketball & Multi-sport Telemetry)
     const isCricket = (event.category || '').toLowerCase().includes('cricket') || event.category === 'krykiet' || (event.sportName || '').toLowerCase().includes('cricket');
     const isFootball = (event.category || '').toLowerCase().includes('football') || (event.sportName || '').toLowerCase().includes('football') || (event.category || '').toLowerCase().includes('soccer');
+    const isBasketball = (event.category || '').toLowerCase().includes('basketball') || (event.sportName || '').toLowerCase().includes('nba');
     const scoreTabIcon = document.getElementById('sportsModalTabScoreIcon');
-    if (scoreTabIcon) scoreTabIcon.innerText = isCricket ? '🏏' : isFootball ? '⚽' : '📊';
+    if (scoreTabIcon) scoreTabIcon.innerText = isCricket ? '🏏' : (isBasketball ? '🏀' : (isFootball ? '⚽' : '📊'));
 
-    const scoreBody = document.getElementById('sportsModalScoreBody');
-    if (scoreBody) {
-        if (event.liveScore && event.liveScore.teams && event.liveScore.teams.length >= 2) {
-            const t1 = event.liveScore.teams[0];
-            const t2 = event.liveScore.teams[1];
-            scoreBody.innerHTML = `
-                <div class="flex items-center justify-between p-3.5 rounded-xl bg-black/40 border border-white/5">
-                    <span class="font-bold text-sm text-white">${t1.name}</span>
-                    <span class="font-mono font-black text-amber-400 text-base">${t1.score || '0'} ${t1.overs ? `<span class="text-xs text-zinc-400 font-normal">(${t1.overs} ov)</span>` : ''}</span>
-                </div>
-                <div class="flex items-center justify-between p-3.5 rounded-xl bg-black/40 border border-white/5">
-                    <span class="font-bold text-sm text-white">${t2.name}</span>
-                    <span class="font-mono font-black text-amber-400 text-base">${t2.score || '0'} ${t2.overs ? `<span class="text-xs text-zinc-400 font-normal">(${t2.overs} ov)</span>` : ''}</span>
-                </div>
-                ${event.liveScore.detail ? `
-                    <div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-semibold text-center">
-                        ${event.liveScore.detail}
-                    </div>
-                ` : ''}
-            `;
-        } else {
-            scoreBody.innerHTML = `
-                <div class="text-center py-6 space-y-2">
-                    <span class="text-3xl">${isCricket ? '🏏' : isFootball ? '⚽' : '🏆'}</span>
-                    <h4 class="text-sm font-bold text-white">${event.title}</h4>
-                    <p class="text-xs text-zinc-400">${event.countdown || 'Match scheduled for today'}</p>
-                    <p class="text-xs text-amber-400 font-medium">Live score and telemetry updates dynamically during match broadcast.</p>
-                </div>
-            `;
-        }
+    // Render initial scorecard immediately
+    if (typeof window.renderSportsModalScorecard === 'function') {
+        window.renderSportsModalScorecard(event, event.liveScore);
     }
+
+    // Trigger immediate background score lookup to fetch real-time score
+    if (typeof window.refreshSportModalScorecard === 'function') {
+        window.refreshSportModalScorecard();
+    }
+
+    // Start 15s background poller for active score updates
+    if (window._scorecardPollInterval) clearInterval(window._scorecardPollInterval);
+    window._scorecardPollInterval = setInterval(() => {
+        const modal = document.getElementById('sportsMatchOvalModal');
+        if (modal && !modal.classList.contains('hidden')) {
+            if (typeof window.refreshSportModalScorecard === 'function') {
+                window.refreshSportModalScorecard();
+            }
+        } else {
+            clearInterval(window._scorecardPollInterval);
+            window._scorecardPollInterval = null;
+        }
+    }, 15000);
 
     // Tab 3: Watch Feeds (List all source names, Primary + Backups, with Play buttons — no raw M3U URLs or Copy buttons)
     const channelsList = document.getElementById('sportsModalChannelsList');
@@ -10671,6 +10664,171 @@ function prewarmLiveSportsSources(events) {
     } catch (_) {}
 }
 
+window.renderSportsModalScorecard = function(event, scoreData, isFetching = false) {
+    const scoreBody = document.getElementById('sportsModalScoreBody');
+    if (!scoreBody || !event) return;
+
+    const isCricket = (event.category || '').toLowerCase().includes('cricket') || (event.sportName || '').toLowerCase().includes('cricket') || (scoreData?.sport || '').toLowerCase().includes('cricket');
+    const isBasketball = (event.category || '').toLowerCase().includes('basketball') || (event.sportName || '').toLowerCase().includes('nba') || (scoreData?.sport || '').toLowerCase().includes('basketball');
+    const isFootball = !isCricket && !isBasketball;
+
+    // Resolve team 1 and team 2
+    let t1Name = scoreData?.homeTeam?.name || event.homeTeamName || '';
+    let t2Name = scoreData?.awayTeam?.name || event.awayTeamName || '';
+    if (!t1Name || !t2Name) {
+        const parsed = (typeof parseTeamsFromTitle === 'function') ? parseTeamsFromTitle(event.title || '') : null;
+        if (parsed) {
+            if (!t1Name) t1Name = parsed.team1;
+            if (!t2Name) t2Name = parsed.team2;
+        }
+    }
+    if (!t1Name && scoreData?.teams?.[0]) t1Name = scoreData.teams[0].name;
+    if (!t2Name && scoreData?.teams?.[1]) t2Name = scoreData.teams[1].name;
+    if (!t1Name) t1Name = 'Team 1';
+    if (!t2Name) t2Name = 'Team 2';
+
+    const t1Logo = scoreData?.homeTeam?.logo || event.homeTeamLogo || scoreData?.teams?.[0]?.logo || (typeof getKnownTeamLogo === 'function' ? getKnownTeamLogo(t1Name) : '');
+    const t2Logo = scoreData?.awayTeam?.logo || event.awayTeamLogo || scoreData?.teams?.[1]?.logo || (typeof getKnownTeamLogo === 'function' ? getKnownTeamLogo(t2Name) : '');
+
+    const t1Score = scoreData?.homeTeam?.score || scoreData?.teams?.[0]?.score || (event.isLive ? '0' : '-');
+    const t2Score = scoreData?.awayTeam?.score || scoreData?.teams?.[1]?.score || (event.isLive ? '0' : '-');
+    const t1Overs = scoreData?.homeTeam?.overs || scoreData?.teams?.[0]?.overs || '';
+    const t2Overs = scoreData?.awayTeam?.overs || scoreData?.teams?.[1]?.overs || '';
+
+    const isLive = scoreData ? scoreData.isLive : event.isLive;
+    const isFinal = scoreData ? scoreData.isFinal : (event.status === 'ENDED' || event.isEnded);
+    const clock = scoreData?.clock || (isLive ? 'LIVE' : (isFinal ? 'FT' : (event.timeIST || 'Scheduled')));
+    const detail = scoreData?.detail || (isLive ? 'In Progress' : (isFinal ? 'Full Time' : (event.countdown || 'Today')));
+    const venue = scoreData?.venue || event.venue || '';
+    const headline = scoreData?.headline || scoreData?.summary || event.liveScore?.summary || '';
+    const timeline = scoreData?.timeline || [];
+
+    const statusPillColor = isLive 
+        ? 'bg-red-600 text-white shadow-red-600/40 animate-pulse' 
+        : (isFinal ? 'bg-zinc-800 text-zinc-300 border border-white/10' : 'bg-amber-500 text-black font-extrabold shadow-amber-500/30');
+
+    let html = `
+        <!-- Top Status & Live Telemetry Poller Bar -->
+        <div class="flex items-center justify-between pb-3 border-b border-white/10 gap-2">
+            <div class="flex items-center gap-2">
+                <span class="px-3 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider ${statusPillColor} flex items-center gap-1.5 shadow-md">
+                    ${isLive ? '<span class="w-2 h-2 rounded-full bg-white animate-ping"></span> LIVE' : (isFinal ? 'FINAL' : 'UPCOMING')}
+                </span>
+                <span class="text-xs font-bold text-amber-400 font-mono">${clock}</span>
+                ${detail && detail !== clock ? `<span class="text-[11px] text-zinc-400 font-medium">(${detail})</span>` : ''}
+            </div>
+            <button type="button" onclick="window.refreshSportModalScorecard(true)" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 hover:text-white text-[11px] font-semibold border border-white/10 transition-all cursor-pointer shadow-sm active:scale-95" title="Refresh Live Scoreboard">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 ${isFetching ? 'animate-spin text-amber-400' : 'text-zinc-400'}"></i>
+                <span class="text-[10px] uppercase font-bold tracking-wider">${isFetching ? 'Syncing...' : 'Live Sync'}</span>
+            </button>
+        </div>
+
+        <!-- Stadium Arena Match Scoreboard Card -->
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900/90 via-black to-zinc-950 border border-white/15 p-4 sm:p-5 shadow-2xl">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(239,68,68,0.12),transparent_70%)] pointer-events-none"></div>
+
+            <div class="grid grid-cols-7 items-center gap-2 sm:gap-3 relative z-10">
+                <!-- Team 1 / Home Column -->
+                <div class="col-span-3 flex flex-col items-center sm:items-start text-center sm:text-left gap-2">
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/60 border border-white/20 p-2 shadow-xl flex items-center justify-center shrink-0">
+                        ${t1Logo ? `<img src="${t1Logo}" alt="${t1Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t1Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white font-black text-sm uppercase">${t1Name.substring(0, 3)}</div>`}
+                    </div>
+                    <div>
+                        <h3 class="text-sm sm:text-base font-black text-white leading-tight drop-shadow-md">${t1Name}</h3>
+                        ${t1Overs ? `<span class="text-[11px] font-semibold text-zinc-400 block mt-0.5">(${t1Overs} ov)</span>` : ''}
+                        ${scoreData?.homeTeam?.form ? `<div class="flex items-center gap-0.5 mt-1">${scoreData.homeTeam.form.split('').map(f => `<span class="w-3.5 h-3.5 rounded text-[8px] font-bold flex items-center justify-center ${f==='W'?'bg-emerald-600 text-white':(f==='D'?'bg-amber-600 text-white':'bg-red-600 text-white')}">${f}</span>`).join('')}</div>` : ''}
+                    </div>
+                </div>
+
+                <!-- Center Score Pillar -->
+                <div class="col-span-1 flex flex-col items-center justify-center text-center">
+                    <div class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-black/80 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                        <div class="text-2xl sm:text-3xl font-mono font-black text-amber-400 tracking-tight leading-none">${t1Score} : ${t2Score}</div>
+                    </div>
+                    <span class="text-[9px] uppercase font-bold text-zinc-400 tracking-widest mt-1.5 block">${isLive ? (clock || 'LIVE') : (isFinal ? 'FT' : 'VS')}</span>
+                </div>
+
+                <!-- Team 2 / Away Column -->
+                <div class="col-span-3 flex flex-col items-center sm:items-end text-center sm:text-right gap-2">
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/60 border border-white/20 p-2 shadow-xl flex items-center justify-center shrink-0">
+                        ${t2Logo ? `<img src="${t2Logo}" alt="${t2Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t2Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-sm uppercase">${t2Name.substring(0, 3)}</div>`}
+                    </div>
+                    <div>
+                        <h3 class="text-sm sm:text-base font-black text-white leading-tight drop-shadow-md">${t2Name}</h3>
+                        ${t2Overs ? `<span class="text-[11px] font-semibold text-zinc-400 block mt-0.5">(${t2Overs} ov)</span>` : ''}
+                        ${scoreData?.awayTeam?.form ? `<div class="flex items-center justify-end gap-0.5 mt-1">${scoreData.awayTeam.form.split('').map(f => `<span class="w-3.5 h-3.5 rounded text-[8px] font-bold flex items-center justify-center ${f==='W'?'bg-emerald-600 text-white':(f==='D'?'bg-amber-600 text-white':'bg-red-600 text-white')}">${f}</span>`).join('')}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+
+            ${venue ? `
+                <div class="mt-3 pt-3 border-t border-white/10 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
+                    <i data-lucide="map-pin" class="w-3 h-3 text-red-400 shrink-0"></i>
+                    <span class="truncate font-medium">${venue}</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    // Match Timeline / Events Stream (Goals, Cards, Wickets)
+    if (timeline && timeline.length > 0) {
+        html += `
+            <div class="rounded-2xl bg-white/[0.04] border border-white/10 p-3 sm:p-4 space-y-2">
+                <div class="flex items-center justify-between text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2">
+                    <span class="flex items-center gap-1.5"><i data-lucide="activity" class="w-3.5 h-3.5 text-amber-400"></i> Match Events & Key Moments</span>
+                    <span class="text-[10px] text-zinc-500 font-mono">${timeline.length} Recorded</span>
+                </div>
+                <div class="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar pr-1">
+                    ${timeline.map(item => `
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-black/40 border border-white/5 text-xs">
+                            <span class="text-zinc-200 font-semibold truncate">${item.text}</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-amber-300 font-bold shrink-0 ml-2">${item.time || item.type}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // Headline or Match Situation Summary
+    if (headline) {
+        html += `
+            <div class="rounded-2xl bg-gradient-to-r from-amber-950/20 via-black to-zinc-950 border border-amber-500/20 p-3.5 text-xs">
+                <span class="text-amber-400 font-bold block mb-1 flex items-center gap-1.5">
+                    <i data-lucide="megaphone" class="w-3.5 h-3.5"></i> Live Commentary & Telemetry:
+                </span>
+                <p class="text-zinc-300 font-medium leading-relaxed">${headline}</p>
+            </div>
+        `;
+    }
+
+    scoreBody.innerHTML = html;
+    if (typeof triggerLucide === 'function') triggerLucide();
+};
+
+window.refreshSportModalScorecard = async function(userTriggered = false) {
+    const event = window.currentSportModalEvent;
+    if (!event) return;
+
+    if (userTriggered) {
+        window.renderSportsModalScorecard(event, event.liveScore, true);
+    }
+
+    try {
+        const queryTitle = encodeURIComponent(event.title || '');
+        const querySport = encodeURIComponent(event.category || event.sportName || '');
+        const queryId = encodeURIComponent(event.id || '');
+        const res = await fetch(`/api/sports/match-score?title=${queryTitle}&category=${querySport}&id=${queryId}`);
+        const data = await res.json();
+        if (data && data.status === 'success' && data.score) {
+            event.liveScore = data.score;
+            window.renderSportsModalScorecard(event, data.score, false);
+        }
+    } catch (err) {
+        console.warn('[Scorecard] Live fetch notice:', err);
+    }
+};
+
 function switchSportsModalTab(tab) {
     const btnInfo = document.getElementById('sportsModalTabBtnInfo');
     const btnScore = document.getElementById('sportsModalTabBtnScore');
@@ -10688,12 +10846,18 @@ function switchSportsModalTab(tab) {
     if (contentScore) contentScore.classList.toggle('hidden', tab !== 'score');
     if (contentWatch) contentWatch.classList.toggle('hidden', tab !== 'watch');
 
+    if (tab === 'score' && typeof window.refreshSportModalScorecard === 'function') {
+        window.refreshSportModalScorecard(true);
+    }
+
     if (typeof triggerLucide === 'function') triggerLucide();
 }
 
-
-
 function closeSportMatchOvalModal() {
+    if (window._scorecardPollInterval) {
+        clearInterval(window._scorecardPollInterval);
+        window._scorecardPollInterval = null;
+    }
     const modal = document.getElementById('sportsMatchOvalModal');
     if (!modal) return;
     if (typeof handleModalClose === 'function') {

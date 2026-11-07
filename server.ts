@@ -10092,6 +10092,20 @@ app.get('/api/sports/supersport', (req: Request, res: Response) => {
     }
 });
 
+// Live Sports Match Score & Telemetry Resolver
+app.get(['/api/sports/match-score', '/api/sports/score'], async (req: Request, res: Response) => {
+    try {
+        const title = (req.query.title || req.query.q || '') as string;
+        const category = (req.query.category || req.query.sport || '') as string;
+        const id = (req.query.id || '') as string;
+        const { getLiveScoreForMatch } = await import('./src/services/streamicSportsService');
+        const score = await getLiveScoreForMatch(title, category, id);
+        return res.json({ status: 'success', score });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message });
+    }
+});
+
 // Google Sports Results API Endpoints (World Sports Events & Live Scores)
 app.get(['/api/sports/google-results', '/api/sports/live-scores', '/api/sports/world-events'], async (req: Request, res: Response) => {
     try {

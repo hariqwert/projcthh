@@ -1513,15 +1513,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 </button>
             </div>
 
-            <!-- Tabs: Audio Tracks vs Subtitles vs Appearance & Sync -->
-            <div class="grid grid-cols-3 gap-1 rounded-xl glass-sub-panel p-1 mb-3">
-                <button id="tabAudioBtn" onclick="switchSubTab('audio')" class="py-1.5 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
-                    Audio Dubs
+            <!-- Tabs: Audio Tracks vs Subtitles vs Subtitle Search vs Appearance & Sync -->
+            <div class="grid grid-cols-4 gap-1 rounded-xl glass-sub-panel p-1 mb-3">
+                <button id="tabAudioBtn" onclick="switchSubTab('audio')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+                    Audio
                 </button>
-                <button id="tabSubtitlesBtn" onclick="switchSubTab('subtitles')" class="py-1.5 text-xs font-bold rounded-lg transition-all bg-red-600 text-white shadow">
-                    Subtitles
+                <button id="tabSubtitlesBtn" onclick="switchSubTab('subtitles')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow">
+                    Active
                 </button>
-                <button id="tabVisualBtn" onclick="switchSubTab('visual')" class="py-1.5 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+                <button id="tabSearchSubsBtn" onclick="switchSubTab('search')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1">
+                    <i data-lucide="search" class="w-3 h-3 text-red-400"></i> <span>Search</span>
+                </button>
+                <button id="tabVisualBtn" onclick="switchSubTab('visual')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
                     Styling
                 </button>
             </div>
@@ -1537,10 +1540,19 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 </div>
             </div>
 
-            <!-- Tab 2: SUBTITLE TRACKS -->
+            <!-- Tab 2: ACTIVE SUBTITLE TRACKS -->
             <div id="tabContentSubtitles" class="space-y-2">
-                <div class="flex items-center justify-between">
-                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">SUBTITLE TRACKS</div>
+                <!-- Search Subtitles Quick Launcher -->
+                <button type="button" onclick="switchSubTab('search')" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-red-600/30 via-rose-600/20 to-red-600/30 hover:from-red-600/50 hover:to-rose-600/40 border border-red-500/30 text-white text-xs font-bold flex items-center justify-between transition-all shadow-md group cursor-pointer">
+                    <span class="flex items-center gap-2">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-red-400 group-hover:scale-110 transition-transform"></i>
+                        <span>Search Subtitles (Multi-Provider)</span>
+                    </span>
+                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-red-500 text-white uppercase font-black tracking-wider">Find</span>
+                </button>
+
+                <div class="flex items-center justify-between pt-1">
+                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">ACTIVE TRACKS</div>
                     <span id="subtitleTrackCountBadge" class="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-zinc-300 font-bold">Auto-detected</span>
                 </div>
                 <div id="subtitlesList" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
@@ -1552,6 +1564,91 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 <div class="border-t border-white/10 pt-2">
                     <label class="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Upload Custom Subtitle (.vtt / .srt)</label>
                     <input type="file" id="customSubInput" accept=".vtt,.srt" class="block w-full text-[11px] text-zinc-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Tab 3: SUBTITLE SEARCH & MULTI-PROVIDER STUDIO -->
+            <div id="tabContentSearchSubs" class="hidden space-y-3">
+                <!-- Search Inputs Group -->
+                <div class="space-y-2 p-3 rounded-2xl bg-black/50 border border-white/10 shadow-inner">
+                    <div>
+                        <label class="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block mb-1">Show / Movie Title</label>
+                        <div class="relative flex items-center">
+                            <i data-lucide="film" class="w-3.5 h-3.5 text-zinc-400 absolute left-3 pointer-events-none"></i>
+                            <input type="text" id="subSearchQueryInput" placeholder="Enter show or movie name..." class="w-full pl-8 pr-3 py-2 rounded-xl bg-white/[0.06] border border-white/15 focus:border-red-500 text-xs font-semibold text-white outline-none placeholder:text-zinc-500 transition-colors">
+                        </div>
+                    </div>
+
+                    <!-- Season & Episode (shown for TV shows or editable) -->
+                    <div id="subSearchSeasonEpRow" class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Season</label>
+                            <input type="number" id="subSearchSeasonInput" placeholder="1" min="1" class="w-full px-3 py-1.5 rounded-xl bg-white/[0.06] border border-white/15 focus:border-red-500 text-xs font-semibold text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Episode</label>
+                            <input type="number" id="subSearchEpisodeInput" placeholder="1" min="1" class="w-full px-3 py-1.5 rounded-xl bg-white/[0.06] border border-white/15 focus:border-red-500 text-xs font-semibold text-white outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Provider & Language Dropdowns -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Provider</label>
+                            <select id="subSearchProviderSelect" class="w-full px-2 py-1.5 rounded-xl bg-zinc-900 border border-white/15 focus:border-red-500 text-xs font-medium text-white outline-none">
+                                <option value="all" selected>All Providers (Aggregator)</option>
+                                <option value="opensubtitles">OpenSubtitles v3</option>
+                                <option value="subdl">SubDL</option>
+                                <option value="yts">YTS Subtitles</option>
+                                <option value="animetosho">AnimeTosho (Anime)</option>
+                                <option value="kitsunekko">Kitsunekko Mirror</option>
+                                <option value="anivexa">Anivexa SoftSubs</option>
+                                <option value="msone">MSone (Malayalam)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Language</label>
+                            <select id="subSearchLangSelect" class="w-full px-2 py-1.5 rounded-xl bg-zinc-900 border border-white/15 focus:border-red-500 text-xs font-medium text-white outline-none">
+                                <option value="all">All Languages</option>
+                                <option value="en" selected>English</option>
+                                <option value="es">Spanish (Español)</option>
+                                <option value="hi">Hindi (हिन्दी)</option>
+                                <option value="fr">French (Français)</option>
+                                <option value="de">German (Deutsch)</option>
+                                <option value="ar">Arabic (العربية)</option>
+                                <option value="ja">Japanese (日本語)</option>
+                                <option value="pt">Portuguese (Português)</option>
+                                <option value="it">Italian (Italiano)</option>
+                                <option value="ru">Russian (Русский)</option>
+                                <option value="ml">Malayalam (മലയാളം)</option>
+                                <option value="id">Indonesian (Bahasa)</option>
+                                <option value="ko">Korean (한국어)</option>
+                                <option value="zh">Chinese (中文)</option>
+                                <option value="tr">Turkish (Türkçe)</option>
+                                <option value="th">Thai (ไทย)</option>
+                                <option value="vi">Vietnamese (Tiếng Việt)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Search Button -->
+                    <button type="button" onclick="executeSubtitleSearch()" id="btnExecuteSubSearch" class="w-full mt-2 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                        <span id="subSearchBtnLabel">Search Available Subtitles</span>
+                    </button>
+                </div>
+
+                <!-- Results Header & Counter -->
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">SEARCH RESULTS</span>
+                    <span id="subSearchResultsCountBadge" class="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 font-bold">0 Results</span>
+                </div>
+
+                <!-- Subtitles Results List -->
+                <div id="subSearchResultsList" class="space-y-1.5 max-h-52 overflow-y-auto custom-scrollbar pr-1">
+                    <div class="p-4 text-center text-xs text-zinc-400 glass-sub-panel rounded-xl">
+                        Enter title and click Search to query across all subtitle providers.
+                    </div>
                 </div>
             </div>
 
@@ -4225,31 +4322,156 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         /* ---------------- TABS SWITCHER FOR SUBTITLES & AUDIO ---------------- */
+        function prefillSubtitleSearchInputs() {
+            const queryInput = document.getElementById('subSearchQueryInput');
+            const seasonInput = document.getElementById('subSearchSeasonInput');
+            const episodeInput = document.getElementById('subSearchEpisodeInput');
+
+            if (queryInput && !queryInput.value) {
+                queryInput.value = (MEDIA_TITLE && MEDIA_TITLE !== 'Cinema Presentation') ? MEDIA_TITLE : '';
+            }
+            if (seasonInput && !seasonInput.value) {
+                seasonInput.value = MEDIA_SEASON || 1;
+            }
+            if (episodeInput && !episodeInput.value) {
+                episodeInput.value = MEDIA_EPISODE || 1;
+            }
+        }
+
+        async function executeSubtitleSearch() {
+            const queryInput = document.getElementById('subSearchQueryInput');
+            const seasonInput = document.getElementById('subSearchSeasonInput');
+            const episodeInput = document.getElementById('subSearchEpisodeInput');
+            const providerSelect = document.getElementById('subSearchProviderSelect');
+            const langSelect = document.getElementById('subSearchLangSelect');
+            const resultsList = document.getElementById('subSearchResultsList');
+            const countBadge = document.getElementById('subSearchResultsCountBadge');
+            const btnLabel = document.getElementById('subSearchBtnLabel');
+
+            const query = (queryInput ? queryInput.value.trim() : '') || MEDIA_TITLE;
+            if (!query) {
+                if (typeof showToast === 'function') showToast('Please enter a show or movie title');
+                return;
+            }
+
+            const season = seasonInput ? seasonInput.value : (MEDIA_SEASON || 1);
+            const episode = episodeInput ? episodeInput.value : (MEDIA_EPISODE || 1);
+            const provider = providerSelect ? providerSelect.value : 'all';
+            const lang = langSelect ? langSelect.value : 'all';
+
+            if (btnLabel) btnLabel.textContent = 'Searching Subtitles...';
+            if (resultsList) {
+                resultsList.innerHTML = `
+                    <div class="py-6 text-center space-y-2">
+                        <div class="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                        <p class="text-xs text-zinc-400">Searching ${provider === 'all' ? 'all providers' : provider} in ${lang.toUpperCase()}...</p>
+                    </div>
+                `;
+            }
+
+            try {
+                const sParam = MEDIA_TYPE === 'tv' || season ? `&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}` : '';
+                const imdbParam = IMDB_ID ? `&imdb=${encodeURIComponent(IMDB_ID)}` : '';
+                const tmdbParam = (MEDIA_ID && MEDIA_ID !== '{{ID}}') ? `&tmdb=${encodeURIComponent(MEDIA_ID)}` : '';
+                const url = `/api/subtitles/fetch?title=${encodeURIComponent(query)}&provider=${encodeURIComponent(provider)}&lang=${encodeURIComponent(lang)}${sParam}${imdbParam}${tmdbParam}`;
+
+                const res = await fetch(url);
+                const data = await res.json();
+                const subs = (data && Array.isArray(data.subtitles)) ? data.subtitles : [];
+
+                if (countBadge) countBadge.textContent = `${subs.length} Found`;
+
+                if (subs.length === 0) {
+                    if (resultsList) {
+                        resultsList.innerHTML = `
+                            <div class="p-4 text-center text-xs text-zinc-400 glass-sub-panel rounded-xl">
+                                No subtitles found for "${query}". Try searching with "All Providers" or "All Languages".
+                            </div>
+                        `;
+                    }
+                } else {
+                    if (resultsList) {
+                        resultsList.innerHTML = subs.map((sub, idx) => {
+                            const virtualId = 5000 + idx;
+                            const isSelected = currentActiveSubtitleTrack === virtualId || externalSubtitlesLoaded.some(e => e.url === sub.url && currentActiveSubtitleTrack === e.id);
+                            const safeLabel = (sub.display || sub.language || 'Subtitle').replace(/'/g, "\\'");
+                            const safeUrl = (sub.url || '').replace(/'/g, "\\'");
+                            const provName = sub.source || sub.provider || 'External';
+                            const format = (sub.format || 'SRT').toUpperCase();
+
+                            return `
+                                <div class="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold glass-sub-panel border border-white/5 hover:border-white/20 transition-all ${isSelected ? 'ring-1 ring-red-500 bg-red-950/20' : ''}">
+                                    <div class="flex-1 min-w-0 pr-2">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="font-bold text-white">${sub.language || 'English'}</span>
+                                            <span class="text-[9px] px-1.5 py-0.2 rounded bg-red-600/25 text-red-300 font-extrabold uppercase border border-red-500/30">${provName}</span>
+                                            <span class="text-[9px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono font-bold">${format}</span>
+                                        </div>
+                                        <p class="text-[10px] text-zinc-400 truncate mt-0.5">${sub.display || 'Full Release'}</p>
+                                    </div>
+                                    <button onclick="applySearchedSubtitle('${safeUrl}', '${safeLabel}', ${virtualId})" class="px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-red-600 hover:bg-red-500 text-white shadow-md active:scale-95'} cursor-pointer">
+                                        ${isSelected ? 'Active ✓' : 'Apply'}
+                                    </button>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('[SubtitlesSearch] Error:', err);
+                if (resultsList) {
+                    resultsList.innerHTML = `<div class="p-3 text-center text-xs text-red-400 glass-sub-panel rounded-xl">Search error: ${err.message || 'Network timeout'}</div>`;
+                }
+            } finally {
+                if (btnLabel) btnLabel.textContent = 'Search Available Subtitles';
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        window.applySearchedSubtitle = function(url, label, virtualId) {
+            if (!externalSubtitlesLoaded.some(e => e.url === url)) {
+                externalSubtitlesLoaded.push({
+                    lang: label,
+                    url: url,
+                    id: virtualId
+                });
+            }
+            loadExternalSubtitle(url, label, virtualId);
+            executeSubtitleSearch();
+        };
+
         function switchSubTab(tab) {
             const btnAudio = document.getElementById('tabAudioBtn');
             const btnSubs = document.getElementById('tabSubtitlesBtn');
+            const btnSearch = document.getElementById('tabSearchSubsBtn');
             const btnVisual = document.getElementById('tabVisualBtn');
             const contentAudio = document.getElementById('tabContentAudio');
             const contentSubs = document.getElementById('tabContentSubtitles');
+            const contentSearch = document.getElementById('tabContentSearchSubs');
             const contentVisual = document.getElementById('tabContentVisual');
 
-            [btnAudio, btnSubs, btnVisual].forEach(b => {
-                b.className = 'py-1.5 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white';
+            [btnAudio, btnSubs, btnSearch, btnVisual].filter(Boolean).forEach(b => {
+                b.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1';
             });
-            [contentAudio, contentSubs, contentVisual].forEach(c => c.classList.add('hidden'));
+            [contentAudio, contentSubs, contentSearch, contentVisual].filter(Boolean).forEach(c => c.classList.add('hidden'));
 
             if (tab === 'audio') {
-                btnAudio.className = 'py-1.5 text-xs font-bold rounded-lg transition-all bg-red-600 text-white shadow';
-                contentAudio.classList.remove('hidden');
+                if (btnAudio) btnAudio.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (contentAudio) contentAudio.classList.remove('hidden');
                 detectAndPopulateAudioTracks();
             } else if (tab === 'subtitles') {
-                btnSubs.className = 'py-1.5 text-xs font-bold rounded-lg transition-all bg-red-600 text-white shadow';
-                contentSubs.classList.remove('hidden');
+                if (btnSubs) btnSubs.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (contentSubs) contentSubs.classList.remove('hidden');
                 populateSubtitlesList();
+            } else if (tab === 'search') {
+                if (btnSearch) btnSearch.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (contentSearch) contentSearch.classList.remove('hidden');
+                prefillSubtitleSearchInputs();
             } else if (tab === 'visual') {
-                btnVisual.className = 'py-1.5 text-xs font-bold rounded-lg transition-all bg-red-600 text-white shadow';
-                contentVisual.classList.remove('hidden');
+                if (btnVisual) btnVisual.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (contentVisual) contentVisual.classList.remove('hidden');
             }
+            if (window.lucide) lucide.createIcons();
         }
 
         function populateQualityLevels(levels) {

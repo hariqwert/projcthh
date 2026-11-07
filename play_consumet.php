@@ -10,12 +10,33 @@
     <title>{{NAME}}</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        // Suppress Tailwind Play CDN development warning in console
+        (function() {
+            const _origWarn = console.warn;
+            console.warn = function(...args) {
+                if (typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) return;
+                _origWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest" crossorigin></script>
     <script src="/search_launcher.js"></script>
-    <!-- Plyr, Hls.js & mpegts.js Libraries -->
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
-    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <!-- Plyr, Hls.js, mpegts.js, Dash.js & Shaka Libraries with Multi-CDN Resilient Loading -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/plyr/3.7.8/plyr.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.min.js"></script>
+    <script>
+        if (typeof Plyr === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/plyr/3.7.8/plyr.polyfilled.min.js"><\/script>');
+        }
+    </script>
+    <script>
+        if (typeof Plyr === 'undefined') {
+            document.write('<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"><\/script>');
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/dashjs@4.7.4/dist/dash.all.min.js" crossorigin></script>
@@ -1888,6 +1909,98 @@
             let hls = null;
             let mpegPlayer = null;
             let player = null;
+
+            // Bulletproof Safe Plyr Factory (Zero crash, handles missing CDN or adblock blocks)
+            function createSafePlyr(videoElement, options = {}) {
+                if (!videoElement) return null;
+                const defaultOptions = {
+                    controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
+                    autoplay: true,
+                    muted: false,
+                    hideControls: false,
+                    clickToPlay: false,
+                    fullscreen: { enabled: true, fallback: true, iosNative: true }
+                };
+                const finalOptions = Object.assign({}, defaultOptions, options);
+
+                if (typeof Plyr !== 'undefined') {
+                    try {
+                        const plyrInstance = new Plyr(videoElement, finalOptions);
+                        window.plyrPlayer = plyrInstance;
+                        window.player = plyrInstance;
+                        return plyrInstance;
+                    } catch (e) {
+                        console.warn("[Player] Plyr constructor failed, falling back to native controls:", e);
+                    }
+                } else {
+                    console.warn("[Player] Plyr library not loaded or blocked by browser/adblock. Falling back to native controls.");
+                }
+
+                // Native HTML5 Video Fallback (Zero crash, 100% playable stream)
+                videoElement.controls = true;
+                const dummyPlayer = {
+                    isNative: true,
+                    elements: {
+                        container: videoElement.parentElement || document.getElementById('player-container'),
+                        wrapper: videoElement.parentElement,
+                        controls: null
+                    },
+                    play: () => videoElement.play(),
+                    pause: () => videoElement.pause(),
+                    togglePlay: () => videoElement.paused ? videoElement.play() : videoElement.pause(),
+                    restart: () => { videoElement.currentTime = 0; videoElement.play(); },
+                    rewind: (seekTime = 10) => { videoElement.currentTime = Math.max(0, videoElement.currentTime - seekTime); },
+                    forward: (seekTime = 10) => { videoElement.currentTime = Math.min(videoElement.duration || Infinity, videoElement.currentTime + seekTime); },
+                    get currentTime() { return videoElement.currentTime; },
+                    set currentTime(val) { videoElement.currentTime = val; },
+                    get duration() { return videoElement.duration || 0; },
+                    get paused() { return videoElement.paused; },
+                    get muted() { return videoElement.muted; },
+                    set muted(val) { videoElement.muted = val; },
+                    get volume() { return videoElement.volume; },
+                    set volume(val) { videoElement.volume = val; },
+                    get speed() { return videoElement.playbackRate; },
+                    set speed(val) { videoElement.playbackRate = val; },
+                    fullscreen: {
+                        get active() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+                        enter: () => {
+                            const el = videoElement.parentElement || videoElement;
+                            if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+                            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                        },
+                        exit: () => {
+                            if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                        },
+                        toggle: () => {
+                            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                            } else {
+                                const el = videoElement.parentElement || videoElement;
+                                if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+                                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                            }
+                        }
+                    },
+                    on: (event, handler) => {
+                        const evMap = { 'play': 'play', 'pause': 'pause', 'ended': 'ended', 'timeupdate': 'timeupdate', 'volumechange': 'volumechange', 'enterfullscreen': 'fullscreenchange', 'exitfullscreen': 'fullscreenchange' };
+                        videoElement.addEventListener(evMap[event] || event, handler);
+                    },
+                    once: (event, handler) => {
+                        const evMap = { 'play': 'play', 'pause': 'pause', 'ended': 'ended', 'timeupdate': 'timeupdate', 'volumechange': 'volumechange' };
+                        videoElement.addEventListener(evMap[event] || event, handler, { once: true });
+                    },
+                    off: (event, handler) => {
+                        videoElement.removeEventListener(event, handler);
+                    },
+                    destroy: () => {}
+                };
+
+                window.plyrPlayer = dummyPlayer;
+                window.player = dummyPlayer;
+                return dummyPlayer;
+            }
             let isReconnecting = false;
             let watchdogTimer = null;
             let lastCurrentTime = -1;
@@ -3040,8 +3153,8 @@
                 if (typeof loading !== 'undefined' && loading) loading.style.display = 'none';
 
                 // Ensure Plyr instance exists so our rich controls are built
-                if (!player && typeof Plyr !== 'undefined' && video) {
-                    player = new Plyr(video, {
+                if (!player && video) {
+                    player = createSafePlyr(video, {
                         controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                         autoplay: true,
                         muted: false,
@@ -3049,8 +3162,6 @@
                         clickToPlay: false,
                         fullscreen: { enabled: true, fallback: true, iosNative: true }
                     });
-                    window.plyrPlayer = player;
-                    window.player = player;
                 }
 
                 // Add active embed classes to hide timeline while preserving all controls
@@ -5392,15 +5503,13 @@
                         return;
                     }
                     if (!player) {
-                        player = new Plyr(video, {
+                        player = createSafePlyr(video, {
                             controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                             autoplay: true,
                             muted: false,
                             hideControls: false,
                             clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                         });
-                        window.plyrPlayer = player;
-                        window.player = player;
                     }
                     video.style.opacity = '1';
                     hideLoadingScreen();
@@ -5425,15 +5534,13 @@
                         video.load();
                         triggerSafePlayback('MP4-Native');
                         if (!player) {
-                            player = new Plyr(video, {
+                            player = createSafePlyr(video, {
                                 controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                 autoplay: true,
                                 muted: false,
                                 clickToPlay: false,
                                 fullscreen: { enabled: true, fallback: true, iosNative: true }
                             });
-                            window.plyrPlayer = player;
-                            window.player = player;
                         }
                         video.style.opacity = '1';
                         hideLoadingScreen();
@@ -5492,15 +5599,13 @@
                         video.style.opacity = '1';
                         hideLoadingScreen();
                         if (!player) {
-                            player = new Plyr(video, {
+                            player = createSafePlyr(video, {
                                 controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                 autoplay: true,
                                 muted: false,
                                 hideControls: false,
                                 clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                             });
-                            window.plyrPlayer = player;
-                            window.player = player;
                         }
                         triggerSafePlayback('HLS-Manifest-Parsed');
                         initTopControls(player);
@@ -6165,15 +6270,13 @@
                         video.style.opacity = '1';
                         hideLoadingScreen();
                         if (!player) {
-                            player = new Plyr(video, {
+                            player = createSafePlyr(video, {
                                 controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                 autoplay: true,
                                 muted: false,
                                 hideControls: false,
                                 clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                             });
-                            window.plyrPlayer = player;
-                            window.player = player;
                         }
                         triggerSafePlayback('Shaka-DASH');
                         initTopControls(player);
@@ -6412,15 +6515,13 @@
                             video.style.opacity = '1';
                             hideLoadingScreen();
                             if (!player) {
-                                player = new Plyr(video, {
+                                player = createSafePlyr(video, {
                                     controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                                     autoplay: true,
                                     muted: false,
                                     hideControls: false,
                                     clickToPlay: false, fullscreen: { enabled: true, fallback: true, iosNative: true }
                                 });
-                                window.plyrPlayer = player;
-                                window.player = player;
                             }
                             triggerSafePlayback('DASH');
                             initTopControls(player);
@@ -6478,7 +6579,7 @@
                     video.load();
                     triggerSafePlayback('Direct-Media');
                     if (!player) {
-                        player = new Plyr(video, {
+                        player = createSafePlyr(video, {
                             controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'],
                             autoplay: true,
                             muted: false,
@@ -6486,8 +6587,6 @@
                             clickToPlay: false,
                             fullscreen: { enabled: true, fallback: true, iosNative: true }
                         });
-                        window.plyrPlayer = player;
-                        window.player = player;
                     }
                     video.style.opacity = '1';
                     hideLoadingScreen();

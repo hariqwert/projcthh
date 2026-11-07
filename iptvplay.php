@@ -9,12 +9,22 @@
     <!-- Styling & Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
-    
-    <!-- Player Core (HLS.js & Plyr) -->
+    <!-- Plyr, Hls.js & mpegts.js Libraries with Multi-CDN Resilient Loading -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/plyr/3.7.8/plyr.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.min.js"></script>
+    <script>
+        if (typeof Plyr === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/plyr/3.7.8/plyr.polyfilled.min.js"><\/script>');
+        }
+    </script>
+    <script>
+        if (typeof Plyr === 'undefined') {
+            document.write('<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"><\/script>');
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.0/dist/hls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
-    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
 
     <style>
         body, html {
@@ -292,16 +302,27 @@
 
         const isExplicitVod = streamUrl.toLowerCase().endsWith('.mp4') || streamUrl.toLowerCase().endsWith('.mkv') || streamUrl.includes('movie') || streamUrl.includes('series');
 
-        // Initialize Plyr UI
+        // Initialize Plyr UI safely
         if (!player) {
-            player = new Plyr(video, {
-                controls: ['play-large', 'play', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
-                autoplay: true,
-                muted: false,
-                hideControls: { enabled: true, delay: 3000 },
-                settings: ['quality', 'speed']
-            });
-            initAdvancedGestures(player, video);
+            if (typeof Plyr !== 'undefined') {
+                try {
+                    player = new Plyr(video, {
+                        controls: ['play-large', 'play', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
+                        autoplay: true,
+                        muted: false,
+                        hideControls: { enabled: true, delay: 3000 },
+                        settings: ['quality', 'speed']
+                    });
+                } catch(e) {
+                    console.warn("Plyr init failed, fallback to native:", e);
+                    video.controls = true;
+                    player = { isNative: true, play: () => video.play(), pause: () => video.pause() };
+                }
+            } else {
+                video.controls = true;
+                player = { isNative: true, play: () => video.play(), pause: () => video.pause() };
+            }
+            if (typeof initAdvancedGestures === 'function') initAdvancedGestures(player, video);
         }
 
         loadStream();

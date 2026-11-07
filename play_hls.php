@@ -1504,6 +1504,33 @@ function e($str)
                 let hls = null;
                 let mpegPlayer = null;
                 let player = null;
+
+                function createSafePlyr(videoElement, opts = {}) {
+                    if (!videoElement) return null;
+                    if (typeof Plyr !== 'undefined') {
+                        try {
+                            const inst = new Plyr(videoElement, opts);
+                            window.plyrPlayer = inst;
+                            window.player = inst;
+                            return inst;
+                        } catch(e) {
+                            console.warn("Plyr constructor failed, fallback to native:", e);
+                        }
+                    }
+                    videoElement.controls = true;
+                    const dummy = {
+                        isNative: true,
+                        elements: { container: videoElement.parentElement },
+                        play: () => videoElement.play(),
+                        pause: () => videoElement.pause(),
+                        on: (ev, fn) => videoElement.addEventListener(ev, fn),
+                        off: (ev, fn) => videoElement.removeEventListener(ev, fn),
+                        destroy: () => {}
+                    };
+                    window.plyrPlayer = dummy;
+                    window.player = dummy;
+                    return dummy;
+                }
                 let seekOffset = 0;
                 let isM3U8 = srcUrl.includes('.m3u8') || lowerId.includes('m3u8') || srcUrl.includes('xtream_live_') || srcUrl.includes('m3u=1');
                 let isTs = !isM3U8 && (srcUrl.includes('.ts') || srcUrl.includes('/live/') || srcUrl.includes('transcode=1') || lowerId.includes('_mkv') || lowerId.includes('.mkv'));
@@ -1760,7 +1787,7 @@ function e($str)
                         }
                         triggerAutoReconnect(video, mpegPlayer, srcUrl);
                     });
-                    player = new Plyr(video, options);
+                    player = createSafePlyr(video, options);
                     window.plyrPlayer = player;
                     player.on('error', (err) => {
                         console.error('Plyr error:', err);
@@ -2011,7 +2038,7 @@ function e($str)
                             0: 'Auto'
                         }
                     };
-                    player = new Plyr(video, options);
+                    player = createSafePlyr(video, options);
                     window.plyrPlayer = player;
                     player.on('error', (err) => {
                         console.error('Plyr error:', err);
@@ -2045,7 +2072,7 @@ function e($str)
                         triggerAutoReconnect(video, null, src);
                     }
                 }, 45000);
-                player = new Plyr(video, options);
+                player = createSafePlyr(video, options);
                 window.plyrPlayer = player;
                 video.style.opacity = 1;
                 document.getElementById('loading').style.display = 'none';

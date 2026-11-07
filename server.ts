@@ -76,6 +76,7 @@ import { initSmMovieAutoUpdate, probeMkvMetadata } from './src/services/smMovieH
 import { resolveRareAnimeStream, searchRareAnimes } from './src/services/rareAnimesService';
 import { fetchWillowEvents } from './src/services/willowService';
 import { fetchPrimeEvents } from './src/services/primeService';
+import { getFormattedFootlinksEvents } from './src/services/footlinksService';
 import { getMegaPlayToken } from './src/services/megaPlayService';
 import { verifyMasterPin, bindDevice, isDeviceAuthorized, touchDevice, getAllBoundDevices, revokeDevice, revokeAllDevices } from './src/services/deviceBindingService';
 import { logServerEvent, queryServerLogs, clearAllLogs, exportLogsAsText, getAllDetailedSessions, endUserStreamSession, trackUserStreamSession } from './src/services/loggerService';
@@ -1757,6 +1758,10 @@ app.use((req, res, next) => {
                          req.path === '/stalker_pro_infinity.svg' ||
                          req.path.startsWith('/sports.m3u') ||
                          req.path.startsWith('/api/sports') ||
+                          req.path.startsWith('/footlinks.m3u') ||
+                          req.path.startsWith('/api/live_events') ||
+                          req.path.startsWith('/api/live-events') ||
+                          req.path.startsWith('/api/live/events') ||
                          req.path.startsWith('/consumet') ||
                          req.path.startsWith('/api/consumet') ||
                          req.path.startsWith('/api/media') ||
@@ -7775,6 +7780,31 @@ app.get(['/api/live_events', '/api/live-events'], async (req: Request, res: Resp
                 });
             }
         });
+
+        // 2. Add Footlinks live events
+        try {
+            const flEvents = await getFormattedFootlinksEvents();
+            flEvents.forEach(fe => {
+                if (!seenIds.has(fe.id)) {
+                    seenIds.add(fe.id);
+                    results.push({
+                        id: fe.id,
+                        title: fe.title,
+                        name: fe.title,
+                        url: fe.url,
+                        streamUrl: fe.stream_url,
+                        icon: fe.logo,
+                        bgUrl: fe.thumbnail,
+                        category: fe.category,
+                        isLiveEvent: true,
+                        isFootlinks: true,
+                        playUrl: fe.playUrl,
+                        streams: fe.streams
+                    });
+                }
+            });
+        } catch (_) {}
+
         return res.json(results);
     } catch (e: any) {
         console.error('[PublicEvents] Failed to list:', e.message);
@@ -7993,12 +8023,13 @@ app.get('/api/live/events', async (req: Request, res: Response) => {
 
 app.get('/api/sports/live-events', async (req: Request, res: Response) => {
     try {
-        const [timEvents, rawJtvEvents, timChannels, willowEvents, primeEvents] = await Promise.all([
+        const [timEvents, rawJtvEvents, timChannels, willowEvents, primeEvents, footlinksEvents] = await Promise.all([
             getTimLiveEvents().catch(() => []),
             JtvService.fetchLiveEvents().catch(() => []),
             getTimChannels().catch(() => []),
             fetchWillowEvents().catch(() => []),
-            fetchPrimeEvents().catch(() => [])
+            fetchPrimeEvents().catch(() => []),
+            getFormattedFootlinksEvents().catch(() => [])
         ]);
         const jtvEvents = (rawJtvEvents || []).filter(e => !isLinearChannel(e));
 
@@ -8093,10 +8124,11 @@ app.get('/api/sports/live-events', async (req: Request, res: Response) => {
 
         res.json({
             status: 'success',
-            events: [...adminEvents, ...timEvents, ...jtvEvents, ...formattedWillow, ...formattedPrime],
+            events: [...adminEvents, ...timEvents, ...jtvEvents, ...formattedWillow, ...formattedPrime, ...footlinksEvents],
             channels: timChannels,
             willowEvents: formattedWillow,
-            primeEvents: formattedPrime
+            primeEvents: formattedPrime,
+            footlinksEvents: footlinksEvents
         });
     } catch (e: any) {
         res.status(500).json({ status: 'error', error: e.message, events: [] });

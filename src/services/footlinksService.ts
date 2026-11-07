@@ -102,3 +102,131 @@ export async function generateFootlinksM3u(baseUrl = 'http://localhost:3000'): P
 
     return m3u;
 }
+
+export interface FormattedFootlinksEvent {
+    id: string;
+    name: string;
+    title: string;
+    synopsis?: string;
+    category: string;
+    group: string;
+    sportName?: string;
+    tournament: string;
+    time: string;
+    timeIST: string;
+    status: string;
+    isLive: boolean;
+    url: string;
+    stream_url: string;
+    logo: string;
+    thumbnail: string;
+    clearkey?: string;
+    key_id?: string;
+    key?: string;
+    source: string;
+    badge: string;
+    playUrl: string;
+    isFootlinks: boolean;
+    canWatch: boolean;
+    countdown: string;
+    streams: Array<{
+        id: number | string;
+        name: string;
+        title: string;
+        streamUrl: string;
+        url: string;
+        playUrl: string;
+        type: string;
+        manifest_type: string;
+        clearkey?: string;
+        key_id?: string;
+        key?: string;
+    }>;
+}
+
+export async function getFormattedFootlinksEvents(): Promise<FormattedFootlinksEvent[]> {
+    const events = await getFootlinksData();
+    const formatted: FormattedFootlinksEvent[] = [];
+
+    for (const ev of events) {
+        const info = ev.event || {};
+        const cat = info.category || info.name || ev.cat || 'Live Sports';
+        const teamA = info.teamA || '';
+        const teamB = info.teamB || '';
+        const matchTitle = (teamA && teamB) ? `${teamA} vs ${teamB}` : (ev.title || info.type || 'Live Match');
+        const logo = info.logo || info.teamAFlag || info.teamBFlag || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6U1hs_95YIb02AiDL1JAgkqMNrA1SkPMUatqqPsO2ZqtNZdmj79TQ71k&s=10';
+
+        const streams = (ev.streams || []).filter(s => {
+            const l = String(s.link || '').trim();
+            return l.startsWith('http');
+        });
+
+        if (streams.length === 0) continue;
+
+        const formattedStreams = streams.map(s => {
+            const rawLink = String(s.link || '').split('|')[0].trim();
+            const isDash = rawLink.includes('.mpd') || s.type === '7' || String(s.type).toLowerCase() === 'dash';
+            const api = String(s.api || '').trim();
+            let keyId = '';
+            let keyVal = '';
+            if (api.includes(':')) {
+                const parts = api.split(':');
+                keyId = parts[0].trim();
+                keyVal = parts.slice(1).join(':').trim();
+            }
+
+            const streamTitle = s.title || `Stream ${s.id}`;
+            let playUrl = `/play_consumet.php?channel_id=footlinks_${ev.id}_${s.id}&url=${encodeURIComponent(rawLink)}&name=${encodeURIComponent(matchTitle + ' (' + streamTitle + ')')}&source=footlinks&type=${isDash ? 'dash' : 'hls'}`;
+            if (keyId && keyVal) {
+                playUrl += `&key_id=${encodeURIComponent(keyId)}&key=${encodeURIComponent(keyVal)}&clearkey=${encodeURIComponent(api)}`;
+            }
+
+            return {
+                id: s.id,
+                name: streamTitle,
+                title: streamTitle,
+                streamUrl: rawLink,
+                url: rawLink,
+                playUrl,
+                type: isDash ? 'mpd' : 'hls',
+                manifest_type: isDash ? 'mpd' : 'hls',
+                clearkey: api || undefined,
+                key_id: keyId || undefined,
+                key: keyVal || undefined
+            };
+        });
+
+        const primary = formattedStreams[0];
+
+        formatted.push({
+            id: `footlinks_${ev.id}`,
+            name: matchTitle,
+            title: matchTitle,
+            synopsis: `${cat} • ${info.type || ev.title || 'Live Broadcast'}`,
+            category: cat,
+            group: cat,
+            sportName: cat,
+            tournament: info.type || info.name || 'SPORTLINK TV',
+            time: 'LIVE NOW',
+            timeIST: info.startTimeIST || 'LIVE NOW',
+            status: ev.status === 'live' ? 'LIVE' : (ev.status || 'LIVE'),
+            isLive: true,
+            url: primary.url,
+            stream_url: primary.streamUrl,
+            logo: logo,
+            thumbnail: logo,
+            clearkey: primary.clearkey,
+            key_id: primary.key_id,
+            key: primary.key,
+            source: 'footlinks',
+            badge: 'FOOTLINKS',
+            playUrl: primary.playUrl,
+            isFootlinks: true,
+            canWatch: true,
+            countdown: 'LIVE NOW',
+            streams: formattedStreams
+        });
+    }
+
+    return formatted;
+}

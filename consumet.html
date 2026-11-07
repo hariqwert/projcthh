@@ -8504,14 +8504,17 @@ function getLiveEventSourceRank(e) {
     // 4. PRIME
     if (isPrimeSportsEvent(e)) return 4;
 
-    // 5. TIMSTREAMS
-    if (e.isTimStreams || s === 'timstreams' || s === 'tim' || id.startsWith('tim_') || id.startsWith('timstreams_') || (e.league && /timstreams/i.test(e.league))) return 5;
+    // 5. FOOTLINKS / SPORTLINK
+    if (e.isFootlinks || s === 'footlinks' || b === 'sportlink' || b === 'footlinks' || id.startsWith('footlinks_')) return 5;
 
-    // 6. LIVE M3U
-    if (e.isLiveM3u || s === 'livem3u' || id.startsWith('livem3u_') || (e.league && /live\.?m3u/i.test(e.league))) return 6;
+    // 6. TIMSTREAMS
+    if (e.isTimStreams || s === 'timstreams' || s === 'tim' || id.startsWith('tim_') || id.startsWith('timstreams_') || (e.league && /timstreams/i.test(e.league))) return 6;
 
-    // 7. Others
-    return 7;
+    // 7. LIVE M3U
+    if (e.isLiveM3u || s === 'livem3u' || id.startsWith('livem3u_') || (e.league && /live\.?m3u/i.test(e.league))) return 7;
+
+    // 8. Others
+    return 8;
 }
 
 let _lastSportsScheduleFetch = 0;
@@ -8618,6 +8621,12 @@ async function loadLiveSportsSchedule(force = false) {
         const primeCountBadge = document.getElementById('liveNowPrimeCountBadge');
         if (primeCountBadge) {
             primeCountBadge.textContent = window.primeLiveMatches.length;
+        }
+
+        if (timEventsRes.status === 'fulfilled' && Array.isArray(timEventsRes.value?.footlinksEvents)) {
+            window.footlinksLiveMatches = timEventsRes.value.footlinksEvents;
+        } else {
+            window.footlinksLiveMatches = [];
         }
 
         let allEvents = [];
@@ -8970,6 +8979,85 @@ async function loadLiveSportsSchedule(force = false) {
                         matchType: 'DIRECT_MATCH',
                         reason: 'Official Feed'
                     }]
+                });
+            });
+        }
+
+        // 5. FOOTLINKS (SPORTLINK TV): Multi-stream live events
+        const footlinksArr = (timEventsRes.status === 'fulfilled' && Array.isArray(timEventsRes.value?.footlinksEvents))
+            ? timEventsRes.value.footlinksEvents
+            : (window.footlinksLiveMatches || []);
+        if (footlinksArr.length > 0) {
+            const seenFootlinks = new Set(allEvents.map(e => (e.id || '') + ' ' + (e.title || '')));
+            footlinksArr.forEach(fl => {
+                const flTitle = (fl.title || fl.name || 'Live Sports').trim();
+                const checkKey = `${fl.id || ''} ${flTitle}`;
+                if (seenFootlinks.has(checkKey)) return;
+                seenFootlinks.add(checkKey);
+
+                const flCategory = (fl.category || fl.sportName || 'sports').toLowerCase();
+                let flEmoji = '🏆';
+                if (flCategory.includes('motor') || flCategory.includes('f1') || flCategory.includes('formula')) flEmoji = '🏎️';
+                else if (flCategory.includes('foot') || flCategory.includes('soccer')) flEmoji = '⚽';
+                else if (flCategory.includes('cricket')) flEmoji = '🏏';
+                else if (flCategory.includes('basket')) flEmoji = '🏀';
+                else if (flCategory.includes('tennis')) flEmoji = '🎾';
+                else if (flCategory.includes('combat') || flCategory.includes('ufc') || flCategory.includes('fight') || flCategory.includes('mma') || flCategory.includes('wwe')) flEmoji = '🥊';
+
+                const flStreams = Array.isArray(fl.streams) ? fl.streams : [];
+                const primaryStream = flStreams[0] || {};
+                const primaryPlay = primaryStream.playUrl || fl.playUrl || '#';
+                const primaryUrl = primaryStream.streamUrl || primaryStream.url || fl.stream_url || fl.url || '';
+
+                allEvents.push({
+                    id: fl.id || `footlinks_${flTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+                    title: flTitle,
+                    rawTitle: flTitle,
+                    sportName: fl.sportName || fl.category || 'Live Sports',
+                    sportEmoji: flEmoji,
+                    category: flCategory,
+                    league: fl.tournament || 'SPORTLINK TV',
+                    countryCode: 'GLOBAL',
+                    startTime: Math.floor(Date.now() / 1000),
+                    endTime: Math.floor(Date.now() / 1000) + 14400,
+                    durationMinutes: 240,
+                    timeIST: fl.timeIST || 'LIVE NOW',
+                    dateIST: 'Today',
+                    fullIST: 'Today, LIVE NOW',
+                    status: 'LIVE',
+                    isLive: true,
+                    isStartingSoon: false,
+                    isEnded: false,
+                    canWatch: true,
+                    countdown: 'LIVE NOW',
+                    hasEnglish: true,
+                    isFamous: true,
+                    source: 'footlinks',
+                    isFootlinks: true,
+                    badge: 'SPORTLINK',
+                    thumbnail: fl.thumbnail || fl.logo,
+                    logo: fl.logo || fl.thumbnail,
+                    userHasChannel: true,
+                    primaryPlayUrl: primaryPlay,
+                    primaryM3u8Url: primaryUrl,
+                    primaryChannelName: primaryStream.name || primaryStream.title || flTitle,
+                    channels: flStreams.map(s => ({
+                        channelName: s.name || s.title || 'Live Stream',
+                        language: 'English',
+                        isEnglish: true,
+                        userHasChannel: true,
+                        userChannelUrl: s.streamUrl || s.url,
+                        m3u8Url: s.streamUrl || s.url,
+                        playUrl: s.playUrl
+                    })),
+                    myConvertedChannels: flStreams.map(s => ({
+                        channelName: s.name || s.title || 'Live Stream',
+                        url: s.streamUrl || s.url,
+                        m3u8Url: s.streamUrl || s.url,
+                        playUrl: s.playUrl,
+                        matchType: 'DIRECT_MATCH',
+                        reason: 'Footlinks Multi-Stream'
+                    }))
                 });
             });
         }
@@ -16478,7 +16566,7 @@ function _isSportsOrLiveHistoryItem(item) {
     if (['sports', 'livetv', 'livenow', 'live', 'channel', 'hls', 'dash'].includes(rawType)) return true;
     if (item.isLive || item.isAdminLiveEvent || item.channel_id || item.drm) return true;
     const idStr = String(item.id || item.tmdbId || '').toLowerCase();
-    if (idStr === '99999' || /^(mdtv|jtv|live|sport|fancode|fc-|sonyliv|sliv-|willow|tim|dlhd|mix1tv|airtel|zee|star|sony)/.test(idStr)) return true;
+    if (idStr === '99999' || /^(mdtv|jtv|live|sport|fancode|fc-|sonyliv|sliv-|willow|tim|dlhd|mix1tv|airtel|zee|star|sony|footlinks)/.test(idStr)) return true;
     const dur = Number(item.duration) || 0;
     if (dur >= 36000 || (!isFinite(dur) && dur !== 0)) return true;
     const titleStr = String(item.title || item.name || '').trim();
@@ -16496,7 +16584,7 @@ function _resolveHistorySportsThumb(item, title) {
     }
     const cleanTitle = String(title || item.title || item.name || 'Live Sports').trim();
     // Try matching active live events or sports channels for high-res artwork
-    const allEvs = [].concat(window.liveNowEvents || [], window.fancodeLiveMatches || [], window.sonylivLiveMatches || [], window.willowLiveMatches || []);
+    const allEvs = [].concat(window.liveNowEvents || [], window.fancodeLiveMatches || [], window.sonylivLiveMatches || [], window.willowLiveMatches || [], window.footlinksLiveMatches || []);
     const matchedEv = allEvs.find(e => e && (e.title === cleanTitle || e.name === cleanTitle || String(e.id) === String(item.id)));
     if (matchedEv && (matchedEv.bgUrl || matchedEv.poster || matchedEv.backdrop || matchedEv.logo || matchedEv.image)) {
         return matchedEv.bgUrl || matchedEv.poster || matchedEv.backdrop || matchedEv.logo || matchedEv.image;
@@ -16616,7 +16704,7 @@ function openDetailsModal(id, type = 'movie', expectedTitle = '', resumeTime = 0
             return;
         }
         // Try matching in loaded sports channels / live events / JioTV channels
-        const allEvs = [].concat(window.liveNowEvents || [], window.fancodeLiveMatches || [], window.sonylivLiveMatches || [], window.willowLiveMatches || [], window.timStreamsEvents || []);
+        const allEvs = [].concat(window.liveNowEvents || [], window.fancodeLiveMatches || [], window.sonylivLiveMatches || [], window.willowLiveMatches || [], window.timStreamsEvents || [], window.footlinksLiveMatches || []);
         const matchedEv = allEvs.find(e => e && (String(e.id) === String(id) || (e.title || e.name || '').toLowerCase() === cleanTitle.toLowerCase()));
         if (matchedEv) {
             openFullscreenPlayer(matchedEv, cleanTitle);

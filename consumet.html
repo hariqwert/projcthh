@@ -3114,43 +3114,43 @@ No description is available for this broadcast program.
         </div>
     </div>
 </div>
-<!-- SPORTS MATCH OVAL MODAL (MATCH INFO, LIVE SCORECARD & STREAMS) -->
+<!-- SPORTS MATCH MODAL (BROADCAST ARENA, LIVE SCORECARD & STREAMS) -->
 <div id="sportsMatchOvalModal" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in" onclick="closeSportMatchOvalModal()">
-    <div id="sportsMatchOvalModalContainer" class="relative w-full max-w-2xl bg-gradient-to-b from-zinc-900 via-zinc-950 to-black border-2 border-white/20 p-6 sm:p-8 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.9),0_0_50px_rgba(239,68,68,0.2)] text-white transition-all overflow-hidden ring-1 ring-white/10" style="border-radius: 46px;" onclick="event.stopPropagation()">
-        <!-- Ambient Sport Aura -->
-        <div class="absolute -top-24 -left-24 w-72 h-72 bg-red-600/15 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
+    <div id="sportsMatchOvalModalContainer" class="relative w-full max-w-2xl bg-zinc-950/95 border border-white/15 rounded-3xl p-5 sm:p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white transition-all overflow-hidden ring-1 ring-white/10 backdrop-blur-2xl" onclick="event.stopPropagation()">
+        <!-- Subtle Ambient Vignette -->
+        <div class="absolute -top-32 -left-32 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <!-- Header / Top Bar -->
-        <div class="flex items-center justify-between gap-3 pb-4 border-b border-white/10 relative z-10">
+        <!-- Header / Top Bar (Professional Broadcast Style - No tacky AI emojis) -->
+        <div class="flex items-center justify-between gap-3 pb-3.5 border-b border-white/10 relative z-10">
             <div class="flex items-center gap-2 flex-wrap">
-                <span id="sportsModalSportBadge" class="px-3.5 py-1 rounded-full text-xs font-bold bg-white/10 text-white border border-white/15 flex items-center gap-1.5">
-                    <span id="sportsModalSportEmoji">🏏</span> <span id="sportsModalSportName">Cricket</span>
+                <span id="sportsModalSportBadge" class="px-3.5 py-1 rounded-full text-xs font-bold bg-white/10 text-white border border-white/15 flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="trophy" class="w-3.5 h-3.5 text-amber-400"></i> <span id="sportsModalSportName">Match Center</span>
                 </span>
-                <span id="sportsModalStatusBadge" class="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-600 text-white shadow-md flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> LIVE
+                <span id="sportsModalStatusBadge" class="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-600 text-white shadow-md flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> LIVE
                 </span>
-                <span id="sportsModalLeagueBadge" class="text-xs text-zinc-400 font-semibold px-3 py-0.5 rounded-full bg-black/40 border border-white/5 truncate max-w-[220px]"></span>
+                <span id="sportsModalLeagueBadge" class="text-xs text-zinc-400 font-semibold px-3 py-0.5 rounded-full bg-black/50 border border-white/10 truncate max-w-[220px]"></span>
             </div>
-            <button onclick="closeSportMatchOvalModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-colors border border-white/10 shrink-0">
+            <button onclick="closeSportMatchOvalModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-colors border border-white/10 shrink-0" title="Close Match Center">
                 <i data-lucide="x" class="w-4 h-4"></i>
             </button>
         </div>
 
-        <!-- Featured Match VS Banner in Modal (Stadium Oval Showcase) -->
-        <div id="sportsModalVsBanner" class="py-5 relative z-10">
-            <!-- Dynamically populated with big team crests, team names, central glowing VS emblem -->
+        <!-- Featured Match VS Banner in Modal (Broadcast Arena Showcase - Sleek horizontal card, never an oversized square) -->
+        <div id="sportsModalVsBanner" class="py-3.5 relative z-10">
+            <!-- Dynamically populated by buildSportsModalBannerHtml -->
         </div>
 
-        <!-- Oval Tabs: Info / Scorecard / Watch Feeds -->
-        <div class="flex items-center justify-center gap-2 p-1.5 bg-black/60 border border-white/10 rounded-full max-w-md mx-auto mb-5 relative z-10">
-            <button id="sportsModalTabBtnInfo" onclick="switchSportsModalTab('info')" class="flex-1 py-1.5 px-3 rounded-full text-xs font-bold transition-all bg-white text-black shadow-md flex items-center justify-center gap-1.5">
+        <!-- Broadcast Tabs: Info / Scorecard / Watch Feeds -->
+        <div class="flex items-center justify-center gap-2 p-1.5 bg-black/60 border border-white/10 rounded-2xl max-w-md mx-auto mb-4 relative z-10">
+            <button id="sportsModalTabBtnInfo" onclick="switchSportsModalTab('info')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all bg-white text-black shadow-md flex items-center justify-center gap-1.5">
                 <i data-lucide="info" class="w-3.5 h-3.5"></i> <span>Match Info</span>
             </button>
-            <button id="sportsModalTabBtnScore" onclick="switchSportsModalTab('score')" class="flex-1 py-1.5 px-3 rounded-full text-xs font-bold transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1.5">
-                <span id="sportsModalTabScoreIcon">🏏</span> <span>Scorecard</span>
+            <button id="sportsModalTabBtnScore" onclick="switchSportsModalTab('score')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1.5">
+                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> <span>Live Scorecard</span>
             </button>
-            <button id="sportsModalTabBtnWatch" onclick="switchSportsModalTab('watch')" class="flex-1 py-1.5 px-3 rounded-full text-xs font-bold transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1.5">
+            <button id="sportsModalTabBtnWatch" onclick="switchSportsModalTab('watch')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1.5">
                 <i data-lucide="tv" class="w-3.5 h-3.5"></i> <span id="sportsModalTabWatchText">Watch Feeds</span>
             </button>
         </div>
@@ -10087,25 +10087,141 @@ function getTeamTheme(name) {
     return { from: picked.from, to: picked.to, text: '#FFFFFF', border: picked.border };
 }
 
-// 2. Universal VS Match Thumbnail Builder
-function buildVsMatchThumbnailHtml(e, isHero = false) {
-    const hasRealThumbnail = Boolean(e.thumbnail &&
-        !e.thumbnail.includes('ui-avatars.com') &&
-        !e.thumbnail.includes('FC_Sports_Default'));
 
-    if (hasRealThumbnail) {
+// Universal Broadcast Match Showcase Banner Builder (Horizontal Stadium Header - Never an oversized square!)
+function buildSportsModalBannerHtml(event) {
+    if (!event) return '';
+    const parsed = (typeof parseTeamsFromTitle === 'function') ? parseTeamsFromTitle(event.title || '') : null;
+    let t1Name = event.homeTeamName || (parsed ? parsed.team1 : '');
+    let t2Name = event.awayTeamName || (parsed ? parsed.team2 : '');
+
+    if (!t1Name && event.liveScore?.homeTeam?.name) t1Name = event.liveScore.homeTeam.name;
+    if (!t2Name && event.liveScore?.awayTeam?.name) t2Name = event.liveScore.awayTeam.name;
+    if (!t1Name && event.liveScore?.teams?.[0]?.name) t1Name = event.liveScore.teams[0].name;
+    if (!t2Name && event.liveScore?.teams?.[1]?.name) t2Name = event.liveScore.teams[1].name;
+
+    const hasMatchup = Boolean(t1Name && t2Name) || Boolean(event.homeTeamLogo && event.awayTeamLogo);
+    const bgPoster = event.thumbnail || '';
+    const leagueName = event.league || event.sportName || 'Championship';
+
+    if (hasMatchup) {
+        const team1 = t1Name || 'Team 1';
+        const team2 = t2Name || 'Team 2';
+        const logo1 = event.homeTeamLogo || event.liveScore?.homeTeam?.logo || (typeof getKnownTeamLogo === 'function' ? getKnownTeamLogo(team1) : '') || '';
+        const logo2 = event.awayTeamLogo || event.liveScore?.awayTeam?.logo || (typeof getKnownTeamLogo === 'function' ? getKnownTeamLogo(team2) : '') || '';
+        const theme1 = (typeof getTeamTheme === 'function') ? getTeamTheme(team1) : { from: '#dc2626', to: '#991b1b', text: '#ffffff' };
+        const theme2 = (typeof getTeamTheme === 'function') ? getTeamTheme(team2) : { from: '#2563eb', to: '#1e40af', text: '#ffffff' };
+        const init1 = (typeof getTeamInitials === 'function') ? getTeamInitials(team1) : team1.substring(0, 3).toUpperCase();
+        const init2 = (typeof getTeamInitials === 'function') ? getTeamInitials(team2) : team2.substring(0, 3).toUpperCase();
+
+        const homeScore = event.liveScore?.homeTeam?.score || event.liveScore?.teams?.[0]?.score || '';
+        const awayScore = event.liveScore?.awayTeam?.score || event.liveScore?.teams?.[1]?.score || '';
+        const hasScores = (homeScore !== '' && awayScore !== '' && homeScore !== '-' && awayScore !== '-');
+
+        const isLive = event.isLive || event.liveScore?.isLive;
+        const clock = event.liveScore?.clock || (isLive ? 'LIVE' : (event.timeIST ? event.timeIST + ' IST' : 'Scheduled'));
+
         return `
-            <div class="w-full h-full relative overflow-hidden bg-slate-900 flex items-center justify-center">
-                <img loading="lazy" decoding="async" src="${e.thumbnail}" alt="${e.title || ''}" class="w-full h-full object-fill group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80';">
-                <div class="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent pointer-events-none"></div>
+            <div class="w-full h-32 sm:h-36 rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-between px-3 sm:px-6 select-none">
+                <!-- Atmospheric Backdrop from Poster / Logo (Soft blur, never a stretched square!) -->
+                ${bgPoster ? `
+                    <img loading="lazy" decoding="async" src="${bgPoster}" alt="" class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-20 pointer-events-none scale-125" onerror="this.style.display='none';">
+                ` : ''}
+                <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/75 to-black/90 pointer-events-none"></div>
+
+                <!-- Team 1 / Home Column -->
+                <div class="flex-1 flex flex-col items-center justify-center text-center min-w-0 z-10 px-1">
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center overflow-hidden shadow-xl p-1.5 bg-black/60 border border-white/20">
+                        ${logo1 ? `
+                            <img loading="lazy" decoding="async" src="${logo1}" alt="${team1}" class="w-full h-full object-contain" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                        ` : ''}
+                        <div class="${logo1 ? 'hidden' : 'flex'} w-full h-full rounded-xl items-center justify-center font-black text-xs uppercase" style="background: linear-gradient(135deg, ${theme1.from}, ${theme1.to}); color: ${theme1.text};">
+                            ${init1}
+                        </div>
+                    </div>
+                    <span class="text-xs sm:text-sm font-bold text-white truncate max-w-full mt-1.5 drop-shadow-md">${team1}</span>
+                </div>
+
+                <!-- Center Matchup / Score Pillar -->
+                <div class="flex flex-col items-center justify-center text-center shrink-0 z-10 px-2 sm:px-4">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 truncate max-w-[150px] mb-1">
+                        ${leagueName}
+                    </span>
+                    ${hasScores ? `
+                        <div class="flex items-center gap-2 my-0.5">
+                            <span class="text-2xl sm:text-3xl font-mono font-black text-amber-400 drop-shadow">${homeScore}</span>
+                            <span class="text-sm font-mono text-zinc-500 font-bold">:</span>
+                            <span class="text-2xl sm:text-3xl font-mono font-black text-amber-400 drop-shadow">${awayScore}</span>
+                        </div>
+                        <span class="text-[10px] font-mono font-black uppercase tracking-wider text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 flex items-center gap-1.5">
+                            ${isLive ? '<span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>' : ''} ${clock}
+                        </span>
+                    ` : `
+                        <div class="px-3 py-1 rounded-xl bg-white/10 border border-white/15 text-xs font-mono font-black text-sky-300 my-1">VS</div>
+                        <span class="text-[11px] font-bold text-zinc-300 mt-0.5">${event.timeIST ? event.timeIST + ' IST' : 'Match Fixture'}</span>
+                    `}
+                </div>
+
+                <!-- Team 2 / Away Column -->
+                <div class="flex-1 flex flex-col items-center justify-center text-center min-w-0 z-10 px-1">
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center overflow-hidden shadow-xl p-1.5 bg-black/60 border border-white/20">
+                        ${logo2 ? `
+                            <img loading="lazy" decoding="async" src="${logo2}" alt="${team2}" class="w-full h-full object-contain" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                        ` : ''}
+                        <div class="${logo2 ? 'hidden' : 'flex'} w-full h-full rounded-xl items-center justify-center font-black text-xs uppercase" style="background: linear-gradient(135deg, ${theme2.from}, ${theme2.to}); color: ${theme2.text};">
+                            ${init2}
+                        </div>
+                    </div>
+                    <span class="text-xs sm:text-sm font-bold text-white truncate max-w-full mt-1.5 drop-shadow-md">${team2}</span>
+                </div>
             </div>
         `;
     }
 
+    // Single-event, racing, or channel card - Contained within clean 16:9 banner
+    return `
+        <div class="w-full h-32 sm:h-36 rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl bg-zinc-950 flex items-center justify-center px-4 select-none">
+            ${bgPoster ? `
+                <img loading="lazy" decoding="async" src="${bgPoster}" alt="" class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-25 pointer-events-none scale-125" onerror="this.style.display='none';">
+            ` : ''}
+            <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/75 to-black/90 pointer-events-none"></div>
+            <div class="relative z-10 flex items-center gap-4 max-w-full">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-black/80 border border-white/20 p-2 shrink-0 flex items-center justify-center shadow-xl">
+                    <img loading="lazy" decoding="async" src="${bgPoster || '/stalker_pro_infinity.svg'}" alt="${event.title}" class="w-full h-full object-contain" onerror="this.src='/stalker_pro_infinity.svg';">
+                </div>
+                <div class="min-w-0 flex-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 inline-block mb-1">
+                        ${leagueName}
+                    </span>
+                    <h3 class="text-sm sm:text-base font-black text-white leading-tight line-clamp-2">${event.title || 'Live Match'}</h3>
+                    <p class="text-[11px] font-semibold text-zinc-400 mt-1">${event.timeIST ? event.timeIST + ' IST' : 'Scheduled'}</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 2. Universal VS Match Thumbnail Builder
+function buildVsMatchThumbnailHtml(e, isHero = false) {
     const parsed = parseTeamsFromTitle(e.title || '');
     const t1Name = e.homeTeamName || (parsed ? parsed.team1 : '');
     const t2Name = e.awayTeamName || (parsed ? parsed.team2 : '');
     const hasMatchup = !!(t1Name && t2Name) || !!(e.homeTeamLogo && e.awayTeamLogo);
+
+    const hasRealThumbnail = Boolean(e.thumbnail &&
+        !e.thumbnail.includes('ui-avatars.com') &&
+        !e.thumbnail.includes('FC_Sports_Default'));
+
+    // Only fallback to single thumbnail when there is no 2-team matchup
+    if (!hasMatchup && hasRealThumbnail) {
+        return `
+            <div class="w-full h-full relative overflow-hidden bg-slate-900 flex items-center justify-center">
+                <img loading="lazy" decoding="async" src="${e.thumbnail}" alt="" class="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-125 pointer-events-none">
+                <img loading="lazy" decoding="async" src="${e.thumbnail}" alt="${e.title || ''}" class="relative z-10 w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80';">
+                <div class="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent pointer-events-none"></div>
+            </div>
+        `;
+    }
 
     if (hasMatchup) {
         const team1 = t1Name || 'Team A';
@@ -10317,7 +10433,7 @@ function openSportMatchOvalModal(eventId, initialTab = 'watch') {
     const leagueBadgeEl = document.getElementById('sportsModalLeagueBadge');
 
     if (sportNameEl) sportNameEl.innerText = event.sportName || 'Sports';
-    if (sportEmojiEl) sportEmojiEl.innerText = event.sportEmoji || '🏆';
+    // sportEmoji removed for professional broadcast theme
     if (leagueBadgeEl) leagueBadgeEl.innerText = event.league || event.sportName || 'Championship';
 
     if (statusBadgeEl) {
@@ -10336,12 +10452,7 @@ function openSportMatchOvalModal(eventId, initialTab = 'watch') {
     // Populate VS Banner in Modal (Sleek Stadium Oval Showcase with clean aspect ratio)
     const vsBanner = document.getElementById('sportsModalVsBanner');
     if (vsBanner) {
-        vsBanner.innerHTML = `
-            <div class="rounded-3xl sm:rounded-[36px] max-h-44 overflow-hidden bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-white/15 relative shadow-2xl flex items-center justify-center p-2.5">
-                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.18),transparent_70%)] pointer-events-none"></div>
-                ${buildVsMatchThumbnailHtml(event, true)}
-            </div>
-        `;
+        vsBanner.innerHTML = buildSportsModalBannerHtml(event);
     }
 
     // Gather all preserved M3U & stream sources
@@ -10381,7 +10492,7 @@ function openSportMatchOvalModal(eventId, initialTab = 'watch') {
     const isFootball = (event.category || '').toLowerCase().includes('football') || (event.sportName || '').toLowerCase().includes('football') || (event.category || '').toLowerCase().includes('soccer');
     const isBasketball = (event.category || '').toLowerCase().includes('basketball') || (event.sportName || '').toLowerCase().includes('nba');
     const scoreTabIcon = document.getElementById('sportsModalTabScoreIcon');
-    if (scoreTabIcon) scoreTabIcon.innerText = isCricket ? '🏏' : (isBasketball ? '🏀' : (isFootball ? '⚽' : '📊'));
+    // Clean Lucide icons used for tabs
 
     // Render initial scorecard immediately
     if (typeof window.renderSportsModalScorecard === 'function') {
@@ -10697,11 +10808,17 @@ window.renderSportsModalScorecard = function(event, scoreData, isFetching = fals
 
     const isLive = scoreData ? scoreData.isLive : event.isLive;
     const isFinal = scoreData ? scoreData.isFinal : (event.status === 'ENDED' || event.isEnded);
-    const clock = scoreData?.clock || (isLive ? 'LIVE' : (isFinal ? 'FT' : (event.timeIST || 'Scheduled')));
-    const detail = scoreData?.detail || (isLive ? 'In Progress' : (isFinal ? 'Full Time' : (event.countdown || 'Today')));
+    const clock = scoreData?.clock || (isLive ? 'LIVE' : (isFinal ? 'FT' : (event.timeIST ? event.timeIST + ' IST' : 'Scheduled')));
+    const detail = scoreData?.detail || (isLive ? 'In Progress' : (isFinal ? 'Full Time' : (event.countdown || 'Scheduled')));
     const venue = scoreData?.venue || event.venue || '';
     const headline = scoreData?.headline || scoreData?.summary || event.liveScore?.summary || '';
+    const matchEquation = scoreData?.matchEquation || event.liveScore?.matchEquation || '';
+    const target = scoreData?.target || event.liveScore?.target || '';
+    const crr = scoreData?.currentRunRate || event.liveScore?.currentRunRate || '';
+    const rrr = scoreData?.requiredRunRate || event.liveScore?.requiredRunRate || '';
+    const session = scoreData?.session || event.liveScore?.session || '';
     const timeline = scoreData?.timeline || [];
+    const stats = scoreData?.stats;
 
     const statusPillColor = isLive 
         ? 'bg-red-600 text-white shadow-red-600/40 animate-pulse' 
@@ -10722,53 +10839,160 @@ window.renderSportsModalScorecard = function(event, scoreData, isFetching = fals
                 <span class="text-[10px] uppercase font-bold tracking-wider">${isFetching ? 'Syncing...' : 'Live Sync'}</span>
             </button>
         </div>
-
-        <!-- Stadium Arena Match Scoreboard Card -->
-        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900/90 via-black to-zinc-950 border border-white/15 p-4 sm:p-5 shadow-2xl">
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(239,68,68,0.12),transparent_70%)] pointer-events-none"></div>
-
-            <div class="grid grid-cols-7 items-center gap-2 sm:gap-3 relative z-10">
-                <!-- Team 1 / Home Column -->
-                <div class="col-span-3 flex flex-col items-center sm:items-start text-center sm:text-left gap-2">
-                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/60 border border-white/20 p-2 shadow-xl flex items-center justify-center shrink-0">
-                        ${t1Logo ? `<img src="${t1Logo}" alt="${t1Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t1Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white font-black text-sm uppercase">${t1Name.substring(0, 3)}</div>`}
-                    </div>
-                    <div>
-                        <h3 class="text-sm sm:text-base font-black text-white leading-tight drop-shadow-md">${t1Name}</h3>
-                        ${t1Overs ? `<span class="text-[11px] font-semibold text-zinc-400 block mt-0.5">(${t1Overs} ov)</span>` : ''}
-                        ${scoreData?.homeTeam?.form ? `<div class="flex items-center gap-0.5 mt-1">${scoreData.homeTeam.form.split('').map(f => `<span class="w-3.5 h-3.5 rounded text-[8px] font-bold flex items-center justify-center ${f==='W'?'bg-emerald-600 text-white':(f==='D'?'bg-amber-600 text-white':'bg-red-600 text-white')}">${f}</span>`).join('')}</div>` : ''}
-                    </div>
-                </div>
-
-                <!-- Center Score Pillar -->
-                <div class="col-span-1 flex flex-col items-center justify-center text-center">
-                    <div class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-black/80 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-                        <div class="text-2xl sm:text-3xl font-mono font-black text-amber-400 tracking-tight leading-none">${t1Score} : ${t2Score}</div>
-                    </div>
-                    <span class="text-[9px] uppercase font-bold text-zinc-400 tracking-widest mt-1.5 block">${isLive ? (clock || 'LIVE') : (isFinal ? 'FT' : 'VS')}</span>
-                </div>
-
-                <!-- Team 2 / Away Column -->
-                <div class="col-span-3 flex flex-col items-center sm:items-end text-center sm:text-right gap-2">
-                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/60 border border-white/20 p-2 shadow-xl flex items-center justify-center shrink-0">
-                        ${t2Logo ? `<img src="${t2Logo}" alt="${t2Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t2Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-sm uppercase">${t2Name.substring(0, 3)}</div>`}
-                    </div>
-                    <div>
-                        <h3 class="text-sm sm:text-base font-black text-white leading-tight drop-shadow-md">${t2Name}</h3>
-                        ${t2Overs ? `<span class="text-[11px] font-semibold text-zinc-400 block mt-0.5">(${t2Overs} ov)</span>` : ''}
-                        ${scoreData?.awayTeam?.form ? `<div class="flex items-center justify-end gap-0.5 mt-1">${scoreData.awayTeam.form.split('').map(f => `<span class="w-3.5 h-3.5 rounded text-[8px] font-bold flex items-center justify-center ${f==='W'?'bg-emerald-600 text-white':(f==='D'?'bg-amber-600 text-white':'bg-red-600 text-white')}">${f}</span>`).join('')}</div>` : ''}
-                    </div>
-                </div>
-            </div>
-
-            ${venue ? `
-                <div class="mt-3 pt-3 border-t border-white/10 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
-                    <i data-lucide="map-pin" class="w-3 h-3 text-red-400 shrink-0"></i>
-                    <span class="truncate font-medium">${venue}</span>
-                </div>
-            ` : ''}
-        </div>
     `;
+
+    // CRICKET SPECIALIZED SCORECARD
+    if (isCricket) {
+        html += `
+            <!-- Cricket Inning Breakdown Arena -->
+            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900/90 via-black to-zinc-950 border border-white/15 p-4 sm:p-5 shadow-2xl space-y-4">
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.08),transparent_70%)] pointer-events-none"></div>
+
+                <!-- Match Equation / Situation Banner -->
+                ${(matchEquation || headline) ? `
+                    <div class="px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-center justify-between gap-2">
+                        <span class="text-amber-300 font-bold truncate flex items-center gap-1.5">
+                            <i data-lucide="alert-circle" class="w-3.5 h-3.5 shrink-0 text-amber-400"></i>
+                            ${matchEquation || headline}
+                        </span>
+                        ${session ? `<span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 font-bold shrink-0">${session}</span>` : ''}
+                    </div>
+                ` : ''}
+
+                <!-- Innings Comparison Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
+                    <!-- Home Team Inning -->
+                    <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-11 h-11 rounded-xl bg-black/60 border border-white/15 p-1.5 shrink-0 flex items-center justify-center">
+                                ${t1Logo ? `<img src="${t1Logo}" alt="${t1Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t1Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-lg bg-red-600 flex items-center justify-center text-white font-bold text-xs">${t1Name.substring(0, 3)}</div>`}
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="text-xs sm:text-sm font-bold text-white truncate">${t1Name}</h4>
+                                ${t1Overs ? `<span class="text-[10px] text-zinc-400 font-mono">${t1Overs} ov</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="text-xl sm:text-2xl font-mono font-black text-amber-400">${t1Score}</div>
+                            ${crr ? `<span class="text-[9px] uppercase font-bold text-emerald-400 font-mono block">CRR: ${crr}</span>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Away Team Inning -->
+                    <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-11 h-11 rounded-xl bg-black/60 border border-white/15 p-1.5 shrink-0 flex items-center justify-center">
+                                ${t2Logo ? `<img src="${t2Logo}" alt="${t2Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t2Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs">${t2Name.substring(0, 3)}</div>`}
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="text-xs sm:text-sm font-bold text-white truncate">${t2Name}</h4>
+                                ${t2Overs ? `<span class="text-[10px] text-zinc-400 font-mono">${t2Overs} ov</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="text-xl sm:text-2xl font-mono font-black text-amber-400">${t2Score}</div>
+                            ${target ? `<span class="text-[9px] uppercase font-bold text-sky-400 font-mono block">Target: ${target}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                ${venue ? `
+                    <div class="pt-2 border-t border-white/10 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
+                        <i data-lucide="map-pin" class="w-3 h-3 text-red-400 shrink-0"></i>
+                        <span class="truncate font-medium">${venue}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    } else {
+        // FOOTBALL & BASKETBALL SPECIALIZED SCORECARD
+        html += `
+            <!-- Stadium Arena Match Scoreboard Card -->
+            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900/90 via-black to-zinc-950 border border-white/15 p-4 sm:p-5 shadow-2xl">
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(239,68,68,0.12),transparent_70%)] pointer-events-none"></div>
+
+                <div class="grid grid-cols-7 items-center gap-2 sm:gap-3 relative z-10">
+                    <!-- Team 1 / Home Column -->
+                    <div class="col-span-3 flex flex-col items-center sm:items-start text-center sm:text-left gap-2">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/60 border border-white/20 p-2 shadow-xl flex items-center justify-center shrink-0">
+                            ${t1Logo ? `<img src="${t1Logo}" alt="${t1Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t1Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white font-black text-sm uppercase">${t1Name.substring(0, 3)}</div>`}
+                        </div>
+                        <div>
+                            <h3 class="text-sm sm:text-base font-black text-white leading-tight drop-shadow-md">${t1Name}</h3>
+                            ${scoreData?.homeTeam?.form ? `<div class="flex items-center gap-0.5 mt-1.5">${scoreData.homeTeam.form.split('').map(f => `<span class="w-3.5 h-3.5 rounded text-[8px] font-bold flex items-center justify-center ${f==='W'?'bg-emerald-600 text-white':(f==='D'?'bg-amber-600 text-white':'bg-red-600 text-white')}">${f}</span>`).join('')}</div>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Center Score Pillar -->
+                    <div class="col-span-1 flex flex-col items-center justify-center text-center">
+                        <div class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-black/80 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                            <div class="text-2xl sm:text-3xl font-mono font-black text-amber-400 tracking-tight leading-none">${t1Score} : ${t2Score}</div>
+                        </div>
+                        <span class="text-[9px] uppercase font-bold text-zinc-400 tracking-widest mt-1.5 block">${isLive ? (clock || 'LIVE') : (isFinal ? 'FT' : 'VS')}</span>
+                    </div>
+
+                    <!-- Team 2 / Away Column -->
+                    <div class="col-span-3 flex flex-col items-center sm:items-end text-center sm:text-right gap-2">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/60 border border-white/20 p-2 shadow-xl flex items-center justify-center shrink-0">
+                            ${t2Logo ? `<img src="${t2Logo}" alt="${t2Name}" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(t2Name)}&background=18181b&color=ffffff&bold=true';">` : `<div class="w-full h-full rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-sm uppercase">${t2Name.substring(0, 3)}</div>`}
+                        </div>
+                        <div>
+                            <h3 class="text-sm sm:text-base font-black text-white leading-tight drop-shadow-md">${t2Name}</h3>
+                            ${scoreData?.awayTeam?.form ? `<div class="flex items-center justify-end gap-0.5 mt-1.5">${scoreData.awayTeam.form.split('').map(f => `<span class="w-3.5 h-3.5 rounded text-[8px] font-bold flex items-center justify-center ${f==='W'?'bg-emerald-600 text-white':(f==='D'?'bg-amber-600 text-white':'bg-red-600 text-white')}">${f}</span>`).join('')}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                ${venue ? `
+                    <div class="mt-3 pt-3 border-t border-white/10 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
+                        <i data-lucide="map-pin" class="w-3 h-3 text-red-400 shrink-0"></i>
+                        <span class="truncate font-medium">${venue}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Football Match Statistics Comparison Bars (Possession, Shots, Corners, Fouls)
+        if (stats && (stats.possession || stats.shots || stats.corners)) {
+            const renderStatBar = (label, hVal, aVal, isPct = false) => {
+                const n1 = parseFloat(hVal) || 0;
+                const n2 = parseFloat(aVal) || 0;
+                const total = (n1 + n2) > 0 ? (n1 + n2) : 100;
+                const pct1 = isPct ? n1 : Math.round((n1 / total) * 100);
+                const pct2 = isPct ? n2 : Math.round((n2 / total) * 100);
+                return `
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-xs font-mono font-bold text-zinc-300">
+                            <span>${hVal}${isPct ? '%' : ''}</span>
+                            <span class="text-[10px] uppercase font-sans tracking-wider text-zinc-400 font-semibold">${label}</span>
+                            <span>${aVal}${isPct ? '%' : ''}</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-white/10 overflow-hidden flex">
+                            <div class="h-full bg-emerald-500 rounded-l-full transition-all duration-500" style="width: ${pct1}%"></div>
+                            <div class="h-full bg-sky-500 rounded-r-full transition-all duration-500" style="width: ${pct2}%"></div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            html += `
+                <div class="rounded-2xl bg-white/[0.04] border border-white/10 p-4 space-y-3">
+                    <div class="flex items-center justify-between text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                        <span class="flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-sky-400"></i> Match Statistics</span>
+                        <div class="flex items-center gap-2 text-[10px] font-semibold">
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Home</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-500"></span> Away</span>
+                        </div>
+                    </div>
+                    ${stats.possession ? renderStatBar('Ball Possession', stats.possession[0], stats.possession[1], true) : ''}
+                    ${stats.shots ? renderStatBar('Total Shots', stats.shots[0], stats.shots[1]) : ''}
+                    ${stats.shotsOnTarget ? renderStatBar('Shots on Target', stats.shotsOnTarget[0], stats.shotsOnTarget[1]) : ''}
+                    ${stats.corners ? renderStatBar('Corner Kicks', stats.corners[0], stats.corners[1]) : ''}
+                    ${stats.fouls ? renderStatBar('Fouls Committed', stats.fouls[0], stats.fouls[1]) : ''}
+                </div>
+            `;
+        }
+    }
 
     // Match Timeline / Events Stream (Goals, Cards, Wickets)
     if (timeline && timeline.length > 0) {
@@ -10791,7 +11015,7 @@ window.renderSportsModalScorecard = function(event, scoreData, isFetching = fals
     }
 
     // Headline or Match Situation Summary
-    if (headline) {
+    if (headline && !isCricket) {
         html += `
             <div class="rounded-2xl bg-gradient-to-r from-amber-950/20 via-black to-zinc-950 border border-amber-500/20 p-3.5 text-xs">
                 <span class="text-amber-400 font-bold block mb-1 flex items-center gap-1.5">

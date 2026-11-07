@@ -220,11 +220,14 @@ export function getCdnHeaders(url?: string): CdnHeaders {
     if (
         lower.includes('2embed') ||
         lower.includes('streamsrcs') ||
-        lower.includes('2vcdn')
+        lower.includes('2vcdn') ||
+        lower.includes('vidsrc.buzz') ||
+        lower.includes('videm.buzz')
     ) {
+        const isBuzz = lower.includes('vidsrc.buzz') || lower.includes('videm.buzz');
         return {
-            referer: 'https://streamsrcs.2embed.cc/',
-            origin: 'https://streamsrcs.2embed.cc',
+            referer: isBuzz ? (lower.includes('videm') ? 'https://videm.buzz/' : 'https://vidsrc.buzz/') : 'https://streamsrcs.2embed.cc/',
+            origin: isBuzz ? (lower.includes('videm') ? 'https://videm.buzz' : 'https://streamsrcs.2embed.cc') : 'https://streamsrcs.2embed.cc',
             userAgent: defaultUa
         };
     }
@@ -960,90 +963,107 @@ export async function scrape2EmbedStream(params: {
         });
 
         const html = String(res.data || '');
+        const candidateUrls: string[] = [];
+
         const dataSrcMatch = html.match(/data-src=["'](https?:\/\/[^"']+)["']/i) ||
                              html.match(/<iframe[^>]+id=["']iframesrc["'][^>]+src=["'](https?:\/\/[^"']+)["']/i);
+        if (dataSrcMatch && dataSrcMatch[1]) {
+            candidateUrls.push(dataSrcMatch[1]);
+        }
+
+        const onclickMatches = html.matchAll(/onclick=["']go\(['"](https?:\/\/[^'"]+)['"]\)["']/gi);
+        for (const m of onclickMatches) {
+            if (m[1] && !candidateUrls.includes(m[1])) {
+                candidateUrls.push(m[1]);
+            }
+        }
 
         const sources: any[] = [];
-        let subtitlesList: any[] = [];
+        const subtitlesList: any[] = [];
 
-        if (dataSrcMatch && dataSrcMatch[1]) {
-            const targetUrl = dataSrcMatch[1];
+        // Concurrently attempt stream extraction from top candidate targets
+        await Promise.allSettled(candidateUrls.slice(0, 3).map(async (targetUrl) => {
             try {
                 const targetRes = await axios.get(targetUrl, {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                         'Referer': embedUrl
                     },
-                    timeout: 5000
+                    timeout: 4500
                 });
                 const targetHtml = String(targetRes.data || '');
 
-                // Strategy 1: VidSrc.buzz state handshake (Modern 2Embed engine)
-                const qMatch = targetHtml.match(/var\s+Q\s*=\s*(\{[\s\S]*?\});/);
-                if (qMatch) {
-                    try {
-                        const Q = JSON.parse(qMatch[1]);
-                        const srvList = (Q.ssr && Array.isArray(Q.ssr.servers) && Q.ssr.servers.length > 0)
-                            ? Q.ssr.servers
-                            : (Array.isArray(Q.servers) ? Q.servers : []);
+                // Strategy 1: VidSrc.buzz / Videm.buzz API handshake
+                if (targetUrl.includes('vidsrc.buzz') || targetUrl.includes('videm.buzz') || targetHtml.includes('vidsrc.buzz') || targetHtml.includes('var Q')) {
+                    const qMatch = targetHtml.match(/var\s+Q\s*=\s*(\{[\s\S]*?\});/);
+                    if (qMatch) {
+                        try {
+                            const Q = JSON.parse(qMatch[1]);
+                            if (Q.t && Q.id) {
+                                const qs = `type=${Q.type || (isTv ? 'tv' : 'movie')}&id=${encodeURIComponent(Q.id)}&s=${Q.s || (isTv ? s : 0)}&e=${Q.e || (isTv ? e : 0)}&t=${encodeURIComponent(Q.t)}`;
+                                const srvDomain = targetUrl.includes('videm.buzz') ? 'https://videm.buzz' : 'https://vidsrc.buzz';
+                                const sRes = await axios.get(`${srvDomain}/pl/api.php?a=sources&${qs}`, {
+                                    headers: {
+                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                        'Referer': targetUrl
+                                    },
+                                    timeout: 4000
+                                });
 
-                        if (Q.t && srvList.length > 0) {
-                            const candidateServers = srvList.slice(0, 3);
-                            for (const srv of candidateServers) {
-                                if (!srv.ref) continue;
-                                try {
-                                    const playApiUrl = `https://vidsrc.buzz/pl/api.php?a=play&ref=${encodeURIComponent(srv.ref)}&t=${encodeURIComponent(Q.t)}`;
-                                    const playRes = await axios.get(playApiUrl, {
-                                        headers: {
-                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                            'Referer': targetUrl
-                                        },
-                                        timeout: 4500
-                                    });
-                                    if (playRes.data && playRes.data.url) {
-                                        const streamRel = String(playRes.data.url);
-                                        // Ignore bot challenge / captcha redirects
-                                        if (streamRel.includes('cap.php') || !streamRel.includes('.m3u8')) continue;
-                                        const directM3u = streamRel.startsWith('http') ? streamRel : `https://vidsrc.buzz${streamRel}`;
-                                        sources.push({
-                                            url: `/stream_proxy.php?url=${encodeURIComponent(directM3u)}&referer=${encodeURIComponent('https://vidsrc.buzz/')}`,
-                                            rawUrl: directM3u,
-                                            directUrl: directM3u,
-                                            quality: '1080p',
-                                            type: 'application/x-mpegurl',
-                                            label: `2Embed (${srv.name || 'VidSrc Direct HLS'})`,
-                                            provider: 'two_embed',
-                                            isDirectM3u: true,
-                                            referrer: 'https://vidsrc.buzz/',
-                                            skipProxy: false
+                                const srvList = Array.isArray(sRes.data?.servers) ? sRes.data.servers : [];
+                                for (const srv of srvList.slice(0, 2)) {
+                                    if (!srv.ref) continue;
+                                    try {
+                                        const playRes = await axios.get(`${srvDomain}/pl/api.php?a=play&ref=${encodeURIComponent(srv.ref)}&t=${encodeURIComponent(Q.t)}`, {
+                                            headers: {
+                                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                                'Referer': targetUrl
+                                            },
+                                            timeout: 4000
                                         });
-                                    }
-                                } catch (_) {}
+
+                                        if (playRes.data && playRes.data.url) {
+                                            const streamRel = String(playRes.data.url);
+                                            if (streamRel.includes('cap.php')) continue;
+                                            const directM3u = streamRel.startsWith('http') ? streamRel : `${srvDomain}${streamRel}`;
+                                            sources.push({
+                                                url: `/stream_proxy.php?url=${encodeURIComponent(directM3u)}&referer=${encodeURIComponent(`${srvDomain}/`)}`,
+                                                rawUrl: directM3u,
+                                                directUrl: directM3u,
+                                                quality: '1080p',
+                                                type: 'application/x-mpegurl',
+                                                label: `2Embed (${srv.name || 'VidSrc Direct HLS'})`,
+                                                provider: 'two_embed',
+                                                isDirectM3u: true,
+                                                referrer: `${srvDomain}/`,
+                                                skipProxy: false
+                                            });
+                                        }
+                                    } catch (_) {}
+                                }
                             }
-                        }
-                    } catch (_) {}
+                        } catch (_) {}
+                    }
                 }
 
-                // Strategy 2: Legacy Swish framesrc / 2vcdn.skin fallback
-                if (sources.length === 0) {
+                // Strategy 2: Swish / 2vCDN / streamsrcs unpacker
+                if (targetUrl.includes('swish') || targetUrl.includes('streamsrcs') || targetHtml.includes('framesrc') || targetHtml.includes('2vcdn.skin')) {
                     const frameMatch = targetHtml.match(/id=["']?framesrc["']?[^>]*src=["']?([^"'\s>]+)/is) ||
                                        targetHtml.match(/src=["']?([^"'\s>]+)["']?[^>]*id=["']?framesrc["']/is);
-
                     if (frameMatch && frameMatch[1]) {
-                        const cdnUrl = `https://2vcdn.skin/e/${frameMatch[1]}`;
+                        const fileCode = frameMatch[1].replace(/.*\/e\//, '').trim();
+                        const cdnUrl = `https://2vcdn.skin/e/${fileCode}`;
                         const cdnRes = await axios.get(cdnUrl, {
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                                 'Referer': targetUrl
                             },
-                            timeout: 5000
+                            timeout: 4500
                         });
                         const cdnHtml = String(cdnRes.data || '');
                         const packerMatch = cdnHtml.match(/eval\(function\(p,a,c,k,e,d\)[\s\S]*?\.split\('\|'\)\)\)/);
-
                         if (packerMatch) {
                             const matchArgs = packerMatch[0].match(/}\s*\(\s*'(.*)',\s*(\d+),\s*(\d+),\s*'(.*?)'\.split\('\|'\)/s);
-                            let unpacked = '';
                             if (matchArgs) {
                                 let p = matchArgs[1];
                                 const a = parseInt(matchArgs[2], 10);
@@ -1052,26 +1072,22 @@ export async function scrape2EmbedStream(params: {
                                 while (c--) {
                                     if (k[c]) p = p.replace(new RegExp('\\b' + c.toString(a) + '\\b', 'g'), k[c]);
                                 }
-                                unpacked = p;
-                            }
 
-                            if (unpacked) {
-                                const m3uMatch = unpacked.match(/["']hls4["']\s*:\s*["']([^"']+\.m3u8[^"']*)["']/) ||
-                                                 unpacked.match(/["']hls2["']\s*:\s*["']([^"']+\.m3u8[^"']*)["']/) ||
-                                                 unpacked.match(/["']hls3["']\s*:\s*["']([^"']+\.m3u8[^"']*)["']/) ||
-                                                 unpacked.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/);
+                                const hls2Match = p.match(/["']hls2["']\s*:\s*["']([^"']+)["']/);
+                                const hls3Match = p.match(/["']hls3["']\s*:\s*["']([^"']+)["']/);
+                                const hls4Match = p.match(/["']hls4["']\s*:\s*["']([^"']+)["']/);
 
-                                if (m3uMatch && m3uMatch[1]) {
-                                    let directM3u = m3uMatch[1];
-                                    if (directM3u.startsWith('/')) directM3u = `https://2vcdn.skin${directM3u}`;
+                                const directM3u = (hls2Match && hls2Match[1]) || (hls3Match && hls3Match[1]);
+                                const streamRel = (hls4Match && hls4Match[1]);
 
+                                if (directM3u && directM3u.startsWith('http')) {
                                     sources.push({
-                                        url: `/stream_proxy.php?url=${encodeURIComponent(directM3u)}`,
+                                        url: `/stream_proxy.php?url=${encodeURIComponent(directM3u)}&referer=${encodeURIComponent('https://2vcdn.skin/')}`,
                                         rawUrl: directM3u,
                                         directUrl: directM3u,
                                         quality: '1080p',
                                         type: 'application/x-mpegurl',
-                                        label: '2Embed 2vCDN (Direct HLS)',
+                                        label: '2Embed 2vCDN (Direct High-Speed HLS)',
                                         provider: 'two_embed',
                                         isDirectM3u: true,
                                         referrer: 'https://2vcdn.skin/',
@@ -1079,7 +1095,23 @@ export async function scrape2EmbedStream(params: {
                                     });
                                 }
 
-                                const vttMatches = unpacked.match(/https?:\/\/[^\s"'<>]+\.vtt[^\s"'<>]*/g) || [];
+                                if (streamRel) {
+                                    const fullRel = streamRel.startsWith('http') ? streamRel : `https://2vcdn.skin${streamRel}`;
+                                    sources.push({
+                                        url: `/stream_proxy.php?url=${encodeURIComponent(fullRel)}&referer=${encodeURIComponent('https://2vcdn.skin/')}`,
+                                        rawUrl: fullRel,
+                                        directUrl: fullRel,
+                                        quality: '720p',
+                                        type: 'application/x-mpegurl',
+                                        label: '2Embed Swish (Relay Stream)',
+                                        provider: 'two_embed',
+                                        isDirectM3u: true,
+                                        referrer: 'https://2vcdn.skin/',
+                                        skipProxy: false
+                                    });
+                                }
+
+                                const vttMatches = p.match(/https?:\/\/[^\s"'<>]+\.vtt[^\s"'<>]*/g) || [];
                                 for (const vtt of vttMatches) {
                                     const langMatch = vtt.match(/_([a-z]{3})\.vtt/i);
                                     const langCode = langMatch ? langMatch[1].toLowerCase() : 'en';
@@ -1094,7 +1126,7 @@ export async function scrape2EmbedStream(params: {
                     }
                 }
             } catch (_) {}
-        }
+        }));
 
         if (sources.length === 0) {
             sources.push({
@@ -1703,10 +1735,12 @@ export async function isStoryboardStream(url: string): Promise<boolean> {
 export async function verifyStreamReachable(url: string, timeoutMs: number = 2500): Promise<boolean> {
     if (!url) return false;
     let target = url;
+    let customRef: string | null = null;
     if (url.startsWith('/api/') || url.startsWith('/')) {
         try {
             const parsed = new URL(url, 'http://localhost:3000');
             const inner = parsed.searchParams.get('url') || parsed.searchParams.get('u');
+            customRef = parsed.searchParams.get('referer') || parsed.searchParams.get('ref');
             if (inner && inner.startsWith('http')) {
                 target = inner;
             } else {
@@ -1717,8 +1751,12 @@ export async function verifyStreamReachable(url: string, timeoutMs: number = 250
         }
     }
     if (!target.startsWith('http')) return false;
+    if (target.includes('vidsrc.buzz/_stream') || target.includes('videm.buzz/_stream')) {
+        return true;
+    }
 
     const headers = getCdnHeaders(target);
+    const effectiveReferer = customRef || headers.referer;
     let extraApiKey: string | undefined;
     if (target.includes('filmu.in') && target.includes('/proxy/')) {
         try {
@@ -1739,10 +1777,10 @@ export async function verifyStreamReachable(url: string, timeoutMs: number = 250
                 method: 'GET',
                 headers: {
                     'User-Agent': headers.userAgent,
-                    ...(headers.referer ? { 'Referer': headers.referer } : {}),
+                    ...(effectiveReferer ? { 'Referer': effectiveReferer } : {}),
                     ...(headers.origin ? { 'Origin': headers.origin } : {}),
                     ...(extraApiKey ? { 'x-api-key': extraApiKey } : {}),
-                    ...(!u.pathname.endsWith('.m3u8') ? { 'Range': 'bytes=0-1024' } : {}),
+                    ...(u.pathname.endsWith('.mp4') || u.pathname.endsWith('.mkv') || u.pathname.endsWith('.webm') ? { 'Range': 'bytes=0-1024' } : {}),
                     'Accept': '*/*'
                 },
                 timeout: timeoutMs

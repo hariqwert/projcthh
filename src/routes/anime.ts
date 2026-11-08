@@ -21,6 +21,7 @@ import {
     registerTokyoInsiderStream,
     extractTokyoInsiderStreamsFromHtml
 } from '../services/tokyoInsiderService';
+import { NestZoneAnimeService } from '../services/nestzoneAnimeService';
 
 const router = Router();
 
@@ -400,6 +401,65 @@ router.post('/tokyoinsider/parse-html', async (req: Request, res: Response) => {
         });
     } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+// --- NestZone Native Anime Routes (nestzone.site) ---
+router.get('/nestzone/sources', async (_req: Request, res: Response) => {
+    try {
+        const sources = await NestZoneAnimeService.getAvailableSources();
+        return res.json({ success: true, sources });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message });
+    }
+});
+
+router.get('/nestzone/episodes', async (req: Request, res: Response) => {
+    const id = (req.query.id || req.query.anilistId || '').toString().trim();
+    const count = parseInt((req.query.count || '24').toString(), 10) || 24;
+    if (!id) {
+        return res.status(400).json({ error: 'Anime id (AniList) is required' });
+    }
+    try {
+        const episodes = await NestZoneAnimeService.getEpisodes(id, count);
+        return res.json({ success: true, count: episodes.length, episodes });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message });
+    }
+});
+
+router.get('/nestzone/search', async (req: Request, res: Response) => {
+    const q = (req.query.q || req.query.query || '').toString().trim();
+    if (!q) {
+        return res.status(400).json({ error: 'Query parameter q is required' });
+    }
+    try {
+        const ids = await NestZoneAnimeService.searchAnime(q);
+        return res.json({ success: true, count: ids.length, ids });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message });
+    }
+});
+
+router.get('/nestzone/stream', async (req: Request, res: Response) => {
+    const id = (req.query.id || req.query.anilistId || '').toString().trim();
+    const ep = parseInt((req.query.ep || req.query.episode || '1').toString(), 10) || 1;
+    const lang = (req.query.lang || 'sub').toString().toLowerCase() as 'sub' | 'dub' | 'hindi';
+
+    if (!id) {
+        return res.status(400).json({ error: 'AniList ID (id) is required' });
+    }
+    try {
+        const streams = await NestZoneAnimeService.resolveEpisodeStream(id, ep, lang);
+        return res.json({
+            success: streams.length > 0,
+            anilistId: id,
+            episode: ep,
+            count: streams.length,
+            streams
+        });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message });
     }
 });
 

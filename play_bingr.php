@@ -5818,10 +5818,37 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
                     response = await fetch(`/api/media/skip-times?${qParams.toString()}`);
                 } catch (e) {
-                    console.warn('Backend skip-times proxy failed, trying public aniskip API directly', e);
+                    console.warn('Backend skip-times proxy failed, trying skip-intro engine', e);
                 }
 
-                if ((!response || !response.ok) && effectiveMalId) {
+                if (!data || !data.found) {
+                    try {
+                        const skipQ = new URLSearchParams();
+                        if (typeof IMDB_ID !== 'undefined' && IMDB_ID && String(IMDB_ID).startsWith('tt')) skipQ.set('imdbId', IMDB_ID);
+                        if (typeof MEDIA_SEASON !== 'undefined') skipQ.set('season', MEDIA_SEASON);
+                        skipQ.set('episode', episode);
+                        if (effectiveMalId) skipQ.set('malId', effectiveMalId);
+                        if (epLength > 0) skipQ.set('duration', epLength);
+                        const skipRes = await fetch(`/api/skip-intro?${skipQ.toString()}`);
+                        if (skipRes.ok) {
+                            const skipData = await skipRes.json();
+                            if (skipData && skipData.found && Array.isArray(skipData.segments) && skipData.segments.length > 0) {
+                                data = {
+                                    success: true,
+                                    found: true,
+                                    source: skipData.segments[0].provider === 'aniskip' ? 'AniSkip' : 'theintrodb',
+                                    results: skipData.segments.map(s => ({
+                                        skipType: s.type,
+                                        interval: { startTime: s.startSec, endTime: s.endSec },
+                                        skipId: `${s.provider}_${s.type}`
+                                    }))
+                                };
+                            }
+                        }
+                    } catch (_) {}
+                }
+
+                if ((!response || !response.ok) && (!data || !data.found) && effectiveMalId) {
                     try {
                         response = await fetch(`https://api.aniskip.com/v2/skip-times/${effectiveMalId}/${episode}?types=op&types=ed&episodeLength=${epLength}`);
                     } catch (_) {}

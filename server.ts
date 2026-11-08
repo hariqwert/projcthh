@@ -51,6 +51,8 @@ import { SecurityGateKeeper } from './src/services/securityGateKeeper';
 import { PerimeterDefenseShield } from './src/services/perimeterDefense';
 import { wrapFanCodeProxyUrl } from './src/services/fancodeService';
 import subtitlesRouter from './src/routes/subtitles';
+import skipIntroRouter from './src/routes/skipIntro';
+import stremioRouter from './src/routes/stremio';
 import { hybridM3uRouter } from './src/routes/hybridM3u';
 import customM3uProxyRouter from './src/routes/customM3uProxy';
 import localAiRouter from './src/services/localAiService';
@@ -1783,6 +1785,8 @@ app.use((req, res, next) => {
                           req.path.startsWith('/api/bingr') ||
                           req.path.startsWith('/api/anivexa') ||
                           req.path.startsWith('/api/subtitles') ||
+                          req.path.startsWith('/api/skip-intro') ||
+                          req.path.startsWith('/api/stremio') ||
                           req.path.startsWith('/anivexa') ||
                          req.path.startsWith('/api/play_stream') ||
                          req.path.startsWith('/api/resolve_stream') ||
@@ -9914,6 +9918,8 @@ app.use('/api/hybrid-m3u', hybridM3uRouter);
 app.use('/api/m3u', m3uHubRouter);
 app.use('/m3u', m3uHubRouter);
 app.use('/api/subtitles', subtitlesRouter);
+app.use('/api/skip-intro', skipIntroRouter);
+app.use('/api/stremio', stremioRouter);
 app.use('/api/consumet', consumetSearchRouter);
 app.use('/api/bingr', bingrRouter);
 app.use('/api/peakstream', peakstreamRouter);

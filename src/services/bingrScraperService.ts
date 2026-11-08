@@ -19,6 +19,8 @@ import { scrapeFrameXStream } from './framexService';
 import { resolveMegaPlayBuzzStream } from './megaPlayBuzzService';
 import { resolveAnimePaheStream } from './animePaheService';
 import { resolveMovieBoxStream } from './movieBoxService';
+import { NetMirrorService } from './netMirrorService';
+import { NestZoneAnimeService } from './nestzoneAnimeService';
 import {
     findSmMovieStream,
     searchSmMovies,
@@ -396,7 +398,10 @@ export function normalizeServerId(rawSrv?: string): string | undefined {
         'zanix': 'zanix',
         'flux': 'flux',
         'vidbinge': 'flux',
-        'sudoflix': 'flux'
+        'sudoflix': 'flux',
+        'netmirror': 'netmirror',
+        'nestzone': 'nestzone',
+        'miku': 'nestzone'
     };
     return map[lower] || lower;
 }
@@ -1658,7 +1663,9 @@ export async function scrapeBingrNextGen(params: {
 }
 
 export const BINGR_SERVERS: BingrServerCluster[] = [
-    { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 1 },
+    { id: 'netmirror', name: 'NetMirror (Netflix / Prime / Hotstar Direct HLS)', cc: 'US', priority: 1 },
+    { id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP', priority: 1 },
+    { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 2 },
     { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN', priority: 2 },
     { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 3 },
     { id: 'prism', name: 'Prism (Multi-Audio 1080p / Direct CDN)', cc: 'GL', priority: 4 },
@@ -3389,6 +3396,56 @@ export async function scrapeBingrStream(params: {
                         }
                     }
                 } catch (_) {}
+            } else if (serverId === 'netmirror') {
+                try {
+                    const nmQuery = (mediaTitle || requestedTitle || 'Movie').toString();
+                    const nmRes = await NetMirrorService.resolveMedia(
+                        nmQuery,
+                        type === 'movie' ? 'movie' : 'tv',
+                        s,
+                        e
+                    );
+                    if (nmRes && nmRes.proxiedSources.length > 0) {
+                        scraperName = nmRes.provider;
+                        sources = nmRes.proxiedSources.map(ps => ({
+                            url: ps.url,
+                            quality: ps.quality || 'Auto',
+                            type: ps.format === 'hls' ? 'application/x-mpegurl' : 'video/mp4',
+                            label: `NetMirror ${ps.quality || '1080p'} (${nmRes.platform.toUpperCase()})`,
+                            name: `NetMirror | ${ps.quality || '1080p'}`
+                        }));
+                    }
+                } catch (err: any) {
+                    console.warn('[BingrScraper] NetMirror error:', err?.message || err);
+                }
+            } else if (serverId === 'nestzone' || serverId === 'miku') {
+                try {
+                    const nzTargetId = tmdbId || 195516;
+                    const nzRes = await NestZoneAnimeService.resolveEpisodeStream(
+                        nzTargetId,
+                        e,
+                        'sub'
+                    );
+                    if (nzRes && nzRes.length > 0) {
+                        scraperName = 'NestZone Miku (High-Speed Anime)';
+                        sources = nzRes.map(nz => ({
+                            url: nz.proxiedUrl,
+                            quality: nz.quality || 'HD',
+                            type: nz.format === 'hls' ? 'application/x-mpegurl' : nz.format === 'mp4' ? 'video/mp4' : 'embed',
+                            label: `NestZone ${nz.serverName}`,
+                            name: `NestZone | ${nz.serverName}`
+                        }));
+                        if (nzRes[0]?.subtitles && nzRes[0].subtitles.length > 0) {
+                            subtitles = nzRes[0].subtitles.map(sub => ({
+                                url: sub.url,
+                                lang: sub.lang || 'en',
+                                label: sub.label || 'English'
+                            }));
+                        }
+                    }
+                } catch (err: any) {
+                    console.warn('[BingrScraper] NestZone error:', err?.message || err);
+                }
             } else if (serverId === 'vidlink' || serverId === 'vidlinkpro') {
                 try {
                     // Fetch native VidLink Pro directly (fast 4.5s max; tier cascade handles vidrift/m4u/filmu in parallel if unavailable)

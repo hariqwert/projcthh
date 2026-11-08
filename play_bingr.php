@@ -2704,16 +2704,22 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 }
             }
 
-            if (isAdClip) {
+            // Specific check: NetMirror serves an exact 600s (10-minute) "STOP Abuse: Too Many Requests" punishment video (file 220884) when rate-limited upstream
+            const isNetMirrorRateLimit = (CURRENT_SERVER === 'netmirror' && Math.round(actual) === 600 && expected >= 1200);
+
+            if (isAdClip || isNetMirrorRateLimit) {
                 hasValidatedDurationForCurrentStream = true;
                 durationCheckedServers.add(CURRENT_SERVER);
-                console.warn(`[Duration Guard] Server "${CURRENT_SERVER}" served an ad/preview clip (${Math.round(actual)}s vs expected ~${Math.round(expected)}s). Auto-rejecting stream!`);
+                const reasonMsg = isNetMirrorRateLimit 
+                    ? `NetMirror upstream is temporarily rate-limited (Too Many Requests). Auto-switching to high-speed backup...` 
+                    : `${getServerName(CURRENT_SERVER)} served an ad/preview clip. Auto-connecting to next best server...`;
+                console.warn(`[Duration Guard] Server "${CURRENT_SERVER}" served ${isNetMirrorRateLimit ? 'upstream rate-limit warning video' : 'ad/preview clip'} (${Math.round(actual)}s vs expected ~${Math.round(expected)}s). Auto-rejecting stream!`);
                 try { mainVideo.pause(); } catch(_) {}
                 if (hlsInstance) {
                     try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch (_) {}
                     hlsInstance = null;
                 }
-                showToast(`${getServerName(CURRENT_SERVER)} served a short preview clip. Auto-connecting to next best server...`, 'info');
+                showToast(reasonMsg, 'info');
                 failedServers.add(CURRENT_SERVER);
                 cascadeFallback(CURRENT_SERVER);
                 return false;

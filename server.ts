@@ -8707,6 +8707,12 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         } catch {}
     }
 
+    if (u.hostname.includes('net52.cc') || u.hostname.includes('net22.cc') || u.hostname.includes('nm-cdn') || u.hostname.includes('freecdn') || u.hostname.includes('netmirror')) {
+        headers['User-Agent'] = headers['User-Agent'] || 'Mozilla/5.0 (Linux; Android 15; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.177 Mobile Safari/537.36';
+        headers['Referer'] = headers['Referer'] || 'https://net52.cc/';
+        headers['Origin'] = headers['Origin'] || 'https://net22.cc';
+    }
+
     if (u.hostname.includes('junksonus') || u.hostname.includes('grandemx') || u.hostname.includes('justkidding')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://grandemx.org/';
@@ -8965,7 +8971,7 @@ export function getOutboundProxyAgent(): https.Agent | any {
     return cachedOutboundAgent;
 }
 
-function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, directSegments = false): string {
+function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, directSegments = false, extraParam?: string): string {
     const isMaster = text.includes('#EXT-X-STREAM-INF') || text.includes('#EXT-X-MEDIA:');
     
     // In master playlists, strip storyboard thumbnail tracks (e.g. tiles.m3u8) that break video playback
@@ -8976,7 +8982,8 @@ function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, dir
 
     const wrap = (abs: string) => {
         if (abs.includes('stream_proxy.php?url=') || abs.includes('/api/proxy/hls?url=')) return abs;
-        return `${proxyBase}?url=${encodeURIComponent(abs)}`;
+        const extraSuffix = extraParam ? `&${extraParam}` : '';
+        return `${proxyBase}?url=${encodeURIComponent(abs)}${extraSuffix}`;
     };
     const parentQuery = baseUrl.search;
 
@@ -9186,6 +9193,18 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
         }
     }
 
+    const rawH = (req.query.h || req.query.headers) as string;
+    if (rawH) {
+        try {
+            const decodedH = JSON.parse(Buffer.from(decodeURIComponent(rawH), 'base64').toString('utf8'));
+            for (const [k, v] of Object.entries(decodedH)) {
+                if (typeof v === 'string' && ALLOWED_PIPE_HEADERS.has(k.toLowerCase()) && !v.includes('\r') && !v.includes('\n')) {
+                    pipeHeaders[k] = v;
+                }
+            }
+        } catch (_) {}
+    }
+
     let cleanTarget = target;
     if (cleanTarget.includes('sonydaimenew.akamaized.net')) {
         cleanTarget = cleanTarget.replace(/sonydaimenew\.akamaized\.net/g, 'sonymtmnew.akamaized.net');
@@ -9273,6 +9292,10 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
         const isHlsSegment = targetUrl.pathname.endsWith('.ts') || 
                              targetUrl.pathname.endsWith('.m4s') || 
                              targetUrl.pathname.endsWith('.png') ||
+                             targetUrl.pathname.endsWith('.jpg') ||
+                             targetUrl.pathname.endsWith('.jpeg') ||
+                             targetUrl.hostname.includes('freecdn') ||
+                             targetUrl.hostname.includes('nm-cdn') ||
                              targetUrl.pathname.includes('/5-') ||
                              targetUrl.pathname.includes('segment') ||
                              targetUrl.pathname.includes('chunk') ||
@@ -9380,7 +9403,8 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
 
         if (isPlaylist && upstreamRes.status >= 200 && upstreamRes.status < 300) {
             const text = Buffer.from(upstreamRes.data).toString('utf8');
-            const body = rewriteProxyPlaylist(text, targetUrl, proxyBase, isDirectSegmentCdn);
+            const hParamStr = req.query.h ? `h=${encodeURIComponent(req.query.h as string)}` : undefined;
+            const body = rewriteProxyPlaylist(text, targetUrl, proxyBase, isDirectSegmentCdn, hParamStr);
             res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.status(upstreamRes.status).send(body);

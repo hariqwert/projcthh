@@ -482,7 +482,13 @@ const ALLOWED_STREAMING_DOMAINS = [
     'stellarconductornexus.com',
     'vidsrc.buzz',
     'videm.buzz',
-    'videm.cc'
+    'videm.cc',
+    'net52.cc',
+    'net22.cc',
+    'netmirror.org',
+    'netmirror.app',
+    'nm-cdn.top',
+    'nm-cdn23.top'
 ];
 
 export function isStreamingTargetAllowed(targetUrl: URL): boolean {
@@ -500,6 +506,14 @@ export function isStreamingTargetAllowed(targetUrl: URL): boolean {
             return true;
         }
 
+        // NetMirror & multi-cluster dynamic CDN domains and subdomains
+        if (
+            /(^|\.)(net\d+\.cc|nm-cdn\d*\.top|freecdn\d*\.top|netmirror\.(org|app))$/i.test(host) ||
+            host.includes('freecdn') || host.includes('nm-cdn') || host.includes('netmirror')
+        ) {
+            return true;
+        }
+
         // Active Stalker / Xtream Portal hostname authorization
         try {
             const activeStalker = StalkerAPI.getActivePortal ? StalkerAPI.getActivePortal() : null;
@@ -511,8 +525,8 @@ export function isStreamingTargetAllowed(targetUrl: URL): boolean {
 
         // Enforce valid public media stream extension strictly on pathname (never search / query params)
         const pathname = targetUrl.pathname.toLowerCase();
-        const isStrictMediaExtension = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key)$/i.test(pathname) ||
-            /(?:seg-\d+|[a-f0-9]{32})\.(?:ts|m4s|mp4)/i.test(pathname);
+        const isStrictMediaExtension = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key|jpg|jpeg|png|bin)$/i.test(pathname) ||
+            /(?:seg-\d+|[a-f0-9]{32})\.(?:ts|m4s|mp4|jpg)/i.test(pathname);
 
         // Media files on standard web ports only
         const port = targetUrl.port;
@@ -714,6 +728,10 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         headers['Referer'] = 'https://embed.vidrift.in/';
         headers['Origin'] = 'https://embed.vidrift.in';
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+    } else if (url.includes('net52.cc') || url.includes('net22.cc') || url.includes('nm-cdn')) {
+        headers['Referer'] = 'https://net52.cc/';
+        headers['Origin'] = 'https://net22.cc';
+        headers['User-Agent'] = 'Mozilla/5.0 (Linux; Android 15; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.177 Mobile Safari/537.36';
     } else if (
         url.includes('nexabloom.top') || 
         url.includes('megaplay') || 

@@ -1764,7 +1764,13 @@ export async function verifyStreamReachable(url: string, timeoutMs: number = 250
         }
     }
     if (!target.startsWith('http')) return false;
-    if (target.includes('vidsrc.buzz/_stream') || target.includes('videm.buzz/_stream')) {
+    if (
+        target.includes('vidsrc.buzz/_stream') || 
+        target.includes('videm.buzz/_stream') ||
+        target.includes('net52.cc') ||
+        target.includes('net22.cc') ||
+        target.includes('nm-cdn')
+    ) {
         return true;
     }
 

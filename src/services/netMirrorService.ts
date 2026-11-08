@@ -76,6 +76,7 @@ const httpsAgent = new https.Agent({
 export class NetMirrorService {
     private static cachedCookie: string | null = null;
     private static cookieExpiresAt = 0;
+    private static mediaCache = new Map<string, { result: NetMirrorResolvedResult; expiresAt: number }>();
 
     /**
      * Bypasses NetMirror's verify.php challenge by passing a valid RFC4122 UUIDv4 token
@@ -226,6 +227,12 @@ export class NetMirrorService {
             .replace(/\s+/g, ' ')
             .trim();
 
+        const cacheKey = `${cleanTitle.toLowerCase()}_${mediaType}_${season}_${episode}`;
+        const cached = this.mediaCache.get(cacheKey);
+        if (cached && Date.now() < cached.expiresAt) {
+            return cached.result;
+        }
+
         for (const platform of PLATFORMS) {
             try {
                 const searchResults = await this.searchPlatform(platform, cleanTitle, cookie);
@@ -272,6 +279,12 @@ export class NetMirrorService {
                 const sources = await this.getPlaylist(platform, targetId, cookie);
                 if (!sources.length) continue;
 
+                // Discard NetMirror rate-limit punishment clip (file 220884: "Too Many Requests in Short Period of Time")
+                if (sources.some(s => s.file && (s.file.includes('220884') || s.file.includes('files/220884')))) {
+                    console.warn(`[NetMirrorService] Upstream platform ${platform.name} returned rate-limit warning video (220884). Skipping.`);
+                    continue;
+                }
+
                 const cdnHeaders = {
                     'Cookie': `t_hash_t=${cookie}; hd=on; ott=${platform.ott}`,
                     'Origin': 'https://net22.cc',
@@ -294,7 +307,7 @@ export class NetMirrorService {
                     };
                 });
 
-                return {
+                const result: NetMirrorResolvedResult = {
                     provider: `NetMirror (${platform.name})`,
                     platform: platform.platform,
                     title: match.title,
@@ -303,6 +316,8 @@ export class NetMirrorService {
                     sources,
                     proxiedSources
                 };
+                this.mediaCache.set(cacheKey, { result, expiresAt: Date.now() + 15 * 60 * 1000 });
+                return result;
             } catch {
                 continue;
             }

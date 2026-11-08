@@ -4105,8 +4105,8 @@ export async function scrapeBingrStream(params: {
             }
         } else {
             // TV series default cascade:
-            // vidlink, vidrift, netmirror, m4u, prism, s80 (moscow), s30 (nova), etc.
-            const tvTier1 = filterTier(['vidlink', 'vidrift', 'netmirror', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62']);
+            // vidlink, vidrift, m4u, prism, s80 (moscow), s30 (nova), etc.
+            const tvTier1 = filterTier(['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62']);
             const tvTier2 = ['flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61'];
 
             successResult = await raceTierForDirectStream(tvTier1, 11000);

@@ -86,12 +86,12 @@ export class StremioAddonService {
     }
 
     /**
-     * Queries streams from a single Stremio addon
+     * Queries streams from a single Stremio addon (Movies, Series, Live Sports & Events)
      */
     public static async queryAddonStreams(params: {
         manifestUrl: string;
-        mediaType: 'movie' | 'tv' | 'series';
-        id: string; // IMDb ID (tt1234567) or tmdb:12345
+        mediaType: 'movie' | 'tv' | 'series' | 'events' | 'sports';
+        id: string; // IMDb ID (tt1234567), TMDB, or Sports Event ID (mf:..., dl:...)
         season?: number;
         episode?: number;
     }): Promise<StremioNormalizedStream[]> {
@@ -104,7 +104,13 @@ export class StremioAddonService {
         });
         if (!streamResource) return [];
 
-        const reqType = (params.mediaType === 'tv' || params.mediaType === 'series') ? 'series' : 'movie';
+        let reqType = 'movie';
+        if (params.mediaType === 'tv' || params.mediaType === 'series') {
+            reqType = 'series';
+        } else if (params.mediaType === 'events' || params.mediaType === 'sports') {
+            reqType = manifest.types.includes('events') ? 'events' : (manifest.types.includes('sports') ? 'sports' : 'events');
+        }
+
         let queryId = params.id;
         if (reqType === 'series' && params.season && params.episode) {
             queryId = `${params.id}:${params.season}:${params.episode}`;
@@ -168,6 +174,33 @@ export class StremioAddonService {
             headers: Object.keys(headers).length > 0 ? headers : undefined,
             isTorrent: Boolean(infoHash)
         };
+    }
+
+    /**
+     * Recommended preloaded community Stremio addons
+     */
+    public static async queryCatalog(params: {
+        manifestUrl: string;
+        type?: string; // 'events' | 'sports' | 'tv'
+        id?: string;
+    }): Promise<any[]> {
+        const manifest = await this.getManifest(params.manifestUrl);
+        if (!manifest) return [];
+
+        const baseUrl = this.normalizeManifestUrl(params.manifestUrl).replace(/\/manifest\.json$/i, '');
+        const catalogType = params.type || (manifest.catalogs?.[0]?.type || 'events');
+        const catalogId = params.id || (manifest.catalogs?.[0]?.id || 'live-sports');
+
+        const catUrl = `${baseUrl}/catalog/${encodeURIComponent(catalogType)}/${encodeURIComponent(catalogId)}.json`;
+        try {
+            const res = await axios.get(catUrl, {
+                headers: { 'Accept': 'application/json', 'User-Agent': 'Stremio/4.4.168' },
+                timeout: 10000
+            });
+            return res.data?.metas || [];
+        } catch {
+            return [];
+        }
     }
 
     /**

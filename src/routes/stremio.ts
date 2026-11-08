@@ -36,6 +36,34 @@ router.get('/manifest', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/stremio/catalog
+ * Query params:
+ *   - addon: manifest URL
+ *   - type: 'events' | 'sports' | 'movie' | 'series'
+ *   - id: catalog ID (optional)
+ */
+router.get('/catalog', async (req: Request, res: Response) => {
+    const manifestUrl = (req.query.addon || 'https://mediafusion.elfhosted.com/manifest.json').toString().trim();
+    const type = (req.query.type || 'events').toString().trim();
+    const id = (req.query.id || '').toString().trim() || undefined;
+
+    try {
+        const events = await StremioAddonService.queryCatalog({
+            manifestUrl,
+            type,
+            id
+        });
+        return res.json({
+            success: true,
+            count: events.length,
+            events
+        });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message });
+    }
+});
+
+/**
  * GET /api/stremio/streams
  * Query params:
  *   - addon: manifest URL (default Torrentio)
@@ -46,7 +74,10 @@ router.get('/manifest', async (req: Request, res: Response) => {
  */
 router.get('/streams', async (req: Request, res: Response) => {
     const manifestUrl = (req.query.addon || 'https://torrentio.strem.fun/manifest.json').toString().trim();
-    const mediaType = ((req.query.type || 'movie').toString().toLowerCase() === 'series' || req.query.type === 'tv') ? 'series' : 'movie';
+    const rawType = (req.query.type || 'movie').toString().toLowerCase();
+    const mediaType = (rawType === 'events' || rawType === 'sports') 
+        ? (rawType as 'events' | 'sports') 
+        : (rawType === 'series' || rawType === 'tv') ? 'series' : 'movie';
     const id = (req.query.id || req.query.imdb || '').toString().trim();
     const season = parseInt((req.query.season || req.query.s || '1').toString(), 10) || 1;
     const episode = parseInt((req.query.episode || req.query.ep || '1').toString(), 10) || 1;

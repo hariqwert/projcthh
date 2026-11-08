@@ -2971,7 +2971,19 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     mainVideo.load();
                 } catch(e) {}
 
-                const effectiveUrl = rawUrl;
+                let effectiveUrl = rawUrl;
+                // Auto-proxy progressive videos on CDNs that enforce strict Referer or lack browser CORS headers
+                const isCorsExempt = !window._directNoProxyMode && (
+                    rawUrl.includes('tokyoinsider.com') ||
+                    rawUrl.includes('dash-hls-bridge') ||
+                    rawUrl.includes('workers.dev') ||
+                    rawUrl.startsWith(window.location.origin) ||
+                    rawUrl.startsWith('/')
+                );
+                if (!window._directNoProxyMode && !isCorsExempt && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
+                    effectiveUrl = '/stream_proxy.php?url=' + encodeURIComponent(rawUrl);
+                    console.log('[Video Player] Direct Progressive Video routed through reverse proxy for CDN headers & CORS:', effectiveUrl);
+                }
                 window.bingrActiveStreamUrl = effectiveUrl;
 
                 const statusTitle = isTokyoInsider ? 'TokyoInsider 1080p MP4 Ready — Playing!' : 'Direct Stream Ready — Playing in a Moment!';
@@ -5790,121 +5802,74 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const epLength = Math.floor(mainVideo ? (mainVideo.duration || 0) : 0);
             const effectiveMalId = malId || MAL_ID || getStoredMalId();
 
+            let data = null;
             try {
-                let response = null;
-                // Query server skip-times proxy (TheIntroDB & AniSkip)
-                try {
-                    const qParams = new URLSearchParams();
-                    if (effectiveMalId) qParams.set('malId', effectiveMalId);
-                    
-                    const rawMediaId = (typeof TMDB_ID !== 'undefined' && TMDB_ID) ? TMDB_ID : (typeof MEDIA_ID !== 'undefined' ? MEDIA_ID : '');
-                    if (rawMediaId && String(rawMediaId).startsWith('tt')) {
-                        qParams.set('imdb_id', rawMediaId);
-                    } else if (rawMediaId && /^\d+$/.test(String(rawMediaId))) {
-                        qParams.set('tmdb_id', rawMediaId);
-                    }
-                    if (typeof IMDB_ID !== 'undefined' && IMDB_ID && String(IMDB_ID).startsWith('tt')) {
-                        qParams.set('imdb_id', IMDB_ID);
-                    }
-                    if (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE) qParams.set('type', MEDIA_TYPE);
-                    if (MEDIA_TITLE && MEDIA_TITLE !== 'Cinema Presentation') qParams.set('title', MEDIA_TITLE);
-                    
-                    // Only pass season and episode for episodic series (never for movies)
-                    if (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'series') {
-                        qParams.set('season', typeof MEDIA_SEASON !== 'undefined' ? MEDIA_SEASON : 1);
-                        qParams.set('episode', episode);
-                    }
-                    if (epLength > 0) qParams.set('episodeLength', epLength);
-
-                    response = await fetch(`/api/media/skip-times?${qParams.toString()}`);
-                } catch (e) {
-                    console.warn('Backend skip-times proxy failed, trying skip-intro engine', e);
+                const qParams = new URLSearchParams();
+                if (effectiveMalId) qParams.set('malId', effectiveMalId);
+                if (typeof ANILIST_ID !== 'undefined' && ANILIST_ID) qParams.set('anilistId', ANILIST_ID);
+                
+                const rawMediaId = (typeof TMDB_ID !== 'undefined' && TMDB_ID) ? TMDB_ID : (typeof MEDIA_ID !== 'undefined' ? MEDIA_ID : '');
+                if (rawMediaId && String(rawMediaId).startsWith('tt')) {
+                    qParams.set('imdbId', rawMediaId);
+                } else if (rawMediaId && /^\d+$/.test(String(rawMediaId))) {
+                    qParams.set('tmdbId', rawMediaId);
                 }
+                if (typeof IMDB_ID !== 'undefined' && IMDB_ID && String(IMDB_ID).startsWith('tt')) {
+                    qParams.set('imdbId', IMDB_ID);
+                }
+                if (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE) qParams.set('type', MEDIA_TYPE);
+                if (MEDIA_TITLE && MEDIA_TITLE !== 'Cinema Presentation') qParams.set('title', MEDIA_TITLE);
+                
+                // Only pass season and episode for episodic series
+                if (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'series') {
+                    qParams.set('season', typeof MEDIA_SEASON !== 'undefined' ? MEDIA_SEASON : 1);
+                    qParams.set('episode', episode);
+                }
+                if (epLength > 0) qParams.set('duration', epLength);
 
-                if (!data || !data.found) {
-                    try {
-                        const skipQ = new URLSearchParams();
-                        if (typeof IMDB_ID !== 'undefined' && IMDB_ID && String(IMDB_ID).startsWith('tt')) skipQ.set('imdbId', IMDB_ID);
-                        if (typeof MEDIA_SEASON !== 'undefined') skipQ.set('season', MEDIA_SEASON);
-                        skipQ.set('episode', episode);
-                        if (effectiveMalId) skipQ.set('malId', effectiveMalId);
-                        if (epLength > 0) skipQ.set('duration', epLength);
-                        const skipRes = await fetch(`/api/skip-intro?${skipQ.toString()}`);
-                        if (skipRes.ok) {
-                            const skipData = await skipRes.json();
-                            if (skipData && skipData.found && Array.isArray(skipData.segments) && skipData.segments.length > 0) {
-                                data = {
-                                    success: true,
-                                    found: true,
-                                    source: skipData.segments[0].provider === 'aniskip' ? 'AniSkip' : 'theintrodb',
-                                    results: skipData.segments.map(s => ({
+                // 1. Primary: Fetch from our unified backend Skip Intro engine
+                try {
+                    const skipRes = await fetch(`/api/skip-intro?${qParams.toString()}`);
+                    if (skipRes.ok) {
+                        const parsed = await skipRes.json();
+                        if (parsed && parsed.found) {
+                            data = {
+                                success: true,
+                                found: true,
+                                source: parsed.source || 'theintrodb',
+                                results: Array.isArray(parsed.results) && parsed.results.length > 0 
+                                    ? parsed.results 
+                                    : (Array.isArray(parsed.segments) ? parsed.segments.map(s => ({
                                         skipType: s.type,
                                         interval: { startTime: s.startSec, endTime: s.endSec },
                                         skipId: `${s.provider}_${s.type}`
-                                    }))
-                                };
-                            }
+                                    })) : [])
+                            };
                         }
-                    } catch (_) {}
+                    }
+                } catch (e1) {
+                    console.warn('[SkipIntro] Primary engine lookup failed:', e1);
                 }
 
-                if ((!response || !response.ok) && (!data || !data.found) && effectiveMalId) {
+                // 2. Secondary fallback: query media skip-times proxy
+                if (!data || !data.found) {
                     try {
-                        response = await fetch(`https://api.aniskip.com/v2/skip-times/${effectiveMalId}/${episode}?types=op&types=ed&episodeLength=${epLength}`);
-                    } catch (_) {}
-                }
-
-                let data = null;
-                if (response && response.ok) {
-                    try { data = await response.json(); } catch (_) {}
-                }
-
-                // Direct client fallback to TheIntroDB public API if backend returned no results
-                const targetFallbackId = (typeof TMDB_ID !== 'undefined' && TMDB_ID) ? TMDB_ID : (typeof MEDIA_ID !== 'undefined' ? MEDIA_ID : (typeof IMDB_ID !== 'undefined' ? IMDB_ID : ''));
-                if ((!data || !data.found || !data.results || data.results.length === 0) && targetFallbackId) {
-                    try {
-                        const iQ = new URLSearchParams();
-                        if (String(targetFallbackId).startsWith('tt')) {
-                            iQ.set('imdb_id', targetFallbackId);
-                        } else if (/^\d+$/.test(String(targetFallbackId))) {
-                            iQ.set('tmdb_id', targetFallbackId);
-                        }
-                        if (typeof IMDB_ID !== 'undefined' && IMDB_ID && String(IMDB_ID).startsWith('tt')) {
-                            iQ.set('imdb_id', IMDB_ID);
-                        }
-                        if (typeof MEDIA_TYPE !== 'undefined' && (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'series')) {
-                            iQ.set('season', typeof MEDIA_SEASON !== 'undefined' ? MEDIA_SEASON : 1);
-                            iQ.set('episode', episode);
-                        }
-                        const introRes = await fetch(`https://api.theintrodb.org/v4/media?${iQ.toString()}`);
-                        if (introRes.ok) {
-                            const raw = await introRes.json();
-                            const resList = [];
-                            if (Array.isArray(raw.intro)) {
-                                for (const it of raw.intro) {
-                                    if (it.end_ms) resList.push({ skipType: 'op', interval: { startTime: (it.start_ms || 0) / 1000, endTime: it.end_ms / 1000 }, skipId: 'introdb_intro' });
-                                }
-                            }
-                            if (Array.isArray(raw.recap)) {
-                                for (const it of raw.recap) {
-                                    if (it.end_ms) resList.push({ skipType: 'recap', interval: { startTime: (it.start_ms || 0) / 1000, endTime: it.end_ms / 1000 }, skipId: 'introdb_recap' });
-                                }
-                            }
-                            if (Array.isArray(raw.credits)) {
-                                for (const it of raw.credits) {
-                                    if (it.start_ms) resList.push({ skipType: 'ed', interval: { startTime: it.start_ms / 1000, endTime: it.end_ms ? it.end_ms / 1000 : (it.start_ms / 1000 + 120) }, skipId: 'introdb_credits' });
-                                }
-                            }
-                            if (resList.length > 0) {
-                                data = { success: true, found: true, source: 'theintrodb', results: resList };
+                        const mediaRes = await fetch(`/api/media/skip-times?${qParams.toString()}`);
+                        if (mediaRes.ok) {
+                            const mediaData = await mediaRes.json();
+                            if (mediaData && mediaData.found && Array.isArray(mediaData.results) && mediaData.results.length > 0) {
+                                data = mediaData;
                             }
                         }
                     } catch (_) {}
                 }
+            } catch (err) {
+                console.warn('[SkipIntro] Fetch failed:', err);
+            }
 
-                if (!data) {
-                    data = { success: true, found: false, results: [] };
-                }
+            if (!data) {
+                data = { success: true, found: false, results: [] };
+            }
 
                 // If user switched to another episode while this request was running, discard stale data
                 if (targetEp !== MEDIA_EPISODE) {

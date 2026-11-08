@@ -1663,11 +1663,11 @@ export async function scrapeBingrNextGen(params: {
 }
 
 export const BINGR_SERVERS: BingrServerCluster[] = [
-    { id: 'netmirror', name: 'NetMirror (Netflix / Prime / Hotstar Direct HLS)', cc: 'US', priority: 1 },
-    { id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP', priority: 1 },
-    { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 2 },
+    { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 1 },
     { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN', priority: 2 },
-    { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 3 },
+    { id: 'netmirror', name: 'NetMirror (Netflix / Prime / Hotstar Direct HLS)', cc: 'US', priority: 3 },
+    { id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP', priority: 4 },
+    { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 5 },
     { id: 'prism', name: 'Prism (Multi-Audio 1080p / Direct CDN)', cc: 'GL', priority: 4 },
     { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US', priority: 5 },
     { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US', priority: 6 },
@@ -2669,7 +2669,9 @@ export async function scrapeBingrStream(params: {
     const strictSrv = !!params.strictSrv;
     let rawIdStr = params.id ? String(params.id).trim() : '';
     let tmdbId = Number(rawIdStr) || 0;
-    const requestedTitle = (params.title || '').trim();
+    const rawReqTitle = (params.title || '').trim();
+    const isGenericTitle = !rawReqTitle || rawReqTitle.toLowerCase() === 'cinema presentation' || rawReqTitle.toLowerCase() === 'movie' || rawReqTitle.toLowerCase() === 'watch';
+    const requestedTitle = isGenericTitle ? '' : rawReqTitle;
     let mediaTitle = requestedTitle;
     let mediaYear = params.year ? String(params.year) : undefined;
 
@@ -2716,7 +2718,7 @@ export async function scrapeBingrStream(params: {
     try {
         const details = type === 'tv' ? await getTvDetails(tmdbId) : await getMovieDetails(tmdbId);
         if (details) {
-            if (!mediaTitle) mediaTitle = details.title;
+            if (!mediaTitle || isGenericTitle) mediaTitle = details.title;
             if (!mediaYear && details.year) mediaYear = details.year;
             if (details.runtime) tmdbRuntimeMinutes = details.runtime;
         }
@@ -3398,7 +3400,16 @@ export async function scrapeBingrStream(params: {
                 } catch (_) {}
             } else if (serverId === 'netmirror') {
                 try {
-                    const nmQuery = (mediaTitle || requestedTitle || 'Movie').toString();
+                    let nmQuery = (mediaTitle || requestedTitle || '').toString().trim();
+                    if (!nmQuery || nmQuery.toLowerCase() === 'cinema presentation' || nmQuery.toLowerCase() === 'movie') {
+                        if (tmdbId) {
+                            try {
+                                const details = type === 'tv' ? await getTvDetails(tmdbId) : await getMovieDetails(tmdbId);
+                                if (details?.title) nmQuery = details.title;
+                            } catch (_) {}
+                        }
+                    }
+                    if (!nmQuery) nmQuery = 'Movie';
                     const nmRes = await NetMirrorService.resolveMedia(
                         nmQuery,
                         type === 'movie' ? 'movie' : 'tv',
@@ -4018,7 +4029,7 @@ export async function scrapeBingrStream(params: {
 
             // Priority 2: Race remaining specialized anime scrapers if Anivexa was unavailable
             if (!successResult) {
-                const animePriorityTier = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
+                const animePriorityTier = ['nestzone', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
                 successResult = await raceTierForDirectStream(animePriorityTier, 11000);
             }
 
@@ -4088,8 +4099,8 @@ export async function scrapeBingrStream(params: {
             }
         } else {
             // TV series default cascade:
-            // vidlink, vidrift, m4u, prism, s80 (moscow), s30 (nova), etc.
-            const tvTier1 = filterTier(['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62']);
+            // vidlink, vidrift, netmirror, m4u, prism, s80 (moscow), s30 (nova), etc.
+            const tvTier1 = filterTier(['vidlink', 'vidrift', 'netmirror', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62']);
             const tvTier2 = ['flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61'];
 
             successResult = await raceTierForDirectStream(tvTier1, 11000);

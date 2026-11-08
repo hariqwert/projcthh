@@ -706,6 +706,14 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         headers['Referer'] = 'https://movieboxonline.net/';
         headers['Origin'] = 'https://movieboxonline.net';
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    } else if (url.includes('hakunaymatata') || url.includes('hakunamatata') || url.includes('vidlink.pro')) {
+        headers['Referer'] = 'https://vidlink.pro/';
+        headers['Origin'] = 'https://vidlink.pro';
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+    } else if (url.includes('vidrift.in') || url.includes('vidrift.net')) {
+        headers['Referer'] = 'https://embed.vidrift.in/';
+        headers['Origin'] = 'https://embed.vidrift.in';
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
     } else if (
         url.includes('nexabloom.top') || 
         url.includes('megaplay') || 

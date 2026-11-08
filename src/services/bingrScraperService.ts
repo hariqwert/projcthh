@@ -3431,7 +3431,7 @@ export async function scrapeBingrStream(params: {
                 }
             } else if (serverId === 'nestzone' || serverId === 'miku') {
                 try {
-                    const nzTargetId = tmdbId || 195516;
+                    const nzTargetId = params.anilistId || tmdbId || 195516;
                     const nzRes = await NestZoneAnimeService.resolveEpisodeStream(
                         nzTargetId,
                         e,

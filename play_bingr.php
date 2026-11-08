@@ -1408,6 +1408,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             <div class="text-[9px] text-zinc-400 font-normal truncate">Direct 720p/360p MP4</div>
                         </div>
                     </button>
+                    <button type="button" onclick="switchServerCluster('nestzone')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-pink-500/15 border border-pink-500/30 text-white hover:bg-pink-500/25">
+                        <div class="truncate">
+                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                                <span>NestZone</span>
+                                <span class="text-[9px] bg-pink-500/30 text-pink-200 px-1 py-0.5 rounded font-mono font-bold">Miku</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-400 font-normal truncate">High-Speed Anime HLS</div>
+                        </div>
+                    </button>
                     <button type="button" onclick="switchServerCluster('anivexa')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-purple-500/15 border border-purple-500/30 text-white hover:bg-purple-500/25">
                         <div class="truncate">
                             <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
@@ -2233,6 +2242,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                    window.location.search.includes('srv=asiaflix')
                                ));
         const ANIME_SPECIAL_SERVERS = [
+            { id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP' },
             { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' },
             { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' },
             { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
@@ -2721,7 +2731,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['nestzone', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
                     ? ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'two_embed', 'flux', 'filmu', 's62', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
                     : ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62', 'flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
@@ -4590,20 +4600,22 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    const animeAllowed = ['megaplay_buzz', 'anivexa', 'reanime', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    const animeAllowed = ['nestzone', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
                     let list = isAnime 
                         ? data.servers.filter(s => animeAllowed.includes(s.id))
                         : data.servers;
-                    // Ensure megaplay_buzz, anivexa, reanime, animepahe are unconditionally at the top of the server list
-                    const hasMega = list.some(s => s.id === 'megaplay_buzz');
+                    // Ensure nestzone, anivexa, reanime, megaplay_buzz are unconditionally available at the top
+                    const hasNest = list.some(s => s.id === 'nestzone');
                     const hasAnivexa = list.some(s => s.id === 'anivexa');
                     const hasReanime = list.some(s => s.id === 'reanime');
+                    const hasMega = list.some(s => s.id === 'megaplay_buzz');
                     const hasPahe = list.some(s => s.id === 'animepahe');
-                    const prepend = [];
                     const hasBing = list.some(s => s.id === 'bing_anime');
-                    if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });
+                    const prepend = [];
+                    if (!hasNest) prepend.push({ id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP' });
                     if (!hasAnivexa) prepend.push({ id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' });
                     if (!hasReanime) prepend.push({ id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' });
+                    if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });
                     if (!hasPahe) prepend.push({ id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' });
                     if (!hasBing) prepend.push({ id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' });
                     availableServers = [...prepend, ...list];

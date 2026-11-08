@@ -5875,13 +5875,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         }
                     } catch (_) {}
                 }
-            } catch (err) {
-                console.warn('[SkipIntro] Fetch failed:', err);
-            }
 
-            if (!data) {
-                data = { success: true, found: false, results: [] };
-            }
+                if (!data) {
+                    data = { success: true, found: false, results: [] };
+                }
 
                 // If user switched to another episode while this request was running, discard stale data
                 if (targetEp !== MEDIA_EPISODE) {

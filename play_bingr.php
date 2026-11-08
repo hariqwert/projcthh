@@ -2691,16 +2691,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }
 
             // Stream duration verification:
-            // For anime/TV: episodes are typically 18-30 mins; accept any stream >= 10 mins (600s) immediately.
-            // Only reject if it is genuinely a tiny dummy / ad clip (< 90s) while expected runtime is >= 20 mins.
+            // For anime/TV: episodes are typically 18-30 mins; reject only if actual is a tiny dummy / ad clip (< 90s) while expected runtime is >= 15 mins.
+            // For movies: reject only if actual is a genuine micro dummy / ad clip (< 90s). Real streams, previews, or multi-part streams (>= 90s) are fully accepted.
             let isAdClip = false;
             if (isTvMode) {
                 if (actual < 90 && expected >= 900) {
                     isAdClip = true;
                 }
-            } else if (expected >= 2400) {
-                // Movies: reject only if actual is under 10 minutes (600s)
-                if (actual < 600) {
+            } else if (expected >= 1800) {
+                if (actual < 90) {
                     isAdClip = true;
                 }
             }

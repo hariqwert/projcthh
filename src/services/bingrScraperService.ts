@@ -1665,9 +1665,7 @@ export async function scrapeBingrNextGen(params: {
 export const BINGR_SERVERS: BingrServerCluster[] = [
     { id: 'vidlink', name: 'VidLink Pro (Decrypted 1080p / Direct CDN)', cc: 'US', priority: 1 },
     { id: 'vidrift', name: 'Vidrift (Decrypted Multi-Provider HLS)', cc: 'IN', priority: 2 },
-    { id: 'netmirror', name: 'NetMirror (Netflix / Prime / Hotstar Direct HLS)', cc: 'US', priority: 3 },
-    { id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP', priority: 4 },
-    { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 5 },
+    { id: 'm4u', name: 'Movie 4U (Movies4u / Acek CDN)', cc: 'IN', priority: 3 },
     { id: 'prism', name: 'Prism (Multi-Audio 1080p / Direct CDN)', cc: 'GL', priority: 4 },
     { id: 's80', name: 'Moscow (Fast Direct HLS / StreamRip)', cc: 'US', priority: 5 },
     { id: 's30', name: 'Nova (Direct Fast HLS)', cc: 'US', priority: 6 },

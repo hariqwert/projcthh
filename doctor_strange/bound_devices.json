@@ -6,7 +6,7 @@
     "ip": "127.0.0.1",
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
     "firstBoundAt": 1792183472726,
-    "lastSeenAt": 1794043348999,
+    "lastSeenAt": 1794209394135,
     "status": "authorized"
   },
   {
@@ -28,5 +28,15 @@
     "firstBoundAt": 1793994665086,
     "lastSeenAt": 1793994665086,
     "status": "revoked"
+  },
+  {
+    "deviceId": "dev_user_browser_1",
+    "deviceLabel": "Browser Device",
+    "deviceFingerprint": "fp_user_browser_1",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "firstBoundAt": 1794208956942,
+    "lastSeenAt": 1794208957086,
+    "status": "authorized"
   }
 ]

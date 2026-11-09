@@ -6160,8 +6160,15 @@
 
                         // Configure Request Filter for Akamai token injection on chunks
                         shakaPlayer.getNetworkingEngine().registerRequestFilter((type, request) => {
-                            request.headers["Referer"] = "https://www.jiotv.com/";
-                            request.headers["User-Agent"] = "Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+                            const isMobileStream = request.uris.some(u => u.includes('jiotvmblive') || u.includes('_MOB'));
+                            if (!isMobileStream) {
+                                request.headers["Referer"] = "https://www.jiotv.com/";
+                            } else {
+                                delete request.headers["Referer"];
+                            }
+                            request.headers["User-Agent"] = isMobileStream 
+                                ? "plaYtv/7.1.3 (Linux;Android 14) ExoPlayerLib/2.11.7"
+                                : "Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
                             if (window._activeAkamaiToken) {
                                 const tokenVal = window._activeAkamaiToken.startsWith('__hdnea__=') 
                                     ? window._activeAkamaiToken 

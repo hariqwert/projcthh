@@ -401,19 +401,19 @@
         container.innerHTML = `
             <!-- Watch Together Setup & Status Modal -->
             <div id="partySyncModal" class="hidden fixed inset-0 z-[2147483640] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in select-none">
-                <div class="w-full max-w-lg rounded-[1.5rem] p-4 sm:p-8 border border-amber-500/30 bg-[#0c0d14] text-white shadow-2xl relative overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
-                    <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-600/20 rounded-full blur-3xl pointer-events-none"></div>
-                    <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-yellow-600/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="w-full max-w-lg rounded-[1.5rem] p-4 sm:p-8 border border-white/10 bg-[#07080c] text-white shadow-2xl relative overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+                    <div class="absolute -top-24 -right-24 w-48 h-48 bg-white/[0.03] rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-white/[0.03] rounded-full blur-3xl pointer-events-none"></div>
                     
                     <div class="flex justify-between items-center mb-5 shrink-0 z-10">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                            <div class="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shadow-lg">
                                 <i data-lucide="users" class="w-5 h-5 text-white"></i>
                             </div>
                             <div>
                                 <h3 class="text-lg font-black tracking-tight flex items-center gap-2">
                                     WATCH TOGETHER
-                                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-mono font-bold border border-amber-500/30">SYNC ENGINE</span>
+                                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-white font-mono font-bold border border-white/15">SYNC ENGINE</span>
                                 </h3>
                                 <p class="text-xs text-slate-400">Stream synchronized in real-time across friends</p>
                             </div>
@@ -426,14 +426,14 @@
                     <!-- Room Create / Join Forms (When Not in a Room) -->
                     <div id="partySetupView" class="space-y-4 z-10">
                         <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
-                            <label class="block text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Your Display Name</label>
-                            <input id="partyUserName" type="text" placeholder="e.g. Alex" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors">
+                            <label class="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2">Your Display Name</label>
+                            <input id="partyUserName" type="text" placeholder="e.g. Alex" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/40 transition-colors">
                         </div>
 
                         <!-- Direct Join Setting for Host -->
                         <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex items-center justify-between cursor-pointer" onclick="const cb = document.getElementById('setupDirectJoinToggle'); cb.checked = !cb.checked;">
                             <div>
-                                <span class="text-xs font-bold text-amber-400 block">Allow Anyone to Join Directly</span>
+                                <span class="text-xs font-bold text-white block">Allow Anyone to Join Directly</span>
                                 <span class="text-[10px] text-slate-400">If unchecked, guests will need your approval before joining</span>
                             </div>
                             <div class="relative ml-2" onclick="event.stopPropagation();">
@@ -443,12 +443,12 @@
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <button id="btnCreateParty" onclick="window.createPartyRoom()" class="py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-600/30 transition-all active:scale-95">
+                            <button id="btnCreateParty" onclick="window.createPartyRoom()" class="py-3 px-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95">
                                 <i data-lucide="plus-circle" class="w-4 h-4"></i>
                                 <span>Host New Room</span>
                             </button>
                             <div class="flex gap-2">
-                                <input id="joinRoomCode" type="text" placeholder="Enter Room Code" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs uppercase font-mono tracking-wider text-center focus:outline-none focus:border-amber-500">
+                                <input id="joinRoomCode" type="text" placeholder="Enter Room Code" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs uppercase font-mono tracking-wider text-center focus:outline-none focus:border-white/40">
                                 <button onclick="window.joinPartyRoomManual()" class="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider shrink-0 transition-all">
                                     Join
                                 </button>
@@ -458,9 +458,9 @@
 
                     <!-- Active Room Controls View (When In Room) -->
                     <div id="partyActiveView" class="hidden space-y-4 z-10 flex-1 overflow-y-auto">
-                        <div class="bg-gradient-to-r from-pink-950/40 to-purple-950/40 border border-amber-500/20 rounded-2xl p-4 space-y-3">
+                        <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
                             <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-mono uppercase text-amber-400 font-black tracking-widest flex items-center gap-1.5">
+                                <span class="text-[10px] font-mono uppercase text-neutral-300 font-black tracking-widest flex items-center gap-1.5">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                                     ROOM SYNCHRONIZED
                                 </span>
@@ -469,7 +469,7 @@
 
                             <div class="flex items-center gap-2">
                                 <input id="partyShareLink" readonly type="text" class="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 select-all outline-none">
-                                <button onclick="window.copyPartyLink()" id="btnCopyPartyLink" class="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md">
+                                <button onclick="window.copyPartyLink()" id="btnCopyPartyLink" class="px-3 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs flex items-center gap-1.5 transition-all shadow-md">
                                     <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                                     <span>Copy</span>
                                 </button>
@@ -481,17 +481,17 @@
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                                     Participants (<span id="partyParticipantsCount">0</span>)
-                                    <button onclick="window.changePartyName()" class="text-[10px] text-amber-400 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded transition-colors border border-amber-500/20">Change Name</button>
+                                    <button onclick="window.changePartyName()" class="text-[10px] text-neutral-300 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded transition-colors border border-white/15">Change Name</button>
                                 </span>
-                                <span id="partyRoleBadge" class="text-[10px] uppercase font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">Guest</span>
+                                <span id="partyRoleBadge" class="text-[10px] uppercase font-bold text-white bg-white/10 px-2 py-0.5 rounded-full border border-white/15">Guest</span>
                             </div>
                             <div id="partyParticipantsList" class="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1"></div>
                         </div>
                         
                         <!-- Host Controls: Join Access & Approval Toggle -->
-                        <div id="partyHostSettings" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 space-y-2.5">
+                        <div id="partyHostSettings" class="hidden bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2.5">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <span class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                                     <span>👑</span> Host Controls: Join Access
                                 </span>
                                 <span id="partyApprovalModeStatus" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Direct Join: ON</span>
@@ -511,7 +511,7 @@
                                     <span class="text-xs font-bold text-amber-300 block"><span id="partyPendingBadgeNum">0</span> Guest(s) Waiting</span>
                                     <span class="text-[10px] text-amber-200/80">Pending your approval to watch</span>
                                 </div>
-                                <button type="button" onclick="window.allowAllWaitingGuests()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-[11px] rounded-lg transition-colors shadow">
+                                <button type="button" onclick="window.allowAllWaitingGuests()" class="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-black text-[11px] rounded-lg transition-colors shadow">
                                     Allow All Now
                                 </button>
                             </div>
@@ -535,8 +535,8 @@
                                 <!-- chat messages go here -->
                             </div>
                             <div class="p-2 border-t border-white/10 flex gap-2 bg-neutral-900">
-                                <input id="partyChatInput" type="text" placeholder="Type a message..." class="flex-1 bg-black/60 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500" onkeypress="if(event.key === 'Enter') window.sendPartyChat()">
-                                <button onclick="window.sendPartyChat()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs transition-colors shadow">
+                                <input id="partyChatInput" type="text" placeholder="Type a message..." class="flex-1 bg-black/60 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/40" onkeypress="if(event.key === 'Enter') window.sendPartyChat()">
+                                <button onclick="window.sendPartyChat()" class="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-bold rounded-xl text-xs transition-colors shadow">
                                     Send
                                 </button>
                             </div>
@@ -550,18 +550,18 @@
             </div>
 
             <!-- Floating Party Sync Indicator Badge -->
-            <div id="partyFloatingBadge" class="hidden fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-[2147483630] flex items-center gap-2 bg-black/95 backdrop-blur-md border border-amber-500/40 px-3 py-2 rounded-2xl shadow-xl hover:border-amber-500 transition-all cursor-pointer group max-w-[calc(100vw-2rem)]" onclick="window.togglePartyModal(true)">
+            <div id="partyFloatingBadge" class="hidden fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-[2147483630] flex items-center gap-2 bg-black/95 backdrop-blur-md border border-white/10 px-3 py-2 rounded-2xl shadow-xl hover:border-amber-500 transition-all cursor-pointer group max-w-[calc(100vw-2rem)]" onclick="window.togglePartyModal(true)">
                 <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <div class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></div>
                     <div class="flex flex-col">
-                        <span class="text-[10px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5 whitespace-nowrap">
-                            PARTY <span id="floatUserCount" class="text-black font-mono bg-amber-600 px-1 py-0.2 rounded text-[9px]">1</span>
+                        <span class="text-[10px] font-black uppercase text-white tracking-wider flex items-center gap-1.5 whitespace-nowrap">
+                            PARTY <span id="floatUserCount" class="text-black font-mono bg-white text-black px-1 py-0.2 rounded text-[9px]">1</span>
                         </span>
                         <span id="floatStatusText" class="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-0.5 truncate hidden sm:block whitespace-nowrap">Syncing</span>
                     </div>
                 </div>
                 <div class="w-[1px] h-6 bg-white/20 mx-1 shrink-0"></div>
-                <button onclick="window.toggleChatSidebar(true); event.stopPropagation();" class="p-1.5 sm:p-2 bg-amber-500/10 hover:bg-amber-500/30 rounded-full text-amber-400 transition-colors pointer-events-auto flex items-center justify-center shrink-0" title="Open Sidebar Chat">
+                <button onclick="window.toggleChatSidebar(true); event.stopPropagation();" class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors pointer-events-auto flex items-center justify-center shrink-0" title="Open Sidebar Chat">
                     <i data-lucide="message-square" class="w-4 h-4"></i>
                 </button>
                 <div class="w-[1px] h-6 bg-white/20 mx-1 shrink-0"></div>
@@ -575,7 +575,7 @@
                 <!-- Header with explicit X close button -->
                 <div class="p-3.5 border-b border-white/10 flex justify-between items-center bg-neutral-900 shrink-0 w-full">
                     <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
                         <h3 class="text-white font-bold uppercase tracking-wider text-xs sm:text-sm flex items-center gap-1.5">
                             Party Chat
                         </h3>
@@ -606,8 +606,8 @@
                 
                 <!-- Input Box -->
                 <div class="p-3 border-t border-white/10 bg-neutral-900 flex gap-2 shrink-0 w-full">
-                    <input id="sidebarChatInput" type="text" placeholder="Type a message..." class="flex-1 bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500" onkeypress="if(event.key === 'Enter') window.sendSidebarChat()">
-                    <button onclick="window.sendSidebarChat()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs transition-colors shadow">Send</button>
+                    <input id="sidebarChatInput" type="text" placeholder="Type a message..." class="flex-1 bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/40" onkeypress="if(event.key === 'Enter') window.sendSidebarChat()">
+                    <button onclick="window.sendSidebarChat()" class="px-4 py-2 bg-white hover:bg-neutral-200 text-black font-bold rounded-xl text-xs transition-colors shadow">Send</button>
                 </div>
             </div>
 
@@ -966,7 +966,7 @@
             document.getElementById('partyRoleBadge').className = 'text-[10px] uppercase font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20';
         } else {
             document.getElementById('partyRoleBadge').innerText = isHost ? '👑 Host' : 'Guest';
-            document.getElementById('partyRoleBadge').className = 'text-[10px] uppercase font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20';
+            document.getElementById('partyRoleBadge').className = 'text-[10px] uppercase font-bold text-white bg-white/10 px-2 py-0.5 rounded-full border border-white/15';
         }
 
         // Share link
@@ -1093,7 +1093,7 @@
                 html += `<div class="w-full mt-2 pt-2 border-t border-white/10 flex flex-col gap-2">`;
                 html += `<span class="text-[10px] uppercase font-bold text-amber-500">Pending Requests (${currentRoom.pendingRequests.length})</span>`;
                 html += currentRoom.pendingRequests.map(p => `
-                    <div class="flex items-center justify-between gap-1.5 bg-amber-950/40 border border-amber-500/40 px-2.5 py-1.5 rounded-xl text-xs text-amber-200">
+                    <div class="flex items-center justify-between gap-1.5 bg-amber-950/40 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs text-amber-200">
                         <div class="flex items-center gap-1.5">
                             <img src="${p.avatar}" alt="${p.name}" class="w-5 h-5 rounded-full" onerror="this.outerHTML='<span>👤</span>'">
                             <span class="truncate max-w-[100px] font-medium">${escapeHtml(p.name)}</span>
@@ -1160,12 +1160,12 @@
 
         const modalHtml = `
         <div id="nameChangeModal" class="fixed inset-0 z-[2147483648] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div class="bg-black border border-amber-500/40 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl shadow-amber-500/20 animate-in zoom-in-95 duration-200">
+            <div class="bg-black border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl shadow-amber-500/20 animate-in zoom-in-95 duration-200">
                 <div class="p-5 border-b border-white/10 bg-gradient-to-r from-amber-900/30 to-black">
                     <h3 class="text-amber-400 font-bold uppercase tracking-wider text-sm flex items-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Change Display Name</h3>
                 </div>
                 <div class="p-5 space-y-4">
-                    <input id="newNameInput" type="text" placeholder="Enter new name..." class="w-full bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500" />
+                    <input id="newNameInput" type="text" placeholder="Enter new name..." class="w-full bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40" />
                     <div class="flex gap-3 justify-end mt-4">
                         <button onclick="document.getElementById('nameChangeModal').remove()" class="px-4 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 text-sm font-bold transition-colors">Cancel</button>
                         <button onclick="window.submitNameChange()" class="px-5 py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-black rounded-xl text-sm font-bold transition-all shadow-lg shadow-amber-500/20">Save</button>
@@ -1253,7 +1253,7 @@
                         document.getElementById('partyRoleBadge').className = 'text-[10px] uppercase font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20';
                     } else {
                         document.getElementById('partyRoleBadge').innerText = isHost ? '👑 Host' : 'Guest';
-                        document.getElementById('partyRoleBadge').className = 'text-[10px] uppercase font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20';
+                        document.getElementById('partyRoleBadge').className = 'text-[10px] uppercase font-bold text-white bg-white/10 px-2 py-0.5 rounded-full border border-white/15';
                     }
 
                     // Sync state for approved guests

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { fetchAniListEpisodes } from '../services/animeScraperService';
 import {
     fetchAnivexaMedia,
     fetchAnivexaMappings,
@@ -10,6 +11,23 @@ import {
 } from '../services/anivexaService';
 
 const router = Router();
+
+// --- 0. Search Anime via AniList ---
+router.get('/search', async (req: Request, res: Response) => {
+    const q = (req.query.q || req.query.query || '').toString().trim();
+    if (!q) {
+        return res.status(400).json({ error: 'Search query q is required' });
+    }
+    try {
+        const result = await fetchAniListEpisodes({ title: q });
+        if (result) {
+            return res.json({ success: true, result });
+        }
+        return res.status(404).json({ success: false, message: 'No anime found' });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message });
+    }
+});
 
 // --- 1. AniList Anime Info & Metadata ---
 router.get('/info/:anilistId', async (req: Request, res: Response) => {

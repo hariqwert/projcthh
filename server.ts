@@ -699,14 +699,26 @@ export function getUnlockedIpsList(): Array<{ ip: string; expiresAt: number; rem
 
 // Robust Client IP extractor
 export function getRequestClientIp(req: Request): string {
-    const rawIp = (req.headers['x-forwarded-for'] as string) ||
-                  (req.headers['cf-connecting-ip'] as string) ||
-                  (req.headers['x-real-ip'] as string) ||
-                  req.ip ||
-                  req.socket?.remoteAddress ||
-                  '127.0.0.1';
-    const first = Array.isArray(rawIp) ? rawIp[0] : String(rawIp).split(',')[0].trim();
-    return first.replace(/^::ffff:/, '').trim() || '127.0.0.1';
+    const cf = req.headers['cf-connecting-ip'];
+    if (cf) {
+        const first = Array.isArray(cf) ? cf[0] : String(cf).split(',')[0].trim();
+        const clean = first.replace(/^::ffff:/, '').trim();
+        if (clean) return clean;
+    }
+    const real = req.headers['x-real-ip'];
+    if (real) {
+        const first = Array.isArray(real) ? real[0] : String(real).split(',')[0].trim();
+        const clean = first.replace(/^::ffff:/, '').trim();
+        if (clean) return clean;
+    }
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) {
+        const first = Array.isArray(xff) ? xff[0] : String(xff).split(',')[0].trim();
+        const clean = first.replace(/^::ffff:/, '').trim();
+        if (clean) return clean;
+    }
+    const rawIp = req.ip || req.socket?.remoteAddress || '127.0.0.1';
+    return String(rawIp).replace(/^::ffff:/, '').trim() || '127.0.0.1';
 }
 
 // Clear stale IP unlocks to enforce per-session token validation
@@ -736,12 +748,27 @@ export function isSiteUnlocked(req: Request): boolean {
                          (req.query?.unlock_token as string);
     if (unlockCookie) {
         try {
-            const decoded = jwt.verify(unlockCookie, JWT_SECRET) as any;
+            const decoded = jwt.verify(unlockCookie, JWT_SECRET, { algorithms: ['HS256'] }) as any;
             if (decoded && decoded.unlocked === true) {
-                // Verify client IP binding if present in token
-                if (decoded.ip && decoded.ip !== '127.0.0.1' && decoded.ip !== '::1' && decoded.ip !== 'localhost') {
-                    if (decoded.ip !== cleanIp) {
+                // Verify client request fingerprint (anti-token theft & automated bot playback)
+                if (decoded.clientFp) {
+                    const currentFp = SecurityGateKeeper.generateClientFingerprint(req);
+                    if (decoded.clientFp !== currentFp) {
                         return false;
+                    }
+                }
+                // Verify client IP binding if present in token (with subnet tolerance for mobile CGNAT)
+                if (decoded.ip && decoded.ip !== '127.0.0.1' && decoded.ip !== '::1' && decoded.ip !== 'localhost') {
+                    const isLocal = cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost';
+                    if (!isLocal) {
+                        const sameIp = decoded.ip === cleanIp;
+                        const sameSubnet = decoded.ip.includes('.') && cleanIp.includes('.') &&
+                                           decoded.ip.split('.').slice(0, 3).join('.') === cleanIp.split('.').slice(0, 3).join('.');
+                        const sameV6 = decoded.ip.includes(':') && cleanIp.includes(':') &&
+                                       decoded.ip.split(':').slice(0, 4).join(':') === cleanIp.split(':').slice(0, 4).join(':');
+                        if (!sameIp && !sameSubnet && !sameV6) {
+                            return false;
+                        }
                     }
                 }
                 // Verify token expiration explicitly
@@ -757,7 +784,7 @@ export function isSiteUnlocked(req: Request): boolean {
                     if (!isDeviceAuthorized(decoded.deviceId, decoded.deviceFingerprint)) {
                         return false;
                     }
-                    touchDevice(decoded.deviceId, getRequestClientIp(req));
+                    touchDevice(decoded.deviceId, cleanIp);
                 }
                 return true;
             }
@@ -1139,6 +1166,28 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
             }
         });
 
+        var activePowChallenge = null;
+        var activePowNonce = null;
+
+        async function solveProofOfWork(challenge, difficulty) {
+            var prefix = '0'.repeat(difficulty);
+            var nonce = 0;
+            var enc = new TextEncoder();
+            while (true) {
+                var str = challenge + ':' + nonce;
+                var data = enc.encode(str);
+                var hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                var hashArray = Array.from(new Uint8Array(hashBuffer));
+                var hashHex = hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+                if (hashHex.startsWith(prefix)) {
+                    return { nonce: nonce, hash: hashHex };
+                }
+                nonce++;
+                if (nonce > 5000000) break;
+            }
+            return { nonce: -1, hash: '' };
+        }
+
         async function submitUnlock() {
             if (isSubmitting) return;
             var pass = currentPin.trim();
@@ -1168,18 +1217,35 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
                 } catch(e) {}
 
                 var dev = await getOrGenerateHardwareDevice();
+                var reqPayload = {
+                    password: pass,
+                    deviceId: dev.deviceId,
+                    deviceFingerprint: dev.fingerprint,
+                    deviceLabel: dev.deviceLabel,
+                    turnstileResponse: turnstileResponse
+                };
+                if (activePowChallenge && activePowNonce !== null) {
+                    reqPayload.powChallenge = activePowChallenge;
+                    reqPayload.powNonce = activePowNonce;
+                }
+
                 var res = await fetch('/api/system/unlock-site', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        password: pass,
-                        deviceId: dev.deviceId,
-                        deviceFingerprint: dev.fingerprint,
-                        deviceLabel: dev.deviceLabel,
-                        turnstileResponse: turnstileResponse
-                    })
+                    body: JSON.stringify(reqPayload)
                 });
                 var data = await res.json();
+
+                if (data && data.code === 'POW_REQUIRED' && data.pow) {
+                    btn.innerHTML = '<svg class="animate-spin h-4 w-4 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Solving Security Puzzle...</span>';
+                    var solution = await solveProofOfWork(data.pow.challenge, data.pow.difficulty);
+                    if (solution.nonce >= 0) {
+                        activePowChallenge = data.pow;
+                        activePowNonce = solution.nonce;
+                        isSubmitting = false;
+                        return submitUnlock();
+                    }
+                }
 
                 if (res.ok && data.status === 'success') {
                     // Success styling
@@ -1446,7 +1512,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     
     // Strict script-src allowlist blocking Kaspersky and unauthorized local proxy injectors
-    const cspScriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://challenges.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com https://ajax.googleapis.com https://code.jquery.com https://www.youtube.com https://s.ytimg.com https://*.google.com https://*.gstatic.com blob: data:;";
+    const cspScriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://challenges.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com https://ajax.googleapis.com https://code.jquery.com https://www.youtube.com https://s.ytimg.com https://*.google.com https://*.gstatic.com https://js.puter.com https://*.puter.com blob: data:;";
 
     if (req.path !== '/music.html' && req.path !== '/music' && req.path !== '/r.html' && req.path !== '/r' && req.path !== '/player.html' && !req.path.startsWith('/player/')) {
         res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -1597,7 +1663,7 @@ app.use((req, res, next) => {
     if (req.query && req.query.unlock_token) {
         const token = String(req.query.unlock_token);
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
             if (decoded && decoded.unlocked === true) {
                 setSecureCookie(req, res, 'site_unlock_token', token, {
                     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -1664,7 +1730,7 @@ app.use((req, res, next) => {
         if (!token) return false;
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
             return decoded && decoded.role === 'admin';
         } catch (e: any) {
             return false;
@@ -1755,6 +1821,7 @@ app.use((req, res, next) => {
                          req.path === '/security_guard.js' ||
                          req.path === '/api/system/public-status' || 
                          req.path === '/api/system/unlock-site' || 
+                         req.path === '/api/system/pow-challenge' || 
                          req.path === '/api/system/lock-status' ||
                          req.path === '/favicon.ico' ||
                          req.path === '/apple-touch-icon.png' ||
@@ -1770,6 +1837,12 @@ app.use((req, res, next) => {
                           req.path.startsWith('/api/streamic') ||
                           req.path.startsWith('/api/tim') ||
                           req.path.startsWith('/api/jtv') ||
+                          req.path.startsWith('/api/mdtv') ||
+                          req.path.startsWith('/api/transcode') ||
+                          req.path.startsWith('/api/sm') ||
+                          req.path.startsWith('/api/probe') ||
+                          req.path.startsWith('/api/proxy') ||
+                          req.path.startsWith('/transcode_mkv.php') ||
                           req.path.startsWith('/api/zee') ||
                           req.path.startsWith('/api/spotlight-studio') ||
                           req.path.startsWith('/footlinks.m3u') ||
@@ -1779,11 +1852,13 @@ app.use((req, res, next) => {
                           req.path.startsWith('/api/allchannels') ||
                           req.path.startsWith('/allchannels.m3u') ||
                          req.path.startsWith('/consumet') ||
+                         req.path.startsWith('/arvio') ||
                          req.path.startsWith('/api/consumet') ||
                          req.path.startsWith('/api/media') ||
                           req.path.startsWith('/api/anime') ||
                           req.path.startsWith('/api/bingr') ||
                           req.path.startsWith('/api/anivexa') ||
+                          req.path.startsWith('/api/rareanimes') ||
                           req.path.startsWith('/api/subtitles') ||
                           req.path.startsWith('/api/skip-intro') ||
                           req.path.startsWith('/api/stremio') ||
@@ -1791,10 +1866,16 @@ app.use((req, res, next) => {
                          req.path.startsWith('/api/play_stream') ||
                          req.path.startsWith('/api/resolve_stream') ||
                          req.path.startsWith('/playlist.php') ||
+                         req.path.startsWith('/play_bingr') ||
+                         req.path.startsWith('/play_bing') ||
+                         req.path.startsWith('/play_consumet') ||
+                         req.path.startsWith('/play_anime') ||
+                         req.path.startsWith('/anime_bing') ||
                          req.path.startsWith('/stream_proxy.php') ||
                          req.path.startsWith('/live.php') ||
                          req.path.endsWith('.m3u') ||
                          req.path.endsWith('.m3u8') ||
+                         req.path.endsWith('.mpd') ||
                          isMaintenancePageMediaAsset;
 
     if (systemState.siteLockMode && !isUnlocked && !isLockExempt) {
@@ -5465,7 +5546,7 @@ const isPerimeterCleared = (req: Request): boolean => {
     if (!token) return false;
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
         if (decoded && (decoded.role === 'admin' || decoded.role === 'perimeter_cleared')) {
             return true;
         }
@@ -7407,9 +7488,19 @@ app.get('/api/system/video-broadcast-stream', (req: Request, res: Response) => {
     });
 });
 
+// Endpoint to retrieve a Proof-of-Work challenge for client-side defense
+app.get('/api/system/pow-challenge', (req: Request, res: Response) => {
+    const clientIp = getRequestClientIp(req);
+    const challenge = SecurityGateKeeper.generatePowChallenge(clientIp);
+    return res.json({
+        status: "success",
+        pow: challenge
+    });
+});
+
 // Unlock Site with Passcode (4.5-Hour IP Whitelist & Two-Way Hardware Device Binding)
 app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
-    const { password, deviceId, deviceFingerprint, deviceLabel, publicKey, turnstileResponse } = req.body || {};
+    const { password, deviceId, deviceFingerprint, deviceLabel, publicKey, turnstileResponse, powChallenge, powNonce } = req.body || {};
     const clientIp = getRequestClientIp(req);
 
     // Multi-dimensional identification for brute force defense
@@ -7434,7 +7525,36 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
         });
     }
 
-    // Verify Cloudflare Turnstile CAPTCHA if configured
+    // 2. Global Circuit Breaker / Distributed Brute-Force Proof-of-Work Enforcement
+    const circuitStatus = SecurityGateKeeper.isCircuitBreakerActive('site_pin_lock');
+    if (circuitStatus.active || powChallenge) {
+        if (!powChallenge || powNonce === undefined || powNonce === null) {
+            return res.status(428).json({
+                status: "error",
+                code: "POW_REQUIRED",
+                message: "High distributed threat detected across rotating IPs. Cryptographic Proof-of-Work puzzle required.",
+                pow: SecurityGateKeeper.generatePowChallenge(clientIp)
+            });
+        }
+        const powCheck = SecurityGateKeeper.verifyPowSolution({
+            challenge: typeof powChallenge === 'object' ? powChallenge.challenge : powChallenge,
+            nonce: powNonce,
+            signature: typeof powChallenge === 'object' ? powChallenge.signature : undefined,
+            expiresAt: typeof powChallenge === 'object' ? powChallenge.expiresAt : undefined,
+            difficulty: typeof powChallenge === 'object' ? powChallenge.difficulty : 4,
+            clientIp
+        });
+        if (!powCheck.valid) {
+            return res.status(400).json({
+                status: "error",
+                code: "POW_FAILED",
+                message: powCheck.error || "Proof-of-Work verification failed or expired. Please solve the updated challenge.",
+                pow: SecurityGateKeeper.generatePowChallenge(clientIp)
+            });
+        }
+    }
+
+    // 3. Verify Cloudflare Turnstile CAPTCHA if configured
     if (SecurityGateKeeper.isTurnstileConfigured()) {
         const captchaRes = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
         if (!captchaRes.success) {
@@ -7478,9 +7598,12 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
             });
         }
 
+        const circuitNowActive = SecurityGateKeeper.isCircuitBreakerActive('site_pin_lock').active;
         return res.status(401).json({
             status: "error",
-            message: `Incorrect Master PIN or Passcode. (${fail.attempts}/5 attempts used before quarantine)`
+            code: circuitNowActive ? "POW_REQUIRED" : "PIN_INVALID",
+            message: `Incorrect Master PIN or Passcode. (${fail.attempts}/5 attempts used before quarantine)`,
+            ...(circuitNowActive ? { pow: SecurityGateKeeper.generatePowChallenge(clientIp) } : {})
         });
     }
 
@@ -7501,18 +7624,20 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
         boundDevId = bound.deviceId;
     }
 
-    // Sign a 4.5-hour token containing hardware device identity
+    // Sign a 4.5-hour token containing hardware device identity and client fingerprint
+    const clientFp = SecurityGateKeeper.generateClientFingerprint(req);
     const tokenPayload: any = {
         unlocked: true,
         timestamp: Date.now(),
-        ip: clientIp
+        ip: clientIp,
+        clientFp: clientFp
     };
     if (boundDevId) {
         tokenPayload.deviceId = boundDevId;
         tokenPayload.deviceFingerprint = deviceFingerprint;
     }
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '4.5h' });
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '4.5h', algorithm: 'HS256' });
     
     const isHttps = req.secure || 
                     req.headers['x-forwarded-proto'] === 'https' || 
@@ -11800,7 +11925,7 @@ app.get('/login.php', (req, res) => {
     let isValid = false;
     if (token) {
         try {
-            const decoded = jwt.verify(token as string, JWT_SECRET) as any;
+            const decoded = jwt.verify(token as string, JWT_SECRET, { algorithms: ['HS256'] }) as any;
             if (decoded && decoded.role === 'admin') {
                 isValid = true;
             }
@@ -12297,6 +12422,12 @@ app.get([
 app.get('/consumet_redesign.html', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(process.cwd(), 'consumet_redesign.html'));
+});
+
+app.use('/arvio', (req, res, next) => {
+    if (req.path.startsWith('/assets/')) return next();
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(process.cwd(), 'public', 'arvio', 'index.html'));
 });
 
 app.get('/books.html', (req, res) => {
@@ -13090,7 +13221,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         if (!token) return false;
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
             return decoded && decoded.role === 'admin';
         } catch (e: any) {
             return false;
@@ -13533,7 +13664,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         let isAdmin = false;
         if (token) {
             try {
-                const decoded = jwt.verify(token, JWT_SECRET) as any;
+                const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
                 if (decoded && decoded.role === 'admin') {
                     isAdmin = true;
                 }

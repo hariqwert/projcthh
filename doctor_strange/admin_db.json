@@ -1,47 +1,97 @@
 {
-    "siteLockMode": true,
     "maintenanceText": "Thankyou for your support",
-    "sports": [],
+    "m3uPlaylists": [],
     "maintenanceTitle": "യുഗാവസാനം",
-    "siteLockPassword": "202012",
-    "incidents": [
+    "portals": [
         {
-            "ip": "198.51.100.88",
-            "mac": "00:1A:79:FF:EE:DD",
-            "deviceId": "test_device_scanner_99",
-            "reason": "Brute Force Quarantine: 5 Failed Attempts on site_unlock_turnstile",
-            "timestamp": 1793993670448,
-            "username": "site_unlock_turnstile"
+            "id": "xtream_line_krishkaz_com",
+            "url": "http://line.krishkaz.com",
+            "type": "xtream",
+            "username": "AdemSarikaya",
+            "password": "16A525",
+            "isDefault": false,
+            "name": "Krishkaz Xtream Portal"
         },
         {
-            "reason": "Brute Force Quarantine: 5 Failed Attempts on site_unlock_turnstile",
-            "username": "site_unlock_turnstile",
-            "ip": "198.51.100.88",
-            "mac": "00:1A:79:FF:EE:DD",
-            "timestamp": 1793993435498,
-            "deviceId": "test_device_scanner_99"
+            "name": "Strong8k Xtream Portal",
+            "url": "http://strong8k.art:80",
+            "type": "xtream",
+            "id": "xtream_strong8k_art",
+            "isDefault": false,
+            "username": "7b81bb3ace8c",
+            "password": "84111dead2"
         },
         {
-            "reason": "Brute Force: 5 Failed Attempts on gate1_passcode (Locked out for 15 min)",
-            "timestamp": 1792323203803,
-            "ip": "198.51.100.88",
-            "username": "gate1_passcode"
+            "id": "xtream_xupuybzt_lazdns_com",
+            "username": "fouaadkhadi",
+            "password": "E7JWd8N9",
+            "type": "xtream",
+            "name": "Lazdns Xtream Portal",
+            "url": "http://xupuybzt.lazdns.com",
+            "isDefault": false
         },
         {
-            "timestamp": 1792319897748,
-            "username": "gate1_passcode",
-            "reason": "Brute Force: 5 Failed Attempts on gate1_passcode (Locked out for 15 min)",
-            "ip": "127.0.0.1"
+            "hw_version_2": "ff82ef9cd910ba406f2fd062045b7f52",
+            "id": "stalker_123_geoent_cc",
+            "isDefault": false,
+            "API": "263",
+            "type": "stalker",
+            "D2": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
+            "model": "MAG250",
+            "name": "Geoent Stalker Portal",
+            "mac": "00:1A:79:00:00:01",
+            "hw_version": "1.7-BD-30",
+            "D1": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
+            "url": "http://123.geoent.cc/stalker_portal"
         },
         {
-            "timestamp": 1786780217069,
-            "ip": "111.92.124.164",
-            "username": "hari",
-            "reason": "Brute Force: 5 Failed Login Attempts"
+            "hw_version": "1.7-BD-00",
+            "D1": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
+            "API": "263",
+            "isDefault": false,
+            "sn": "00EBCEF9291CC",
+            "SG": "",
+            "D2": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
+            "hw_version_2": "69284ab85e1741116887f0b64e179d47",
+            "id": "stalker_play_b4u_live",
+            "mac": "00:1A:79:97:97:1E",
+            "Share": "OFF",
+            "model": "MAG250",
+            "url": "http://play.b4u.live/stalker_portal",
+            "Proxy": "AUTO",
+            "name": "B4U Live Portal",
+            "type": "stalker"
+        },
+        {
+            "type": "xtream",
+            "isDefault": false,
+            "name": "Solapuri Streams",
+            "id": "xtream_solapuristreams",
+            "password": "developer",
+            "username": "app",
+            "url": "https://solapuristreams.iptv18.space"
+        },
+        {
+            "name": "nn",
+            "url": "http://livebox.pro",
+            "type": "xtream",
+            "id": "livebox.pro_808",
+            "password": "Lohit",
+            "username": "Lohit",
+            "isDefault": true
         }
     ],
-    "maintenanceMusicMode": "query",
-    "siteLockHint": "",
+    "maintenanceVideoEnabled": false,
+    "siteLockMessage": "This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.",
+    "features": {
+        "m3uEnabled": true,
+        "publicPlaylistEnabled": true,
+        "firewallEnabled": true,
+        "stalkerEnabled": true
+    },
+    "maintenanceVideoTitle": "",
+    "maintenanceVideoLoop": true,
+    "blacklist": [],
     "tmdb": {
         "api_keys": [
             "844dba0bfd8f3a231a957b6e07a10be8",
@@ -50,248 +100,198 @@
             "a07e22bc18f5cb106bfe4cc1f83ad8ed"
         ]
     },
-    "maintenanceVideoType": "webrtc",
-    "maintenanceVideoTitle": "",
-    "sportsM3uFiles": [],
-    "maintenanceSchedule": {
-        "noticeText": "",
-        "scheduledTime": "",
-        "enabled": false,
-        "durationMinutes": 60,
-        "autoActivate": false
+    "activeTemplate": "Scheduled Downtime",
+    "sportsHubConfig": {
+        "title": "ufea",
+        "bgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
+        "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast.",
+        "playerPng": "",
+        "displayMode": "grid",
+        "badge": "football",
+        "gridBgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218"
     },
+    "maintenanceVideoType": "webrtc",
     "siteLockTitle": "RESTRICTED ACCESS PORTAL",
+    "maintenanceVideoSubtitle": "",
+    "maintenanceMusicMode": "query",
+    "siteLockEpoch": 1794142161887,
+    "allowedDeveloperIps": [],
+    "maintenanceMode": false,
+    "liveEvents": [],
+    "maintenanceVideoMuted": false,
+    "consumetMaintenance": false,
     "maintenanceMusicPlaylist": [
         {
-            "img": "https://c.saavncdn.com/976/Sajan-Sajan-Teri-Dulhan-Dj-Remix-Hindi-2024-20250130073155-500x500.jpg",
+            "url": "/api/music/proxy?url=https%3A%2F%2Fweb.saavncdn.com%2F976%2F344b6ce2aae18efb850596d7495eaf6d_320.mp4%3FExpires%3D1793199612%26Signature%3DUg1OjzE-hqLY8wfXOPQb8fSSPtk9jgoW2PHc8pNbfc7h79N-WYgsexet9EsPGAxFbiWOZ7aoeHv15PWNrGwtfm0k8Zq-9ZN4UYMdGfhFWBpLrTH6R3WjSp~n7A3SCtujw4zETLURupVP5Az6GHiqQ~ybUuzMCVFpPlsTuFozWf8i9B9Njst4IwbXgyGJMUhBDNyieyv9oe3HYb8Na3rxjN1x~0xptJEYoMXj17WuW06SsTmXO3Ydy1GvFJf93Th2t4c9IXR1ObdSKNs7j5CYNEBSGc9cPUUJIr6iesLb5MZ8YLGyPzJ5-foHEJtB9MIFS-Utgzht5Gb1PAyTkTUQIQ__%26Key-Pair-Id%3DAPKAJB334VX63D3WJ5ZQ",
+            "id": "saavn_z1eMq3wA",
             "title": "Sajan Sajan Teri Dulhan - Dj Remix",
             "artist": "Dj Anupam Tiwari, Alka Yagnik",
-            "url": "/api/music/proxy?url=https%3A%2F%2Fweb.saavncdn.com%2F976%2F344b6ce2aae18efb850596d7495eaf6d_320.mp4%3FExpires%3D1793199612%26Signature%3DUg1OjzE-hqLY8wfXOPQb8fSSPtk9jgoW2PHc8pNbfc7h79N-WYgsexet9EsPGAxFbiWOZ7aoeHv15PWNrGwtfm0k8Zq-9ZN4UYMdGfhFWBpLrTH6R3WjSp~n7A3SCtujw4zETLURupVP5Az6GHiqQ~ybUuzMCVFpPlsTuFozWf8i9B9Njst4IwbXgyGJMUhBDNyieyv9oe3HYb8Na3rxjN1x~0xptJEYoMXj17WuW06SsTmXO3Ydy1GvFJf93Th2t4c9IXR1ObdSKNs7j5CYNEBSGc9cPUUJIr6iesLb5MZ8YLGyPzJ5-foHEJtB9MIFS-Utgzht5Gb1PAyTkTUQIQ__%26Key-Pair-Id%3DAPKAJB334VX63D3WJ5ZQ",
-            "id": "saavn_z1eMq3wA"
+            "img": "https://c.saavncdn.com/976/Sajan-Sajan-Teri-Dulhan-Dj-Remix-Hindi-2024-20250130073155-500x500.jpg"
         }
     ],
-    "activeTemplate": "Scheduled Downtime",
-    "features": {
-        "stalkerEnabled": true,
-        "firewallEnabled": true,
-        "publicPlaylistEnabled": true,
-        "m3uEnabled": true
+    "maintenanceSchedule": {
+        "durationMinutes": 60,
+        "noticeText": "",
+        "enabled": false,
+        "scheduledTime": "",
+        "autoActivate": false
     },
-    "liveEvents": [],
-    "maintenanceVideoSubtitle": "",
-    "portals": [
+    "maintenanceVideoAutoplay": true,
+    "sports": [],
+    "turnstileSiteKey": "0x4AAAAAAFaGaW8aie8qWpaS",
+    "siteLockPassword": "202012",
+    "turnstileSecretKey": "0x4AAAAAAFaGaQIlXD4HGIMq6vt44s95NsQ",
+    "siteLockMode": true,
+    "maintenanceVideoUrl": "https://www.youtube.com/watch?v=5KihByp4IDs&list=RD5KihByp4IDs&start_radio=1",
+    "incidents": [
         {
-            "id": "xtream_line_krishkaz_com",
-            "username": "AdemSarikaya",
-            "password": "16A525",
-            "url": "http://line.krishkaz.com",
-            "type": "xtream",
-            "name": "Krishkaz Xtream Portal",
-            "isDefault": false
+            "timestamp": 1793993670448,
+            "reason": "Brute Force Quarantine: 5 Failed Attempts on site_unlock_turnstile",
+            "deviceId": "test_device_scanner_99",
+            "username": "site_unlock_turnstile",
+            "mac": "00:1A:79:FF:EE:DD",
+            "ip": "198.51.100.88"
         },
         {
-            "password": "84111dead2",
-            "url": "http://strong8k.art:80",
-            "isDefault": false,
-            "username": "7b81bb3ace8c",
-            "id": "xtream_strong8k_art",
-            "name": "Strong8k Xtream Portal",
-            "type": "xtream"
+            "reason": "Brute Force Quarantine: 5 Failed Attempts on site_unlock_turnstile",
+            "mac": "00:1A:79:FF:EE:DD",
+            "timestamp": 1793993435498,
+            "username": "site_unlock_turnstile",
+            "deviceId": "test_device_scanner_99",
+            "ip": "198.51.100.88"
         },
         {
-            "url": "http://xupuybzt.lazdns.com",
-            "isDefault": false,
-            "password": "E7JWd8N9",
-            "id": "xtream_xupuybzt_lazdns_com",
-            "name": "Lazdns Xtream Portal",
-            "username": "fouaadkhadi",
-            "type": "xtream"
+            "reason": "Brute Force: 5 Failed Attempts on gate1_passcode (Locked out for 15 min)",
+            "username": "gate1_passcode",
+            "timestamp": 1792323203803,
+            "ip": "198.51.100.88"
         },
         {
-            "D1": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
-            "D2": "D20A30551398D28B10BF3676E4D2442D2442F8A398E42BAB7F203313594891B6",
-            "type": "stalker",
-            "API": "263",
-            "url": "http://123.geoent.cc/stalker_portal",
-            "id": "stalker_123_geoent_cc",
-            "mac": "00:1A:79:00:00:01",
-            "name": "Geoent Stalker Portal",
-            "model": "MAG250",
-            "hw_version_2": "ff82ef9cd910ba406f2fd062045b7f52",
-            "hw_version": "1.7-BD-30",
-            "isDefault": false
+            "timestamp": 1792319897748,
+            "ip": "127.0.0.1",
+            "reason": "Brute Force: 5 Failed Attempts on gate1_passcode (Locked out for 15 min)",
+            "username": "gate1_passcode"
         },
         {
-            "id": "stalker_play_b4u_live",
-            "sn": "00EBCEF9291CC",
-            "SG": "",
-            "hw_version": "1.7-BD-00",
-            "hw_version_2": "69284ab85e1741116887f0b64e179d47",
-            "url": "http://play.b4u.live/stalker_portal",
-            "model": "MAG250",
-            "API": "263",
-            "D2": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
-            "type": "stalker",
-            "Proxy": "AUTO",
-            "name": "B4U Live Portal",
-            "isDefault": false,
-            "Share": "OFF",
-            "D1": "ECE6CBEADF122B5FBECC1BFC70EF11716D6CD34E65784FAAD18D70FAB5B7864F",
-            "mac": "00:1A:79:97:97:1E"
-        },
-        {
-            "type": "xtream",
-            "isDefault": false,
-            "password": "developer",
-            "name": "Solapuri Streams",
-            "username": "app",
-            "url": "https://solapuristreams.iptv18.space",
-            "id": "xtream_solapuristreams"
-        },
-        {
-            "url": "http://livebox.pro",
-            "username": "Lohit",
-            "id": "livebox.pro_808",
-            "name": "nn",
-            "password": "Lohit",
-            "isDefault": true,
-            "type": "xtream"
+            "reason": "Brute Force: 5 Failed Login Attempts",
+            "username": "hari",
+            "ip": "111.92.124.164",
+            "timestamp": 1786780217069
         }
     ],
+    "siteLockHint": "",
+    "maintenanceVideoUploadedFile": "WhatsApp Video 2023-12-14 at 6.14.07 PM.mp4",
+    "sportsContainers": [
+        {
+            "playerPng": "",
+            "badge": "football",
+            "gridStyle": "grid",
+            "order": 0,
+            "title": "ufea",
+            "bgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
+            "gridBgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
+            "createdAt": "2026-10-27T13:34:50.147Z",
+            "enabled": true,
+            "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast.",
+            "cardBg": "",
+            "id": "default_showcase"
+        }
+    ],
+    "streamSourcesConfig": {
+        "sonyliv": [
+            {
+                "id": "zyphora_sony_m3u",
+                "enabled": true,
+                "lastCheckedAt": "2026-10-30T10:16:22.518Z",
+                "lastStatus": "online",
+                "url": "https://raw.githubusercontent.com/doctor-8trange/zyphora/main/data/sony.m3u",
+                "lastCount": 5,
+                "isPrimary": true,
+                "type": "m3u",
+                "name": "Zyphora Sony Backup M3U",
+                "priority": 1
+            },
+            {
+                "id": "drmlive_m3u",
+                "url": "https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.m3u",
+                "priority": 2,
+                "type": "m3u",
+                "isPrimary": false,
+                "lastCount": 5,
+                "lastCheckedAt": "2026-10-30T10:14:46.362Z",
+                "name": "DRMLive SonyLIV (Primary)",
+                "enabled": false,
+                "lastStatus": "online"
+            },
+            {
+                "id": "drmlive_json",
+                "type": "json",
+                "enabled": true,
+                "name": "DRMLive SonyLIV JSON",
+                "url": "https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json",
+                "lastCheckedAt": "2026-10-30T10:13:36.155Z",
+                "isPrimary": false,
+                "lastCount": 13,
+                "priority": 3,
+                "lastStatus": "online"
+            },
+            {
+                "lastCheckedAt": "2026-10-30T10:16:22.522Z",
+                "url": "https://raw.githubusercontent.com/sportlive18/Sonyliv-Playlist-Autoupdate/main/sonyliv.json",
+                "priority": 4,
+                "lastStatus": "online",
+                "enabled": true,
+                "name": "SportLive18 SonyLIV JSON",
+                "type": "json",
+                "lastCount": 13,
+                "isPrimary": false,
+                "id": "sportlive18_json"
+            }
+        ],
+        "sonylivUpdatedAt": "2026-10-30T10:16:25.155Z"
+    },
+    "deadKill": false,
+    "playMaintenance": false,
+    "systemStatus": "active",
     "playConsumetMaintenance": false,
-    "maintenanceVideoAutoplay": true,
+    "maintenanceAdminBypass": false,
     "backgrounds": {
-        "globalAudio": {
-            "title": "Jeevitha Ragame (From \"Ramayana\")",
-            "thumbnail": "https://c.saavncdn.com/958/Jeevitha-Ragame-From-Ramayana-Malayalam-2026-20261024141018-500x500.jpg",
-            "target": "hero",
-            "type": "audio",
-            "url": "/api/music/proxy?url=https%3A%2F%2Fweb.saavncdn.com%2F958%2Fd1a5e929714d8c72180fef1dbd9d35d2_320.mp4%3FExpires%3D1793361607%26Signature%3DP62zn0dJnKNF2F0BzBh~2jnqzFjfNjV6yLcNUhp2UWoxUVlOMCBTzeIh9yB6kv~V268sswskSBun~SbP7VdutVsSKE-91CPeOiV6CN7cpyNI4vRYq9YbSb-WWAMHPj1DEZGYNYLJoXI-DLeE3dXGni43p5Vpb3HBnFaMx5mlFaPnIA5i3c7K7nah~ll03Umxdmee3tK0oKiGjsbLoToMgpJdo8YRhHWMr0e98-xbCDSHytCDSwAW-qhXC0ou1h6yuTKqiEyRGVUN0gdxZND2GpVTv1OPOBzxUMGNinsExaNWpiaPZRg6XSXKIT5A6hVzLQTNWnTQOobPcQ9drfLUfg__%26Key-Pair-Id%3DAPKAJB334VX63D3WJ5ZQ",
-            "artist": "A.R. Rahman, Naresh Iyer, Amritha Rajan, Vinayak Sasikumar",
-            "playlist": [
-                {
-                    "url": "/api/music/proxy?url=https%3A%2F%2Fweb.saavncdn.com%2F958%2Fd1a5e929714d8c72180fef1dbd9d35d2_320.mp4%3FExpires%3D1793361607%26Signature%3DP62zn0dJnKNF2F0BzBh~2jnqzFjfNjV6yLcNUhp2UWoxUVlOMCBTzeIh9yB6kv~V268sswskSBun~SbP7VdutVsSKE-91CPeOiV6CN7cpyNI4vRYq9YbSb-WWAMHPj1DEZGYNYLJoXI-DLeE3dXGni43p5Vpb3HBnFaMx5mlFaPnIA5i3c7K7nah~ll03Umxdmee3tK0oKiGjsbLoToMgpJdo8YRhHWMr0e98-xbCDSHytCDSwAW-qhXC0ou1h6yuTKqiEyRGVUN0gdxZND2GpVTv1OPOBzxUMGNinsExaNWpiaPZRg6XSXKIT5A6hVzLQTNWnTQOobPcQ9drfLUfg__%26Key-Pair-Id%3DAPKAJB334VX63D3WJ5ZQ",
-                    "type": "audio",
-                    "title": "Jeevitha Ragame (From \"Ramayana\")",
-                    "thumbnail": "https://c.saavncdn.com/958/Jeevitha-Ragame-From-Ramayana-Malayalam-2026-20261024141018-500x500.jpg",
-                    "artist": "A.R. Rahman, Naresh Iyer, Amritha Rajan, Vinayak Sasikumar"
-                }
-            ]
-        },
-        "musicUseSongVideo": false,
-        "music": {
+        "index": {
             "url": "",
             "type": "auto"
         },
         "consumet": {
-            "url": "",
-            "type": "auto"
+            "type": "auto",
+            "url": ""
+        },
+        "musicUseSongVideo": false,
+        "globalAudio": {
+            "target": "hero",
+            "playlist": [
+                {
+                    "title": "Jeevitha Ragame (From \"Ramayana\")",
+                    "type": "audio",
+                    "artist": "A.R. Rahman, Naresh Iyer, Amritha Rajan, Vinayak Sasikumar",
+                    "url": "/api/music/proxy?url=https%3A%2F%2Fweb.saavncdn.com%2F958%2Fd1a5e929714d8c72180fef1dbd9d35d2_320.mp4%3FExpires%3D1793361607%26Signature%3DP62zn0dJnKNF2F0BzBh~2jnqzFjfNjV6yLcNUhp2UWoxUVlOMCBTzeIh9yB6kv~V268sswskSBun~SbP7VdutVsSKE-91CPeOiV6CN7cpyNI4vRYq9YbSb-WWAMHPj1DEZGYNYLJoXI-DLeE3dXGni43p5Vpb3HBnFaMx5mlFaPnIA5i3c7K7nah~ll03Umxdmee3tK0oKiGjsbLoToMgpJdo8YRhHWMr0e98-xbCDSHytCDSwAW-qhXC0ou1h6yuTKqiEyRGVUN0gdxZND2GpVTv1OPOBzxUMGNinsExaNWpiaPZRg6XSXKIT5A6hVzLQTNWnTQOobPcQ9drfLUfg__%26Key-Pair-Id%3DAPKAJB334VX63D3WJ5ZQ",
+                    "thumbnail": "https://c.saavncdn.com/958/Jeevitha-Ragame-From-Ramayana-Malayalam-2026-20261024141018-500x500.jpg"
+                }
+            ],
+            "url": "/api/music/proxy?url=https%3A%2F%2Fweb.saavncdn.com%2F958%2Fd1a5e929714d8c72180fef1dbd9d35d2_320.mp4%3FExpires%3D1793361607%26Signature%3DP62zn0dJnKNF2F0BzBh~2jnqzFjfNjV6yLcNUhp2UWoxUVlOMCBTzeIh9yB6kv~V268sswskSBun~SbP7VdutVsSKE-91CPeOiV6CN7cpyNI4vRYq9YbSb-WWAMHPj1DEZGYNYLJoXI-DLeE3dXGni43p5Vpb3HBnFaMx5mlFaPnIA5i3c7K7nah~ll03Umxdmee3tK0oKiGjsbLoToMgpJdo8YRhHWMr0e98-xbCDSHytCDSwAW-qhXC0ou1h6yuTKqiEyRGVUN0gdxZND2GpVTv1OPOBzxUMGNinsExaNWpiaPZRg6XSXKIT5A6hVzLQTNWnTQOobPcQ9drfLUfg__%26Key-Pair-Id%3DAPKAJB334VX63D3WJ5ZQ",
+            "type": "audio",
+            "thumbnail": "https://c.saavncdn.com/958/Jeevitha-Ragame-From-Ramayana-Malayalam-2026-20261024141018-500x500.jpg",
+            "artist": "A.R. Rahman, Naresh Iyer, Amritha Rajan, Vinayak Sasikumar",
+            "title": "Jeevitha Ragame (From \"Ramayana\")"
         },
         "hero": {
-            "url": "",
-            "type": "auto"
+            "type": "auto",
+            "url": ""
         },
-        "index": {
-            "url": "",
-            "type": "auto"
+        "music": {
+            "type": "auto",
+            "url": ""
         }
     },
-    "allowedDeveloperIps": [],
-    "siteLockMessage": "This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.",
-    "maintenanceVideoUploadedFile": "WhatsApp Video 2023-12-14 at 6.14.07 PM.mp4",
-    "maintenanceVideoUrl": "https://www.youtube.com/watch?v=5KihByp4IDs&list=RD5KihByp4IDs&start_radio=1",
-    "systemStatus": "active",
-    "blacklist": [],
-    "maintenanceVideoEnabled": false,
-    "maintenanceMusicQuery": "Sajan Sajan Teri Dulhan",
-    "sportsContainers": [
-        {
-            "cardBg": "",
-            "title": "ufea",
-            "id": "default_showcase",
-            "createdAt": "2026-10-27T13:34:50.147Z",
-            "badge": "football",
-            "bgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
-            "gridBgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
-            "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast.",
-            "gridStyle": "grid",
-            "playerPng": "",
-            "order": 0,
-            "enabled": true
-        }
-    ],
-    "streamSourcesConfig": {
-        "sonylivUpdatedAt": "2026-10-30T10:16:25.155Z",
-        "sonyliv": [
-            {
-                "priority": 1,
-                "lastCount": 5,
-                "type": "m3u",
-                "id": "zyphora_sony_m3u",
-                "url": "https://raw.githubusercontent.com/doctor-8trange/zyphora/main/data/sony.m3u",
-                "lastStatus": "online",
-                "name": "Zyphora Sony Backup M3U",
-                "isPrimary": true,
-                "enabled": true,
-                "lastCheckedAt": "2026-10-30T10:16:22.518Z"
-            },
-            {
-                "id": "drmlive_m3u",
-                "lastCheckedAt": "2026-10-30T10:14:46.362Z",
-                "type": "m3u",
-                "url": "https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.m3u",
-                "name": "DRMLive SonyLIV (Primary)",
-                "isPrimary": false,
-                "lastStatus": "online",
-                "enabled": false,
-                "lastCount": 5,
-                "priority": 2
-            },
-            {
-                "url": "https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json",
-                "name": "DRMLive SonyLIV JSON",
-                "type": "json",
-                "lastCount": 13,
-                "enabled": true,
-                "priority": 3,
-                "lastCheckedAt": "2026-10-30T10:13:36.155Z",
-                "isPrimary": false,
-                "lastStatus": "online",
-                "id": "drmlive_json"
-            },
-            {
-                "isPrimary": false,
-                "lastCheckedAt": "2026-10-30T10:16:22.522Z",
-                "priority": 4,
-                "name": "SportLive18 SonyLIV JSON",
-                "type": "json",
-                "lastCount": 13,
-                "url": "https://raw.githubusercontent.com/sportlive18/Sonyliv-Playlist-Autoupdate/main/sonyliv.json",
-                "enabled": true,
-                "id": "sportlive18_json",
-                "lastStatus": "online"
-            }
-        ]
-    },
-    "maintenanceVideoLoop": true,
-    "maintenanceMode": false,
-    "maintenanceAdminBypass": false,
-    "maintenanceVideoMuted": false,
-    "m3uPlaylists": [],
-    "turnstileSiteKey": "0x4AAAAAAFaGaW8aie8qWpaS",
-    "playMaintenance": false,
-    "deadKill": false,
-    "siteLockEpoch": 0,
     "developerMode": false,
-    "sportsHubConfig": {
-        "title": "ufea",
-        "bgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
-        "badge": "football",
-        "playerPng": "",
-        "displayMode": "grid",
-        "gridBgUrl": "https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218https://images.daznservices.com/di/library/DAZN_News/46/61/psg-barca-2024-logos_1b1x457ftli91jdxa6rmwkxd5.jpg?t=-1357413218",
-        "subtitle": "Live ICC match coverage, 4K multi-camera streams, Star Sports 2 HD JioTV live broadcast."
-    },
-    "turnstileSecretKey": "0x4AAAAAAFaGaQIlXD4HGIMq6vt44s95NsQ",
-    "consumetMaintenance": false
+    "maintenanceMusicQuery": "Sajan Sajan Teri Dulhan",
+    "sportsM3uFiles": []
 }

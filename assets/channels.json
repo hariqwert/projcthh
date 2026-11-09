@@ -1131,5 +1131,19 @@
     "key_id": "ca03fd99cf33533caecf065085c4dd69",
     "key": "2f6eeefb9d65dffabde6d7c1e15966a7",
     "clearkey": "843f85752e2954af864cde2858b94b07:5fb0421f5dd5b71a58fc2d98d2d4f8c0,a2c8b5715edd55bc8e36ab716d159140:0ea9f97a39ecdb94d701ddbf56cb6893,3e7dbec6224c5e1fba4ce631a91648c9:8c86df34c90c57c5400dfd161ca02a98,d7ef4c20ac365150b4773544faa07587:f8ff141b8e1cd71159b17f58487cf2e5,4f5964c9c3ce51f0a8571a1eb34a93d2:9a6b33496edfa58e9e27a95ebc0438e8"
+  },
+  {
+    "name": "braca vs ateltico",
+    "logo": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg",
+    "url": "/live.php?token=STALKER_PRO&url=https%3A%2F%2Ftims-001.sytes.net%2Fmain%2Fsecure%2F29e823ba308cd61ba1a94fcb433c8ad142433785ac8941a3a0371ccf2062fa73%2F1794179027%2Fpremiersports1-ie.m3u8&referer=https%3A%2F%2Fehgembxe.cfd%2Fnf1skh2l-2610",
+    "category": "Live Sports",
+    "channel_id": "ch_scraped_1794170133578_xtrbl"
+  },
+  {
+    "name": "huh",
+    "logo": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg",
+    "url": "/live.php?token=STALKER_PRO&url=https%3A%2F%2Ftims-001.sytes.net%2Fmain%2Fsecure%2F29e823ba308cd61ba1a94fcb433c8ad142433785ac8941a3a0371ccf2062fa73%2F1794179027%2Fpremiersports1-ie.m3u8&referer=https%3A%2F%2Fehgembxe.cfd%2Fnf1skh2l-2610",
+    "category": "Live Sports",
+    "channel_id": "ch_scraped_1794170178748_xqlij"
   }
 ]

@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#1a233a" />
+<meta name="description" content="Subway Surfers: Mumbai World Tour — AAA 3D Endless Runner Arcade" />
+
+<link rel="manifest" href="/manifest.json" />
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Subway Mumbai" />
+<title>Subway Surfers: Mumbai / India — Aetheris Arcade 3D</title>
+
+<style>
+:root {
+  --ink: #0b1120;
+  --sky: #1e3a8a;
+  --gold: #ffc23d;
+  --gold-glow: rgba(255, 194, 61, 0.6);
+  --red: #ef4444;
+  --cyan: #06b6d4;
+  --panel: rgba(11, 17, 32, 0.88);
+  --line: rgba(255, 255, 255, 0.15);
+}
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #0f172a;
+  color: #fff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#game {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+}
+
+/* UI Overlay Container */
+#ui {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  z-index: 2;
+  pointer-events: none !important;
+}
+
+/* Inactive screens and modals MUST be completely hidden and inert */
+.screen:not(.on),
+.lb-modal:not(.on) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Active screens and modals */
+.screen.on,
+.lb-modal.on {
+  display: flex !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* All interactive controls accept pointer events directly */
+button,
+.panel,
+.lb-panel,
+.nav-btn,
+.icon-btn,
+.big,
+.ghost,
+.chip,
+.char-card {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* Loading Screen */
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
+  transition: opacity 0.4s ease-out;
+}
+#loader.out {
+  opacity: 0;
+  pointer-events: none !important;
+}
+#loader h1 {
+  margin: 0;
+  font-size: clamp(32px, 7vw, 56px);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  background: linear-gradient(180deg, #ffedd5 0%, #ffc23d 50%, #f97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+}
+.track-ico {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.track-ico i {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 12px #38bdf8;
+  animation: pulse 1s infinite alternate;
+}
+.track-ico b {
+  display: block;
+  width: 48px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+@keyframes pulse {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.2); opacity: 1; }
+}
+.bar {
+  width: min(320px, 80vw);
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #38bdf8);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.15s linear;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+#ld-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+/* Global Top Navigation Bar (Only visible when NOT playing the game) */
+.arcade-header {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 200;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.arcade-header.hidden,
+#ui[data-screen="play"] ~ .arcade-header,
+body:has(#ui[data-screen="play"]) .arcade-header {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+.nav-btn {
+  pointer-events: auto !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.nav-btn:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  transform: translateY(-1px);
+}
+.nav-btn:active {
+  transform: translateY(1px);
+}
+
+/* HUD Overlay */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+  display: none !important;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hud.on {
+  display: block !important;
+  opacity: 1;
+}
+.hud-left {
+  position: absolute;
+  left: calc(12px + env(safe-area-inset-left));
+  top: calc(56px + env(safe-area-inset-top));
+  display: flex;
+  gap: 8px;
+  pointer-events: auto !important;
+  z-index: 10;
+}
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+.icon-btn:active {
+  transform: scale(0.95);
+}
+.icon-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+.hud-right {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right));
+  top: calc(12px + env(safe-area-inset-top));
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+.score {
+  font-size: clamp(26px, 5.5vw, 36px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  color: #fff;
+}
+.hud-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.mult, .coins, .stars {
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 5px 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.mult.hot {
+  background: var(--red);
+  border-color: #f87171;
+}
+.stars {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+}
+.coins.pop {
+  animation: pop 0.22s ease-out;
+}
+@keyframes pop {
+  50% { transform: scale(1.18); }
+}
+.coin-ico {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff4b8, var(--gold) 55%, #d68a00);
+  box-shadow: 0 0 10px var(--gold-glow);
+}
+.powers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.pw {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 5px 10px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  min-width: 120px;
+}
+.pw i {
+  font-style: normal;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+.pw.magnet i { background: var(--red); }
+.pw.shoes i { background: #10b981; }
+.pw.double i { background: #f59e0b; }
+.pw.star i { background: #f59e0b; }
+.pw.jet i { background: #ea580c; }
+.pw em {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: #fff;
+  transform-origin: left;
+}
+.hint {
+  position: absolute;
+  left: 50%;
+  top: calc(18% + env(safe-area-inset-top));
+  transform: translate(-50%, 10px);
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  padding: 12px 24px;
+  border-radius: 18px;
+  font-size: clamp(16px, 4.4vw, 22px);
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.hint.on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translateX(-50%) scale(0.9);
+  font-size: clamp(18px, 4.6vw, 26px);
+  font-weight: 900;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+  text-align: center;
+  width: 90%;
+  pointer-events: none;
+}
+.toast.on {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+.flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+  opacity: 0;
+}
+.flash.hit {
+  background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.4) 0%, transparent 70%);
+  animation: flash 0.3s ease-out;
+}
+@keyframes flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Modals & Screens */
+.screen {
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  transition: opacity 0.2s ease;
+}
+.panel {
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  padding: 24px 28px;
+  width: min(440px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+  text-align: center;
+}
+.panel h1 {
+  margin: 0;
+  font-size: clamp(26px, 5.8vw, 34px);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.panel h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+}
+.panel .tag {
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+.mumbai-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 6px;
+  background: linear-gradient(90deg, rgba(234, 88, 12, 0.3), rgba(245, 158, 11, 0.3));
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fef08a;
+  margin-bottom: 2px;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+}
+
+.stats, .result {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px;
+}
+.stats div, .result div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stats small, .result small {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stats b, .result b {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.stat-sep {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Glowing Arcade Buttons */
+.big {
+  border: 0;
+  border-radius: 20px;
+  padding: 16px 24px;
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 50%, #d97706 100%);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.45), 0 0 20px rgba(234, 88, 12, 0.35);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  touch-action: manipulation;
+}
+.big:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(245, 158, 11, 0.55), 0 0 24px rgba(234, 88, 12, 0.45);
+}
+.big:active {
+  transform: translateY(2px) scale(0.98);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+.btn-play-text {
+  font-size: 22px;
+  font-weight: 900;
+}
+.btn-play-sub {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.85;
+  letter-spacing: 0.1em;
+}
+
+.ghost {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  touch-action: manipulation;
+}
+.ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+.ghost:active {
+  transform: translateY(1px);
+}
+
+.ctrl-pills {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 2px 0;
+}
+.ctrl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+kbd {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 800;
+  color: #fbbf24;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.chip {
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+.chip:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #f59e0b;
+  color: #fde047;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.3);
+}
+.chip:active {
+  transform: translateY(1px);
+}
+
+.badge {
+  display: none;
+  align-self: center;
+  background: var(--red);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 900;
+  animation: pop 0.5s ease-out 2;
+}
+.badge.on {
+  display: block;
+}
+
+/* Modals */
+.lb-modal {
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(14px);
+  z-index: 100;
+  transition: opacity 0.2s ease;
+}
+.lb-panel {
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(255, 194, 61, 0.4);
+  border-radius: 24px;
+  padding: 22px 24px;
+  width: min(460px, 94vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(245, 158, 11, 0.2);
+}
+.lb-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.lb-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lb-title-row h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(180deg, #ffedd5 0%, #facc15 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.lb-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.lb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+  max-height: 48vh;
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 10px 14px;
+  transition: transform 0.15s, background 0.15s;
+}
+.lb-row.player {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.28);
+}
+.lb-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lb-rank {
+  font-size: 14px;
+  font-weight: 900;
+  min-width: 38px;
+  text-align: center;
+  color: #94a3b8;
+}
+.lb-rank.gold { color: #facc15; }
+.lb-rank.silver { color: #e2e8f0; }
+.lb-rank.bronze { color: #ea580c; }
+.lb-avatar {
+  font-size: 20px;
+}
+.lb-name-col {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.lb-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+.lb-date {
+  font-size: 11px;
+  color: #64748b;
+}
+.lb-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.lb-score {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffc23d;
+  font-variant-numeric: tabular-nums;
+}
+.lb-stars {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+/* Character Selector Grid */
+.char-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.char-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  transition: all 0.18s ease;
+}
+.char-card:hover {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  transform: translateY(-2px);
+}
+.char-card.active {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #f59e0b;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
+}
+.char-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.char-avatar {
+  font-size: 26px;
+}
+.char-info {
+  display: flex;
+  flex-direction: column;
+}
+.char-name {
+  font-size: 15px;
+  font-weight: 900;
+  color: #fff;
+}
+.char-title {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.char-badge {
+  margin-left: auto;
+  background: #f59e0b;
+  color: #451a03;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+}
+.char-perk {
+  font-size: 11px;
+  font-weight: 800;
+  color: #facc15;
+}
+.char-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+/* Controls Guide */
+.guide-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.guide-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.guide-item b {
+  font-size: 13px;
+}
+.guide-item span {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+@media (min-aspect-ratio: 5/4) {
+  .screen.start {
+    align-items: center;
+    justify-content: flex-end;
+    padding: 16px calc(6vw + env(safe-area-inset-right)) 16px 16px;
+  }
+  .screen.start .panel {
+    width: min(420px, 44vw);
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="arcade-header">
+  <a href="/hero.html" id="nav-portal-home" class="nav-btn" title="Return to Home Portal">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/>
+    </svg>
+    <span>Home / Portal</span>
+  </a>
+  <a href="/offline.html" id="nav-offline-center" class="nav-btn" title="Go to Offline Center">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="m4.93 4.93 14.14 14.14"/>
+    </svg>
+    <span>Offline Center</span>
+  </a>
+</div>
+
+<canvas id="game"></canvas>
+<div id="ui"></div>
+
+<div id="loader">
+  <h1 id="ld-title">Subway Surfers: Mumbai</h1>
+  <div class="track-ico"><i></i><b></b></div>
+  <div class="bar"><i id="ld-bar"></i></div>
+  <div id="ld-text">Arriving at Mumbai Central...</div>
+</div>
+
+<script>
+window.__CORE_URL = '/assets/games/subway/core.glb';
+window.__SCENERY_URL = '/assets/games/subway/scenery.glb';
+
+(function () {
+  var CACHE_NAME = 'aetheris-pwa-v12';
+  var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
+
+  // Direct CacheStorage-First wrapper for Subway 3D assets (works even before SW claims client)
+  if (nativeFetch && 'caches' in window) {
+    window.fetch = function (input, init) {
+      var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+      if (urlStr && urlStr.indexOf('/assets/games/subway/') !== -1) {
+        return caches.match(urlStr, { ignoreSearch: true }).then(function (cached) {
+          if (cached && cached.ok) {
+            return cached.clone();
+          }
+          return nativeFetch(input, init).then(function (res) {
+            if (res && res.status === 200) {
+              var cloneForCache = res.clone();
+              caches.open(CACHE_NAME).then(function (cache) {
+                cache.put(urlStr, cloneForCache).catch(function () {});
+              }).catch(function () {});
+            }
+            return res;
+          });
+        }).catch(function () {
+          return nativeFetch(input, init);
+        });
+      }
+      return nativeFetch(input, init);
+    };
+  }
+
+  var bar = document.getElementById('ld-bar'), txt = document.getElementById('ld-text');
+  var shown = 0;
+  function set(p, label) {
+    if (typeof p === 'number' && !isNaN(p) && p > shown) shown = Math.min(1, p);
+    if (bar) bar.style.transform = 'scaleX(' + shown + ')';
+    if (txt) txt.textContent = (label || 'Loading') + ' ' + Math.floor(shown * 100) + '%';
+  }
+  set(0.1, 'Connecting 3D Engine');
+
+  function fetchStream(url) {
+    return window.fetch(url).then(function (r) {
+      if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : 'ERR') + ' ' + url);
+      var backupClone = r.clone ? r.clone() : null;
+      var total = parseInt((r.headers && r.headers.get('content-length')) || '972716', 10) || 972716;
+      if (!r.body || !r.body.getReader) {
+        return r.arrayBuffer().then(function (b) {
+          set(0.85, 'Finalizing Meshes');
+          return b;
+        });
+      }
+      var reader = r.body.getReader();
+      var received = 0;
+      var chunks = [];
+      function pump() {
+        return reader.read().then(function (res) {
+          if (res.done) {
+            var all = new Uint8Array(received), offset = 0;
+            for (var i = 0; i < chunks.length; i++) {
+              all.set(chunks[i], offset);
+              offset += chunks[i].length;
+            }
+            set(0.9, 'Preparing Shaders');
+            return all.buffer;
+          }
+          chunks.push(res.value);
+          received += res.value.length;
+          set(0.1 + 0.8 * Math.min(1, received / total), 'Streaming Models');
+          return pump();
+        });
+      }
+      return pump().catch(function () {
+        if (backupClone) {
+          return backupClone.arrayBuffer().then(function (b) {
+            set(0.85, 'Finalizing Meshes');
+            return b;
+          });
+        }
+        throw new Error('Failed to read stream ' + url);
+      });
+    });
+  }
+
+  window.__boot = {
+    set: set,
+    core: fetchStream(window.__CORE_URL),
+    done: function () {
+      set(1, 'Ready');
+      var el = document.getElementById('loader');
+      if (el) {
+        el.className = 'out';
+        setTimeout(function () { el.remove(); }, 450);
+      }
+    },
+    fail: function (msg) {
+      if (txt) txt.textContent = msg || 'Load Failed';
+      if (bar) bar.style.background = '#ef4444';
+    }
+  };
+})();
+</script>
+
+<!-- Standalone High-Speed Bundled Engine (World Tour: Mumbai Edition) -->
+<script src="/assets/games/subway/subway-bundle.js?v=2.8.0"></script>
+
+<!-- Defensive Object3D polyfill and Three.js Engine for Developer Mode -->
+<script>
+(function() {
+  var patch = function(t) {
+    if (!t) return;
+    if (t.Object3D && t.Object3D.prototype) {
+      if (!t.Object3D.prototype.removeFromParent) {
+        t.Object3D.prototype.removeFromParent = function() {
+          if (this.parent) this.parent.remove(this);
+          return this;
+        };
+      }
+      if (!t.Object3D.prototype.intersectsFrustum) {
+        t.Object3D.prototype.intersectsFrustum = function(f) {
+          return !f || typeof f.intersectsObject !== 'function' ? true : f.intersectsObject(this);
+        };
+      }
+      if (!t.Object3D.prototype.onBeforeShadow) t.Object3D.prototype.onBeforeShadow = function() {};
+      if (!t.Object3D.prototype.onAfterShadow) t.Object3D.prototype.onAfterShadow = function() {};
+      if (!t.Object3D.prototype.onBeforeRender) t.Object3D.prototype.onBeforeRender = function() {};
+      if (!t.Object3D.prototype.onAfterRender) t.Object3D.prototype.onAfterRender = function() {};
+    }
+    if (t.Mesh && t.Mesh.prototype) {
+      if (!t.Mesh.prototype.intersectsFrustum) {
+        t.Mesh.prototype.intersectsFrustum = function(f) {
+          return !f || typeof f.intersectsObject !== 'function' ? true : f.intersectsObject(this);
+        };
+      }
+      if (!t.Mesh.prototype.onBeforeShadow) t.Mesh.prototype.onBeforeShadow = function() {};
+      if (!t.Mesh.prototype.onAfterShadow) t.Mesh.prototype.onAfterShadow = function() {};
+    }
+    if (t.Material && t.Material.prototype) {
+      if (!t.Material.prototype.onBeforeRender) t.Material.prototype.onBeforeRender = function() {};
+      if (!t.Material.prototype.onAfterRender) t.Material.prototype.onAfterRender = function() {};
+      if (!t.Material.prototype.onBeforeShadow) t.Material.prototype.onBeforeShadow = function() {};
+      if (!t.Material.prototype.onAfterShadow) t.Material.prototype.onAfterShadow = function() {};
+    }
+    if (t.Matrix4 && t.Matrix4.prototype && !t.Matrix4.prototype.determinantAffine) {
+      t.Matrix4.prototype.determinantAffine = function() {
+        var e = this.elements, t0 = e[0], n = e[4], i = e[8], r = e[1], o = e[5], a = e[9], l = e[2], c = e[6], h = e[10];
+        return t0 * (o * h - a * c) - n * (r * h - a * l) + i * (r * c - o * l);
+      };
+    }
+  };
+  var _t = window.THREE;
+  try {
+    Object.defineProperty(window, 'THREE', {
+      configurable: true,
+      enumerable: true,
+      get: function() { return _t; },
+      set: function(v) {
+        _t = v;
+        patch(v);
+      }
+    });
+  } catch(e) {}
+  if (_t) patch(_t);
+})();
+</script>
+<script src="/assets/games/subway/three.min.js"></script>
+<script src="/assets/games/subway/open-world-dev.js?v=3.0.0"></script>
+
+<!-- PWA Offline Service Worker & Direct Cache Seeder -->
+<script>
+(function () {
+  var CACHE_NAME = 'aetheris-pwa-v12';
+  var OFFLINE_ASSETS = [
+    '/subway.html',
+    '/offline.html',
+    '/hero.html',
+    '/assets/games/subway/three.min.js',
+    '/assets/games/subway/subway-bundle.js?v=2.8.0',
+    '/assets/games/subway/open-world-dev.js?v=3.0.0',
+    '/assets/games/subway/core.glb',
+    '/assets/games/subway/scenery.glb',
+    '/assets/games/subway/promo_mumbai_sunset.jpg',
+    '/assets/games/subway/promo_mumbai_night.jpg'
+  ];
+
+  // Ensure top Home / Portal and Offline Center buttons always respond on touch & desktop
+  var portalBtn = document.getElementById('nav-portal-home');
+  if (portalBtn) {
+    var goPortal = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!navigator.onLine && 'caches' in window) {
+        caches.match('/hero.html', { ignoreSearch: true }).then(function (m) {
+          window.location.href = (m && m.ok) ? '/hero.html' : '/offline.html';
+        }).catch(function () {
+          window.location.href = '/offline.html';
+        });
+      } else {
+        window.location.href = '/hero.html';
+      }
+    };
+    portalBtn.addEventListener('click', goPortal);
+    portalBtn.addEventListener('touchend', goPortal, { passive: false });
+  }
+
+  var offlineBtn = document.getElementById('nav-offline-center');
+  if (offlineBtn) {
+    var goOffline = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href = '/offline.html';
+    };
+    offlineBtn.addEventListener('click', goOffline);
+    offlineBtn.addEventListener('touchend', goOffline, { passive: false });
+  }
+
+  function seedDirectOfflineCache() {
+    if (!('caches' in window) || !navigator.onLine) return;
+    caches.open(CACHE_NAME).then(function (cache) {
+      OFFLINE_ASSETS.forEach(function (url) {
+        cache.match(url, { ignoreSearch: false }).then(function (existing) {
+          if (existing && existing.ok) return;
+          fetch(url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
+            if (!res || res.status !== 200) return;
+            res.arrayBuffer().then(function (buf) {
+              var headers = new Headers(res.headers);
+              headers.delete('Cache-Control');
+              headers.delete('Pragma');
+              headers.delete('Expires');
+              var clean = new Response(buf, { status: 200, headers: headers });
+              cache.put(url, clean.clone()).catch(function () {});
+              if (url === '/subway.html') cache.put('/subway', clean.clone()).catch(function () {});
+              if (url === '/offline.html') cache.put('/offline', clean.clone()).catch(function () {});
+              if (url.indexOf('subway-bundle.js') !== -1) cache.put('/assets/games/subway/subway-bundle.js', clean.clone()).catch(function () {});
+              if (url.indexOf('open-world-dev.js') !== -1) cache.put('/assets/games/subway/open-world-dev.js', clean.clone()).catch(function () {});
+            }).catch(function () {});
+          }).catch(function () {});
+        }).catch(function () {});
+      });
+    }).catch(function () {});
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (reg) {
+      console.log('[PWA] Subway Surfers offline service worker ready:', reg.scope);
+      if (reg.active) {
+        reg.active.postMessage({ type: 'WARM_SUBWAY_CACHE' });
+      }
+    }).catch(function (err) {
+      console.warn('[PWA] Service worker registration error:', err);
+    });
+  }
+
+  if (document.readyState === 'complete') {
+    seedDirectOfflineCache();
+  } else {
+    window.addEventListener('load', seedDirectOfflineCache);
+  }
+})();
+</script>
+<script src="/watchdog.js"></script>
+</body>
+</html>

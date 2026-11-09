@@ -255,7 +255,7 @@ router.get('/servers', (req: Request, res: Response) => {
                     Boolean(req.query.mal) || 
                     Boolean(req.query.anilistId);
     if (isAnime) {
-        const animeIds = ['nestzone', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
+        const animeIds = ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
         const animeServers = animeIds
             .map(id => BINGR_SERVERS.find(s => s.id === id))
             .filter((s): s is BingrServerCluster => Boolean(s));
@@ -265,7 +265,7 @@ router.get('/servers', (req: Request, res: Response) => {
 });
 
 router.get('/anime_servers', (req: Request, res: Response) => {
-    const animeIds = ['nestzone', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
+    const animeIds = ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
     const animeServers = animeIds
         .map(id => BINGR_SERVERS.find(s => s.id === id))
         .filter((s): s is BingrServerCluster => Boolean(s));
@@ -520,7 +520,7 @@ router.all(['/stream', '/scrape'], async (req: Request, res: Response) => {
         const isAnime = rawType === 'anime' || Boolean(anilistId) || Boolean(malId);
         const type = (isAnime ? 'anime' : (rawType === 'tv' ? 'tv' : 'movie')) as 'movie' | 'tv' | 'anime';
         const id = body.id;
-        const title = body.title || body.query?.title;
+        const title = body.title || (typeof body.query === 'string' ? body.query : body.query?.title);
         const year = body.year || body.query?.year;
         const season = body.season ? Number(body.season) : (body.query?.season ? Number(body.query.season) : undefined);
         const episode = body.episode ? Number(body.episode) : (body.query?.episode ? Number(body.query.episode) : undefined);

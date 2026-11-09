@@ -1934,7 +1934,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
 
     let payload: any;
     try {
-        payload = jwt.verify(challengeToken, JWT_SECRET);
+        payload = jwt.verify(challengeToken, JWT_SECRET, { algorithms: ['HS256'] });
     } catch (err) {
         return res.status(401).json({
             status: "error",

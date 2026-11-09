@@ -1,0 +1,48 @@
+[
+  {
+    "roomId": "PARTY-3709",
+    "title": "Friend_377's Watch Party",
+    "mediaUrl": "http://localhost:3000/play_consumet.php?id=57243&name=Doctor%20Who&type=tv&s=1&e=1&source=consumet.html&imdb=tt0436992",
+    "mediaName": "Doctor Who",
+    "currentTime": 10.832109,
+    "isPlaying": false,
+    "lastUpdated": 1794216930043,
+    "hostId": "usr_30ca8a90",
+    "hostToken": "ht_ef555940-24cf-4ba7-adee-c1caa43645d8",
+    "hostIp": "127.0.0.1",
+    "createdAt": 1794216796953,
+    "requireApproval": false,
+    "embedServer": "vidlink_pro",
+    "embedUrl": "http://localhost:3000/consumet.html",
+    "season": 1,
+    "episode": 1,
+    "participants": [
+      {
+        "id": "usr_30ca8a90",
+        "name": "Friend_377",
+        "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=Friend_377",
+        "isHost": true,
+        "status": "approved",
+        "lastPing": 1794216930043,
+        "currentTime": 10.832109,
+        "isPlaying": false
+      }
+    ],
+    "chat": [
+      {
+        "id": "a7e7c3cf-4daf-4293-bc64-d9cf8ef8b327",
+        "sender": "System",
+        "avatar": "",
+        "text": "Watch Party room created! Share this link with friends to watch together.",
+        "time": "03:03 PM"
+      },
+      {
+        "id": "47d1d625-69d8-46fc-b268-d900689a02b7",
+        "sender": "Friend_377",
+        "avatar": "",
+        "text": "hi",
+        "time": "03:03 PM",
+        "isReaction": false
+      }
+    ]
+  }

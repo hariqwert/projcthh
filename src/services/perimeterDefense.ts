@@ -179,36 +179,68 @@ const HONEYPOT_PATHS = new Set([
     '/.env',
     '/.env.local',
     '/.env.production',
+    '/.env.bak',
+    '/.env.backup',
+    '/.env.example',
+    '/.env.save',
     '/.git',
     '/.git/config',
     '/.git/head',
+    '/.git/index',
     '/.svn',
     '/.vscode',
+    '/.idea',
+    '/.DS_Store',
+    '/.docker',
+    '/docker-compose.yml',
+    '/docker-compose.yaml',
+    '/Dockerfile',
+    '/.ssh/id_rsa',
+    '/.ssh/id_dsa',
+    '/.ssh/id_ed25519',
+    '/id_rsa',
+    '/id_dsa',
+    '/.kube/config',
+    '/.kube',
+    '/.aws/credentials',
+    '/.aws/config',
+    '/.bash_history',
     '/wp-admin',
     '/wp-login.php',
     '/xmlrpc.php',
+    '/wp-content/plugins',
     '/phpmyadmin',
     '/pma',
     '/admin.php',
     '/config.json',
+    '/core/config.json',
     '/actuator',
     '/actuator/health',
     '/actuator/env',
     '/debug/vars',
     '/api/v1/dump',
-    '/.aws/credentials',
     '/database.sql',
     '/dump.sql',
     '/backup.sql',
+    '/server-status',
+    '/server-info',
+    '/server.key',
+    '/server.crt',
     '/solr',
     '/telescope',
     '/eval-stdin.php',
     '/cgi-bin',
-    '/vendor/phpunit'
+    '/vendor/phpunit',
+    '/v2/_catalog',
+    '/etc/passwd',
+    '/etc/shadow',
+    '/proc/self/environ',
+    '/swagger-ui.html',
+    '/api-docs'
 ]);
 
 // Known aggressive crawlers, scraping bots, and vulnerability scanners
-const BLOCKED_BOT_REGEX = /\b(sqlmap|nikto|masscan|zgrab|nmap|nuclei|gobuster|dirbuster|acunetix|nessus|headlesschrome|phantomjs|selenium|puppeteer|playwright|scrapy|python-requests|aiohttp|urllib|libwww-perl|go-http-client|httpclient|packrat|harvest|emailcollector|cmsdetector|auto-scraper|site-grabber)\b/i;
+const BLOCKED_BOT_REGEX = /\b(sqlmap|nikto|masscan|zgrab|nmap|nuclei|gobuster|dirbuster|acunetix|nessus|headlesschrome|phantomjs|selenium|puppeteer|playwright|scrapy|python-requests|aiohttp|urllib|libwww-perl|go-http-client|httpclient|packrat|harvest|emailcollector|cmsdetector|auto-scraper|site-grabber|shodan|censys|fofa|zoomeye|httpx|ffuf|feroxbuster|wpscan|hydra|medusa|openvas|qualys|securitytrails|whatweb|wapiti|commix)\b/i;
 
 // Comprehensive OWASP Exploit Regexes
 const PATH_TRAVERSAL_REGEX = /(\.\.[\/\\]|%2e%2e[\/\\]|\.\.[^\/\\]*[\/\\])/i;
@@ -285,12 +317,20 @@ export class PerimeterDefenseShield {
     private static scrapersTerminated = 0;
 
     /**
-     * Sanitizes client IP string
+     * Sanitizes client IP string, giving strict precedence to Cloudflare CF-Connecting-IP
      */
     static getCleanIp(req: Request): string {
+        const cfIp = req.headers['cf-connecting-ip'] as string;
+        if (cfIp && typeof cfIp === 'string') {
+            return cfIp.replace(/^::ffff:/, '').trim();
+        }
+        const realIp = req.headers['x-real-ip'] as string;
+        if (realIp && typeof realIp === 'string') {
+            return realIp.replace(/^::ffff:/, '').trim();
+        }
         const forwarded = (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim();
-        const rawIp = forwarded || req.socket.remoteAddress || '';
-        return rawIp.replace(/^::ffff:/, '').trim() || '127.0.0.1';
+        const rawIp = forwarded || req.socket.remoteAddress || req.ip || '';
+        return String(rawIp).replace(/^::ffff:/, '').trim() || '127.0.0.1';
     }
 
     /**
@@ -377,7 +417,11 @@ export class PerimeterDefenseShield {
             persistBannedIps();
             return { banned: false };
         }
-        const record = bannedIps.get(ip);
+        let record = bannedIps.get(ip);
+        if (!record && ip.includes('.')) {
+            const subnet = ip.split('.').slice(0, 3).join('.') + '.0/24';
+            record = bannedIps.get(subnet);
+        }
         if (!record) return { banned: false };
 
         if (record.permanent || record.bannedUntil === 0) {
@@ -844,7 +888,17 @@ export class PerimeterDefenseShield {
             }
 
             // 2. Honeypot Traps: Instant 24-hour Ban (Auto-escalates on repeat)
-            if (HONEYPOT_PATHS.has(normalizedPath) || normalizedPath.startsWith('/.env') || normalizedPath.startsWith('/.git')) {
+            if (
+                HONEYPOT_PATHS.has(normalizedPath) || 
+                normalizedPath.startsWith('/.env') || 
+                normalizedPath.startsWith('/.git') ||
+                normalizedPath.startsWith('/.ssh') ||
+                normalizedPath.startsWith('/.kube') ||
+                normalizedPath.startsWith('/.aws') ||
+                normalizedPath.startsWith('/actuator') ||
+                normalizedPath.startsWith('/vendor/phpunit') ||
+                normalizedPath.includes('/etc/passwd')
+            ) {
                 PerimeterDefenseShield.honeypotHits++;
                 PerimeterDefenseShield.banIp(ip, `Honeypot Trap Triggered: ${normalizedPath}`, HONEYPOT_BAN_DURATION_MS);
                 PerimeterDefenseShield.logIncident(req, 'HONEYPOT_TRAP', `Attempted recon on decoy honeypot: ${normalizedPath}`);

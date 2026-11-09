@@ -198,6 +198,7 @@ function mapRawTimEvent(ev: any): TimLiveEvent {
 }
 
 const TIMSTREAMS_MIRRORS = [
+    'https://tim-streams.com',
     'https://timstreams.co.rw',
     'https://timst.top',
     'https://timst.cfd'
@@ -472,6 +473,35 @@ async function resolveBinaryTokenUrl(tokenUrl: string, embedUrl?: string): Promi
 export async function extractM3u8FromHtml(html: string, embedUrl?: string): Promise<string | null> {
     if (!html || typeof html !== 'string') return null;
 
+    // Pattern 0: Direct script block scanner for modern multi-script embeds (ehgembxe/exmxbxe/tim-streams)
+    const scripts = html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/gi) || [];
+    for (const s of scripts) {
+        if (s.includes('fromCharCode') && s.includes('^')) {
+            const arrMatch = s.match(/var\s+[a-zA-Z0-9_$]+\s*=\s*\[([0-9,\s]+)\]/);
+            const keysMatch = s.match(/,\s*[a-zA-Z0-9_$]+\s*=\s*(\d+)\s*,\s*[a-zA-Z0-9_$]+\s*=\s*(\d+)/);
+            if (arrMatch && keysMatch) {
+                try {
+                    const arr = arrMatch[1].split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                    const k1 = parseInt(keysMatch[1], 10);
+                    const k2 = parseInt(keysMatch[2], 10);
+                    let decoded = '';
+                    for (let i = 0; i < arr.length; i++) {
+                        decoded += String.fromCharCode(((arr[i] ^ k1) - k2 + 256) % 256);
+                    }
+                    const tokenMatch = decoded.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
+                                       decoded.match(/https?:\/\/[^\s'"\\]+\/p\/[a-zA-Z0-9_-]+/i);
+                    if (tokenMatch) {
+                        const tokenUrl = tokenMatch[1] || tokenMatch[0];
+                        const resolved = await resolveBinaryTokenUrl(tokenUrl, embedUrl);
+                        if (resolved) return resolved;
+                    }
+                    const m3u8Match = decoded.match(/https?:\/\/[^\s'"\\]+\.m3u8[^\s'"\\]*/);
+                    if (m3u8Match) return m3u8Match[0];
+                } catch (_) {}
+            }
+        }
+    }
+
     // Pattern 1: Deobfuscate array XOR / addition cipher used by exmxbxe.cfd, ehgembxe.cfd & timst embeds
     const cipherMatch = html.match(/var\s+([a-zA-Z0-9_$]+)\s*=\s*\[([\d,\s]+)\]\s*,\s*([a-zA-Z0-9_$]+)\s*=\s*(\d+)\s*,\s*([a-zA-Z0-9_$]+)\s*=\s*(\d+)/);
     if (cipherMatch) {
@@ -602,25 +632,31 @@ export async function resolveEmbedUrl(embedUrl: string, forceFresh = false): Pro
 
     for (const urlToTry of candidates) {
         let html: string | null = null;
+        let finalUrl = urlToTry;
         try {
             const res = await axios.get(urlToTry, {
                 headers: browserHeaders,
                 httpsAgent: agent,
-                timeout: 3500
+                timeout: 5000,
+                maxRedirects: 5
             });
             if (res.status === 200 && typeof res.data === 'string') {
                 html = res.data;
+                finalUrl = (res.request?.res?.responseUrl || res.config?.url || urlToTry);
             }
         } catch (e: any) {
-            html = await fetchHtmlViaCurl(urlToTry, 'https://timstreams.co.rw/');
+            html = await fetchHtmlViaCurl(urlToTry, 'https://tim-streams.com/');
         }
 
         if (html) {
-            const m3u8 = await extractM3u8FromHtml(html, urlToTry);
+            const m3u8 = await extractM3u8FromHtml(html, finalUrl);
             if (m3u8 && !m3u8.includes('epidd.hundxvision.co.uk')) {
                 streamUrlCache.set(embedUrl, { m3u8, timestamp: Date.now() });
                 if (urlToTry !== embedUrl) {
                     streamUrlCache.set(urlToTry, { m3u8, timestamp: Date.now() });
+                }
+                if (finalUrl !== embedUrl) {
+                    streamUrlCache.set(finalUrl, { m3u8, timestamp: Date.now() });
                 }
                 return m3u8;
             }
@@ -763,13 +799,15 @@ export async function resolveTimChannel(channelSlugOrId: string, forceFresh = fa
 
     // 1. If it is an HTTP/HTTPS URL, detect whether it is a timstreams/timst page or an embed
     if (channelSlugOrId.startsWith('http://') || channelSlugOrId.startsWith('https://')) {
-        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?(?:timst\.(?:top|cfd)|timstreams\.co\.rw)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
+        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?(?:timst\.(?:top|cfd)|timstreams\.co\.rw|tim-streams\.com)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
         if (pageMatch && pageMatch[1]) {
             channelSlugOrId = pageMatch[1];
         } else if (channelSlugOrId.includes('exmxbxe') || channelSlugOrId.includes('ehgembxe') || channelSlugOrId.includes('grandemx') || channelSlugOrId.includes('epiembeds') || channelSlugOrId.includes('/e/')) {
             return await resolveEmbedUrl(channelSlugOrId, forceFresh);
-        } else if ((channelSlugOrId.includes('timst') || channelSlugOrId.includes('timstreams')) && channelSlugOrId.includes('/channel/')) {
+        } else if ((channelSlugOrId.includes('timst') || channelSlugOrId.includes('timstreams') || channelSlugOrId.includes('tim-streams')) && channelSlugOrId.includes('/channel/')) {
             channelSlugOrId = channelSlugOrId.split('/channel/')[1].split(/[?#]/)[0];
+        } else if (channelSlugOrId.includes('/watch/')) {
+            channelSlugOrId = channelSlugOrId.split('/watch/')[1].split(/[?#]/)[0];
         } else {
             return channelSlugOrId;
         }

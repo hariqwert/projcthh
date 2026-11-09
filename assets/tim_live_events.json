@@ -3,205 +3,36 @@
     "category": "Events",
     "events": [
       {
-        "url": "norwich-city-v-bristol-city-401880170",
-        "name": "Norwich City @ Bristol City",
-        "logo": "/img/eflchampionship-401880170.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T07:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Sky Sports+",
-            "url": "https://ehgembxe.cfd/pc58bueh-1045",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "stoke-city-v-portsmouth-401880166",
-        "name": "Stoke City @ Portsmouth",
-        "logo": "/img/eflchampionship-401880166.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T07:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Sky Sports+",
-            "url": "https://ehgembxe.cfd/0u1nxe6x-1997",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "tottenham-hotspur-v-leeds-united-401878758",
-        "name": "Tottenham Hotspur @ Leeds United",
-        "logo": "/img/premierleague-401878758.png",
-        "genre": 1,
-        "sub_genre": 1,
-        "time": "2026-11-07T07:30",
-        "isevent": true,
-        "vip": false,
-        "featured": true,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "TNT Sports 1",
-            "url": "https://ehgembxe.cfd/e0lyrkhr-2496",
-            "vip": false
-          },
-          {
-            "name": "TNT Sports Ultimate",
-            "url": "https://ehgembxe.cfd/d9db4gnt-3448",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "wolverhampton-wanderers-v-wrexham-401880161",
-        "name": "Wolverhampton Wanderers @ Wrexham",
-        "logo": "/img/eflchampionship-401880161.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T07:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Sky Sports Football",
-            "url": "https://ehgembxe.cfd/a80q8j3i-9746",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "racing-santander-v-malaga-401882812",
-        "name": "Racing Santander @ Málaga",
-        "logo": "/img/laliga-401882812.png",
-        "genre": 1,
+        "url": "veterans-race-of-remembrance",
+        "name": "Veterans Race of Remembrance at Virginia international Raceway",
+        "logo": "https://d2779tscntxxsw.cloudfront.net/62322207192a0.png",
+        "genre": 2,
         "sub_genre": 2,
-        "time": "2026-11-07T08:00",
+        "time": "2026-11-08T08:30",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/ntw8v77g-1217",
+            "name": "Floracing",
+            "url": "https://ehgembxe.cfd/tvzqz2qn-4826",
             "vip": false
           }
         ]
       },
       {
-        "url": "piast-gliwice-v-slask-wroclaw-ekstraklasa-2490307",
-        "name": "Piast Gliwice @ Śląsk Wrocław",
-        "logo": "/img/ekstraklasa-2490307.png",
-        "genre": 1,
-        "sub_genre": 21,
-        "time": "2026-11-07T08:45",
+        "url": "haltech-world-cup-finals-day-four",
+        "name": "Haltech World Cup Finals: Day Four",
+        "logo": "/img/fdrm.webp",
+        "genre": 2,
+        "time": "2026-11-08T09:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
-            "name": "CANAL+ Sport 3 PL",
-            "url": "https://ehgembxe.cfd/f9q2whgc-1777",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "frosinone-v-cagliari-401874791",
-        "name": "Frosinone @ Cagliari",
-        "logo": "/img/seriea-401874791.png",
-        "genre": 1,
-        "sub_genre": 5,
-        "time": "2026-11-07T09:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/fkz0yrft-5993",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "lecce-v-torino-401874811",
-        "name": "Lecce @ Torino",
-        "logo": "/img/seriea-401874811.png",
-        "genre": 1,
-        "sub_genre": 5,
-        "time": "2026-11-07T09:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/1jp06azq-806",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "bayern-munich-v-mainz-401884740",
-        "name": "Bayern Munich @ Mainz",
-        "logo": "/img/bundesliga-401884740.png",
-        "genre": 1,
-        "sub_genre": 3,
-        "time": "2026-11-07T09:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN Canada",
-            "url": "https://ehgembxe.cfd/ia3y1hnz-5828",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "eintracht-frankfurt-v-sc-paderborn-07-401884737",
-        "name": "Eintracht Frankfurt @ SC Paderborn 07",
-        "logo": "/img/bundesliga-401884737.png",
-        "genre": 1,
-        "sub_genre": 3,
-        "time": "2026-11-07T09:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN Canada",
-            "url": "https://ehgembxe.cfd/dmlf7j3h-9996",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "fc-augsburg-v-rb-leipzig-401884744",
-        "name": "FC Augsburg @ RB Leipzig",
-        "logo": "/img/bundesliga-401884744.png",
-        "genre": 1,
-        "sub_genre": 3,
-        "time": "2026-11-07T09:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN Canada",
-            "url": "https://ehgembxe.cfd/49ymy8xl-2519",
+            "name": "FDRM+",
+            "url": "https://ehgembxe.cfd/zo783f1c-3105",
             "vip": false
           }
         ]
@@ -212,2254 +43,236 @@
         "logo": "https://d2779tscntxxsw.cloudfront.net/6a35a09a62158.jpeg",
         "genre": 2,
         "sub_genre": 2,
-        "time": "2026-11-07T09:30",
+        "time": "2026-11-08T09:30",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
             "name": "Floracing",
-            "url": "https://ehgembxe.cfd/mugz7qya-8366",
+            "url": "https://ehgembxe.cfd/mugz7qya-8107",
             "vip": false
           }
         ]
       },
       {
-        "url": "msc-cruises-sao-paulo-grand-prix-free-practice-3-f1-401839130",
-        "name": "MSC Cruises São Paulo Grand Prix - Free Practice 3",
-        "logo": "/img/f1-401839130.png",
-        "genre": 2,
-        "sub_genre": 3,
-        "time": "2026-11-07T09:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Sky Sports F1",
-            "url": "https://ehgembxe.cfd/f596f98r-6140",
-            "vip": false
-          },
-          {
-            "name": "Sky Sports F1 UHD",
-            "url": "https://ehgembxe.cfd/c89vxrvc-2220",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "sv-elversberg-v-borussia-dortmund-401884745",
-        "name": "SV Elversberg @ Borussia Dortmund",
-        "logo": "/img/bundesliga-401884745.png",
-        "genre": 1,
-        "sub_genre": 3,
-        "time": "2026-11-07T09:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN Canada",
-            "url": "https://ehgembxe.cfd/wr0pwwjj-770",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "burnley-v-cardiff-city-401880169",
-        "name": "Burnley @ Cardiff City",
-        "logo": "/img/eflchampionship-401880169.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Viaplay",
-            "url": "https://ehgembxe.cfd/m080glpc-6861",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "hull-city-v-arsenal-401878760",
-        "name": "Hull City @ Arsenal",
-        "logo": "/img/premierleague-401878760.png",
-        "genre": 1,
+        "url": "los-angeles-lakers-v-detroit-pistons-401909946",
+        "name": "Los Angeles Lakers @ Detroit Pistons",
+        "logo": "/img/nba-401909946.png",
+        "genre": 7,
         "sub_genre": 1,
-        "time": "2026-11-07T10:00",
+        "time": "2026-11-08T18:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
-            "name": "Stan Sport",
-            "url": "https://ehgembxe.cfd/9dllhbbv-51",
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/vmebm5gh-6667",
             "vip": false
           }
         ]
       },
       {
-        "url": "lincoln-city-v-queens-park-rangers-401880164",
-        "name": "Lincoln City @ Queens Park Rangers",
-        "logo": "/img/eflchampionship-401880164.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Viaplay",
-            "url": "https://ehgembxe.cfd/azec8obn-2601",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "middlesbrough-v-watford-401880163",
-        "name": "Middlesbrough @ Watford",
-        "logo": "/img/eflchampionship-401880163.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/8zreryq5-8378",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "millwall-v-west-bromwich-albion-401880162",
-        "name": "Millwall @ West Bromwich Albion",
-        "logo": "/img/eflchampionship-401880162.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/2o7hsflb-3557",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "newcastle-united-v-fulham-401879241",
-        "name": "Newcastle United @ Fulham",
-        "logo": "/img/premierleague-401879241.png",
-        "genre": 1,
-        "sub_genre": 1,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Stan Sport",
-            "url": "https://ehgembxe.cfd/r3og6leq-4198",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "sheffield-united-v-charlton-athletic-401880168",
-        "name": "Sheffield United @ Charlton Athletic",
-        "logo": "/img/eflchampionship-401880168.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/55p620y0-4769",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "southampton-v-preston-north-end-401880165",
-        "name": "Southampton @ Preston North End",
-        "logo": "/img/eflchampionship-401880165.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Viaplay",
-            "url": "https://ehgembxe.cfd/gvznvnru-4629",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "swansea-city-v-birmingham-city-401880172",
-        "name": "Swansea City @ Birmingham City",
-        "logo": "/img/eflchampionship-401880172.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/ckcoscjb-7603",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "west-ham-united-v-blackburn-rovers-401880171",
-        "name": "West Ham United @ Blackburn Rovers",
-        "logo": "/img/eflchampionship-401880171.png",
-        "genre": 1,
-        "sub_genre": 13,
-        "time": "2026-11-07T10:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/5pcfayl6-3687",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "deportivo-v-espanyol-401882813",
-        "name": "Deportivo @ Espanyol",
-        "logo": "/img/laliga-401882813.png",
-        "genre": 1,
-        "sub_genre": 2,
-        "time": "2026-11-07T10:15",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/kuzwiui1-1415",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "joshua-buatsi-vs-willy-hutchinson-2",
-        "name": "Joshua Buatsi vs Willy Hutchinson 2",
-        "logo": "/img/uron431793977550.jpg",
-        "genre": 3,
-        "time": "2026-11-07T11:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN",
-            "url": "https://ehgembxe.cfd/qduxmo3u-9129",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "wieczysta-krakow-v-gornik-zabrze-ekstraklasa-2490310",
-        "name": "Wieczysta Kraków @ Górnik Zabrze",
-        "logo": "/img/ekstraklasa-2490310.png",
-        "genre": 1,
-        "sub_genre": 21,
-        "time": "2026-11-07T11:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CANAL+ Sport 3 PL",
-            "url": "https://ehgembxe.cfd/f9q2whgc-4941",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "bologna-v-parma-401874974",
-        "name": "Bologna @ Parma",
-        "logo": "/img/seriea-401874974.png",
-        "genre": 1,
-        "sub_genre": 5,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/9qn9m3n9-5778",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "byu-cougars-v-utah-utes-401856849",
-        "name": "BYU Cougars @ Utah Utes",
-        "logo": "/img/cfb-401856849.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ABC",
-            "url": "https://ehgembxe.cfd/nhmzkzez-1569",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "clemson-tigers-v-syracuse-orange-401858285",
-        "name": "Clemson Tigers @ Syracuse Orange",
-        "logo": "/img/cfb-401858285.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN2",
-            "url": "https://ehgembxe.cfd/33jhpzfr-8362",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "florida-state-seminoles-v-boston-college-eagles-401858289",
-        "name": "Florida State Seminoles @ Boston College Eagles",
-        "logo": "/img/cfb-401858289.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ACC Network",
-            "url": "https://ehgembxe.cfd/aqwidk96-2713",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "iowa-state-cyclones-v-baylor-bears-401856853",
-        "name": "Iowa State Cyclones @ Baylor Bears",
-        "logo": "/img/cfb-401856853.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "FS1",
-            "url": "https://ehgembxe.cfd/hxgund1f-2140",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "north-carolina-tar-heels-v-uconn-huskies-401858292",
-        "name": "North Carolina Tar Heels @ UConn Huskies",
-        "logo": "/img/cfb-401858292.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CBSSN",
-            "url": "https://ehgembxe.cfd/9c2jwr40-6048",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "oktagon-97-severino-vs-holzer",
-        "name": "OKTAGON 97: SEVERINO VS. HOLZER",
-        "logo": "/img/en.1793907282761.jpg",
-        "genre": 3,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN",
-            "url": "https://ehgembxe.cfd/8d9uqoy9-6800",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "texas-longhorns-v-missouri-tigers-401856743",
-        "name": "Texas Longhorns @ Missouri Tigers",
-        "logo": "/img/cfb-401856743.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN",
-            "url": "https://ehgembxe.cfd/o9bl8cai-2758",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "tulsa-golden-hurricane-v-tulane-green-wave-401862822",
-        "name": "Tulsa Golden Hurricane @ Tulane Green Wave",
-        "logo": "/img/cfb-401862822.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPNU",
-            "url": "https://ehgembxe.cfd/u2zt5c5h-5137",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "wwe-crown-jewel-2026",
-        "name": "WWE: Crown Jewel 2026",
-        "logo": "/img/wwe-crownjewel2026.jpg",
-        "genre": 6,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/66pn4mer-7494",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "zuffa-boxing-12-billam-smith-vs-clarke",
-        "name": "Zuffa Boxing 12: Billam-Smith vs Clarke",
-        "logo": "/img/zuffa-boxing-12-event-art.jpg",
-        "genre": 3,
-        "time": "2026-11-07T12:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/ui7rvjc3-6712",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "athletic-club-v-osasuna-401882811",
-        "name": "Athletic Club @ Osasuna",
-        "logo": "/img/laliga-401882811.png",
-        "genre": 1,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/9spzqf0c-5328",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "duke-blue-devils-v-nc-state-wolfpack-401858286",
-        "name": "Duke Blue Devils @ NC State Wolfpack",
-        "logo": "/img/cfb-401858286.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CW",
-            "url": "https://ehgembxe.cfd/8x015102-940",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "florida-panthers-v-washington-capitals-401892662",
-        "name": "Florida Panthers @ Washington Capitals",
-        "logo": "/img/nhl-401892662.png",
+        "url": "tampa-bay-lightning-v-winnipeg-jets-401892677",
+        "name": "Tampa Bay Lightning @ Winnipeg Jets",
+        "logo": "/img/nhl-401892677.png",
         "genre": 11,
         "sub_genre": 1,
-        "time": "2026-11-07T12:30",
+        "time": "2026-11-08T18:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
             "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/tbyirstg-4944",
+            "url": "https://ehgembxe.cfd/q6wv1bdr-5282",
             "vip": false
           }
         ]
       },
       {
-        "url": "manchester-city-v-nottingham-forest-401878757",
-        "name": "Manchester City @ Nottingham Forest",
-        "logo": "/img/premierleague-401878757.png",
-        "genre": 1,
-        "sub_genre": 1,
-        "time": "2026-11-07T12:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Stan Sport",
-            "url": "https://ehgembxe.cfd/55gfbbaz-1246",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "maryland-terrapins-v-purdue-boilermakers-401858515",
-        "name": "Maryland Terrapins @ Purdue Boilermakers",
-        "logo": "/img/cfb-401858515.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "BTN",
-            "url": "https://ehgembxe.cfd/tkdttav3-2588",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "werder-bremen-v-vfb-stuttgart-401884743",
-        "name": "Werder Bremen @ VfB Stuttgart",
-        "logo": "/img/bundesliga-401884743.png",
-        "genre": 1,
-        "sub_genre": 3,
-        "time": "2026-11-07T12:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN Canada",
-            "url": "https://ehgembxe.cfd/80zqmdpb-6002",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "arkansas-razorbacks-v-auburn-tigers-401856738",
-        "name": "Arkansas Razorbacks @ Auburn Tigers",
-        "logo": "/img/cfb-401856738.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T12:45",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "SEC Network",
-            "url": "https://ehgembxe.cfd/h4wvvvyf-5106",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "bkfc-96-glasgow-weir-vs-cohoon",
-        "name": "BKFC 96 Glasgow: Weir vs Cohoon",
-        "logo": "/img/fzirpt1794036342.jpg",
-        "genre": 3,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "DAZN",
-            "url": "https://ehgembxe.cfd/cx9zk89h-1787",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "crown-vic-nationals-at-caraway-speedway",
-        "name": "Crown Vic Nationals at Caraway Speedway",
-        "logo": "https://d2779tscntxxsw.cloudfront.net/6ae8c81f2fbb5.png",
-        "genre": 2,
-        "sub_genre": 2,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Floracing",
-            "url": "https://ehgembxe.cfd/2f7cfj6q-7968",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "estudiantes-de-la-plata-v-talleres-cordoba-401841661",
-        "name": "Estudiantes de La Plata @ Talleres (Córdoba)",
-        "logo": "/img/argentina-401841661.png",
-        "genre": 1,
-        "sub_genre": 20,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Fanatiz",
-            "url": "https://ehgembxe.cfd/sh1bedc6-7298",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "independiente-rivadavia-v-gimnasia-mendoza-401841666",
-        "name": "Independiente Rivadavia @ Gimnasia (Mendoza)",
-        "logo": "/img/argentina-401841666.png",
-        "genre": 1,
-        "sub_genre": 20,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Fanatiz",
-            "url": "https://ehgembxe.cfd/3ywivpgp-8748",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "msc-cruises-sao-paulo-grand-prix-qualifying-f1-401839131",
-        "name": "MSC Cruises São Paulo Grand Prix - Qualifying",
-        "logo": "/img/f1-401839131.png",
-        "genre": 2,
-        "sub_genre": 3,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Apple TV",
-            "url": "https://ehgembxe.cfd/jgbl20sk-245",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "oklahoma-state-cowboys-v-kansas-state-wildcats-401856854",
-        "name": "Oklahoma State Cowboys @ Kansas State Wildcats",
-        "logo": "/img/cfb-401856854.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "TNT",
-            "url": "https://ehgembxe.cfd/2szx41ik-2743",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "old-dominion-monarchs-v-coastal-carolina-chanticleers-401869945",
-        "name": "Old Dominion Monarchs @ Coastal Carolina Chanticleers",
-        "logo": "/img/cfb-401869945.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/2npsm2w0-2941",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "paris-fc-v-aj-auxerre-401876411",
-        "name": "Paris FC @ AJ Auxerre",
-        "logo": "/img/ligue1-401876411.png",
-        "genre": 1,
-        "sub_genre": 4,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "beIN Sports Connect 5",
-            "url": "https://ehgembxe.cfd/8a9rv4ba-8573",
-            "vip": false
-          },
-          {
-            "name": "Ligue 1+ France",
-            "url": "https://ehgembxe.cfd/l2tn1auk-3556",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "prime-show-mma-19",
-        "name": "Prime Show MMA 19",
-        "logo": "/img/PRIME_19_BACKGROUND_POZIOM_.png",
-        "genre": 3,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": true,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Pay Per View",
-            "url": "https://ehgembxe.cfd/017215f3-9801",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "st-louis-blues-v-nashville-predators-401892663",
-        "name": "St. Louis Blues @ Nashville Predators",
-        "logo": "/img/nhl-401892663.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T13:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "NHL Net",
-            "url": "https://ehgembxe.cfd/kelcwql2-6645",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "pogon-szczecin-v-widzew-lodz-ekstraklasa-2490313",
-        "name": "Pogoń Szczecin @ Widzew Łódź",
-        "logo": "/img/ekstraklasa-2490313.png",
-        "genre": 1,
-        "sub_genre": 21,
-        "time": "2026-11-07T14:15",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CANAL+ Sport 3 PL",
-            "url": "https://ehgembxe.cfd/f9q2whgc-6063",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "11-7-26-the-dirt-track-at-charlotte",
-        "name": "11.7.26 | The Dirt Track at Charlotte",
-        "logo": "https://dirtvision.asset.viewlift.com/images/2026/11/04/11-7-26_Sponsored_1793830160314.png?impolicy=resize&amp;w=1920&amp;h=1080",
+        "url": "11-8-26-world-of-outlaws-awards-celebration",
+        "name": "11.8.26 | World of Outlaws Awards Celebration",
+        "logo": "https://dirtvision.asset.viewlift.com/images/2026/08/25/11-8-26_Awards-1787678495278.png?impolicy=resize&amp;w=1920&amp;h=1080",
         "genre": 2,
         "sub_genre": 1,
-        "time": "2026-11-07T14:30",
+        "time": "2026-11-08T19:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
             "name": "Dirtvision",
-            "url": "https://ehgembxe.cfd/e0qz6wi1-7941",
+            "url": "https://ehgembxe.cfd/jb1nio9x-8684",
             "vip": false
           }
         ]
       },
       {
-        "url": "georgia-state-panthers-v-app-state-mountaineers-401869927",
-        "name": "Georgia State Panthers @ App State Mountaineers",
-        "logo": "/img/cfb-401869927.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T14:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/2k7i7gd7-3242",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "sassuolo-v-as-roma-401874803",
-        "name": "Sassuolo @ AS Roma",
-        "logo": "/img/seriea-401874803.png",
-        "genre": 1,
-        "sub_genre": 5,
-        "time": "2026-11-07T14:45",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/6137ryvx-4023",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "delaware-blue-hens-v-kennesaw-state-owls-401871073",
-        "name": "Delaware Blue Hens @ Kennesaw State Owls",
-        "logo": "/img/cfb-401871073.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/4dk321bn-9347",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "real-madrid-v-valencia-401882808",
-        "name": "Real Madrid @ Valencia",
-        "logo": "/img/laliga-401882808.png",
-        "genre": 1,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/hs8jxjxx-8260",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "texas-a-m-aggies-v-south-carolina-gamecocks-401856744",
-        "name": "Texas A&amp;M Aggies @ South Carolina Gamecocks",
-        "logo": "/img/cfb-401856744.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN",
-            "url": "https://ehgembxe.cfd/o9bl8cai-5680",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "ul-monroe-warhawks-v-arkansas-state-red-wolves-401869936",
-        "name": "UL Monroe Warhawks @ Arkansas State Red Wolves",
-        "logo": "/img/cfb-401869936.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/h9f99qhb-8971",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "troyes-v-paris-saint-germain-401876407",
-        "name": "Troyes @ Paris Saint-Germain",
-        "logo": "/img/ligue1-401876407.png",
-        "genre": 1,
-        "sub_genre": 4,
-        "time": "2026-11-07T15:05",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "beIN Sports Connect 3",
-            "url": "https://ehgembxe.cfd/2e3uhhu1-9785",
-            "vip": false
-          },
-          {
-            "name": "Ligue 1+ France",
-            "url": "https://ehgembxe.cfd/l2tn1auk-3556",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "alabama-crimson-tide-v-lsu-tigers-401856740",
-        "name": "Alabama Crimson Tide @ LSU Tigers",
-        "logo": "/img/cfb-401856740.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ABC",
-            "url": "https://ehgembxe.cfd/nhmzkzez-5767",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "charlotte-49ers-v-uab-blazers-401862819",
-        "name": "Charlotte 49ers @ UAB Blazers",
-        "logo": "/img/cfb-401862819.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/o8swdlm6-147",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "defensa-y-justicia-v-boca-juniors-401841669",
-        "name": "Defensa y Justicia @ Boca Juniors",
-        "logo": "/img/argentina-401841669.png",
-        "genre": 1,
-        "sub_genre": 20,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Fanatiz",
-            "url": "https://ehgembxe.cfd/wwua0un8-7992",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "estudiantes-de-rio-cuarto-v-rosario-central-401841663",
-        "name": "Estudiantes de Río Cuarto @ Rosario Central",
-        "logo": "/img/argentina-401841663.png",
-        "genre": 1,
-        "sub_genre": 20,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Fanatiz",
-            "url": "https://ehgembxe.cfd/iehc5agr-5575",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "huracan-v-argentinos-juniors-401841672",
-        "name": "Huracán @ Argentinos Juniors",
-        "logo": "/img/argentina-401841672.png",
-        "genre": 1,
-        "sub_genre": 20,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Fanatiz",
-            "url": "https://ehgembxe.cfd/7ld0i9b4-6696",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "marshall-thundering-herd-v-georgia-southern-eagles-401869951",
-        "name": "Marshall Thundering Herd @ Georgia Southern Eagles",
-        "logo": "/img/cfb-401869951.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/72w8bagt-4875",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "merrimack-warriors-v-wake-forest-demon-deacons-401858290",
-        "name": "Merrimack Warriors @ Wake Forest Demon Deacons",
-        "logo": "/img/cfb-401858290.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ACC Network",
-            "url": "https://ehgembxe.cfd/aqwidk96-4815",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "oregon-ducks-v-ohio-state-buckeyes-401858514",
-        "name": "Oregon Ducks @ Ohio State Buckeyes",
-        "logo": "/img/cfb-401858514.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CBS",
-            "url": "https://ehgembxe.cfd/ngmu9mth-6262",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "penn-state-nittany-lions-v-washington-huskies-401858516",
-        "name": "Penn State Nittany Lions @ Washington Huskies",
-        "logo": "/img/cfb-401858516.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "FS1",
-            "url": "https://ehgembxe.cfd/hxgund1f-624",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "temple-owls-v-navy-midshipmen-401862820",
-        "name": "Temple Owls @ Navy Midshipmen",
-        "logo": "/img/cfb-401862820.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CBSSN",
-            "url": "https://ehgembxe.cfd/9c2jwr40-7729",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "western-kentucky-hilltoppers-v-middle-tennessee-blue-raiders-401871076",
-        "name": "Western Kentucky Hilltoppers @ Middle Tennessee Blue Raiders",
-        "logo": "/img/cfb-401871076.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/oa0co4pg-404",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "ucf-knights-v-kansas-jayhawks-401856850",
-        "name": "UCF Knights @ Kansas Jayhawks",
-        "logo": "/img/cfb-401856850.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T15:45",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN2",
-            "url": "https://ehgembxe.cfd/33jhpzfr-4796",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "atlanta-united-fc-v-red-bull-new-york-761939",
-        "name": "Atlanta United FC @ Red Bull New York",
-        "logo": "/img/mls-761939.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/6yqzpr3c-6303",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "charlotte-fc-v-inter-miami-cf-761938",
-        "name": "Charlotte FC @ Inter Miami CF",
-        "logo": "/img/mls-761938.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/pl3fk4yk-7206",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "columbus-crew-v-chicago-fire-fc-761935",
-        "name": "Columbus Crew @ Chicago Fire FC",
-        "logo": "/img/mls-761935.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/fd47yyl5-581",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "fall-brawl-at-hickory-motor-speedway",
-        "name": "Fall Brawl at Hickory Motor Speedway",
-        "logo": "https://d2779tscntxxsw.cloudfront.net/69a9f6f4ef65e.png",
-        "genre": 2,
-        "sub_genre": 2,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Floracing",
-            "url": "https://ehgembxe.cfd/us2uxie6-6424",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "louisiana-tech-bulldogs-v-troy-trojans-401871098",
-        "name": "Louisiana Tech Bulldogs @ Troy Trojans",
-        "logo": "/img/cfb-401871098.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/i1sdxl7n-9813",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "missouri-state-bears-v-florida-international-panthers-401871074",
-        "name": "Missouri State Bears @ Florida International Panthers",
-        "logo": "/img/cfb-401871074.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/cc3kwaje-4382",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "nashville-sc-v-fc-cincinnati-761937",
-        "name": "Nashville SC @ FC Cincinnati",
-        "logo": "/img/mls-761937.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/cq5k3hqo-660",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "new-england-revolution-v-orlando-city-sc-761940",
-        "name": "New England Revolution @ Orlando City SC",
-        "logo": "/img/mls-761940.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/b86rfemh-3123",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "new-york-city-fc-v-d-c-united-761936",
-        "name": "New York City FC @ D.C. United",
-        "logo": "/img/mls-761936.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/lkutak4p-9248",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "northern-illinois-huskies-v-san-jose-state-spartans-401864534",
-        "name": "Northern Illinois Huskies @ San José State Spartans",
-        "logo": "/img/cfb-401864534.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MW+",
-            "url": "https://ehgembxe.cfd/c971p8d6-8649",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "rice-owls-v-north-texas-mean-green-401862821",
-        "name": "Rice Owls @ North Texas Mean Green",
-        "logo": "/img/cfb-401862821.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPNU",
-            "url": "https://ehgembxe.cfd/u2zt5c5h-1028",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "toronto-fc-v-philadelphia-union-761941",
-        "name": "Toronto FC @ Philadelphia Union",
-        "logo": "/img/mls-761941.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/4f96u49c-2354",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "vancouver-whitecaps-v-cf-montreal-761934",
-        "name": "Vancouver Whitecaps @ CF Montréal",
-        "logo": "/img/mls-761934.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T16:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/2spvrpj3-1584",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "rutgers-scarlet-knights-v-wisconsin-badgers-401858517",
-        "name": "Rutgers Scarlet Knights @ Wisconsin Badgers",
-        "logo": "/img/cfb-401858517.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T16:15",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "BTN",
-            "url": "https://ehgembxe.cfd/tkdttav3-1480",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "vanderbilt-commodores-v-mississippi-state-bulldogs-401856742",
-        "name": "Vanderbilt Commodores @ Mississippi State Bulldogs",
-        "logo": "/img/cfb-401856742.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T16:15",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "SEC Network",
-            "url": "https://ehgembxe.cfd/h4wvvvyf-3549",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "denver-nuggets-v-indiana-pacers-401909938",
-        "name": "Denver Nuggets @ Indiana Pacers",
-        "logo": "/img/nba-401909938.png",
-        "genre": 7,
-        "sub_genre": 1,
-        "time": "2026-11-07T17:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "NBA League Pass",
-            "url": "https://ehgembxe.cfd/y5b5t5jt-6005",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "new-york-rangers-v-seattle-kraken-401892664",
-        "name": "New York Rangers @ Seattle Kraken",
-        "logo": "/img/nhl-401892664.png",
+        "url": "new-jersey-devils-v-toronto-maple-leafs-401892676",
+        "name": "New Jersey Devils @ Toronto Maple Leafs",
+        "logo": "/img/nhl-401892676.png",
         "genre": 11,
         "sub_genre": 1,
-        "time": "2026-11-07T17:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/438vz83f-1770",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "pbr-ridepass",
-        "name": "PBR RidePass",
-        "logo": "https://d2779tscntxxsw.cloudfront.net/68150c778dbc1.png",
-        "genre": 2,
-        "sub_genre": 2,
-        "time": "2026-11-07T17:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Floracing",
-            "url": "https://ehgembxe.cfd/ph13v1ca-6570",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "south-alabama-jaguars-v-louisiana-ragin-cajuns-401869968",
-        "name": "South Alabama Jaguars @ Louisiana Ragin' Cajuns",
-        "logo": "/img/cfb-401869968.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T17:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/1sh61l6x-5465",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "ufc-fight-night-cortes-acosta-vs-walker-ufc-600061268",
-        "name": "UFC Fight Night: Cortes Acosta vs. Walker",
-        "logo": "/img/ufc-600061268.jpg",
-        "genre": 3,
-        "time": "2026-11-07T17:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Paramount+",
-            "url": "https://ehgembxe.cfd/ih72q1qq-4926",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "boise-state-broncos-v-colorado-state-rams-401860911",
-        "name": "Boise State Broncos @ Colorado State Rams",
-        "logo": "/img/cfb-401860911.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T18:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "USA Net",
-            "url": "https://ehgembxe.cfd/nloc37sc-2285",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "kentucky-wildcats-v-tennessee-volunteers-401856745",
-        "name": "Kentucky Wildcats @ Tennessee Volunteers",
-        "logo": "/img/cfb-401856745.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T18:15",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN",
-            "url": "https://ehgembxe.cfd/o9bl8cai-4664",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "usac-avanti-western-states-midgets-at-ventura-raceway",
-        "name": "USAC Avanti Western States Midgets at Ventura Raceway",
-        "logo": "https://d2779tscntxxsw.cloudfront.net/68659c8e74e0a.png",
-        "genre": 2,
-        "sub_genre": 2,
-        "time": "2026-11-07T18:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Floracing",
-            "url": "https://ehgembxe.cfd/g9aoytnw-5745",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "colorado-rapids-v-fc-dallas-761943",
-        "name": "Colorado Rapids @ FC Dallas",
-        "logo": "/img/mls-761943.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/ys0na8u2-411",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "la-galaxy-v-real-salt-lake-761946",
-        "name": "LA Galaxy @ Real Salt Lake",
-        "logo": "/img/mls-761946.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/g423ls0x-6724",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "lafc-v-seattle-sounders-fc-761948",
-        "name": "LAFC @ Seattle Sounders FC",
-        "logo": "/img/mls-761948.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/hq5rnrg1-9513",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "montreal-canadiens-v-toronto-maple-leafs-401892665",
-        "name": "Montreal Canadiens @ Toronto Maple Leafs",
-        "logo": "/img/nhl-401892665.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/1lqd2rf9-536",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "new-jersey-devils-v-new-york-islanders-401892667",
-        "name": "New Jersey Devils @ New York Islanders",
-        "logo": "/img/nhl-401892667.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/5tfymiiq-9152",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "portland-timbers-v-austin-fc-761942",
-        "name": "Portland Timbers @ Austin FC",
-        "logo": "/img/mls-761942.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/sn18u26t-8242",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "sam-houston-bearkats-v-jacksonville-state-gamecocks-401871075",
-        "name": "Sam Houston Bearkats @ Jacksonville State Gamecocks",
-        "logo": "/img/cfb-401871075.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CBSSN",
-            "url": "https://ehgembxe.cfd/9c2jwr40-8254",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "san-jose-earthquakes-v-minnesota-united-fc-761945",
-        "name": "San Jose Earthquakes @ Minnesota United FC",
-        "logo": "/img/mls-761945.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/k95rman2-9730",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "sporting-kansas-city-v-san-diego-fc-761947",
-        "name": "Sporting Kansas City @ San Diego FC",
-        "logo": "/img/mls-761947.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/jq4h09n6-3179",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "st-louis-city-sc-v-houston-dynamo-fc-761944",
-        "name": "St. Louis CITY SC @ Houston Dynamo FC",
-        "logo": "/img/mls-761944.png",
-        "genre": 1,
-        "sub_genre": 6,
-        "time": "2026-11-07T19:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "MLS Season Pass",
-            "url": "https://ehgembxe.cfd/86ksiduo-7522",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "utah-mammoth-v-ottawa-senators-401892666",
-        "name": "Utah Mammoth @ Ottawa Senators",
-        "logo": "/img/nhl-401892666.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T19:00",
+        "time": "2026-11-08T19:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
             "name": "NHL Net",
-            "url": "https://ehgembxe.cfd/kelcwql2-3604",
+            "url": "https://ehgembxe.cfd/kelcwql2-4211",
             "vip": false
           }
         ]
       },
       {
-        "url": "air-force-falcons-v-army-black-knights-401862823",
-        "name": "Air Force Falcons @ Army Black Knights",
-        "logo": "/img/cfb-401862823.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T19:30",
+        "url": "philadelphia-flyers-v-calgary-flames-401892678",
+        "name": "Philadelphia Flyers @ Calgary Flames",
+        "logo": "/img/nhl-401892678.png",
+        "genre": 11,
+        "sub_genre": 1,
+        "time": "2026-11-08T19:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
-            "name": "CBS",
-            "url": "https://ehgembxe.cfd/ngmu9mth-5386",
+            "name": "ESPN+",
+            "url": "https://ehgembxe.cfd/o083avx5-4692",
             "vip": false
           }
         ]
       },
       {
-        "url": "brooklyn-nets-v-atlanta-hawks-401909939",
-        "name": "Brooklyn Nets @ Atlanta Hawks",
-        "logo": "/img/nba-401909939.png",
+        "url": "utah-jazz-v-minnesota-timberwolves-401909947",
+        "name": "Utah Jazz @ Minnesota Timberwolves",
+        "logo": "/img/nba-401909947.png",
         "genre": 7,
         "sub_genre": 1,
-        "time": "2026-11-07T19:30",
+        "time": "2026-11-08T19:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
             "name": "NBA League Pass",
-            "url": "https://ehgembxe.cfd/t3qoc0yq-8941",
+            "url": "https://ehgembxe.cfd/w9wujgg8-7284",
             "vip": false
           }
         ]
       },
       {
-        "url": "colorado-buffaloes-v-arizona-state-sun-devils-401856852",
-        "name": "Colorado Buffaloes @ Arizona State Sun Devils",
-        "logo": "/img/cfb-401856852.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T19:30",
+        "url": "brooklyn-nets-v-dallas-mavericks-401909948",
+        "name": "Brooklyn Nets @ Dallas Mavericks",
+        "logo": "/img/nba-401909948.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-08T19:30",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
-            "name": "ESPN2",
-            "url": "https://ehgembxe.cfd/33jhpzfr-9305",
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/ppe7zl85-6503",
             "vip": false
           }
         ]
       },
       {
-        "url": "georgia-bulldogs-v-ole-miss-rebels-401856741",
-        "name": "Georgia Bulldogs @ Ole Miss Rebels",
-        "logo": "/img/cfb-401856741.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T19:30",
+        "url": "boston-celtics-v-milwaukee-bucks-401909949",
+        "name": "Boston Celtics @ Milwaukee Bucks",
+        "logo": "/img/nba-401909949.png",
+        "genre": 7,
+        "sub_genre": 1,
+        "time": "2026-11-08T20:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
-            "name": "ABC",
-            "url": "https://ehgembxe.cfd/nhmzkzez-4773",
+            "name": "NBA League Pass",
+            "url": "https://ehgembxe.cfd/08hcuqez-1577",
             "vip": false
           }
         ]
       },
       {
-        "url": "louisville-cardinals-v-georgia-tech-yellow-jackets-401858287",
-        "name": "Louisville Cardinals @ Georgia Tech Yellow Jackets",
-        "logo": "/img/cfb-401858287.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T19:30",
+        "url": "pittsburgh-penguins-v-anaheim-ducks-401892679",
+        "name": "Pittsburgh Penguins @ Anaheim Ducks",
+        "logo": "/img/nhl-401892679.png",
+        "genre": 11,
+        "sub_genre": 1,
+        "time": "2026-11-08T20:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
-            "name": "ACC Network",
-            "url": "https://ehgembxe.cfd/aqwidk96-1271",
+            "name": "ESPN+",
+            "url": "https://ehgembxe.cfd/l06zl7yi-1122",
             "vip": false
           }
         ]
       },
       {
-        "url": "miami-hurricanes-v-notre-dame-fighting-irish-401858291",
-        "name": "Miami Hurricanes @ Notre Dame Fighting Irish",
-        "logo": "/img/cfb-401858291.png",
+        "url": "buccaneers-v-bears-401873050",
+        "name": "Buccaneers @ Bears",
+        "logo": "/img/nfl-401873050.png",
         "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T19:30",
+        "sub_genre": 1,
+        "time": "2026-11-08T20:20",
         "isevent": true,
         "vip": false,
+        "featured": true,
         "viewers": 0,
         "streams": [
           {
             "name": "NBC",
-            "url": "https://ehgembxe.cfd/bdl7my34-2215",
+            "url": "https://ehgembxe.cfd/bdl7my34-3058",
             "vip": false
-          }
-        ]
-      },
-      {
-        "url": "oklahoma-sooners-v-florida-gators-401856739",
-        "name": "Oklahoma Sooners @ Florida Gators",
-        "logo": "/img/cfb-401856739.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T19:45",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
+          },
           {
-            "name": "SEC Network",
-            "url": "https://ehgembxe.cfd/h4wvvvyf-7395",
+            "name": "Sky Sports 4K",
+            "url": "https://ehgembxe.cfd/iy500hzq-8676",
             "vip": false
           }
         ]
       },
       {
-        "url": "chicago-blackhawks-v-carolina-hurricanes-401892668",
-        "name": "Chicago Blackhawks @ Carolina Hurricanes",
-        "logo": "/img/nhl-401892668.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T20:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/g19vnbhs-4838",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "liberty-flames-v-new-mexico-state-aggies-401870795",
-        "name": "Liberty Flames @ New Mexico State Aggies",
-        "logo": "/img/cfb-401870795.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T20:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPNU",
-            "url": "https://ehgembxe.cfd/u2zt5c5h-527",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "new-york-knicks-v-cleveland-cavaliers-401909940",
-        "name": "New York Knicks @ Cleveland Cavaliers",
-        "logo": "/img/nba-401909940.png",
+        "url": "miami-heat-v-sacramento-kings-401909951",
+        "name": "Miami Heat @ Sacramento Kings",
+        "logo": "/img/nba-401909951.png",
         "genre": 7,
         "sub_genre": 1,
-        "time": "2026-11-07T20:00",
+        "time": "2026-11-08T21:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
             "name": "NBA League Pass",
-            "url": "https://ehgembxe.cfd/utnoaq0x-9292",
+            "url": "https://ehgembxe.cfd/l1qp1587-2334",
             "vip": false
           }
         ]
       },
       {
-        "url": "newell-s-old-boys-v-instituto-cordoba-401841664",
-        "name": "Newell's Old Boys @ Instituto (Córdoba)",
-        "logo": "/img/argentina-401841664.png",
-        "genre": 1,
-        "sub_genre": 20,
-        "time": "2026-11-07T20:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Fanatiz",
-            "url": "https://ehgembxe.cfd/b27126va-5960",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "san-jose-sharks-v-dallas-stars-401892669",
-        "name": "San Jose Sharks @ Dallas Stars",
-        "logo": "/img/nhl-401892669.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T20:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/d7wnl4v1-1243",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "tampa-bay-lightning-v-minnesota-wild-401892670",
-        "name": "Tampa Bay Lightning @ Minnesota Wild",
-        "logo": "/img/nhl-401892670.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T20:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/ksd23k0l-1793",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "washington-wizards-v-oklahoma-city-thunder-401909941",
-        "name": "Washington Wizards @ Oklahoma City Thunder",
-        "logo": "/img/nba-401909941.png",
+        "url": "new-orleans-pelicans-v-la-clippers-401909950",
+        "name": "New Orleans Pelicans @ LA Clippers",
+        "logo": "/img/nba-401909950.png",
         "genre": 7,
         "sub_genre": 1,
-        "time": "2026-11-07T20:00",
+        "time": "2026-11-08T21:00",
         "isevent": true,
         "vip": false,
         "viewers": 0,
         "streams": [
           {
             "name": "NBA League Pass",
-            "url": "https://ehgembxe.cfd/eqmfqpxm-4344",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "orlando-magic-v-golden-state-warriors-401909942",
-        "name": "Orlando Magic @ Golden State Warriors",
-        "logo": "/img/nba-401909942.png",
-        "genre": 7,
-        "sub_genre": 1,
-        "time": "2026-11-07T20:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "NBA League Pass",
-            "url": "https://ehgembxe.cfd/fwkhbn5r-5346",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "ama-endurocross-at-salt-lake-city",
-        "name": "AMA EnduroCross at Salt Lake City",
-        "logo": "https://d2779tscntxxsw.cloudfront.net/6ab6b22f5ecba.png",
-        "genre": 2,
-        "sub_genre": 2,
-        "time": "2026-11-07T21:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "Floracing",
-            "url": "https://ehgembxe.cfd/h0rmfz3y-6991",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "detroit-red-wings-v-colorado-avalanche-401892671",
-        "name": "Detroit Red Wings @ Colorado Avalanche",
-        "logo": "/img/nhl-401892671.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T21:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/n0chboqt-1599",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "houston-rockets-v-phoenix-suns-401909943",
-        "name": "Houston Rockets @ Phoenix Suns",
-        "logo": "/img/nba-401909943.png",
-        "genre": 7,
-        "sub_genre": 1,
-        "time": "2026-11-07T21:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "NBA League Pass",
-            "url": "https://ehgembxe.cfd/b8wkrs78-9866",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "pittsburgh-penguins-v-los-angeles-kings-401892672",
-        "name": "Pittsburgh Penguins @ Los Angeles Kings",
-        "logo": "/img/nhl-401892672.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T21:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/5wlrlfft-2614",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "fresno-state-bulldogs-v-utah-state-aggies-401860913",
-        "name": "Fresno State Bulldogs @ Utah State Aggies",
-        "logo": "/img/cfb-401860913.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T21:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "USA Net",
-            "url": "https://ehgembxe.cfd/nloc37sc-9908",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "hawai-i-rainbow-warriors-v-utep-miners-401864532",
-        "name": "Hawai'i Rainbow Warriors @ UTEP Miners",
-        "logo": "/img/cfb-401864532.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T21:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "FS1",
-            "url": "https://ehgembxe.cfd/hxgund1f-2195",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "west-virginia-mountaineers-v-texas-tech-red-raiders-401856856",
-        "name": "West Virginia Mountaineers @ Texas Tech Red Raiders",
-        "logo": "/img/cfb-401856856.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T21:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN",
-            "url": "https://ehgembxe.cfd/o9bl8cai-1342",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "san-antonio-spurs-v-portland-trail-blazers-401909944",
-        "name": "San Antonio Spurs @ Portland Trail Blazers",
-        "logo": "/img/nba-401909944.png",
-        "genre": 7,
-        "sub_genre": 1,
-        "time": "2026-11-07T22:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "NBA League Pass",
-            "url": "https://ehgembxe.cfd/yrkaiz59-2779",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "vancouver-canucks-v-edmonton-oilers-401892673",
-        "name": "Vancouver Canucks @ Edmonton Oilers",
-        "logo": "/img/nhl-401892673.png",
-        "genre": 11,
-        "sub_genre": 1,
-        "time": "2026-11-07T22:00",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "ESPN+",
-            "url": "https://ehgembxe.cfd/go80y9md-6428",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "texas-state-bobcats-v-oregon-state-beavers-401860912",
-        "name": "Texas State Bobcats @ Oregon State Beavers",
-        "logo": "/img/cfb-401860912.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T22:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CW",
-            "url": "https://ehgembxe.cfd/8x015102-8643",
-            "vip": false
-          }
-        ]
-      },
-      {
-        "url": "wyoming-cowboys-v-unlv-rebels-401864535",
-        "name": "Wyoming Cowboys @ UNLV Rebels",
-        "logo": "/img/cfb-401864535.png",
-        "genre": 8,
-        "sub_genre": 2,
-        "time": "2026-11-07T22:30",
-        "isevent": true,
-        "vip": false,
-        "viewers": 0,
-        "streams": [
-          {
-            "name": "CBSSN",
-            "url": "https://ehgembxe.cfd/9c2jwr40-1320",
+            "url": "https://ehgembxe.cfd/boqb792w-7073",
             "vip": false
           }
         ]
@@ -2468,7 +281,24 @@
   },
   {
     "category": "Replays",
-    "events": []
+    "events": [
+      {
+        "url": "prime-show-mma-19",
+        "name": "Prime Show MMA 19",
+        "logo": "https://tim-streams.com/images/replay/PRIME_19_BACKGROUND_POZIOM_.png",
+        "genre": 17,
+        "date": "11/07/2026",
+        "vip": false,
+        "viewers": 0,
+        "streams": [
+          {
+            "name": "TimStreams",
+            "url": "https://voe.sx/e/r3vhzvpxehk6",
+            "vip": false
+          }
+        ]
+      }
+    ]
   },
   {
     "category": "24/7",

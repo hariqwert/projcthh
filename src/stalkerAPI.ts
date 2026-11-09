@@ -1711,7 +1711,7 @@ export class StalkerAPI {
 
             if (cookies.portal_session) {
                 try {
-                    const data = jwt.verify(cookies.portal_session, JWT_SECRET) as any;
+                    const data = jwt.verify(cookies.portal_session, JWT_SECRET, { algorithms: ['HS256'] }) as any;
                     if (data && data.URL) {
                         if (!data.type) {
                             const isXtream = !!(data.username && data.password && !data.MAC);

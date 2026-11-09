@@ -1,0 +1,63 @@
+{
+  "id": "/hero.html",
+  "name": "Aetheris",
+  "short_name": "Aetheris",
+  "description": "Aetheris Quantum Cinema, 4K VOD, Anime, and Live Sports OTT Platform",
+  "start_url": "/hero.html",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#05050a",
+  "theme_color": "#05050a",
+  "orientation": "any",
+  "categories": ["entertainment", "video", "sports"],
+  "icons": [
+    {
+      "src": "/aetheris_infinity.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Subway Surfers: Mumbai 3D",
+      "short_name": "Subway Mumbai",
+      "description": "Play 3D Subway Surfers Mumbai World Tour Offline",
+      "url": "/subway.html",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Aetheris Portal",
+      "short_name": "Portal",
+      "description": "Launch Aetheris Quantum Portal",
+      "url": "/hero.html",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Cinema & Live TV",
+      "short_name": "Cinema",
+      "description": "Browse 4K Movies, Series, Anime & Live Sports",
+      "url": "/consumet.html",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

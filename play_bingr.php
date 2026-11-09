@@ -816,6 +816,36 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             pointer-events: none !important;
         }
     </style>
+
+<style id="ottCircleBtnStyles">
+.ott-circle-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 9999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(10, 10, 15, 0.78) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #e4e4e7 !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    outline: none !important;
+}
+.ott-circle-btn:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
+    border-color: rgba(255, 255, 255, 0.35) !important;
+    color: #ffffff !important;
+    transform: scale(1.05) !important;
+}
+.ott-circle-btn:active {
+    transform: scale(0.95) !important;
+}
+</style>
+
 </head>
 <body class="bg-black text-white fixed inset-0 w-full h-full h-[100dvh] overflow-hidden select-none">
 
@@ -1001,112 +1031,67 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 </div>
             </div>
 
-            <!-- Mobile Quick Actions Cluster (Clean Glass OTT Pills - Floating Icon-Only Design) -->
-            <div class="mobile-controls-cluster items-center gap-1 shrink-0 ml-2">
-                <!-- TV Episodes Drawer Toggle (If Series or Anime) -->
-                <button id="btnEpisodesDrawerMob" onclick="toggleEpisodesDrawer(); if(event) event.stopPropagation();" class="hidden ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Episodes Picker">
-                    <i data-lucide="list-video" class="w-3.5 h-3.5 text-zinc-300"></i>
-                    <span class="text-[11px] font-bold">Ep</span>
+            <!-- Mobile Quick Actions Cluster (Pure Icons Only) -->
+            <div class="mobile-controls-cluster items-center gap-1.5 shrink-0 ml-2">
+                <!-- 1. Audio Icon -->
+                <button onclick="openAudioModalTab(); if(event) event.stopPropagation();" class="ott-circle-btn hide-in-embed" title="Audio Dubs">
+                    <i data-lucide="headphones" class="w-4 h-4"></i>
                 </button>
-                <!-- Audio & Subs CC Pill -->
-                <button onclick="openSubtitlesModalTab(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Audio Dubs & Subtitles">
-                    <i data-lucide="languages" class="w-3.5 h-3.5 text-zinc-300"></i>
-                    <span class="text-[11px]">CC</span>
+                <!-- 2. Subtitles Icon -->
+                <button onclick="openSubtitlesModalTab(); if(event) event.stopPropagation();" class="ott-circle-btn hide-in-embed" title="Subtitles & Closed Captions">
+                    <i data-lucide="subtitles" class="w-4 h-4"></i>
                 </button>
-                <!-- Quality & Server Pill -->
-                <button id="btnOpenQualityServerMob" onclick="toggleQualityServerModal(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Quality & Servers">
-                    <span id="qualityButtonLabelMob" class="text-[11px] font-mono">1080p</span>
+                <!-- 3. Server + Quality Icon -->
+                <button id="btnOpenQualityServerMob" onclick="toggleQualityServerModal(); if(event) event.stopPropagation();" class="ott-circle-btn" title="Server & Quality">
+                    <i data-lucide="sliders" class="w-4 h-4"></i>
                 </button>
-                <!-- Proxying / Direct Play Quick Toggle -->
-                <button id="btnProxyingMob" onclick="toggleBingrDirectNoProxyMode(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Proxying (Click to Remove All Proxying & Direct Play)">
-                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
-                    <span id="mobProxyingPill" class="text-[10px] font-mono">Proxying</span>
+                <!-- 4. Episodes Icon (If Series or Anime) -->
+                <button id="btnEpisodesDrawerMob" onclick="toggleEpisodesDrawer(); if(event) event.stopPropagation();" class="ott-circle-btn <?= ($type === 'tv' || $type === 'anime') ? '' : 'hidden' ?>" title="Episodes Picker">
+                    <i data-lucide="layers" class="w-4 h-4"></i>
                 </button>
-                <!-- Aspect Ratio Quick Toggle -->
-                <button id="btnAspectMob" onclick="toggleAspectRatio(); if(event) event.stopPropagation();" class="ott-btn px-2 py-1.5 gap-1 text-zinc-300 hover:text-white text-xs font-bold shrink-0 active:scale-90 shadow-lg" title="Cycle Aspect Ratio">
-                    <i data-lucide="crop" class="w-3.5 h-3.5 text-sky-400"></i>
-                    <span id="mobAspectPill" class="text-[10px] font-mono">Fit</span>
+                <!-- 5. Fit / Zoom Icon -->
+                <button id="btnAspectMob" onclick="toggleAspectRatio(); if(event) event.stopPropagation();" class="ott-circle-btn" title="Aspect Ratio & Zoom">
+                    <i data-lucide="crop" class="w-4 h-4"></i>
                 </button>
-                <!-- Rotate Cinema Screen -->
-                <button id="btnRotateMob" onclick="toggleRotation(event); if(event) event.stopPropagation();" class="ott-btn w-8 h-8 text-zinc-300 hover:text-white shadow-lg shrink-0 active:scale-90" title="Rotate Cinema Screen">
-                    <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
-                </button>
-                <!-- Retry / Reconnect Stream -->
-                <button id="btnRetryMob" onclick="triggerAutoReconnect(); if(event) event.stopPropagation();" class="ott-btn w-8 h-8 text-zinc-300 hover:text-white shadow-lg shrink-0 active:scale-90" title="Retry & Reconnect Stream">
-                    <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
-                </button>
-                <!-- Settings Button (Unified Drawer) -->
-                <button id="btnSettingsMob" onclick="toggleMobileMoreMenu(); if(event) event.stopPropagation();" class="ott-btn w-8 h-8 text-zinc-300 hover:text-white shadow-lg shrink-0 active:scale-90" title="Player Settings">
+                <!-- 6. Settings Icon -->
+                <button id="btnSettingsMob" onclick="toggleMobileMoreMenu(); if(event) event.stopPropagation();" class="ott-circle-btn" title="Player Settings">
                     <i data-lucide="settings" class="w-4 h-4"></i>
                 </button>
-                <!-- Fullscreen Cinema Quick Toggle -->
-                <button id="btnFullscreenTopMob" onclick="toggleFullscreen(event)" class="ott-btn w-8 h-8 text-white bg-white/10 hover:bg-white/20 shrink-0 active:scale-90 shadow-lg" title="Toggle Fullscreen">
+                <!-- 7. Fullscreen Icon -->
+                <button id="btnFullscreenTopMob" onclick="toggleFullscreen(event)" class="ott-circle-btn text-white bg-white/10 hover:bg-white/20" title="Toggle Fullscreen">
                     <i id="fullscreenTopIconMob" data-lucide="maximize" class="w-4 h-4 text-white"></i>
                 </button>
             </div>
 
-            <!-- Desktop Right Controls (Sleek Glassmorphic OTT Suite) -->
-            <div class="desktop-controls-cluster items-center gap-1.5 min-w-0 justify-end">
-                <!-- TV Episodes Drawer Toggle (If Series or Anime) -->
-                <button id="btnEpisodesDrawer" onclick="toggleEpisodesDrawer()" class="hidden px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Episodes Picker">
-                    <i data-lucide="list-video" class="w-3.5 h-3.5 text-zinc-300"></i>
-                    <span>Episodes</span>
+            <!-- Desktop Right Controls (Pure Icons Only) -->
+            <div class="desktop-controls-cluster items-center gap-2 min-w-0 justify-end">
+                <!-- 1. Audio Icon -->
+                <button id="btnOpenAudio" onclick="openAudioModalTab()" class="ott-circle-btn hide-in-embed" title="Audio Dubs & Multi-Language Tracks">
+                    <i data-lucide="headphones" class="w-4 h-4"></i>
                 </button>
-
-                <!-- Direct Mode Switch Button (Visible when embedded) -->
-                <button id="btnSwitchToDirect" onclick="switchPlayerMode('direct', '', true)" class="hidden px-3.5 py-2 rounded-xl glass-btn border border-emerald-500/40 text-xs font-bold text-emerald-300 items-center gap-1.5 shadow-xl cursor-pointer transition-all active:scale-95 shrink-0" title="Switch to Direct Native Stream">
-                    <i data-lucide="play-circle" class="w-4 h-4 text-emerald-400"></i>
-                    <span>Direct Player</span>
+                <!-- 2. Subtitles Icon -->
+                <button id="btnOpenSubtitles" onclick="openSubtitlesModalTab()" class="ott-circle-btn hide-in-embed" title="Subtitles & Closed Captions">
+                    <i data-lucide="subtitles" class="w-4 h-4"></i>
                 </button>
-
-                <!-- Audio Dubs Button -->
-                <button id="btnOpenAudio" onclick="openAudioModalTab()" class="hide-in-embed px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Audio Dubs & Multi-Language Tracks">
-                    <i data-lucide="volume-2" class="w-3.5 h-3.5 text-emerald-400"></i>
-                    <span id="topBarAudioLabel">Audio</span>
+                <!-- 3. Server + Quality Icon -->
+                <button id="btnOpenQualityServer" onclick="toggleQualityServerModal()" class="ott-circle-btn" title="Server & Quality">
+                    <i data-lucide="sliders" class="w-4 h-4"></i>
                 </button>
-
-                <!-- Subtitles Button -->
-                <button id="btnOpenSubtitles" onclick="openSubtitlesModalTab()" class="hide-in-embed px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Subtitles & Closed Captions">
-                    <i data-lucide="languages" class="w-3.5 h-3.5 text-zinc-300"></i>
-                    <span>Subtitles</span>
+                <!-- 4. Episodes Icon (If Series or Anime) -->
+                <button id="btnEpisodesDrawer" onclick="toggleEpisodesDrawer()" class="ott-circle-btn <?= ($type === 'tv' || $type === 'anime') ? '' : 'hidden' ?>" title="Episodes Picker">
+                    <i data-lucide="layers" class="w-4 h-4"></i>
                 </button>
-
-                <!-- Quality & Server Button -->
-                <button id="btnOpenQualityServer" onclick="toggleQualityServerModal()" class="px-3 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Quality & Servers">
-                    <span id="qualityButtonLabel" class="hidden xs:inline">Auto &bull; 1080p</span>
-                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-zinc-400"></i>
+                <!-- 5. Fit / Zoom Icon -->
+                <button id="btnAspectRatio" onclick="toggleAspectRatio()" class="ott-circle-btn" title="Cycle Aspect Ratio & Zoom">
+                    <i data-lucide="crop" class="w-4 h-4"></i>
                 </button>
-
-                <!-- Proxying / Direct Play Toggle Button -->
-                <button id="btnProxyingDesktop" onclick="toggleBingrDirectNoProxyMode()" class="px-2.5 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Toggle Proxying (When ON: removes all proxying and plays raw stream directly)">
-                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
-                    <span id="topProxyingBadge" class="text-[11px] font-mono">Proxying</span>
-                </button>
-
-                <!-- Aspect Ratio Quick Toggle -->
-                <button id="btnAspectRatio" onclick="toggleAspectRatio()" class="px-2.5 py-2 rounded-xl glass-btn text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer shadow-lg shrink-0" title="Aspect Ratio (Fit/Cover/Stretch/Zoom)">
-                    <i data-lucide="crop" class="w-3.5 h-3.5 text-sky-400"></i>
-                    <span id="topAspectBadge" class="text-[11px] font-mono">Fit</span>
-                </button>
-
-                <!-- Rotate Screen (Orientation) -->
-                <button id="btnRotateScreen" onclick="toggleRotation(event)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Rotate Cinema Screen (0°/90°/180°/270°)">
-                    <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
-                </button>
-
-                <!-- Reconnect / Retry Stream -->
-                <button id="btnRetryStream" onclick="triggerAutoReconnect()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Retry Stream (Reload & Reconnect)">
-                    <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
-                </button>
-
-                <!-- Settings Button (Unified Modal) -->
-                <button id="btnPlayerSettings" onclick="toggleMobileMoreMenu(); if(event) event.stopPropagation();" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn flex items-center justify-center text-zinc-300 hover:text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Settings (Sleep Timer, Watch Party, Speed, Screen Lock)">
+                <!-- 6. Settings Icon -->
+                <button id="btnPlayerSettings" onclick="toggleMobileMoreMenu()" class="ott-circle-btn" title="Player Settings">
                     <i data-lucide="settings" class="w-4 h-4"></i>
                 </button>
-
-                <!-- Fullscreen Button -->
-                <button id="btnFullscreenTop" onclick="toggleFullscreen(event)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl glass-btn bg-white/10 hover:bg-white/20 flex items-center justify-center text-white shadow-lg cursor-pointer shrink-0 transition-all active:scale-95" title="Toggle Fullscreen">
-                    <i id="fullscreenTopIcon" data-lucide="maximize" class="w-4 h-4"></i>
+                <!-- 7. Fullscreen Icon -->
+                <button id="btnFullscreenTop" onclick="toggleFullscreen(event)" class="ott-circle-btn text-white bg-white/10 hover:bg-white/20" title="Toggle Fullscreen">
+                    <i id="fullscreenTopIcon" data-lucide="maximize" class="w-4 h-4 text-white"></i>
                 </button>
             </div>
         </div>
@@ -1408,15 +1393,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             <div class="text-[9px] text-zinc-400 font-normal truncate">Direct 720p/360p MP4</div>
                         </div>
                     </button>
-                    <button type="button" onclick="switchServerCluster('nestzone')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-pink-500/15 border border-pink-500/30 text-white hover:bg-pink-500/25">
-                        <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
-                                <span>NestZone</span>
-                                <span class="text-[9px] bg-pink-500/30 text-pink-200 px-1 py-0.5 rounded font-mono font-bold">Miku</span>
-                            </div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">High-Speed Anime HLS</div>
-                        </div>
-                    </button>
+                    
                     <button type="button" onclick="switchServerCluster('anivexa')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-purple-500/15 border border-purple-500/30 text-white hover:bg-purple-500/25">
                         <div class="truncate">
                             <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
@@ -1465,12 +1442,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             <div class="text-[9px] text-zinc-400 font-normal truncate">Special Multi-Audio</div>
                         </div>
                     </button>
-                    <button type="button" onclick="switchServerCluster('aniembed')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel text-zinc-300 hover:bg-white/10">
-                        <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px]">AniEmbed</div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">JP/EN Dual-Audio HLS</div>
-                        </div>
-                    </button>
+                    
                 </div>
             </div>
 
@@ -2024,14 +1996,27 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         const SOURCE_ORIGIN = urlParams.get('source') || '<?php echo addslashes($source); ?>' || 'consumet.html';
         let IMDB_ID = urlParams.get('imdb') || urlParams.get('imdbId') || urlParams.get('imdb_id') || '<?php echo addslashes($imdbId); ?>';
         const POSTER_URL = urlParams.get('poster') || urlParams.get('thumb') || urlParams.get('thumbnail') || urlParams.get('logo') || urlParams.get('banner') || urlParams.get('image') || '';
-        if (POSTER_URL) {
+        function setTopBarPoster(src) {
+            if (!src) return;
             const thumbImg = document.getElementById('topBarThumbImg');
             const thumbFallback = document.getElementById('topBarThumbFallback');
             if (thumbImg) {
-                thumbImg.src = POSTER_URL;
+                thumbImg.src = src;
                 thumbImg.classList.remove('hidden');
                 if (thumbFallback) thumbFallback.classList.add('hidden');
             }
+        }
+        if (POSTER_URL) {
+            setTopBarPoster(POSTER_URL);
+        } else if (MEDIA_ID && MEDIA_ID !== '{{ID}}') {
+            const ep = (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? `tv/${MEDIA_ID}` : `movie/${MEDIA_ID}`;
+            fetch(`/api/bingr/tmdb-proxy?endpoint=${encodeURIComponent(ep)}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d && (d.poster_path || d.backdrop_path)) {
+                        setTopBarPoster(d.poster_path ? `https://image.tmdb.org/t/p/w500${d.poster_path}` : `https://image.tmdb.org/t/p/w500${d.backdrop_path}`);
+                    }
+                }).catch(() => {});
         }
 
         if (!MEDIA_ID || MEDIA_ID === '{{ID}}') {
@@ -2242,7 +2227,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                                    window.location.search.includes('srv=asiaflix')
                                ));
         const ANIME_SPECIAL_SERVERS = [
-            { id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP' },
+            
             { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' },
             { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' },
             { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
@@ -2736,7 +2721,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['nestzone', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'aniembed', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
                     ? ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'two_embed', 'flux', 'filmu', 's62', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
                     : ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62', 'flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
@@ -2930,14 +2915,23 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const currentSrcObj = (window.bingrSources || []).find(s => s && (s.url === streamUrl || s.url === rawUrl || s.rawUrl === rawUrl)) || (window.bingrSources && window.bingrSources[0]);
 
             // 1. Detect iframe embeds and route to embed player immediately
-            const isEmbedUrl = Boolean(
+            // Direct Stream Manifest Guard: URLs with .m3u8, .mpd, or /proxy are NEVER iframe embeds!
+            const isStreamManifest = Boolean(
+                streamUrl.includes('.m3u8') ||
+                streamUrl.includes('.mpd') ||
+                streamUrl.includes('/proxy') ||
+                streamUrl.includes('/stream_proxy.php') ||
+                streamUrl.includes('/api/anime/anivexa') ||
+                (currentSrcObj && (currentSrcObj.type === 'hls' || currentSrcObj.type === 'application/x-mpegurl' || currentSrcObj.type === 'application/dash+xml' || currentSrcObj.isDirectM3u))
+            );
+
+            const isEmbedUrl = !isStreamManifest && Boolean(
                 (currentSrcObj && (currentSrcObj.type === 'embed' || currentSrcObj.type === 'text/html' || currentSrcObj.iframeUrl)) ||
                 streamUrl.includes('abyssplayer.com') ||
                 streamUrl.includes('/embed/') ||
-                streamUrl.includes('/e/') ||
-                streamUrl.includes('megacloud') ||
-                streamUrl.includes('streamwish') ||
-                streamUrl.includes('filemoon')
+                streamUrl.includes('megacloud.tv/embed') ||
+                streamUrl.includes('streamwish.to/e/') ||
+                streamUrl.includes('filemoon.sx/e/')
             );
 
             if (isEmbedUrl) {
@@ -3945,13 +3939,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             </div>
                             ${CURRENT_SERVER === 'animesalt' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
                         </button>
-                        <button type="button" onclick="switchServerCluster('aniembed')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'aniembed' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">AniEmbed (Dual Audio)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">JP/EN Dual-Audio HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 'aniembed' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
+                        
                         <button type="button" onclick="switchServerCluster('zanix')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'zanix' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
                             <div class="truncate">
                                 <div class="truncate text-white font-bold text-[11px]">Zanix Anime</div>
@@ -4605,7 +4593,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    const animeAllowed = ['nestzone', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    const animeAllowed = ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
                     let list = isAnime 
                         ? data.servers.filter(s => animeAllowed.includes(s.id))
                         : data.servers;
@@ -4617,7 +4605,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     const hasPahe = list.some(s => s.id === 'animepahe');
                     const hasBing = list.some(s => s.id === 'bing_anime');
                     const prepend = [];
-                    if (!hasNest) prepend.push({ id: 'nestzone', name: 'NestZone Miku (High-Speed Anime HLS)', cc: 'JP' });
+                    
                     if (!hasAnivexa) prepend.push({ id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' });
                     if (!hasReanime) prepend.push({ id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' });
                     if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });

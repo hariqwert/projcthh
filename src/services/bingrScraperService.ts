@@ -1391,15 +1391,7 @@ export async function scrapeZanixStream(params: {
         });
 
         // Server 2: AniEmbed Direct (Dual Audio JP/EN)
-        const aeUrl = `https://aniembed.se/e/${aniId || params.id}/${ep}`;
-        sources.push({
-            url: aeUrl,
-            quality: '1080p Dual Audio',
-            type: 'embed',
-            label: 'Zanix AniEmbed (Dual Audio)',
-            provider: 'zanix',
-            skipProxy: true
-        });
+        // AniEmbed embed removed per user specification
 
         // Server 3: 2Embed CC
         const twoEmbedUrl = (params.type === 'movie')
@@ -1691,7 +1683,6 @@ export const BINGR_SERVERS: BingrServerCluster[] = [
     { id: 'pulse', name: 'Pulse (HD Direct Stream)', cc: 'US', priority: 26 },
     { id: 'volt', name: 'Volt (HD Direct Stream)', cc: 'US', priority: 27 },
     { id: 'nimbus', name: 'Nimbus (HD Direct Stream)', cc: 'US', priority: 28 },
-    { id: 'aniembed', name: 'AniEmbed (Dual Audio JP/EN HLS)', cc: 'JP', priority: 29 },
     { id: 'zanix', name: 'Zanix Anime (FlixEra & NovusCloud Multi-Audio)', cc: 'TR', priority: 30 },
     { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL', priority: 1 },
     { id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP', priority: 2 },
@@ -2720,7 +2711,7 @@ export async function scrapeBingrStream(params: {
     // Auto-resolve title, year, and duration runtime from TMDB
     let tmdbRuntimeMinutes: number | undefined;
     try {
-        const details = type === 'tv' ? await getTvDetails(tmdbId) : await getMovieDetails(tmdbId);
+        const details = (type === 'tv' || type === 'anime') ? await getTvDetails(tmdbId) : await getMovieDetails(tmdbId);
         if (details) {
             if (!mediaTitle || isGenericTitle) mediaTitle = details.title;
             if (!mediaYear && details.year) mediaYear = details.year;
@@ -2759,7 +2750,7 @@ export async function scrapeBingrStream(params: {
     );
 
     // Fast check for MAL ID and anime detection for series before scraping (with strict 1200ms timeout)
-    if (type === 'tv' && (requestedTitle || mediaTitle)) {
+    if ((type === 'tv' || type === 'anime') && (requestedTitle || mediaTitle)) {
         try {
             malId = await Promise.race([
                 resolveMalIdFromTitle(requestedTitle || mediaTitle),
@@ -2999,7 +2990,15 @@ export async function scrapeBingrStream(params: {
                     try {
                         let aniId = anilistIdNum;
                         if (!aniId && effectiveTitle) {
-                            const found = await fetchAniListEpisodes({ title: effectiveTitle }).catch(() => null);
+                            const cleanSearchTitle = effectiveTitle
+                                .replace(/\s*S\d+\s*E\d+/gi, '')
+                                .replace(/\s*-\s*Episode\s*\d+/gi, '')
+                                .replace(/\s*Episode\s*\d+/gi, '')
+                                .replace(/\s*Season\s*\d+/gi, '')
+                                .replace(/\s*E\d+/gi, '')
+                                .replace(/\(.*\)/g, '')
+                                .trim();
+                            const found = await fetchAniListEpisodes({ title: cleanSearchTitle || effectiveTitle }).catch(() => null);
                             if (found && found.id) aniId = Number(found.id);
                         }
                         if (aniId) {
@@ -3030,19 +3029,34 @@ export async function scrapeBingrStream(params: {
             } else if (serverId === 'anivexa' || serverId === 'kitsune' || serverId === 'reanime') {
                 scraperName = 'Kitsune / Anivexa Engine (Multi-Provider 1080p)';
                 const effectiveTitle = requestedTitle || mediaTitle || '';
-                let aniId = params.anilistId ? Number(params.anilistId) : (type === 'anime' && tmdbId ? tmdbId : undefined);
+                let aniId = params.anilistId ? Number(params.anilistId) : undefined;
                 if (!aniId && effectiveTitle) {
-                    const found = await fetchAniListEpisodes({ title: effectiveTitle }).catch(() => null);
+                    const cleanSearchTitle = effectiveTitle
+                        .replace(/\s*S\d+\s*E\d+/gi, '')
+                        .replace(/\s*-\s*Episode\s*\d+/gi, '')
+                        .replace(/\s*Episode\s*\d+/gi, '')
+                        .replace(/\s*Season\s*\d+/gi, '')
+                        .replace(/\s*E\d+/gi, '')
+                        .replace(/\(.*\)/g, '')
+                        .trim();
+                    const found = await fetchAniListEpisodes({ title: cleanSearchTitle || effectiveTitle }).catch(() => null);
                     if (found && found.id) aniId = Number(found.id);
                 }
                 if (aniId) {
-                    const targetProv = serverId === 'reanime' ? 'reanime' : 'reanime';
                     const isDubReq = (params as any).dub === true || (params as any).audio === 'dub' || (params as any).type === 'dub';
 
-                    // Fetch both sub and dub concurrently for instant dual-audio selection in player
+                    // Robust provider resolution: reanime targets reanime with cascade; anivexa/kitsune cascades all 9 top engines
+                    const fetchSub = serverId === 'reanime'
+                        ? fetchAnivexaWatch('reanime', aniId, 'sub', e).then(r => (!r.success || !r.streams?.length ? fetchAnivexaBestStream(aniId, e, 'sub') : r)).catch(() => fetchAnivexaBestStream(aniId, e, 'sub'))
+                        : fetchAnivexaBestStream(aniId, e, 'sub');
+
+                    const fetchDub = serverId === 'reanime'
+                        ? fetchAnivexaWatch('reanime', aniId, 'dub', e).then(r => (!r.success || !r.streams?.length ? fetchAnivexaBestStream(aniId, e, 'dub') : r)).catch(() => fetchAnivexaBestStream(aniId, e, 'dub'))
+                        : fetchAnivexaBestStream(aniId, e, 'dub');
+
                     const [subRes, dubRes] = await Promise.all([
-                        fetchAnivexaWatch(targetProv, aniId, 'sub', e).then(r => (!r.success || r.streams.length === 0 ? fetchAnivexaBestStream(aniId, e, 'sub') : r)).catch(() => null),
-                        fetchAnivexaWatch(targetProv, aniId, 'dub', e).then(r => (!r.success || r.streams.length === 0 ? fetchAnivexaBestStream(aniId, e, 'dub') : r)).catch(() => null)
+                        fetchSub.catch(() => null),
+                        fetchDub.catch(() => null)
                     ]);
 
                     const primaryAudioRes = isDubReq ? (dubRes?.success && dubRes.streams.length > 0 ? dubRes : subRes) : (subRes?.success && subRes.streams.length > 0 ? subRes : dubRes);
@@ -4033,13 +4047,13 @@ export async function scrapeBingrStream(params: {
 
             // Priority 2: Race remaining specialized anime scrapers if Anivexa was unavailable
             if (!successResult) {
-                const animePriorityTier = ['nestzone', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
+                const animePriorityTier = ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'vidlink', 'vidrift', 'filmu'];
                 successResult = await raceTierForDirectStream(animePriorityTier, 11000);
             }
 
             // Priority 3: Fallback hubs
             if (!successResult) {
-                const animeTier = ['aniembed', 'zanix', 'flux', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                const animeTier = ['zanix', 'flux', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
                 successResult = await raceTierForDirectStream(animeTier, 5000);
             }
         } else if (type === 'movie') {

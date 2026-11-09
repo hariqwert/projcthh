@@ -1,0 +1,344 @@
+/* =========================================================================
+   SHUTTLETV & ARVIO UNIFIED MASTER THEME
+   Pitch Black + Blue/Violet Aurora Glow + Top Center Floating Island
+   ========================================================================= */
+
+:root {
+  color-scheme: dark;
+  --bg: #03060d;
+  --bg-card: #080d1a;
+  --bg-elevated: #0f172a;
+  --text: #ededed;
+  --muted: rgba(237, 237, 237, 0.7);
+  --soft: rgba(237, 237, 237, 0.5);
+  --chip: rgba(255, 255, 255, 0.08);
+  --chip-focus: rgba(255, 255, 255, 0.18);
+  --line: rgba(255, 255, 255, 0.1);
+  --gold: #ffcd3c;
+  --green: #00d588;
+  --purple: #8b5cf6;
+  --blue: #3b82f6;
+  --red: #ef4444;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  background-color: #03060d !important;
+  background-image: 
+    radial-gradient(circle 900px at 50% -100px, rgba(37, 99, 235, 0.2), rgba(14, 165, 233, 0.08), transparent 70%),
+    radial-gradient(circle 650px at 15% 10%, rgba(37, 99, 235, 0.07), transparent 60%) !important;
+  background-attachment: fixed !important;
+  color: var(--text) !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  letter-spacing: -0.01em;
+  padding-left: 0 !important;
+}
+
+::selection {
+  background: var(--purple) !important;
+  color: #ffffff !important;
+}
+
+/* =========================================================================
+   TOP-CENTER FLOATING ISLAND NAVBAR
+   ========================================================================= */
+#shuttleNavIsland {
+  position: fixed;
+  top: 14px;
+  inset-x: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 12px;
+}
+
+#shuttleNavIsland > div {
+  pointer-events: auto;
+  background: rgba(10, 10, 13, 0.82) !important;
+  -webkit-backdrop-filter: blur(28px) !important;
+  backdrop-filter: blur(28px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  max-width: 95vw;
+  overflow-x: auto;
+}
+
+/* Pill Navigation Buttons (Icons Only) */
+.shuttle-nav-pill {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  padding: 0 !important;
+  transition: all 160ms cubic-bezier(0.2, 0.7, 0.2, 1) !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.shuttle-nav-pill:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+.shuttle-nav-pill.is-active,
+.shuttle-nav-pill.active {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Right Utility Icon Buttons */
+.shuttle-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 160ms ease;
+  position: relative;
+  text-decoration: none;
+  padding: 0;
+}
+
+.shuttle-icon-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.08);
+}
+
+/* =========================================================================
+   MEDIA CARDS (ROUNDED POSTER + TOP RIGHT PLUS BADGE)
+   ========================================================================= */
+.shelf-card, 
+.netflix-card, 
+.channel-card, 
+.anime-ott-card, 
+.livetv-ott-card, 
+.top10-ott-card,
+.media-card {
+  background: var(--bg-card) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.8) !important;
+  transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 260ms ease, border-color 260ms ease !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.shelf-card:hover, 
+.netflix-card:hover, 
+.channel-card:hover, 
+.anime-ott-card:hover, 
+.livetv-ott-card:hover, 
+.top10-ott-card:hover,
+.media-card:hover {
+  transform: scale(1.045) translateY(-4px) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+  z-index: 10 !important;
+}
+
+.shelf-card::after, .netflix-card::after {
+  display: none !important;
+}
+
+/* Card Top-Right Bookmark Button */
+.card-corner-plus {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  transition: all 160ms ease;
+  z-index: 25;
+  cursor: pointer;
+}
+
+.card-corner-plus:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.9);
+  border-color: #ffffff;
+  transform: scale(1.12);
+}
+
+/* =========================================================================
+   SECTION HEADINGS & ACTIVE PURPLE UNDERLINE
+   ========================================================================= */
+.section-heading-accent {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 4px;
+}
+.section-heading-accent::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2.5px;
+  background: #ffffff;
+  border-radius: 2px;
+}
+
+/* =========================================================================
+   HERO BILLBOARD (SHUTTLETV FULL-BLEED SCREEN SPOTLIGHT)
+   ========================================================================= */
+#heroSliderContainer {
+  background-color: #000000 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+#animeHeroSliderContainer, 
+#sportsHeroSliderContainer {
+  background-color: #000000 !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  overflow: hidden !important;
+}
+
+/* Dash slider indicators */
+.slider-dash {
+  height: 3px;
+  border-radius: 999px;
+  transition: all 260ms ease;
+}
+.slider-dash.is-active {
+  background: #ffffff;
+  width: 32px;
+}
+.slider-dash.is-inactive {
+  background: rgba(255, 255, 255, 0.25);
+  width: 14px;
+}
+
+/* =========================================================================
+   INFO / DETAILS MODAL CONSOLE (ONLY PLAY BING & PLAY MOVIE, ICONS FOR REST)
+   ========================================================================= */
+#detailActionButtons {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* Clean circular action icon button */
+.modal-action-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ededed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  text-decoration: none;
+  padding: 0;
+}
+
+.modal-action-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+.modal-action-icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Tooltips - Clean hidden text */
+.arvio-tooltip {
+  display: none !important;
+}
+
+
+/* =========================================================================
+   CINEMATIC FULLSCREEN THEATER PLAYER (IMAGE 1 SPEC)
+   ========================================================================= */
+#view-player {
+  background-color: #03060d !important;
+}
+
+.player-header-bar {
+  background: rgba(10, 10, 14, 0.9) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.player-icon-squircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(112, 26, 117, 0.25);
+  border: 1px solid rgba(217, 70, 239, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d946ef;
+}
+
+.player-close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 160ms ease;
+  border: 0;
+  cursor: pointer;
+}
+
+.player-close-btn:hover {
+  background: #f43f5e !important;
+  transform: scale(1.05);
+}

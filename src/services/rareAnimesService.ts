@@ -13,7 +13,7 @@
 
 import axios from 'axios';
 
-const BASE_URL = 'https://www.rareanimes.mov';
+const BASE_URL = 'https://www.rareanimes.fans';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 const axiosOptions = {
@@ -79,25 +79,25 @@ export async function searchRareAnimes(query: string, language = 'hindi'): Promi
         while ((articleMatch = articlePattern.exec(html)) !== null) {
             const articleHtml = articleMatch[1];
 
-            // Title + link
-            const linkMatch = articleHtml.match(/href="(https:\/\/www\.rareanimes\.mov\/[^"]+)"[^>]*>([^<]{3,120})</);
-            if (!linkMatch) continue;
+            // Robust Title + Link extraction for modern WordPress Herald theme
+            const titleLinkMatch = articleHtml.match(/<h2[^>]*class="[^"]*entry-title[^"]*"[^>]*>\s*<a\s+href="([^"]+)"[^>]*>([^<]+)<\/a>/i) ||
+                                   articleHtml.match(/<a\s+href="(https?:\/\/[^"]*(?:rareanimes\.(?:fans|mov))\/[^"]+)"\s+title="([^"]+)"/i);
+            if (!titleLinkMatch) continue;
 
-            const url = linkMatch[1];
-            const rawTitle = linkMatch[2].trim();
+            let url = titleLinkMatch[1].trim();
+            let rawTitle = titleLinkMatch[2].replace(/&#8211;/g, '-').replace(/&#8217;/g, "'").replace(/&amp;/g, '&').trim();
 
             // Filter out feed/category/tag pages
             if (url.includes('/feed/') || url.includes('/category/') || url.includes('/tag/') || url.includes('xmlrpc')) continue;
 
             // Poster image
-            const posterMatch = articleHtml.match(/src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/i);
+            const posterMatch = articleHtml.match(/<img[^>]+src="([^">]+\.(?:jpg|jpeg|png|webp)[^">]*)"/i);
             const poster = posterMatch ? posterMatch[1] : undefined;
 
             // Excerpt
             const excerptMatch = articleHtml.match(/<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>([^<]{10,300})</i);
             const excerpt = excerptMatch ? excerptMatch[1].trim() : undefined;
 
-            // Skip if title is too short or clearly non-anime
             if (rawTitle.length < 3) continue;
 
             results.push({

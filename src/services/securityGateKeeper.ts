@@ -17,26 +17,48 @@ interface AttemptRecord {
     lockedUntil?: number;
 }
 
+export interface PowChallenge {
+    challenge: string;
+    difficulty: number;
+    expiresAt: number;
+    signature: string;
+}
+
 // In-memory sliding window failure tracking
 const ipAttempts = new Map<string, AttemptRecord>();
+const subnetAttempts = new Map<string, AttemptRecord>();
 const deviceAttempts = new Map<string, AttemptRecord>();
 const macAttempts = new Map<string, AttemptRecord>();
 
-// Max failed attempts before lockout
+// Single-use token tracking to prevent token replay attacks
+const usedTurnstileTokens = new Map<string, number>();
+const usedPowChallenges = new Map<string, number>();
+
+// Global distributed failure tracking and circuit breaker
+interface GlobalActionRecord {
+    failures: number;
+    windowStart: number;
+    circuitOpenUntil?: number;
+}
+const globalActionFailures = new Map<string, GlobalActionRecord>();
+
+// Thresholds
 const MAX_ATTEMPTS = 5;
-// Window for failed attempts (15 minutes)
-const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
-// Lockout duration (24 hours quarantine upon exceeding max attempts)
-const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000;
+const SUBNET_MAX_ATTEMPTS = 4; // Max attempts per /24 subnet before entire subnet quarantine
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+const GLOBAL_FAIL_THRESHOLD = 8; // 8 failures across all rotating IPs in 60s
+const GLOBAL_FAIL_WINDOW_MS = 60 * 1000; // 60 seconds
+const CIRCUIT_BREAKER_DURATION_MS = 3 * 60 * 1000; // 3 minutes
 
 export class SecurityGateKeeper {
     /**
-     * Checks if an IP or hardware device or MAC is currently locked out or banned
+     * Checks if an IP or /24 subnet or hardware device or MAC is currently locked out or banned
      */
     static isIpLockedOut(ip: string, identifiers?: { deviceId?: string; deviceFingerprint?: string; mac?: string }): { locked: boolean; remainingSeconds: number; reason?: string } {
         const cleanIp = (ip || '').replace('::ffff:', '').trim();
 
-        // 1. Check Perimeter Defense IP ban
+        // 1. Check Perimeter Defense IP ban (also checks /24 subnet)
         const periIpBan = PerimeterDefenseShield.isIpBanned(cleanIp);
         if (periIpBan.banned) {
             return { locked: true, remainingSeconds: periIpBan.remainingSeconds || 86400, reason: periIpBan.reason };
@@ -67,6 +89,16 @@ export class SecurityGateKeeper {
             return { locked: true, remainingSeconds, reason: "Brute-force lockout active on IP" };
         }
 
+        // 4b. Check Subnet attempt record (/24)
+        if (cleanIp.includes('.')) {
+            const subnet = cleanIp.split('.').slice(0, 3).join('.') + '.0/24';
+            const subRec = subnetAttempts.get(subnet);
+            if (subRec && subRec.lockedUntil && subRec.lockedUntil > now) {
+                const remainingSeconds = Math.ceil((subRec.lockedUntil - now) / 1000);
+                return { locked: true, remainingSeconds, reason: "Distributed subnet brute-force lockout active" };
+            }
+        }
+
         // 5. Check Device attempt record
         if (identifiers?.deviceId) {
             const devRec = deviceAttempts.get(identifiers.deviceId);
@@ -89,14 +121,29 @@ export class SecurityGateKeeper {
     }
 
     /**
-     * Records a failed attempt across IP, Device, and MAC dimensions
+     * Checks if global circuit breaker is active for an action
+     */
+    static isCircuitBreakerActive(action: string): { active: boolean; remainingSeconds: number } {
+        const now = Date.now();
+        const gRecord = globalActionFailures.get(action);
+        if (gRecord && gRecord.circuitOpenUntil && gRecord.circuitOpenUntil > now) {
+            return {
+                active: true,
+                remainingSeconds: Math.ceil((gRecord.circuitOpenUntil - now) / 1000)
+            };
+        }
+        return { active: false, remainingSeconds: 0 };
+    }
+
+    /**
+     * Records a failed attempt across IP, Subnet, Device, MAC, and Global dimensions
      */
     static recordFailure(
         ip: string, 
         action: string, 
         identifier?: string,
         identifiers?: { deviceId?: string; deviceFingerprint?: string; mac?: string }
-    ): { attempts: number; isLockedOut: boolean; lockoutSeconds: number } {
+    ): { attempts: number; isLockedOut: boolean; lockoutSeconds: number; circuitBreaker: boolean } {
         const cleanIp = (ip || '').replace('::ffff:', '').trim();
         const now = Date.now();
 
@@ -113,9 +160,22 @@ export class SecurityGateKeeper {
             return rec;
         };
 
+        // 1. IP Record
         const ipRecord = updateAttempt(ipAttempts, cleanIp);
         let maxCount = ipRecord.count;
 
+        // 2. Subnet Record (Catches rotating proxies in the same /24 CIDR block)
+        if (cleanIp.includes('.')) {
+            const subnet = cleanIp.split('.').slice(0, 3).join('.') + '.0/24';
+            const subnetRec = updateAttempt(subnetAttempts, subnet);
+            if (subnetRec.count >= SUBNET_MAX_ATTEMPTS && !subnetRec.lockedUntil) {
+                subnetRec.lockedUntil = now + LOCKOUT_DURATION_MS;
+                PerimeterDefenseShield.banIp(subnet, `Subnet Distributed Brute-Force Quarantine: ${subnetRec.count} Failed Attempts from ${subnet}`, LOCKOUT_DURATION_MS);
+                console.warn(`[SECURITY] 🛡️ Auto-quarantined subnet ${subnet} due to ${subnetRec.count} distributed rotating-proxy failures.`);
+            }
+        }
+
+        // 3. Device & MAC tracking
         if (identifiers?.deviceId) {
             const devRec = updateAttempt(deviceAttempts, identifiers.deviceId);
             if (devRec.count > maxCount) maxCount = devRec.count;
@@ -128,6 +188,21 @@ export class SecurityGateKeeper {
             const macRec = updateAttempt(macAttempts, identifiers.mac);
             if (macRec.count > maxCount) maxCount = macRec.count;
         }
+
+        // 4. Global Action Circuit Breaker (Catches rotating IPs across DIFFERENT subnets)
+        let circuitBreakerActive = false;
+        let gRecord = globalActionFailures.get(action);
+        if (!gRecord || (now - gRecord.windowStart > GLOBAL_FAIL_WINDOW_MS)) {
+            gRecord = { failures: 1, windowStart: now };
+        } else {
+            gRecord.failures += 1;
+            if (gRecord.failures >= GLOBAL_FAIL_THRESHOLD) {
+                gRecord.circuitOpenUntil = now + CIRCUIT_BREAKER_DURATION_MS;
+                circuitBreakerActive = true;
+                console.warn(`[SECURITY] ⚡ GLOBAL CIRCUIT BREAKER TRIPPED for action "${action}" (${gRecord.failures} failures across all IPs). Proof-of-Work mandatory.`);
+            }
+        }
+        globalActionFailures.set(action, gRecord);
 
         // If threshold reached, enforce multi-vector ban across IP, Device, and MAC
         if (maxCount >= MAX_ATTEMPTS) {
@@ -179,10 +254,10 @@ export class SecurityGateKeeper {
             }
 
             console.error(`[PERIMETER DEFENSE] 🚫 BRUTE FORCE ENFORCEMENT: Quarantined IP ${cleanIp}, Device: ${identifiers?.deviceId || 'none'}, MAC: ${identifiers?.mac || 'none'} for 24 hours. (${action})`);
-            return { attempts: maxCount, isLockedOut: true, lockoutSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000) };
+            return { attempts: maxCount, isLockedOut: true, lockoutSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000), circuitBreaker: circuitBreakerActive };
         }
 
-        return { attempts: maxCount, isLockedOut: false, lockoutSeconds: 0 };
+        return { attempts: maxCount, isLockedOut: false, lockoutSeconds: 0, circuitBreaker: circuitBreakerActive };
     }
 
     /**
@@ -198,10 +273,12 @@ export class SecurityGateKeeper {
     /**
      * Enforces artificial progressive delay to throttle brute-force attacks
      */
-    static async applyProgressiveDelay(attempts: number): Promise<void> {
-        if (attempts <= 0) return;
-        const delayMs = Math.min(attempts * 400, 3000);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+    static async applyProgressiveDelay(attempts: number, forceMinDelayMs: number = 0): Promise<void> {
+        const baseDelay = attempts > 0 ? Math.min(attempts * 400, 3000) : 0;
+        const totalDelay = Math.max(baseDelay, forceMinDelayMs);
+        if (totalDelay > 0) {
+            await new Promise(resolve => setTimeout(resolve, totalDelay));
+        }
     }
 
     /**
@@ -216,6 +293,86 @@ export class SecurityGateKeeper {
         } catch {
             return false;
         }
+    }
+
+    /**
+     * Generates a single-use Proof-of-Work cryptographic challenge
+     */
+    static generatePowChallenge(clientIp: string, difficulty: number = 4): PowChallenge {
+        const cleanIp = (clientIp || '').replace('::ffff:', '').trim();
+        const challenge = crypto.randomBytes(16).toString('hex');
+        const expiresAt = Date.now() + 90000; // 90 seconds TTL
+        const signature = crypto.createHmac('sha256', JWT_SECRET)
+            .update(`${challenge}:${cleanIp}:${difficulty}:${expiresAt}`)
+            .digest('hex');
+        return { challenge, difficulty, expiresAt, signature };
+    }
+
+    /**
+     * Verifies a client's Proof-of-Work solution
+     */
+    static verifyPowSolution(params: {
+        challenge?: string;
+        nonce?: string | number;
+        signature?: string;
+        expiresAt?: number;
+        clientIp: string;
+        difficulty?: number;
+    }): { valid: boolean; error?: string } {
+        const { challenge, nonce, signature, expiresAt, clientIp } = params;
+        const difficulty = params.difficulty || 4;
+
+        if (!challenge || nonce === undefined || nonce === null || !signature || !expiresAt) {
+            return { valid: false, error: 'Incomplete Proof-of-Work parameters (challenge, nonce, signature, expiresAt required).' };
+        }
+
+        const now = Date.now();
+        if (now > expiresAt) {
+            return { valid: false, error: 'Proof-of-Work challenge expired. Please obtain a fresh challenge.' };
+        }
+
+        const cleanIp = (clientIp || '').replace('::ffff:', '').trim();
+
+        // Anti-Replay: Check if challenge was already consumed
+        if (usedPowChallenges.has(challenge)) {
+            return { valid: false, error: 'Proof-of-Work challenge already used. Replay prohibited.' };
+        }
+
+        // Verify cryptographic HMAC signature
+        const expectedSig = crypto.createHmac('sha256', JWT_SECRET)
+            .update(`${challenge}:${cleanIp}:${difficulty}:${expiresAt}`)
+            .digest('hex');
+
+        if (!this.constantTimeCompare(signature, expectedSig)) {
+            return { valid: false, error: 'Forged or invalid Proof-of-Work signature.' };
+        }
+
+        // Verify hash difficulty (must start with difficulty number of zeros, e.g. "0000")
+        const computedHash = crypto.createHash('sha256').update(`${challenge}:${nonce}`).digest('hex');
+        const requiredPrefix = '0'.repeat(difficulty);
+
+        if (!computedHash.startsWith(requiredPrefix)) {
+            return { valid: false, error: `Invalid Proof-of-Work solution: Hash does not meet required difficulty level (${difficulty}).` };
+        }
+
+        // Mark as consumed
+        usedPowChallenges.set(challenge, expiresAt);
+        return { valid: true };
+    }
+
+    /**
+     * Generates a request-bound client fingerprint to defeat token stealing / replay
+     */
+    static generateClientFingerprint(req: Request): string {
+        const ua = ((req.headers && req.headers['user-agent']) || '').toString().trim().toLowerCase();
+        return crypto.createHash('sha256').update(ua).digest('hex').slice(0, 16);
+    }
+
+    /**
+     * Resets circuit breaker for a specific action (e.g. after manual verification or startup)
+     */
+    static resetCircuitBreaker(action: string): void {
+        globalActionFailures.delete(action);
     }
 
     /**
@@ -251,7 +408,8 @@ export class SecurityGateKeeper {
     }
 
     /**
-     * Verifies Turnstile CAPTCHA response with Cloudflare siteverify endpoint
+     * Verifies Turnstile CAPTCHA response with Cloudflare siteverify endpoint.
+     * Hardened against token replay, IP spoofing, and bypass strings.
      */
     static async verifyTurnstile(token: string, remoteIp?: string): Promise<{ success: boolean; error?: string }> {
         let turnstileSecret = process.env.TURNSTILE_SECRET_KEY || '';
@@ -264,25 +422,42 @@ export class SecurityGateKeeper {
             } catch (e) {}
         }
 
-        // If Turnstile secret key is not configured, pass without requiring dummy test key
+        // If Turnstile secret key is not configured, pass in offline local dev mode only
         if (!turnstileSecret) {
+            if (process.env.NODE_ENV !== 'production') {
+                return { success: true };
+            }
+            return { success: false, error: 'Turnstile CAPTCHA is unconfigured on production server.' };
+        }
+
+        const cleanRemoteIp = (remoteIp || '').replace('::ffff:', '').trim();
+        const isLocalLoopback = cleanRemoteIp === '127.0.0.1' || cleanRemoteIp === '::1' || cleanRemoteIp === 'localhost';
+        if (isLocalLoopback && (!token || typeof token !== 'string' || token.trim().length < 10)) {
             return { success: true };
         }
 
-        // Loopback local development or bypass token
-        if (remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === 'localhost' || token === 'dev_bypass') {
-            return { success: true };
+        if (!token || typeof token !== 'string' || token.trim().length < 10) {
+            return { success: false, error: 'Valid Cloudflare CAPTCHA response token is required.' };
         }
 
-        if (!token) {
-            return { success: false, error: 'CAPTCHA response token is required.' };
+        const cleanToken = token.trim();
+
+        // 1. Anti-Replay: Check if this token was already consumed
+        const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
+        const now = Date.now();
+        const prevSeen = usedTurnstileTokens.get(tokenHash);
+        if (prevSeen && prevSeen > now) {
+            console.warn(`[SECURITY] 🛑 Cloudflare Turnstile Token Replay Attack blocked! IP=${remoteIp}`);
+            return { success: false, error: 'Cloudflare CAPTCHA response token replay detected. Each token can only be used once.' };
         }
 
         try {
             const formData = new URLSearchParams();
             formData.append('secret', turnstileSecret);
-            formData.append('response', token);
-            if (remoteIp) formData.append('remoteip', remoteIp);
+            formData.append('response', cleanToken);
+            if (remoteIp && remoteIp !== '127.0.0.1' && remoteIp !== '::1' && remoteIp !== 'localhost') {
+                formData.append('remoteip', remoteIp);
+            }
 
             const verifyRes = await axios.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', formData.toString(), {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -290,6 +465,8 @@ export class SecurityGateKeeper {
             });
 
             if (verifyRes.data && verifyRes.data.success === true) {
+                // Mark token as consumed in replay cache (10-minute TTL)
+                usedTurnstileTokens.set(tokenHash, now + 10 * 60 * 1000);
                 return { success: true };
             }
 
@@ -334,7 +511,7 @@ export class SecurityGateKeeper {
         if (!token) return { valid: false };
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
             if (decoded && decoded.role === 'perimeter_cleared') {
                 if (!decoded.ip || decoded.ip === clientIp || clientIp === '127.0.0.1' || decoded.ip === '127.0.0.1') {
                     return { valid: true, ip: decoded.ip };
@@ -347,7 +524,7 @@ export class SecurityGateKeeper {
     }
 
     /**
-     * Systematic garbage collection of stale attempt records to prevent in-memory map bloat
+     * Systematic garbage collection of stale attempt records and used token hashes
      */
     static sweepStaleMemory(): void {
         const now = Date.now();
@@ -359,7 +536,6 @@ export class SecurityGateKeeper {
                     map.delete(key);
                 }
             }
-            // Enforce hard cap of 10,000 entries
             if (map.size > 10000) {
                 let deleted = 0;
                 for (const key of map.keys()) {
@@ -371,7 +547,25 @@ export class SecurityGateKeeper {
         };
 
         purgeStale(ipAttempts);
+        purgeStale(subnetAttempts);
         purgeStale(deviceAttempts);
         purgeStale(macAttempts);
+
+        // Purge expired Turnstile replay tokens
+        for (const [hash, exp] of usedTurnstileTokens.entries()) {
+            if (exp <= now) usedTurnstileTokens.delete(hash);
+        }
+
+        // Purge expired PoW challenges
+        for (const [ch, exp] of usedPowChallenges.entries()) {
+            if (exp <= now) usedPowChallenges.delete(ch);
+        }
+
+        // Purge expired global circuit breaker records
+        for (const [act, gRec] of globalActionFailures.entries()) {
+            if ((now - gRec.windowStart > GLOBAL_FAIL_WINDOW_MS) && (!gRec.circuitOpenUntil || gRec.circuitOpenUntil <= now)) {
+                globalActionFailures.delete(act);
+            }
+        }
     }
 }

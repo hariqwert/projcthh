@@ -1973,11 +1973,17 @@ export class JtvService {
             }
             const upstreamUrl = cookiePart ? `${baseUrl}?${cookiePart}` : baseUrl;
 
-            const headers: Record<string, string> = {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-                'Referer': 'https://www.jiotv.com/',
-                'Origin': 'https://www.jiotv.com/'
-            };
+            const isMobileCdn = baseUrl.includes('jiotvmblive') || baseUrl.includes('_MOB');
+            const headers: Record<string, string> = isMobileCdn
+                ? {
+                    'User-Agent': 'plaYtv/7.1.3 (Linux;Android 14) ExoPlayerLib/2.11.7',
+                    'Accept': '*/*'
+                }
+                : {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                    'Referer': 'https://www.jiotv.com/',
+                    'Origin': 'https://www.jiotv.com/'
+                };
             if (cookiePart) {
                 headers['Cookie'] = cookiePart;
             }
@@ -1990,7 +1996,9 @@ export class JtvService {
                     responseType: 'text'
                 });
             } catch (firstErr: any) {
-                // Secondary attempt with Android ExoPlayer User-Agent
+                // Secondary attempt: strip Referer/Origin and use plaYtv ExoPlayer User-Agent
+                delete headers['Referer'];
+                delete headers['Origin'];
                 headers['User-Agent'] = 'plaYtv/7.1.3 (Linux;Android 14) ExoPlayerLib/2.11.7';
                 return await axios.get(upstreamUrl, {
                     headers,

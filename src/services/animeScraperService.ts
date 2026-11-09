@@ -1528,8 +1528,11 @@ export async function fetchAniListEpisodes(options: { id?: number | string; malI
         // Search by title if ID lookup did not return or wasn't provided
         if (!mediaData && title) {
             const cleanTitle = title
-                .replace(/\s*-\s*Episode\s*\d+/i, '')
-                .replace(/\s*Season\s*\d+/i, '')
+                .replace(/\s*S\d+\s*E\d+/gi, '')
+                .replace(/\s*-\s*Episode\s*\d+/gi, '')
+                .replace(/\s*Episode\s*\d+/gi, '')
+                .replace(/\s*Season\s*\d+/gi, '')
+                .replace(/\s*E\d+/gi, '')
                 .replace(/\(.*?\)/g, '')
                 .trim();
 

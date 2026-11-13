@@ -13,7 +13,7 @@
 
 import axios from 'axios';
 
-const BASE_URL = 'https://www.rareanimes.fans';
+const BASE_URL = 'https://www.rareanimes.foo';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 const axiosOptions = {
@@ -23,7 +23,7 @@ const axiosOptions = {
         'Accept-Language': 'en-US,en;q=0.9',
         'Referer': BASE_URL + '/',
     },
-    timeout: 15000,
+    timeout: 8000,
 };
 
 export interface RareAnimeResult {
@@ -81,7 +81,7 @@ export async function searchRareAnimes(query: string, language = 'hindi'): Promi
 
             // Robust Title + Link extraction for modern WordPress Herald theme
             const titleLinkMatch = articleHtml.match(/<h2[^>]*class="[^"]*entry-title[^"]*"[^>]*>\s*<a\s+href="([^"]+)"[^>]*>([^<]+)<\/a>/i) ||
-                                   articleHtml.match(/<a\s+href="(https?:\/\/[^"]*(?:rareanimes\.(?:fans|mov))\/[^"]+)"\s+title="([^"]+)"/i);
+                                   articleHtml.match(/<a\s+href="(https?:\/\/[^"]*(?:rareanimes\.(?:foo|fans|mov))\/[^"]+)"\s+title="([^"]+)"/i);
             if (!titleLinkMatch) continue;
 
             let url = titleLinkMatch[1].trim();
@@ -176,7 +176,7 @@ export async function scrapeRareAnimesPage(pageUrl: string): Promise<{
 
         // Extract links to individual episode sub-pages
         // Pattern: /hindi/anime-name-episode-1/ or /english/...
-        const episodeLinkPattern = /href="(https:\/\/www\.rareanimes\.mov\/(?:hindi|english|tamil|telugu)\/[^"]+)"/gi;
+        const episodeLinkPattern = /href="(https?:\/\/(?:www\.)?rareanimes\.(?:foo|fans|mov)\/(?:hindi|english|tamil|telugu)\/[^"]+)"/gi;
         let epLinkMatch: RegExpExecArray | null;
         const seen = new Set<string>();
 

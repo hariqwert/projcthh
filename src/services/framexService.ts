@@ -278,8 +278,8 @@ async function scrapeFrameXAnimeInternal(params: {
         const providersToTry = params.provider
             ? [params.provider]
             : (audioType === 'dub'
-                ? ['grand_warden_dub', 'goblin_dub', 'wizard_dub', 'valkyrie_dub', 'archer_dub', 'healer_dub']
-                : ['', 'grand_warden', 'goblin', 'wizard', 'valkyrie', 'super_pekka']);
+                ? ['goblin_dub', 'valkyrie_dub', 'grand_warden_dub']
+                : ['', 'goblin', 'valkyrie', 'super_pekka']);
 
         for (const prov of providersToTry) {
             try {
@@ -290,7 +290,7 @@ async function scrapeFrameXAnimeInternal(params: {
 
                 const res = await axios.get(streamEndpoint, {
                     headers: FRAMEX_HEADERS,
-                    timeout: 7000
+                    timeout: 2500
                 });
 
                 if (res.status === 200 && res.data?.success && Array.isArray(res.data?.sources) && res.data.sources.length > 0) {
@@ -463,7 +463,7 @@ async function scrapeFrameXMovieTvInternal(params: {
 
             const res = await axios.get(streamEndpoint, {
                 headers: FRAMEX_HEADERS,
-                timeout: 4000
+                timeout: 2500
             });
 
             if (res.status === 200 && res.data?.success && Array.isArray(res.data?.sources) && res.data.sources.length > 0) {

@@ -2799,7 +2799,7 @@ export async function scrapeBingrStream(params: {
                 scraperName = 'MegaPlay Buzz (Direct Multi-Bitrate HLS)';
                 const effectiveTitle = requestedTitle || mediaTitle || '';
                 const isDub = (params as any).dub === true || (params as any).type === 'dub';
-                const megaRes = await resolveMegaPlayBuzzStream(effectiveTitle, e, isDub ? 'dub' : 'sub').catch(() => null);
+                const megaRes = await resolveMegaPlayBuzzStream(effectiveTitle, e, isDub ? 'dub' : 'sub', s).catch(() => null);
                 if (megaRes && megaRes.success && megaRes.masterM3u8) {
                     sources = [{
                         url: megaRes.masterM3u8,

@@ -55,108 +55,157 @@ export interface MegaPlayBuzzStreamResult {
 export async function resolveMegaPlayBuzzStream(
     title: string,
     episodeNum: number = 1,
-    audio: 'sub' | 'dub' = 'sub'
+    audio: 'sub' | 'dub' = 'sub',
+    seasonNum: number = 1
 ): Promise<MegaPlayBuzzStreamResult> {
     try {
         if (!title) return { success: false, error: 'Title required' };
 
+        // Detect season from title if present (e.g. "Demon Slayer Season 2")
+        let effectiveSeason = seasonNum;
+        const sMatch = title.match(/season\s*(\d+)/i) || title.match(/s(\d+)/i);
+        if (sMatch) {
+            effectiveSeason = parseInt(sMatch[1], 10);
+        }
+
         const cleanTitle = title
             .replace(/\s*\((?:anime|tv|series|\d{4})\)/gi, '')
             .replace(/\s*Season\s*\d+/i, '')
+            .replace(/\s*2nd\s*Season/i, '')
+            .replace(/\s*3rd\s*Season/i, '')
             .trim();
 
-        // 1. Search series on Anikoto TV
-        let targetSeriesId: number | null = null;
         const anikotoHeaders = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': 'https://anikototv.to/'
+            'Referer': 'https://anikototv.bz/'
         };
 
-        try {
-            const searchRes = await axios.get(`https://anikototv.to/search?keyword=${encodeURIComponent(cleanTitle)}`, {
-                headers: anikotoHeaders,
-                timeout: 8000
-            });
-            if (searchRes.data) {
-                const watchMatches = [...searchRes.data.matchAll(/href=["'](https:\/\/anikototv\.to\/watch\/([^"'/]+)\/[^"']*)["']/g)];
-                if (watchMatches.length > 0) {
-                    let chosenUrl = watchMatches[0][1];
-                    const seasonMatch = title.match(/season\s*(\d+)/i);
-                    if (seasonMatch) {
-                        const targetSeasonNum = seasonMatch[1];
-                        const sMatch = watchMatches.find(m => new RegExp(`season-${targetSeasonNum}`, 'i').test(m[2]));
-                        if (sMatch) chosenUrl = sMatch[1];
-                    }
-
-                    const watchRes = await axios.get(chosenUrl, { headers: anikotoHeaders, timeout: 8000 });
-                    const idMatch = watchRes.data.match(/const\s+mangaId\s*=\s*(\d+);/) ||
-                                    watchRes.data.match(/data-id=["'](\d+)["']/);
-                    if (idMatch) {
-                        targetSeriesId = parseInt(idMatch[1], 10);
-                    }
-                }
-            }
-        } catch (_) {}
-
-        // Fallback to Anikoto recent-anime API
-        if (!targetSeriesId) {
-            const searchRes = await axios.get(`https://anikotoapi.site/recent-anime?page=1&per_page=50`, {
-                timeout: 7000
-            }).catch(() => null);
-
-            if (searchRes && searchRes.data && searchRes.data.data) {
-                const list = searchRes.data.data;
-                const match = list.find((item: any) => {
-                    const itemTitle = (item.title || '').toLowerCase();
-                    const itemAlt = (item.alternative || '').toLowerCase();
-                    const q = cleanTitle.toLowerCase();
-                    return itemTitle.includes(q) || q.includes(itemTitle) || itemAlt.includes(q);
-                });
-                if (match) {
-                    targetSeriesId = match.id;
-                }
-            }
-        }
-
-        // If not in recent, try search endpoint if available
-        if (!targetSeriesId) {
+        // 1. Search series on Anikoto TV (anikototv.bz)
+        let searchHtml = '';
+        for (const host of ['https://anikototv.bz', 'https://anikototv.to']) {
             try {
-                const queryRes = await axios.get(`https://anikotoapi.site/search?keyword=${encodeURIComponent(cleanTitle)}`, {
-                    timeout: 7000
-                }).catch(() => null);
-                if (queryRes && queryRes.data && queryRes.data.data && queryRes.data.data.length > 0) {
-                    targetSeriesId = queryRes.data.data[0].id;
+                const searchRes = await axios.get(`${host}/search?keyword=${encodeURIComponent(cleanTitle)}`, {
+                    headers: anikotoHeaders,
+                    timeout: 6000
+                });
+                if (searchRes.status === 200 && searchRes.data) {
+                    searchHtml = searchRes.data;
+                    break;
                 }
             } catch (_) {}
         }
 
-        if (!targetSeriesId) {
-            return { success: false, error: `Series "${cleanTitle}" not found in MegaPlay/Anikoto catalog` };
+        if (!searchHtml) {
+            return { success: false, error: `Could not search Anikoto catalog for "${cleanTitle}"` };
         }
 
-        // 2. Fetch series episodes list
+        // Extract watch links from search results
+        const matches = [...searchHtml.matchAll(/href=["']((?:https?:\/\/[^"']*anikoto[^"']*)?\/watch\/([^"'/]+)\/[^"']*)["']/g)];
+        const candidates: Array<{ href: string; slug: string }> = [];
+        const seenSlugs = new Set<string>();
+
+        for (const m of matches) {
+            const rawHref = m[1];
+            const slug = m[2];
+            if (!seenSlugs.has(slug)) {
+                seenSlugs.add(slug);
+                candidates.push({ href: rawHref, slug });
+            }
+        }
+
+        if (candidates.length === 0) {
+            return { success: false, error: `No series found on Anikoto for "${cleanTitle}"` };
+        }
+
+        // 2. Score candidates to choose the exact requested season/arc
+        const normTitle = cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+        const scored = candidates.map(item => {
+            let score = 0;
+            const slug = item.slug.toLowerCase();
+
+            if (slug.startsWith(normTitle)) score += 50;
+            if (slug.includes(normTitle)) score += 20;
+
+            if (effectiveSeason > 1) {
+                if (slug.includes(`season-${effectiveSeason}`) ||
+                    slug.includes(`${effectiveSeason}nd-season`) ||
+                    slug.includes(`${effectiveSeason}rd-season`) ||
+                    slug.includes(`${effectiveSeason}th-season`)) {
+                    score += 200;
+                }
+                if (effectiveSeason === 2) {
+                    if (slug.includes('entertainment-district') || slug.includes('arise-from-the-shadow') || slug.includes('yuukaku-hen')) {
+                        score += 200;
+                    }
+                }
+                if (effectiveSeason === 3) {
+                    if (slug.includes('swordsmith-village') || slug.includes('katanakaji-no-sato-hen')) {
+                        score += 200;
+                    }
+                }
+                if (slug.includes('specials') || slug.includes('movie')) score -= 100;
+            } else {
+                // Season 1: heavily penalize specials, recap movies, and later seasons
+                if (slug.includes('season-2') || slug.includes('2nd-season') || slug.includes('season-3') || slug.includes('3rd-season')) {
+                    score -= 150;
+                }
+                if (slug.includes('specials') || slug.includes('movie') || slug.includes('sibling-s-bond') || slug.includes('reawakening') || slug.includes('hashira-meeting')) {
+                    score -= 100;
+                } else {
+                    score += 100;
+                }
+            }
+            return { item, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        const chosen = scored[0]?.item;
+        if (!chosen) {
+            return { success: false, error: `No matching series found for "${cleanTitle}"` };
+        }
+
+        // 3. Fetch watch page to extract mangaId
+        const watchUrl = chosen.href.startsWith('http') ? chosen.href : `https://anikototv.bz${chosen.href}`;
+        let targetSeriesId: number | null = null;
+        try {
+            const wRes = await axios.get(watchUrl, { headers: anikotoHeaders, timeout: 6000 });
+            const idMatch = wRes.data.match(/const\s+mangaId\s*=\s*(\d+);/) || wRes.data.match(/data-id=["'](\d+)["']/);
+            if (idMatch) {
+                targetSeriesId = parseInt(idMatch[1], 10);
+            }
+        } catch (_) {}
+
+        if (!targetSeriesId) {
+            return { success: false, error: `Could not resolve series ID for "${chosen.slug}"` };
+        }
+
+        // 4. Fetch series episodes list from backend API
         const seriesRes = await axios.get(`https://anikotoapi.site/series/${targetSeriesId}`, {
             timeout: 7000
         });
 
-        if (!seriesRes.data || !seriesRes.data.data || !seriesRes.data.data.episodes) {
+        if (!seriesRes.data || !seriesRes.data.data || !Array.isArray(seriesRes.data.data.episodes)) {
             return { success: false, error: 'No episodes returned for series' };
         }
 
         const episodes = seriesRes.data.data.episodes;
-        const targetEp = episodes.find((ep: any) => ep.number === episodeNum) || episodes[episodeNum - 1] || episodes[0];
+        // Accurate episode lookup: match exact episode number or 1-based index
+        const targetEp = episodes.find((ep: any) => Number(ep.number) === Number(episodeNum)) ||
+                         (episodeNum <= episodes.length ? episodes[episodeNum - 1] : null);
 
         if (!targetEp || !targetEp.episode_embed_id) {
-            return { success: false, error: `Episode ${episodeNum} embed ID not found` };
+            return { success: false, error: `Episode ${episodeNum} not found in series "${seriesRes.data.data.anime?.title || chosen.slug}" (total episodes: ${episodes.length})` };
         }
 
         const embedId = targetEp.episode_embed_id;
 
-        // 3. Fetch encrypted sources from MegaPlay
+        // 5. Fetch encrypted sources from MegaPlay with mandatory AJAX header
         const srcRes = await axios.get(`https://megaplay.buzz/stream/getSources?id=${embedId}`, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': `https://megaplay.buzz/stream/s-2/${embedId}/${audio}`
+                'Referer': `https://megaplay.buzz/stream/s-2/${embedId}/${audio}`,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json, text/javascript, */*; q=0.01'
             },
             timeout: 8000
         });
@@ -165,7 +214,7 @@ export async function resolveMegaPlayBuzzStream(
             return { success: false, error: 'MegaPlay did not return encrypted payload' };
         }
 
-        // 4. Decrypt AES-256 payload
+        // 6. Decrypt AES-256 payload
         const decrypted = decryptMegaPlayPayload(srcRes.data.enc);
         if (!decrypted || !decrypted.file) {
             return { success: false, error: 'Failed to decrypt MegaPlay master manifest' };

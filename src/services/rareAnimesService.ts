@@ -13,7 +13,7 @@
 
 import axios from 'axios';
 
-const BASE_URL = 'https://www.rareanimes.foo';
+const BASE_URL = 'https://www.rareanimes.mov';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 const axiosOptions = {
@@ -23,7 +23,7 @@ const axiosOptions = {
         'Accept-Language': 'en-US,en;q=0.9',
         'Referer': BASE_URL + '/',
     },
-    timeout: 8000,
+    timeout: 15000,
 };
 
 export interface RareAnimeResult {
@@ -79,25 +79,25 @@ export async function searchRareAnimes(query: string, language = 'hindi'): Promi
         while ((articleMatch = articlePattern.exec(html)) !== null) {
             const articleHtml = articleMatch[1];
 
-            // Robust Title + Link extraction for modern WordPress Herald theme
-            const titleLinkMatch = articleHtml.match(/<h2[^>]*class="[^"]*entry-title[^"]*"[^>]*>\s*<a\s+href="([^"]+)"[^>]*>([^<]+)<\/a>/i) ||
-                                   articleHtml.match(/<a\s+href="(https?:\/\/[^"]*(?:rareanimes\.(?:foo|fans|mov))\/[^"]+)"\s+title="([^"]+)"/i);
-            if (!titleLinkMatch) continue;
+            // Title + link
+            const linkMatch = articleHtml.match(/href="(https:\/\/www\.rareanimes\.mov\/[^"]+)"[^>]*>([^<]{3,120})</);
+            if (!linkMatch) continue;
 
-            let url = titleLinkMatch[1].trim();
-            let rawTitle = titleLinkMatch[2].replace(/&#8211;/g, '-').replace(/&#8217;/g, "'").replace(/&amp;/g, '&').trim();
+            const url = linkMatch[1];
+            const rawTitle = linkMatch[2].trim();
 
             // Filter out feed/category/tag pages
             if (url.includes('/feed/') || url.includes('/category/') || url.includes('/tag/') || url.includes('xmlrpc')) continue;
 
             // Poster image
-            const posterMatch = articleHtml.match(/<img[^>]+src="([^">]+\.(?:jpg|jpeg|png|webp)[^">]*)"/i);
+            const posterMatch = articleHtml.match(/src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/i);
             const poster = posterMatch ? posterMatch[1] : undefined;
 
             // Excerpt
             const excerptMatch = articleHtml.match(/<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>([^<]{10,300})</i);
             const excerpt = excerptMatch ? excerptMatch[1].trim() : undefined;
 
+            // Skip if title is too short or clearly non-anime
             if (rawTitle.length < 3) continue;
 
             results.push({
@@ -176,7 +176,7 @@ export async function scrapeRareAnimesPage(pageUrl: string): Promise<{
 
         // Extract links to individual episode sub-pages
         // Pattern: /hindi/anime-name-episode-1/ or /english/...
-        const episodeLinkPattern = /href="(https?:\/\/(?:www\.)?rareanimes\.(?:foo|fans|mov)\/(?:hindi|english|tamil|telugu)\/[^"]+)"/gi;
+        const episodeLinkPattern = /href="(https:\/\/www\.rareanimes\.mov\/(?:hindi|english|tamil|telugu)\/[^"]+)"/gi;
         let epLinkMatch: RegExpExecArray | null;
         const seen = new Set<string>();
 

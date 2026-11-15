@@ -6,7 +6,7 @@
     "ip": "127.0.0.1",
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
     "firstBoundAt": 1792183472726,
-    "lastSeenAt": 1794209394135,
+    "lastSeenAt": 1794595613828,
     "status": "authorized"
   },
   {
@@ -38,5 +38,35 @@
     "firstBoundAt": 1794208956942,
     "lastSeenAt": 1794208957086,
     "status": "authorized"
+  },
+  {
+    "deviceId": "dev_a96384a284d0802f513c6b7d",
+    "deviceLabel": "Win32 • Desktop Browser",
+    "deviceFingerprint": "a96384a284d0802f513c6b7d06fa481945a35b03952f129938b52fb7c5ed7e86",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
+    "firstBoundAt": 1794595737117,
+    "lastSeenAt": 1794596343565,
+    "status": "authorized"
+  },
+  {
+    "deviceId": "dev_58e99406dd183ef33934703a",
+    "deviceLabel": "Win32 • Desktop Browser",
+    "deviceFingerprint": "58e99406dd183ef33934703a36ab3caf5192137a7c04f5047e2048a2ee7e0d49",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
+    "firstBoundAt": 1794596344028,
+    "lastSeenAt": 1794596344028,
+    "status": "authorized"
+  },
+  {
+    "deviceId": "dev_test_phone_001",
+    "deviceLabel": "Android Pixel 8 • Chrome",
+    "deviceFingerprint": "fp_test_phone_001_abc",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    "firstBoundAt": 1794766446564,
+    "lastSeenAt": 1794766446564,
+    "status": "revoked"
   }
 ]

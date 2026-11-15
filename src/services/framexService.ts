@@ -139,32 +139,27 @@ export async function probeAndRankFrameXSources(sources: FrameXSource[]): Promis
                 return { source: { ...src, skipProxy: src.skipProxy ?? true }, rank: -1, healthy: false };
             }
 
-            const mData = mRes.data;
-            const isMaster = mData.includes('#EXT-X-STREAM-INF');
+            const lines = mRes.data.split('\n').map(l => l.trim());
+            const variantLines = lines.filter(l => l && !l.startsWith('#'));
 
-            if (!isMaster) {
-                // Direct media manifest (already contains media segments like #EXTINF or #EXT-X-MAP)
-                const mapMatch = mData.match(/#EXT-X-MAP:URI="([^"]+)"/);
+            if (variantLines.length === 0) {
+                // Direct media manifest
+                const mapMatch = mRes.data.match(/#EXT-X-MAP:URI="([^"]+)"/);
                 if (mapMatch) {
-                    try {
-                        const mapUrl = new URL(mapMatch[1], rawUrl).href;
-                        const mapRes = await axios.get(mapUrl, {
-                            headers: { 'Referer': FRAMEX_FRONTEND_ORIGIN },
-                            validateStatus: () => true,
-                            timeout: 2500
-                        });
-                        if (mapRes.status >= 400) {
-                            return { source: { ...src, skipProxy: src.skipProxy ?? true }, rank: -1, healthy: false };
-                        }
-                    } catch (_) {}
+                    const mapUrl = new URL(mapMatch[1], rawUrl).href;
+                    const mapRes = await axios.get(mapUrl, {
+                        headers: { 'Referer': FRAMEX_FRONTEND_ORIGIN },
+                        validateStatus: () => true,
+                        timeout: 2500
+                    });
+                    if (mapRes.status >= 400) {
+                        return { source: { ...src, skipProxy: src.skipProxy ?? true }, rank: -1, healthy: false };
+                    }
                 }
-                return { source: { ...src, skipProxy: src.skipProxy ?? true }, rank: 95, healthy: true };
+                return { source: { ...src, skipProxy: src.skipProxy ?? true }, rank: 90, healthy: true };
             }
 
-            // Master manifest: probe at most top 2 variants quickly to check CDN health
-            const lines = mData.split('\n').map(l => l.trim());
-            const variantLines = lines.filter(l => l && !l.startsWith('#')).slice(0, 2);
-
+            // Master manifest: probe variants
             let firstWorkingVariantUrl: string | null = null;
             let firstWorkingQuality: string | null = null;
             let primaryVariantHealthy = false;
@@ -175,17 +170,46 @@ export async function probeAndRankFrameXSources(sources: FrameXSource[]): Promis
                 try {
                     const vRes = await axios.get(vUrl, {
                         headers: { 'Referer': FRAMEX_FRONTEND_ORIGIN },
-                        timeout: 2000
+                        timeout: 2500
                     });
                     if (vRes.status === 200 && vRes.data && typeof vRes.data === 'string') {
-                        if (i === 0) {
-                            primaryVariantHealthy = true;
+                        const mapMatch = vRes.data.match(/#EXT-X-MAP:URI="([^"]+)"/);
+                        let segHealthy = true;
+                        if (mapMatch) {
+                            const mapUrl = new URL(mapMatch[1], vUrl).href;
+                            const mapRes = await axios.get(mapUrl, {
+                                headers: { 'Referer': FRAMEX_FRONTEND_ORIGIN },
+                                validateStatus: () => true,
+                                timeout: 2500
+                            });
+                            if (mapRes.status >= 400) {
+                                segHealthy = false;
+                            }
+                        } else {
+                            const firstSeg = vRes.data.split('\n').map(l => l.trim()).find(l => l && !l.startsWith('#'));
+                            if (firstSeg) {
+                                const segUrl = new URL(firstSeg, vUrl).href;
+                                const segRes = await axios.get(segUrl, {
+                                    headers: { 'Referer': FRAMEX_FRONTEND_ORIGIN },
+                                    validateStatus: () => true,
+                                    timeout: 2500
+                                });
+                                if (segRes.status >= 400) {
+                                    segHealthy = false;
+                                }
+                            }
                         }
-                        if (!firstWorkingVariantUrl) {
-                            firstWorkingVariantUrl = vUrl;
-                            firstWorkingQuality = vUrl.includes('720p') ? '720p' : (vUrl.includes('1080p') ? '1080p' : 'Auto');
+
+                        if (segHealthy) {
+                            if (i === 0) {
+                                primaryVariantHealthy = true;
+                            }
+                            if (!firstWorkingVariantUrl) {
+                                firstWorkingVariantUrl = vUrl;
+                                firstWorkingQuality = vUrl.includes('720p') ? '720p' : (vUrl.includes('1080p') ? '1080p' : 'Auto');
+                            }
+                            if (primaryVariantHealthy) break;
                         }
-                        if (primaryVariantHealthy) break;
                     }
                 } catch (_) {}
             }
@@ -278,8 +302,8 @@ async function scrapeFrameXAnimeInternal(params: {
         const providersToTry = params.provider
             ? [params.provider]
             : (audioType === 'dub'
-                ? ['goblin_dub', 'valkyrie_dub', 'grand_warden_dub']
-                : ['', 'goblin', 'valkyrie', 'super_pekka']);
+                ? ['grand_warden_dub', 'goblin_dub', 'wizard_dub', 'valkyrie_dub', 'archer_dub', 'healer_dub']
+                : ['', 'grand_warden', 'goblin', 'wizard', 'valkyrie', 'super_pekka']);
 
         for (const prov of providersToTry) {
             try {
@@ -290,7 +314,7 @@ async function scrapeFrameXAnimeInternal(params: {
 
                 const res = await axios.get(streamEndpoint, {
                     headers: FRAMEX_HEADERS,
-                    timeout: 2500
+                    timeout: 7000
                 });
 
                 if (res.status === 200 && res.data?.success && Array.isArray(res.data?.sources) && res.data.sources.length > 0) {
@@ -448,8 +472,8 @@ async function scrapeFrameXMovieTvInternal(params: {
         };
     }
 
-    // Try unconstrained (FrameX automatic best provider) first, followed by active fallbacks
-    const providersToTry = params.provider ? [params.provider] : ['', 'grand_warden', 'bowler', 'giant'];
+    // Try Titan (high-speed active provider) first, followed by unconstrained fallback
+    const providersToTry = params.provider ? [params.provider] : ['titan', ''];
 
     for (const prov of providersToTry) {
         try {
@@ -463,7 +487,7 @@ async function scrapeFrameXMovieTvInternal(params: {
 
             const res = await axios.get(streamEndpoint, {
                 headers: FRAMEX_HEADERS,
-                timeout: 2500
+                timeout: prov === 'titan' ? 4000 : 3000
             });
 
             if (res.status === 200 && res.data?.success && Array.isArray(res.data?.sources) && res.data.sources.length > 0) {

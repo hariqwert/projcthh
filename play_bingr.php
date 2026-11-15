@@ -2517,10 +2517,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             try {
                 const payload = {
                     type: MEDIA_TYPE,
+                    t: MEDIA_TYPE,
+                    media_type: MEDIA_TYPE,
                     id: MEDIA_ID,
+                    tmdbId: MEDIA_ID,
                     title: MEDIA_TITLE,
                     season: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_SEASON : undefined,
                     episode: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_EPISODE : undefined,
+                    s: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_SEASON : undefined,
+                    e: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_EPISODE : undefined,
                     srv: serverId,
                     strictSrv: isManual || Boolean(urlParams.get('srv')),
                     malId: MAL_ID || undefined,

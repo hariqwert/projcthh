@@ -914,59 +914,18 @@
   </script>
   <script>
     (function () {
-      var CACHE_NAME = 'aetheris-pwa-v12';
-      var OFFLINE_ASSETS = [
-        '/subway.html',
-        '/offline.html',
-        '/assets/games/subway/three.min.js',
-        '/assets/games/subway/subway-bundle.js?v=2.8.0',
-        '/assets/games/subway/open-world-dev.js?v=3.0.0',
-        '/assets/games/subway/core.glb',
-        '/assets/games/subway/scenery.glb'
-      ];
-
-      function seedSubwayCache() {
-        if (!('caches' in window) || !navigator.onLine) return;
-        caches.open(CACHE_NAME).then(function (cache) {
-          OFFLINE_ASSETS.forEach(function (url) {
-            cache.match(url, { ignoreSearch: false }).then(function (existing) {
-              if (existing && existing.ok) return;
-              fetch(url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
-                if (!res || res.status !== 200) return;
-                res.arrayBuffer().then(function (buf) {
-                  var headers = new Headers(res.headers);
-                  headers.delete('Cache-Control');
-                  headers.delete('Pragma');
-                  headers.delete('Expires');
-                  var clean = new Response(buf, { status: 200, headers: headers });
-                  cache.put(url, clean.clone()).catch(function () {});
-                  if (url === '/subway.html') cache.put('/subway', clean.clone()).catch(function () {});
-                  if (url === '/offline.html') cache.put('/offline', clean.clone()).catch(function () {});
-                  if (url.indexOf('subway-bundle.js') !== -1) cache.put('/assets/games/subway/subway-bundle.js', clean.clone()).catch(function () {});
-                  if (url.indexOf('open-world-dev.js') !== -1) cache.put('/assets/games/subway/open-world-dev.js', clean.clone()).catch(function () {});
-                }).catch(function () {});
-              }).catch(function () {});
-            }).catch(function () {});
-          });
-        }).catch(function () {});
-      }
-
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (reg) {
-          console.log('[PWA] Offline Center service worker active:', reg.scope);
-          if (reg.active) {
-            reg.active.postMessage({ type: 'WARM_SUBWAY_CACHE' });
-          }
-        }).catch(function (err) {
-          console.warn('[PWA] Service worker registration error:', err);
-        });
-      }
-
-      if (document.readyState === 'complete') {
-        seedSubwayCache();
-      } else {
-        window.addEventListener('load', seedSubwayCache);
-      }
+      try {
+        if ('caches' in window && typeof caches.keys === 'function') {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k).catch(function () {}); });
+          }).catch(function () {});
+        }
+        if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (reg) { reg.unregister().catch(function () {}); });
+          }).catch(function () {});
+        }
+      } catch (e) {}
     })();
   </script>
 <script src="/watchdog.js"></script>

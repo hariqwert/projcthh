@@ -837,7 +837,7 @@ export function saveUnlockedIpsToDisk(): void {
 export function unlockIpForDuration(ip: string, durationMs: number = IP_UNLOCK_DURATION_MS): void {
     if (!ip) return;
     const cleanIp = String(ip).replace(/^::ffff:/, '').trim();
-    if (!cleanIp || cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost') return;
+    if (!cleanIp) return;
     
     const expiry = Date.now() + durationMs;
     unlockedIpsMap.set(cleanIp, expiry);
@@ -848,7 +848,7 @@ export function unlockIpForDuration(ip: string, durationMs: number = IP_UNLOCK_D
 export function isIpUnlocked(ip: string): boolean {
     if (!ip) return false;
     const cleanIp = String(ip).replace(/^::ffff:/, '').trim();
-    if (!cleanIp || cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost') return false;
+    if (!cleanIp) return false;
 
     const expiry = unlockedIpsMap.get(cleanIp);
     if (!expiry) return false;
@@ -2422,8 +2422,8 @@ app.use((req, res, next) => {
                 window.offlineYtPlayer = new YT.Player('offlineYtPlayer', {
                     height: '220',
                     width: '220',
-                    videoId: '',
-                    host: 'https://www.youtube-nocookie.com',
+                    videoId: window._pendingOfflineYtId || 'jfKfPfyJRdk',
+                    host: 'https://www.youtube.com',
                     playerVars: {
                         autoplay: 1,
                         controls: 0,
@@ -2431,7 +2431,6 @@ app.use((req, res, next) => {
                         fs: 0,
                         modestbranding: 1,
                         playsinline: 1,
-                        origin: window.location && window.location.origin ? window.location.origin : '',
                         enablejsapi: 1
                     },
                     events: {
@@ -3919,15 +3918,12 @@ app.use((req, res, next) => {
                     iframe.id = 'broadcastActiveVideoEl';
                     iframe.className = 'w-full h-full border-0 select-none bg-black';
                     iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-                    let embedSrc = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(ytId) +
+                    let embedSrc = 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) +
                         '?autoplay=' + (isAutoplay ? '1' : '0') +
                         '&mute=' + (isBroadcastMuted ? '1' : '0') +
-                        '&playsinline=1&controls=1&rel=0';
+                        '&enablejsapi=1&playsinline=1&controls=1&rel=0';
                     if (isLoop) {
                         embedSrc += '&loop=1&playlist=' + encodeURIComponent(ytId);
-                    }
-                    if (window.location && window.location.origin && window.location.origin !== 'null') {
-                        embedSrc += '&origin=' + encodeURIComponent(window.location.origin);
                     }
                     iframe.src = embedSrc;
                     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';

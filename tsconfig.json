@@ -2,12 +2,12 @@
   "compilerOptions": {
     "target": "es2022",
     "module": "commonjs",
-    "jsx": "react-jsx",
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
   "include": ["server.ts", "src/**/*"],
-  "exclude": ["node_modules", "test_*.ts", "search_*.ts", "inspect_*.ts"]
+  "exclude": ["node_modules", "src/games", "test_*.ts", "search_*.ts", "inspect_*.ts"]
 }

@@ -407,7 +407,8 @@ export function encryptVidlinkToken(mediaId: string | number): string {
 }
 
 export async function scrapeVidlinkStream(params: {
-    tmdbId: string | number;
+    tmdbId?: string | number;
+    id?: string | number;
     type: 'movie' | 'tv' | 'anime';
     season?: number;
     episode?: number;
@@ -421,7 +422,7 @@ export async function scrapeVidlinkStream(params: {
         const isSeries = (params.type === 'tv' || isAnime) && params.type !== 'movie';
 
         // VidLink uses TMDB token under /api/b/tv or /api/b/movie with multiLang=1
-        const targetId = params.tmdbId || params.malId;
+        const targetId = params.tmdbId || (params as any).id || params.malId;
         if (!targetId) return { success: false, sources: [], subtitles: [] };
 
         const token = encryptVidlinkToken(targetId);
@@ -522,17 +523,20 @@ export async function scrapeVidlinkStream(params: {
 // 🚀 VIDRIFT NATIVE SCRAPER
 // ==========================================
 export async function scrapeVidriftStream(params: {
-    tmdbId: string | number;
+    tmdbId?: string | number;
+    id?: string | number;
     type: 'movie' | 'tv' | 'anime';
     season?: number;
     episode?: number;
 }): Promise<any> {
     try {
+        const targetId = params.tmdbId || (params as any).id;
+        if (!targetId) return { success: false, sources: [], subtitles: [] };
         const s = params.season || 1;
         const e = params.episode || 1;
         const embedUrl = (params.type === 'tv' || params.type === 'anime')
-            ? `https://embed.vidrift.in/embed/tv/${params.tmdbId}/${s}/${e}`
-            : `https://embed.vidrift.in/embed/movie/${params.tmdbId}`;
+            ? `https://embed.vidrift.in/embed/tv/${targetId}/${s}/${e}`
+            : `https://embed.vidrift.in/embed/movie/${targetId}`;
 
         const htmlRes = await axios.get(embedUrl, {
             headers: {
@@ -549,11 +553,32 @@ export async function scrapeVidriftStream(params: {
         const orionMp4Sources: any[] = [];
         const orionHlsSources: any[] = [];
 
+        // Parse external subtitles embedded in page
+        const parsedSubs: any[] = [];
+        const subMatch = htmlRes.data.match(/var\s+subtitleTracks\s*=\s*(\[[^;]*?\]);/);
+        if (subMatch) {
+            try {
+                const rawSubs = JSON.parse(subMatch[1]);
+                if (Array.isArray(rawSubs)) {
+                    for (const sb of rawSubs) {
+                        const subUrl = sb.url ? (sb.url.startsWith('/') ? `https://embed.vidrift.in${sb.url}` : sb.url) : '';
+                        if (subUrl) {
+                            parsedSubs.push({
+                                lang: sb.lang || sb.label || 'en',
+                                label: sb.label || 'Subtitles',
+                                url: `/stream_proxy.php?url=${encodeURIComponent(subUrl)}`
+                            });
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
         const token = meta.playbackToken;
         if (token) {
             const path = (params.type === 'tv' || params.type === 'anime')
-                ? `tv/${params.tmdbId}/${s}/${e}`
-                : `movie/${params.tmdbId}`;
+                ? `tv/${targetId}/${s}/${e}`
+                : `movie/${targetId}`;
 
             const apiUrl = `https://embed.vidrift.in/api/source/${path}?token=${encodeURIComponent(token)}`;
             try {
@@ -615,7 +640,7 @@ export async function scrapeVidriftStream(params: {
         return {
             success: sources.length > 0,
             sources,
-            subtitles: [],
+            subtitles: parsedSubs,
             primaryM3u8: sources[0]?.url
         };
     } catch (e: any) {
@@ -3035,7 +3060,9 @@ export async function scrapeBingrStream(params: {
                     let targetAniId: number | null = null;
                     if (params.anilistId && !isNaN(Number(params.anilistId))) {
                         targetAniId = Number(params.anilistId);
-                    } else if ((params.type === 'anime' || (params as any).t === 'anime') && params.id && !isNaN(Number(params.id))) {
+                    } else if ((params.type === 'anime' || (params as any).t === 'anime' || (params as any).media_type === 'anime') && params.id && !isNaN(Number(params.id))) {
+                        targetAniId = Number(params.id);
+                    } else if (params.id && !isNaN(Number(params.id)) && Number(params.id) > 1000) {
                         targetAniId = Number(params.id);
                     }
                     if (!targetAniId) {
@@ -3051,16 +3078,35 @@ export async function scrapeBingrStream(params: {
                     }
 
                     const targetAudio: 'sub' | 'dub' = isDubRequest ? 'dub' : 'sub';
+                    const epNum = Number(e) || 1;
 
                     if (targetAniId) {
                         let aniWatch: any = null;
                         if (serverId === 'anivexa') {
-                            aniWatch = await fetchAnivexaBestStream(targetAniId, e, targetAudio);
+                            aniWatch = await fetchAnivexaBestStream(targetAniId, epNum, targetAudio);
                             if (!aniWatch || !aniWatch.success || !aniWatch.streams || aniWatch.streams.length === 0) {
-                                aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, e);
+                                aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, epNum);
                             }
                         } else {
-                            aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, e);
+                            aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, epNum);
+                        }
+
+                        // Fallback: If ID didn't match (e.g. was a TMDB ID instead of AniList ID), resolve via AniList title search
+                        if ((!aniWatch || !aniWatch.success || !aniWatch.streams || aniWatch.streams.length === 0) && cleanTitle) {
+                            try {
+                                const aniLookup = await fetchAniListEpisodes({ title: cleanTitle });
+                                if (aniLookup && aniLookup.id && aniLookup.id !== targetAniId) {
+                                    targetAniId = aniLookup.id;
+                                    if (serverId === 'anivexa') {
+                                        aniWatch = await fetchAnivexaBestStream(targetAniId, epNum, targetAudio);
+                                        if (!aniWatch || !aniWatch.success || !aniWatch.streams || aniWatch.streams.length === 0) {
+                                            aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, epNum);
+                                        }
+                                    } else {
+                                        aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, epNum);
+                                    }
+                                }
+                            } catch (_) {}
                         }
 
                         if (aniWatch && aniWatch.success && aniWatch.streams && aniWatch.streams.length > 0) {

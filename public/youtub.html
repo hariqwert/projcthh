@@ -604,61 +604,36 @@
       }
     }
     async function triggerDownload(videoId, format, title, quality = '1080') {
-      // Show Download Timeline Card
+      const safeTitle = String(title || videoId).replace(/[^\w\s\-().]/g, '').trim() || videoId;
+      const ext = format === 'mp3' ? 'mp3' : 'mp4';
       dlTimelineCard.classList.remove('hidden');
       dlTimelineCard.scrollIntoView({ behavior: 'smooth' });
       dlVideoTitle.textContent = `📥 ${quality}${format === 'mp4' ? 'p MP4' : 'k MP3'}: ${title || videoId}`;
       updateProgress(10, `⚡ Phase 1: Resolving ${quality}p Stream Link...`, 1);
-      const startTime = Date.now();
-      let lastTime = startTime;
-      let lastLoaded = 0;
       try {
         updateProgress(35, `📥 Phase 2: Connecting to ${quality}p Stream...`, 2);
-        const streamUrl = `/api/v1/youtube/stream?v=${encodeURIComponent(videoId)}&type=${encodeURIComponent(format)}&quality=${encodeURIComponent(quality)}`;
-        
-        updateProgress(50, '🚀 Phase 3: Transferring File Data (Native Download)...', 3);
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = streamUrl;
-        
-        iframe.onload = () => {
-            try {
-                const text = iframe.contentDocument.body.innerText;
-                if (text.includes('isBotBlock') || text.includes('error')) {
-                    throw new Error("BotBlock JSON returned");
-                }
-            } catch (e) {
-                console.error('Download iframe error:', e);
-                // Trigger the catch block below by throwing an error manually if it's the bot block
-                if (e.message === "BotBlock JSON returned") {
-                     if (dlStatusIcon) dlStatusIcon.innerHTML = '<i data-lucide="x-circle" style="color:#ef4444;"></i>';
-                     if (dlStatusText) dlStatusText.innerHTML = '<span style="color:#ef4444; font-weight: 600;">⚠️ Cloud Bot Protection Detected</span>';
-                     if (dlProgressBox) dlProgressBox.classList.add('hidden');
-                     const dlFallbackBox = document.getElementById('dlFallbackBox');
-                     if (dlFallbackBox) dlFallbackBox.classList.remove('hidden');
-                }
-            }
-        };
-        
-        document.body.appendChild(iframe);
-        
-        // Assume success after setting src
+        const streamUrl = `/api/v1/youtube/stream?v=${encodeURIComponent(videoId)}&type=${encodeURIComponent(format)}&quality=${encodeURIComponent(quality)}&download=1&title=${encodeURIComponent(safeTitle)}`;
+
+        updateProgress(55, '🚀 Phase 3: Transferring File Data (Native Download)...', 3);
+        const a = document.createElement('a');
+        a.href = streamUrl;
+        a.download = `${safeTitle}.${ext}`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 1000);
+
         setTimeout(() => {
-            updateProgress(100, `✅ Download Initiated natively`, 4);
-            if (dlStatusIcon) dlStatusIcon.innerHTML = '<i data-lucide="check-circle" style="color:#10b981;"></i>';
-            if (dlStatusText) dlStatusText.innerHTML = '<span style="color:#10b981; font-weight: 600;">Download Complete</span>';
-        }, 3000);
-        
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+          updateProgress(100, `✅ Download Initiated natively (${safeTitle}.${ext})`, 4);
+          if (dlStatusText) dlStatusText.innerHTML = '<span style="color:#10b981; font-weight: 600;">Download Started</span>';
+        }, 2000);
       } catch (e) {
         console.error('Timeline Download Error:', e);
-        dlStatusText.style.color = '#ef4444';
-        dlPercentText.style.color = '#ef4444';
-        dlProgressFill.style.background = '#ef4444';
-        updateProgress(100, `⚠️ Cloud Bot Protection Detected`, 4);
-        
-        // Show Instant Fallback Download Links
+        if (dlStatusText) dlStatusText.style.color = '#ef4444';
+        if (dlPercentText) dlPercentText.style.color = '#ef4444';
+        if (dlProgressFill) dlProgressFill.style.background = '#ef4444';
+        updateProgress(100, `⚠️ Download failed or blocked`, 4);
+
         const dlFallbackBox = document.getElementById('dlFallbackBox');
         if (dlFallbackBox) {
           dlFallbackBox.classList.remove('hidden');

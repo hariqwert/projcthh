@@ -4591,14 +4591,11 @@ window.previewAdminBroadcastVideo = function() {
             return;
         }
 
-        let embedUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=${isAutoplay ? 1 : 0}&mute=${isMuted ? 1 : 0}&playsinline=1&controls=1&rel=0`;
+        let embedUrl = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=${isAutoplay ? 1 : 0}&mute=${isMuted ? 1 : 0}&enablejsapi=1&playsinline=1&controls=1&rel=0`;
         if (isLoop) {
             embedUrl += `&loop=1&playlist=${encodeURIComponent(videoId)}`;
         }
-        if (window.location && window.location.origin && window.location.origin !== 'null') {
-            embedUrl += `&origin=${encodeURIComponent(window.location.origin)}`;
-        }
-        frame.innerHTML = `<iframe src="${embedUrl}" class="w-full h-full border-0" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+        frame.innerHTML = `<iframe src="${embedUrl}" class="w-full h-full border-0 bg-black" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
     } else if (effectiveType === 'facebook') {
         const fbEmbed = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false&autoplay=${isAutoplay ? 'true' : 'false'}`;
         frame.innerHTML = `<iframe src="${fbEmbed}" class="w-full h-full border-0" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;

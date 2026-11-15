@@ -24,30 +24,19 @@
             console.log('[PWA] Application successfully installed.');
         });
 
-        // Register Service Worker & preserve active Offline Arcade / Subway Surfers 3D cache
-        const ACTIVE_CACHE = 'aetheris-pwa-v12';
+        // Zero local file caching: delete all CacheStorage buckets and unregister any Service Workers
         if ('caches' in window) {
             caches.keys().then((keys) => {
                 keys.forEach((key) => {
-                    if (key !== ACTIVE_CACHE) {
-                        caches.delete(key).catch(() => {});
-                    }
+                    caches.delete(key).catch(() => {});
                 });
             }).catch(() => {});
         }
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((reg) => {
-                    reg.update().catch(() => {});
-                    if (reg.active) {
-                        reg.active.postMessage({ type: 'WARM_SUBWAY_CACHE' });
-                    }
-                    console.log('[PWA] Service Worker registered with scope:', reg.scope);
-                }).catch((err) => {
-                    console.warn('[PWA] Service Worker registration failed:', err);
-                });
-            });
+        if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+            navigator.serviceWorker.getRegistrations().then((regs) => {
+                regs.forEach((reg) => reg.unregister().catch(() => {}));
+            }).catch(() => {});
         }
     }
 

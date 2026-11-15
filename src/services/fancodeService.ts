@@ -259,7 +259,10 @@ export async function fetchFanCodeEvents(forceRefresh = false): Promise<{ live: 
             sourceItem: FanCodeSourceConfigItem
         ) => {
             const checkBlob = `${raw.title || ''} ${raw.eventName || ''} ${raw.matchId || ''}`;
-            if (/namibia\s*v(?:s\.?)?\s*zimbabwe|zimbabwe\s*v(?:s\.?)?\s*namibia|4248459/i.test(checkBlob)) {
+            if (/namibia\s*v(?:s\.?)?\s*zimbabwe|zimbabwe\s*v(?:s\.?)?\s*namibia|4248459|4248350|lucknow\s*falcons\s*v(?:s\.?)?\s*meerut|meerut\s*mavericks\s*v(?:s\.?)?\s*lucknow/i.test(checkBlob)) {
+                return;
+            }
+            if (/completed|finished|ended|abandoned/i.test(String(raw.status || ''))) {
                 return;
             }
             const normKey = normalizeFanCodeMatchKey(raw.title, raw.matchId);
@@ -398,7 +401,9 @@ export async function fetchFanCodeEvents(forceRefresh = false): Promise<{ live: 
                                 } catch (e) {}
                             }
 
-                            const isStarted = m.status === 'LIVE' || m.streamingStatus === 'STARTED' || candidateStreams.length > 0;
+                            const rawStatus = String(m.status || m.streamingStatus || '').toUpperCase();
+                            if (/COMPLETED|FINISHED|ENDED|ABANDONED/i.test(rawStatus)) continue;
+                            const isStarted = (rawStatus === 'LIVE' || rawStatus === 'STARTED' || candidateStreams.length > 0) && rawStatus !== 'UPCOMING';
                             addOrMergeFanCodeEvent({
                                 matchId: matchIdStr || `${Math.abs(matchTitle.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0))}`,
                                 title: matchTitle,

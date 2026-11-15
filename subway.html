@@ -925,35 +925,6 @@ window.__CORE_URL = '/assets/games/subway/core.glb';
 window.__SCENERY_URL = '/assets/games/subway/scenery.glb';
 
 (function () {
-  var CACHE_NAME = 'aetheris-pwa-v12';
-  var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
-
-  // Direct CacheStorage-First wrapper for Subway 3D assets (works even before SW claims client)
-  if (nativeFetch && 'caches' in window) {
-    window.fetch = function (input, init) {
-      var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
-      if (urlStr && urlStr.indexOf('/assets/games/subway/') !== -1) {
-        return caches.match(urlStr, { ignoreSearch: true }).then(function (cached) {
-          if (cached && cached.ok) {
-            return cached.clone();
-          }
-          return nativeFetch(input, init).then(function (res) {
-            if (res && res.status === 200) {
-              var cloneForCache = res.clone();
-              caches.open(CACHE_NAME).then(function (cache) {
-                cache.put(urlStr, cloneForCache).catch(function () {});
-              }).catch(function () {});
-            }
-            return res;
-          });
-        }).catch(function () {
-          return nativeFetch(input, init);
-        });
-      }
-      return nativeFetch(input, init);
-    };
-  }
-
   var bar = document.getElementById('ld-bar'), txt = document.getElementById('ld-text');
   var shown = 0;
   function set(p, label) {
@@ -1090,38 +1061,16 @@ window.__SCENERY_URL = '/assets/games/subway/scenery.glb';
 <script src="/assets/games/subway/three.min.js"></script>
 <script src="/assets/games/subway/open-world-dev.js?v=3.0.0"></script>
 
-<!-- PWA Offline Service Worker & Direct Cache Seeder -->
+<!-- Direct Navigation & Legacy Cache/SW Cleanup -->
 <script>
 (function () {
-  var CACHE_NAME = 'aetheris-pwa-v12';
-  var OFFLINE_ASSETS = [
-    '/subway.html',
-    '/offline.html',
-    '/hero.html',
-    '/assets/games/subway/three.min.js',
-    '/assets/games/subway/subway-bundle.js?v=2.8.0',
-    '/assets/games/subway/open-world-dev.js?v=3.0.0',
-    '/assets/games/subway/core.glb',
-    '/assets/games/subway/scenery.glb',
-    '/assets/games/subway/promo_mumbai_sunset.jpg',
-    '/assets/games/subway/promo_mumbai_night.jpg'
-  ];
-
   // Ensure top Home / Portal and Offline Center buttons always respond on touch & desktop
   var portalBtn = document.getElementById('nav-portal-home');
   if (portalBtn) {
     var goPortal = function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (!navigator.onLine && 'caches' in window) {
-        caches.match('/hero.html', { ignoreSearch: true }).then(function (m) {
-          window.location.href = (m && m.ok) ? '/hero.html' : '/offline.html';
-        }).catch(function () {
-          window.location.href = '/offline.html';
-        });
-      } else {
-        window.location.href = '/hero.html';
-      }
+      window.location.href = '/hero.html';
     };
     portalBtn.addEventListener('click', goPortal);
     portalBtn.addEventListener('touchend', goPortal, { passive: false });
@@ -1138,48 +1087,18 @@ window.__SCENERY_URL = '/assets/games/subway/scenery.glb';
     offlineBtn.addEventListener('touchend', goOffline, { passive: false });
   }
 
-  function seedDirectOfflineCache() {
-    if (!('caches' in window) || !navigator.onLine) return;
-    caches.open(CACHE_NAME).then(function (cache) {
-      OFFLINE_ASSETS.forEach(function (url) {
-        cache.match(url, { ignoreSearch: false }).then(function (existing) {
-          if (existing && existing.ok) return;
-          fetch(url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
-            if (!res || res.status !== 200) return;
-            res.arrayBuffer().then(function (buf) {
-              var headers = new Headers(res.headers);
-              headers.delete('Cache-Control');
-              headers.delete('Pragma');
-              headers.delete('Expires');
-              var clean = new Response(buf, { status: 200, headers: headers });
-              cache.put(url, clean.clone()).catch(function () {});
-              if (url === '/subway.html') cache.put('/subway', clean.clone()).catch(function () {});
-              if (url === '/offline.html') cache.put('/offline', clean.clone()).catch(function () {});
-              if (url.indexOf('subway-bundle.js') !== -1) cache.put('/assets/games/subway/subway-bundle.js', clean.clone()).catch(function () {});
-              if (url.indexOf('open-world-dev.js') !== -1) cache.put('/assets/games/subway/open-world-dev.js', clean.clone()).catch(function () {});
-            }).catch(function () {});
-          }).catch(function () {});
-        }).catch(function () {});
-      });
-    }).catch(function () {});
-  }
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (reg) {
-      console.log('[PWA] Subway Surfers offline service worker ready:', reg.scope);
-      if (reg.active) {
-        reg.active.postMessage({ type: 'WARM_SUBWAY_CACHE' });
-      }
-    }).catch(function (err) {
-      console.warn('[PWA] Service worker registration error:', err);
-    });
-  }
-
-  if (document.readyState === 'complete') {
-    seedDirectOfflineCache();
-  } else {
-    window.addEventListener('load', seedDirectOfflineCache);
-  }
+  try {
+    if ('caches' in window && typeof caches.keys === 'function') {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { caches.delete(k).catch(function () {}); });
+      }).catch(function () {});
+    }
+    if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (reg) { reg.unregister().catch(function () {}); });
+      }).catch(function () {});
+    }
+  } catch (e) {}
 })();
 </script>
 <script src="/watchdog.js"></script>

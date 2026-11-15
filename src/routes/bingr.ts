@@ -255,7 +255,7 @@ router.get('/servers', (req: Request, res: Response) => {
                     Boolean(req.query.mal) || 
                     Boolean(req.query.anilistId);
     if (isAnime) {
-        const animeIds = ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
+        const animeIds = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
         const animeServers = animeIds
             .map(id => BINGR_SERVERS.find(s => s.id === id))
             .filter((s): s is BingrServerCluster => Boolean(s));
@@ -265,7 +265,7 @@ router.get('/servers', (req: Request, res: Response) => {
 });
 
 router.get('/anime_servers', (req: Request, res: Response) => {
-    const animeIds = ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
+    const animeIds = ['megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'kisskh', 'asiaflix', 's40', 'framex'];
     const animeServers = animeIds
         .map(id => BINGR_SERVERS.find(s => s.id === id))
         .filter((s): s is BingrServerCluster => Boolean(s));
@@ -520,7 +520,7 @@ router.all(['/stream', '/scrape'], async (req: Request, res: Response) => {
         const isAnime = rawType === 'anime' || Boolean(anilistId) || Boolean(malId);
         const type = (isAnime ? 'anime' : (rawType === 'tv' ? 'tv' : 'movie')) as 'movie' | 'tv' | 'anime';
         const id = body.id;
-        const title = body.title || (typeof body.query === 'string' ? body.query : body.query?.title);
+        const title = body.title || body.query?.title;
         const year = body.year || body.query?.year;
         const season = body.season ? Number(body.season) : (body.query?.season ? Number(body.query.season) : undefined);
         const episode = body.episode ? Number(body.episode) : (body.query?.episode ? Number(body.query.episode) : undefined);
@@ -958,24 +958,21 @@ router.get('/m3u', async (req: Request, res: Response) => {
             if (isAllServers) {
                 const clusterList = [
                     { id: 'vidlink', name: 'VidLink Pro' },
-                    { id: 'vidrift', name: 'Vidrift' },
-                    { id: 'm4u', name: 'Movie 4U' },
-                    { id: 'prism', name: 'Prism' },
-                    { id: 's80', name: 'Moscow' },
-                    { id: 's30', name: 'Nova' },
                     { id: 'filmu', name: 'Filmu / Vidly' },
                     { id: 'two_embed', name: '2Embed' },
                     { id: 'smashy', name: 'SmashyStream' },
+                    { id: 'aniembed', name: 'AniEmbed' },
+                    { id: 'm4u', name: 'Movie 4U' },
                     { id: 's62', name: 'Bastion' },
-                    { id: 'flux', name: 'Flux' },
+                    { id: 's70', name: 'Polaris' },
+                    { id: 's30', name: 'Nova' },
+                    { id: 's80', name: 'Moscow' },
                     { id: 's31', name: 'Orion' },
                     { id: 'sm_hub', name: 'SM Movie Hub Pro' },
-                    { id: 's70', name: 'Polaris' },
                     { id: 'framex', name: 'FrameX TV' },
                     { id: 's81', name: 'Novo' },
                     { id: 's40', name: 'Aphelion' },
                     { id: 's3', name: 'Edmunds' },
-                    { id: 'vidsrc', name: 'VidSrc' },
                     { id: 's60', name: 'Vertex' },
                     { id: 's63', name: 'Hallyu' },
                     { id: 's61', name: 'Corvus' },

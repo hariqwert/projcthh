@@ -5,6 +5,7 @@
     <link rel="icon" type="image/png" href="/apple-touch-icon.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="robots" content="noindex">
+    <meta name="referrer" content="no-referrer">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
     <title>{{NAME}}</title>
@@ -4802,14 +4803,15 @@
                         lastProgressTime = Date.now();
                         return;
                     }
-                    // Detect if player is stuck waiting for initial frames / buffering with black screen
-                    if (video.readyState < 2 || video.currentTime === 0) {
+                    // For live streams, allow 16s grace period for downloading & parsing initial media segments.
+                    // If video.readyState >= 2, frames have arrived; do not flag as stalled just because currentTime is 0.
+                    if (video.readyState < 2) {
                         initialBufferStallMs += 1000;
-                        if (initialBufferStallMs >= 5000) {
+                        if (initialBufferStallMs >= 16000) {
                             console.warn(`[Watchdog] Black screen / buffering stall (${initialBufferStallMs}ms). Triggering Auto-Backup Failover...`);
                             initialBufferStallMs = 0;
                             if (typeof window.triggerAutoBackupFailover === 'function') {
-                                window.triggerAutoBackupFailover('Buffering stall (no frames received within 5s)');
+                                window.triggerAutoBackupFailover('Buffering stall (no frames received within 16s)');
                             } else {
                                 triggerAutoReconnect();
                             }
@@ -4822,12 +4824,12 @@
                         lastProgressTime = Date.now();
                     } else {
                         const stalledTime = Date.now() - lastProgressTime;
-                        // Micro gap jump at 2.2s for seamless continuity
-                        if (stalledTime >= 2200 && stalledTime < 3800) {
+                        // Micro gap jump at 2.5s for seamless continuity
+                        if (stalledTime >= 2500 && stalledTime < 7500) {
                             video.currentTime = Math.max(0, video.currentTime + 0.35);
                             if (hls) { try { hls.startLoad(); } catch(e){} }
                             if (video.paused && !video.ended) video.play().catch(() => {});
-                        } else if (stalledTime >= 3800) {
+                        } else if (stalledTime >= 7500) {
                             console.warn(`[Watchdog] Stalled for ${(stalledTime/1000).toFixed(1)}s. Invoking AI Stream Doctor...`);
                             lastProgressTime = Date.now();
                             if (window.AiStreamDoctor) {
@@ -4845,6 +4847,38 @@
             window.bingrSources = [];
             window.bingrSubtitles = [];
 
+            window.autoSelectEnglishSubtitles = function() {
+                const vid = document.getElementById('player');
+                if (!vid) return;
+                let found = false;
+
+                // 1. Check video.textTracks (<track> elements)
+                if (vid.textTracks && vid.textTracks.length > 0) {
+                    for (let i = 0; i < vid.textTracks.length; i++) {
+                        const t = vid.textTracks[i];
+                        const label = (t.label || t.language || '').toLowerCase();
+                        if (label.includes('eng') || label.startsWith('en')) {
+                            t.mode = 'showing';
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. Check window.hls embedded subtitle tracks
+                if (!found && window.hls && window.hls.subtitleTracks && window.hls.subtitleTracks.length > 0) {
+                    for (let i = 0; i < window.hls.subtitleTracks.length; i++) {
+                        const track = window.hls.subtitleTracks[i];
+                        const name = (track.name || track.lang || '').toLowerCase();
+                        if (name.includes('eng') || name.startsWith('en')) {
+                            window.hls.subtitleTrack = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+            };
+
             window.injectBingrSubtitles = function() {
                 const video = document.getElementById('player');
                 if (!video) return;
@@ -4856,6 +4890,7 @@
                 
                 const addTracks = () => {
                     if (window.bingrSubtitles && window.bingrSubtitles.length > 0) {
+                        let hasEnDefault = false;
                         window.bingrSubtitles.forEach((sub, idx) => {
                             let vttUrl = sub.url;
                             if (sub.url && sub.url.includes('.srt')) {
@@ -4863,6 +4898,7 @@
                             }
                             
                             const label = sub.label || sub.lang || 'Subtitle ' + (idx+1);
+                            const isEn = label.toLowerCase().includes('eng') || (sub.lang || '').toLowerCase().startsWith('en');
                             
                             // Check if track with same label exists, update src instead of duplicating
                             let existingTrack = null;
@@ -4874,23 +4910,38 @@
                                 if (existingTrack.getAttribute('src') !== vttUrl) {
                                     existingTrack.setAttribute('src', vttUrl);
                                 }
+                                if (isEn && !hasEnDefault) {
+                                    existingTrack.default = true;
+                                    hasEnDefault = true;
+                                }
                                 return;
                             }
                             
                             const track = document.createElement('track');
                             track.kind = 'subtitles';
                             track.label = label;
-                            track.srclang = sub.lang || 'en';
+                            track.srclang = sub.lang || (isEn ? 'en' : 'und');
                             track.src = vttUrl;
-                            track.default = false; 
+                            if (isEn && !hasEnDefault) {
+                                track.default = true;
+                                hasEnDefault = true;
+                            } else {
+                                track.default = false;
+                            }
                             video.appendChild(track);
                         });
+                        setTimeout(() => {
+                            if (typeof window.autoSelectEnglishSubtitles === 'function') window.autoSelectEnglishSubtitles();
+                        }, 300);
                     }
                 };
                 
                 addTracks();
-                video.addEventListener('loadedmetadata', addTracks, { once: true });
-            }
+                video.addEventListener('loadedmetadata', () => {
+                    addTracks();
+                    setTimeout(window.autoSelectEnglishSubtitles, 500);
+                }, { once: true });
+            };
 
             // Main Player Initialization
             // Main Player Initialization
@@ -5013,9 +5064,13 @@
 
                 // Detect TimStreams / DLHD / Embed Live Streams
                 const isTimOrEmbed = channelIdParam.startsWith('tim_') || 
+                                     channelIdParam.startsWith('tim-') || 
                                      channelIdParam.startsWith('dlhd') || 
                                      channelIdParam.startsWith('embed') || 
                                      rawUrl.includes('/api/play_stream/tim_') ||
+                                     rawUrl.includes('/api/play_stream/tim-') ||
+                                     rawUrl.includes('id=tim-') ||
+                                     rawUrl.includes('id=tim_') ||
                                      rawUrl.includes('/api/play_stream/dlhd') ||
                                      rawUrl.includes('/api/play_stream/embed');
 
@@ -5108,8 +5163,15 @@
                                 if (ch.clearkey) {
                                     window._activeClearKeyString = ch.clearkey;
                                 }
+                                if (ch.full_stream_url || ch.stream_url) {
+                                    window._jtvDirectFallbackUrl = ch.full_stream_url || ch.stream_url;
+                                }
+                                const isDirectMobStream = (ch.stream_url && ch.stream_url.includes('jiotvmblive.cdn.jio.com')) ||
+                                                          (ch.full_stream_url && ch.full_stream_url.includes('jiotvmblive.cdn.jio.com'));
                                 if (hasValidClearKey || ch.clearkey) {
-                                    src = ch.manifest_url || `/api/mdtv/manifest/${ch.id}.mpd` || ch.full_stream_url || ch.stream_url;
+                                    src = isDirectMobStream
+                                        ? (ch.full_stream_url || ch.stream_url || ch.manifest_url)
+                                        : (ch.manifest_url || `/api/mdtv/manifest/${ch.id}.mpd` || ch.full_stream_url || ch.stream_url);
                                     resolvedSrc = src;
                                     if (ch.token) window._activeAkamaiToken = ch.token;
                                     drmKeyId = cId;
@@ -5120,7 +5182,9 @@
                                     if (src && src.includes('.m3u8')) {
                                         resolvedSrc = src;
                                     } else {
-                                        src = ch.manifest_url || `/api/mdtv/manifest/${ch.id}.mpd` || ch.full_stream_url || ch.stream_url;
+                                        src = isDirectMobStream
+                                            ? (ch.full_stream_url || ch.stream_url || ch.manifest_url)
+                                            : (ch.manifest_url || `/api/mdtv/manifest/${ch.id}.mpd` || ch.full_stream_url || ch.stream_url);
                                         resolvedSrc = src;
                                     }
                                     if (ch.token) window._activeAkamaiToken = ch.token;
@@ -5662,6 +5726,17 @@
                                 return;
                             }
                             if (data.details === 'fragLoadError' || data.details === 'fragLoadTimeOut' || data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT || data.details === 'fragParsingError' || data.details === 'bufferAppendNoProgress' || data.details === Hls.ErrorDetails.BUFFER_APPENDING_ERROR) {
+                                window._fragErrorCount = (window._fragErrorCount || 0) + 1;
+                                if (window._fragErrorCount > 3) {
+                                    window._fragErrorCount = 0;
+                                    console.warn('[HLS Fragment Load Failed 3x] Escalating to Auto-Backup Failover...');
+                                    if (typeof window.triggerAutoBackupFailover === 'function') {
+                                        window.triggerAutoBackupFailover(`Fragment load failure (${data.details})`);
+                                    } else {
+                                        triggerAutoReconnect();
+                                    }
+                                    return;
+                                }
                                 try { hls.startLoad(); } catch(e) {}
                                 return;
                             }
@@ -5691,16 +5766,18 @@
                         }
                         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                             if (data.details === 'manifestLoadError' || data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || (data.response && (data.response.code === 404 || data.response.code === 403 || data.response.code === 451 || data.response.code === 0))) {
-                                if (!window._directNoProxyMode && streamUrl && (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
+                                const isAlreadyLocalProxy = streamUrl && (streamUrl.includes('stream_proxy.php') || streamUrl.includes('/api/proxy/') || streamUrl.includes('/live.php') || streamUrl.includes('/api/play_stream/') || (window.location.host && streamUrl.includes(window.location.host)));
+                                if (!window._directNoProxyMode && streamUrl && (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) && !isAlreadyLocalProxy) {
                                     console.warn('[HLS Network Error] Direct manifest failed to load. Retrying via stream proxy...');
                                     const proxied = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
                                     loadHls(proxied);
                                     return;
                                 }
-                                const lookupId = channelIdParam || (rawUrl.match(/\/api\/play_stream\/([a-zA-Z0-9_-]+)/i)?.[1]) || window.currentStreamId || '';
-                                if (lookupId) {
+                                const lookupId = channelIdParam || (rawUrl.match(/\/api\/play_stream\/([a-zA-Z0-9_-]+)/i)?.[1]) || (streamUrl && streamUrl.match(/[?&]id=([^&]+)/i)?.[1]) || window.currentStreamId || '';
+                                if (lookupId && !window._reResolvedOnce) {
+                                    window._reResolvedOnce = true;
                                     console.warn('[HLS Network Token Expired] Re-resolving fresh stream token for:', lookupId);
-                                    fetch(`/api/resolve_stream/${encodeURIComponent(lookupId)}?refresh=1`)
+                                    fetch(`/api/resolve_stream/${encodeURIComponent(decodeURIComponent(lookupId))}?refresh=1`)
                                         .then(r => r.json())
                                         .then(res => {
                                             if (res && res.url) {
@@ -5732,7 +5809,8 @@
                                 }
                                 return;
                             }
-                            if (!window._directNoProxyMode && streamUrl && !streamUrl.includes('stream_proxy.php') && !streamUrl.includes('/api/proxy/')) {
+                            const isAlreadyLocalProxy = streamUrl && (streamUrl.includes('stream_proxy.php') || streamUrl.includes('/api/proxy/') || streamUrl.includes('/live.php') || streamUrl.includes('/api/play_stream/') || (window.location.host && streamUrl.includes(window.location.host)));
+                            if (!window._directNoProxyMode && streamUrl && (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) && !isAlreadyLocalProxy) {
                                 console.warn('[HLS Fallback] Manifest error on direct stream. Retrying through master stream proxy...');
                                 const proxied = `/stream_proxy.php?url=${encodeURIComponent(streamUrl)}`;
                                 loadHls(proxied);
@@ -6054,32 +6132,6 @@
 
                         const clearKeysMap = sanitizeMultiKeyPairs(rawPairsList);
 
-                        // Auto-scan MPD manifest for default_KID attributes (only map unknown KIDs when channel has a single key and zero matched KIDs)
-                        if (streamUrl.includes('.mpd') && (Object.keys(clearKeysMap).length > 0 || cleanKey)) {
-                            try {
-                                const mpdRes = await fetch(streamUrl, { method: 'GET' });
-                                if (mpdRes.ok) {
-                                    const mpdText = await mpdRes.text();
-                                    const manifestKids = [...mpdText.matchAll(/cenc:default_KID="([^"]+)"/gi)]
-                                        .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
-                                        .filter(k => k.length === 32);
-                                    const uniqueKids = [...new Set(manifestKids)];
-                                    const matchedKids = uniqueKids.filter(k => Boolean(clearKeysMap[k]));
-                                    const fallbackKeyVal = cleanKey || Object.values(clearKeysMap)[0];
-                                    if (matchedKids.length === 0 && Object.keys(clearKeysMap).length <= 1 && fallbackKeyVal) {
-                                        for (const singleKid of uniqueKids) {
-                                            if (singleKid && singleKid.length === 32 && !clearKeysMap[singleKid]) {
-                                                clearKeysMap[singleKid] = fallbackKeyVal;
-                                                console.log("[Shaka Engine] Associated single-key manifest KID to key:", singleKid, fallbackKeyVal);
-                                            }
-                                        }
-                                    }
-                                }
-                            } catch(e) {
-                                console.warn("[Shaka Engine] Could not pre-scan manifest KIDs:", e);
-                            }
-                        }
-
                         // Sync to global active state so any subsequent engine (Dash.js, SecurityGuard, etc.) has clean KIDs
                         if (Object.keys(clearKeysMap).length > 0) {
                             window._activeClearKeysMap = Object.assign({}, clearKeysMap);
@@ -6158,37 +6210,55 @@
                             }
                         });
 
-                        // Configure Request Filter for Akamai token injection on chunks
+                        // Configure Request Filter for Akamai token injection on manifests & chunks (jjtvxweb / pworld pattern)
                         shakaPlayer.getNetworkingEngine().registerRequestFilter((type, request) => {
-                            const isMobileStream = request.uris.some(u => u.includes('jiotvmblive') || u.includes('_MOB'));
-                            if (!isMobileStream) {
-                                request.headers["Referer"] = "https://www.jiotv.com/";
-                            } else {
-                                delete request.headers["Referer"];
-                            }
-                            request.headers["User-Agent"] = isMobileStream 
-                                ? "plaYtv/7.1.3 (Linux;Android 14) ExoPlayerLib/2.11.7"
-                                : "Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+                            request.headers["Referer"] = "https://www.jiotv.com/";
+                            request.headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
                             if (window._activeAkamaiToken) {
                                 const tokenVal = window._activeAkamaiToken.startsWith('__hdnea__=') 
                                     ? window._activeAkamaiToken 
                                     : ('__hdnea__=' + window._activeAkamaiToken);
-                                request.headers["Cookie"] = tokenVal;
-                                request.uris = request.uris.map(uri => {
-                                    if ((uri.includes('.mpd') || uri.includes('.m4s') || uri.includes('.dash') || uri.includes('jio')) && !uri.includes('__hdnea__')) {
-                                        return uri + (uri.includes('?') ? '&' : '?') + tokenVal;
-                                    }
-                                    return uri;
-                                });
+                                if (
+                                    type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+                                    type === shaka.net.NetworkingEngine.RequestType.SEGMENT
+                                ) {
+                                    request.uris = request.uris.map(uri => {
+                                        if (uri && !uri.includes('/jtv-plus/jtv.php/')) {
+                                            return uri.split('?')[0] + '?' + tokenVal;
+                                        }
+                                        return uri;
+                                    });
+                                }
                             }
                         });
 
-                        // Configure Response Filter to inject ClearKey UUID, prune un-decryptable KID representations, and filter unsupported ec-3 audio
+                        // Configure Response Filter to auto-associate single-key KID, inject ClearKey UUID, prune un-decryptable KID representations, and filter unsupported ec-3 audio
                         shakaPlayer.getNetworkingEngine().registerResponseFilter((type, response) => {
-                            if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST && response.data && Object.keys(clearKeysMap).length > 0) {
+                            if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST && response.data && (Object.keys(clearKeysMap).length > 0 || cleanKey)) {
                                 try {
                                     let str = new TextDecoder('utf-8').decode(response.data);
                                     if (str && str.includes('<MPD')) {
+                                        // Auto-associate single-key manifest KID if channel has 1 key and zero matched KIDs
+                                        const manifestKids = [...str.matchAll(/cenc:default_KID="([^"]+)"/gi)]
+                                            .map(m => m[1].replace(/[^0-9a-fA-F]/g, '').toLowerCase())
+                                            .filter(k => k.length === 32);
+                                        const uniqueKids = [...new Set(manifestKids)];
+                                        const matchedKids = uniqueKids.filter(k => Boolean(clearKeysMap[k]));
+                                        const fallbackKeyVal = cleanKey || Object.values(clearKeysMap)[0];
+                                        if (matchedKids.length === 0 && Object.keys(clearKeysMap).length <= 1 && fallbackKeyVal) {
+                                            let updatedMap = false;
+                                            for (const singleKid of uniqueKids) {
+                                                if (singleKid && singleKid.length === 32 && !clearKeysMap[singleKid]) {
+                                                    clearKeysMap[singleKid] = fallbackKeyVal;
+                                                    updatedMap = true;
+                                                }
+                                            }
+                                            if (updatedMap) {
+                                                window._activeClearKeysMap = Object.assign({}, clearKeysMap);
+                                                window._activeClearKeyString = Object.entries(window._activeClearKeysMap).map(([k, v]) => `${k}:${v}`).join(',');
+                                                shakaPlayer.configure({ drm: { clearKeys: clearKeysMap } });
+                                            }
+                                        }
                                         // Prune any Representation/AdaptationSet whose cenc:default_KID is missing from our multi-key map
                                         str = pruneUnmatchedKidTracks(str, clearKeysMap);
                                         // If manifest lacks W3C ClearKey UUID, inject it into AdaptationSet so Shaka negotiates ClearKey
@@ -6271,7 +6341,17 @@
                             }
                         });
 
-                        await shakaPlayer.load(streamUrl);
+                        try {
+                            await shakaPlayer.load(streamUrl);
+                        } catch (firstLoadErr) {
+                            if (window._jtvDirectFallbackUrl && (streamUrl.includes('/api/mdtv/manifest/') || streamUrl.includes('/api/jtv/manifest/')) && window._jtvDirectFallbackUrl !== streamUrl) {
+                                console.warn("[Shaka Engine] Server manifest route failed, retrying direct stream URL in Shaka:", window._jtvDirectFallbackUrl);
+                                streamUrl = window._jtvDirectFallbackUrl;
+                                await shakaPlayer.load(streamUrl);
+                            } else {
+                                throw firstLoadErr;
+                            }
+                        }
                         if (shakaHandedOff || !shakaPlayer) return;
                         console.log("[Shaka Engine] Stream loaded successfully.");
                         video.style.opacity = '1';
@@ -6294,18 +6374,21 @@
                         console.warn("[Shaka Engine Init Failed] Error:", err);
                         shakaHandedOff = true;
                         destroyShakaPlayer();
-                        const isNonDash = streamUrl.includes('.m3u8') || streamUrl.includes('willow') || streamUrl.includes('fancode') || streamUrl.includes('sonyliv') || streamUrl.includes('tim') || streamUrl.includes('dlhd') || !streamUrl.includes('.mpd');
+                        const dashFallbackUrl = (window._jtvDirectFallbackUrl && (streamUrl.includes('/api/mdtv/manifest/') || streamUrl.includes('/api/jtv/manifest/')))
+                            ? window._jtvDirectFallbackUrl
+                            : streamUrl;
+                        const isNonDash = dashFallbackUrl.includes('.m3u8') || dashFallbackUrl.includes('willow') || dashFallbackUrl.includes('fancode') || dashFallbackUrl.includes('sonyliv') || dashFallbackUrl.includes('tim') || dashFallbackUrl.includes('dlhd') || !dashFallbackUrl.includes('.mpd');
                         if (isNonDash) {
                             console.warn("[Shaka Catch] Stream is non-DASH/HLS. Falling back to HLS engine...");
                             if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                                loadHls(streamUrl);
+                                loadHls(dashFallbackUrl);
                             } else if (typeof loadVideoJs === 'function') {
-                                loadVideoJs(streamUrl);
+                                loadVideoJs(dashFallbackUrl);
                             } else {
-                                loadDash(streamUrl, keyId, key);
+                                loadDash(dashFallbackUrl, keyId, key);
                             }
                         } else {
-                            loadDash(streamUrl, keyId, key);
+                            loadDash(dashFallbackUrl, keyId, key);
                         }
                     }
                 }
@@ -6330,7 +6413,7 @@
                     try {
                         dashPlayer = dashjs.MediaPlayer().create();
 
-                        // Akamai Token injection for JioTV / MDTV DASH chunks (.m4s, .dash)
+                        // Akamai Token injection for JioTV / MDTV DASH chunks (.m4s, .dash, .mp4)
                         if (window._activeAkamaiToken) {
                             const tokenVal = window._activeAkamaiToken.startsWith('__hdnea__=') 
                                 ? window._activeAkamaiToken 
@@ -6338,8 +6421,8 @@
                             dashPlayer.extend("RequestModifier", () => {
                                 return {
                                     modifyRequestURL: (url) => {
-                                        if (url && typeof url === 'string') {
-                                            if ((url.includes('.mpd') || url.includes('.m4s') || url.includes('.dash') || url.includes('jio')) && !url.includes('__hdnea__')) {
+                                        if (url && typeof url === 'string' && !url.startsWith('blob:')) {
+                                            if ((url.includes('.mpd') || url.includes('.m4s') || url.includes('.dash') || url.includes('.mp4') || url.includes('jio') || url.includes('akamaized')) && !url.includes('__hdnea__') && !url.includes('/jtv-plus/jtv.php/')) {
                                                 return url + (url.includes('?') ? '&' : '?') + tokenVal;
                                             }
                                         }

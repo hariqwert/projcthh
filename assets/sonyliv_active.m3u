@@ -1,13 +1,13 @@
 #EXTM3U
-#EXTINF:-1 tvg-id="sonyliv_1090553302" tvg-name="ENG | Sri Lanka vs Afghanistan - 9 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000028502/1793999538076640_ACC_MensU19_Sri_Lanka_vs_Afghanistan_live_landscape_thumb.jpg" group-title="SonyLIV-Cricket",ENG | Sri Lanka vs Afghanistan - 9 Nov 2026
-https://sonymtmnew-akamaized.pages.dev/hls/live/2120302/Criclive0911/ENG/std_lrh-800300010.m3u8
+#EXTINF:-1 tvg-id="sonyliv_1090554017" tvg-name="ENG | Finland vs San Marino - 15 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027773/1793249866500892_UNL26_MD6_Finland_vs_San_Marino_landscape_thumb.jpg" group-title="SonyLIV-Football",ENG | Finland vs San Marino - 15 Nov 2026
+https://sonymtmnew-akamaized.pages.dev/hls/live/2120305/Footlive1511/ENG/std_lrh-800300010.m3u8
 
-#EXTINF:-1 tvg-id="sonyliv_1090553302_bk1" tvg-name="ENG | Sri Lanka vs Afghanistan - 9 Nov 2026 [DRMLive SonyLIV JSON]" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000028502/1793999538076640_ACC_MensU19_Sri_Lanka_vs_Afghanistan_live_landscape_thumb.jpg" group-title="SonyLIV-Cricket Backup",ENG | Sri Lanka vs Afghanistan - 9 Nov 2026 (DRMLive SonyLIV JSON)
-https://sonyeventsglobal.akamaized.net/hls/live/2120302/Criclive0911/ENG/std_lrh-800300010.m3u8?hdnea=exp=1794259493~acl=/*~id=85762925244796617264968887922746~hmac=df56f8382df63eb1d78b10cef90454448c9afc3bf06f37f73e544d29995a3c83
+#EXTINF:-1 tvg-id="sonyliv_1090554017_bk1" tvg-name="ENG | Finland vs San Marino - 15 Nov 2026 [DRMLive SonyLIV JSON]" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027773/1793249866500892_UNL26_MD6_Finland_vs_San_Marino_landscape_thumb.jpg" group-title="SonyLIV-Football Backup",ENG | Finland vs San Marino - 15 Nov 2026 (DRMLive SonyLIV JSON)
+https://sonyeventsglobal.akamaized.net/hls/live/2120305/Footlive1511/ENG/std_lrh-800300010.m3u8?hdnea=exp=1794810980~acl=/*~id=29958046728786264417688566028742~hmac=34f4f0e90a76b03a04f5adf25046ca10655621e2280ca039834226be7432712c
 
-#EXTINF:-1 tvg-id="sonyliv_1090553301" tvg-name="ENG | Bangladesh vs Malaysia - 9 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000028501/1793998959168722_ACC_MensU19_Bangladesh_vs_Malaysia_live_landscape_thumb.jpg" group-title="SonyLIV-Cricket",ENG | Bangladesh vs Malaysia - 9 Nov 2026
-https://sonymtmnew-akamaized.pages.dev/hls/live/2120301/Criclive0911/ENG/std_lrh-800300010.m3u8
+#EXTINF:-1 tvg-id="sonyliv_1090554018" tvg-name="ENG | Belarus vs Albania - 15 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027747/1793250451231217_UNL26_MD6_Belarus_vs_Albania_landscape_thumb.jpg" group-title="SonyLIV-Football",ENG | Belarus vs Albania - 15 Nov 2026
+https://sonymtmnew-akamaized.pages.dev/hls/live/2120304/Footlive1511/ENG/std_lrh-800300010.m3u8
 
-#EXTINF:-1 tvg-id="sonyliv_1090553301_bk1" tvg-name="ENG | Bangladesh vs Malaysia - 9 Nov 2026 [DRMLive SonyLIV JSON]" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000028501/1793998959168722_ACC_MensU19_Bangladesh_vs_Malaysia_live_landscape_thumb.jpg" group-title="SonyLIV-Cricket Backup",ENG | Bangladesh vs Malaysia - 9 Nov 2026 (DRMLive SonyLIV JSON)
-https://sonyeventsglobal.akamaized.net/hls/live/2120301/Criclive0911/ENG/std_lrh-800300010.m3u8?hdnea=exp=1794259493~acl=/*~id=85762925244796617264968887922746~hmac=df56f8382df63eb1d78b10cef90454448c9afc3bf06f37f73e544d29995a3c83
+#EXTINF:-1 tvg-id="sonyliv_1090554018_bk1" tvg-name="ENG | Belarus vs Albania - 15 Nov 2026 [DRMLive SonyLIV JSON]" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027747/1793250451231217_UNL26_MD6_Belarus_vs_Albania_landscape_thumb.jpg" group-title="SonyLIV-Football Backup",ENG | Belarus vs Albania - 15 Nov 2026 (DRMLive SonyLIV JSON)
+https://sonyeventsglobal.akamaized.net/hls/live/2120304/Footlive1511/ENG/std_lrh-800300010.m3u8?hdnea=exp=1794810980~acl=/*~id=29958046728786264417688566028742~hmac=34f4f0e90a76b03a04f5adf25046ca10655621e2280ca039834226be7432712c
 

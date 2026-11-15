@@ -62,45 +62,20 @@ export interface LiveScoreData {
         name: string;
         shortName?: string;
         score: string;
-        overs?: string;
         logo?: string;
-        form?: string;
     };
     awayTeam?: {
         name: string;
         shortName?: string;
         score: string;
-        overs?: string;
         logo?: string;
-        form?: string;
     };
     teams?: Array<{
         name: string;
-        shortName?: string;
         score: string;
         overs?: string;
         logo?: string;
     }>;
-    timeline?: Array<{
-        type: string;
-        time: string;
-        team?: string;
-        text: string;
-    }>;
-    venue?: string;
-    headline?: string;
-    target?: string;
-    requiredRunRate?: string;
-    currentRunRate?: string;
-    session?: string;
-    matchEquation?: string;
-    stats?: {
-        possession?: [string, string];
-        shots?: [string, string];
-        shotsOnTarget?: [string, string];
-        corners?: [string, string];
-        fouls?: [string, string];
-    };
 }
 
 export interface StreamicSportEvent {
@@ -1233,29 +1208,6 @@ function transformStreamicEvent(raw: any, nowEpochSec: number): StreamicSportEve
 // 6. ESPN REAL-TIME LIVE SCORES TELEMETRY
 // ==========================================
 
-export function parseCricketScoreDetail(raw: string) {
-    if (!raw) return { runs: '', overs: '', target: '' };
-    const targetMatch = raw.match(/target\s+(\d+)/i);
-    const target = targetMatch ? targetMatch[1] : '';
-    const oversMatch = raw.match(/\(([^)]+)\)/);
-    const oversText = oversMatch ? oversMatch[1].replace(/,?\s*target\s+\d+/i, '').trim() : '';
-    const runs = raw.split('(')[0].trim();
-    return { runs: runs || raw, overs: oversText, target };
-}
-
-export function calculateCricketRunRate(runsStr: string, oversStr: string): string {
-    const runsMatch = (runsStr || '').match(/^(\d+)/);
-    const oversMatch = (oversStr || '').match(/(\d+(?:\.\d+)?)/);
-    if (!runsMatch || !oversMatch) return '';
-    const runs = parseFloat(runsMatch[1]);
-    const rawOvers = parseFloat(oversMatch[1]);
-    const fullOvers = Math.floor(rawOvers);
-    const balls = Math.round((rawOvers - fullOvers) * 10);
-    const totalOvers = fullOvers + (balls / 6);
-    if (totalOvers <= 0) return '';
-    return (runs / totalOvers).toFixed(2);
-}
-
 const FOOTBALL_LEAGUES = [
     { code: 'eng.1', name: 'English Premier League' },
     { code: 'esp.1', name: 'Spanish La Liga' },
@@ -1295,17 +1247,9 @@ async function fetchLiveScores(): Promise<LiveScoreData[]> {
         httpAgent
     }).then(res => res.data).catch(() => null);
 
-    // 3. Basketball / NBA Scoreboard
-    const nbaPromise = axios.get('http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard', {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-        timeout: 5000,
-        httpAgent
-    }).then(res => res.data).catch(() => null);
-
-    const [fbResults, cricketData, nbaData] = await Promise.all([
+    const [fbResults, cricketData] = await Promise.all([
         Promise.all(fbPromises),
-        cricketPromise,
-        nbaPromise
+        cricketPromise
     ]);
 
     // Parse Football
@@ -1320,49 +1264,13 @@ async function fetchLiveScores(): Promise<LiveScoreData[]> {
 
             const homeName = home.team?.displayName || home.team?.name || '';
             const awayName = away.team?.displayName || away.team?.name || '';
-            const homeShort = home.team?.shortDisplayName || home.team?.abbreviation || homeName;
-            const awayShort = away.team?.shortDisplayName || away.team?.abbreviation || awayName;
             const homeScore = home.score !== undefined ? String(home.score) : '0';
             const awayScore = away.score !== undefined ? String(away.score) : '0';
             const state = ev.status?.type?.state;
             const isLive = state === 'in';
             const isFinal = state === 'post';
             const clock = ev.status?.displayClock || '';
-            const detail = ev.status?.type?.detail || (isLive ? (clock ? clock : 'Live') : (isFinal ? 'FT' : 'Scheduled'));
-
-            // Extract goal scorers & card events
-            const timeline: any[] = [];
-            if (Array.isArray(comp.details)) {
-                comp.details.forEach((d: any) => {
-                    const isGoal = d.scoringPlay || (d.type?.text || '').toLowerCase().includes('goal');
-                    const isCard = d.redCard || d.yellowCard || (d.type?.text || '').toLowerCase().includes('card');
-                    if (isGoal || isCard) {
-                        const teamName = d.team?.id === home.team?.id ? homeName : (d.team?.id === away.team?.id ? awayName : '');
-                        const playerName = d.athletesInvolved?.[0]?.displayName || d.type?.text || 'Player';
-                        const timeStr = d.clock?.displayValue || '';
-                        timeline.push({
-                            type: isGoal ? 'Goal' : (d.redCard ? 'Red Card' : 'Yellow Card'),
-                            time: timeStr,
-                            team: teamName,
-                            text: isGoal ? `⚽ ${playerName} ${timeStr}` : (d.redCard ? `🟥 ${playerName} ${timeStr}` : `🟨 ${playerName} ${timeStr}`)
-                        });
-                    }
-                });
-            }
-
-            const venueStr = comp.venue?.fullName ? `${comp.venue.fullName}${comp.venue.address?.city ? ', ' + comp.venue.address.city : ''}` : '';
-            const headlineStr = comp.headlines?.[0]?.description || '';
-
-            const homeStats = home.statistics || [];
-            const awayStats = away.statistics || [];
-            const getStat = (stats: any[], name: string) => stats.find((s: any) => s.name === name)?.displayValue || '';
-            const stats = {
-                possession: [getStat(homeStats, 'possessionPct') || '50', getStat(awayStats, 'possessionPct') || '50'] as [string, string],
-                shots: [getStat(homeStats, 'totalShots') || '0', getStat(awayStats, 'totalShots') || '0'] as [string, string],
-                shotsOnTarget: [getStat(homeStats, 'shotsOnTarget') || '0', getStat(awayStats, 'shotsOnTarget') || '0'] as [string, string],
-                corners: [getStat(homeStats, 'wonCorners') || '0', getStat(awayStats, 'wonCorners') || '0'] as [string, string],
-                fouls: [getStat(homeStats, 'foulsCommitted') || '0', getStat(awayStats, 'foulsCommitted') || '0'] as [string, string],
-            };
+            const detail = ev.status?.type?.detail || '';
 
             scoresList.push({
                 hasScore: true,
@@ -1375,126 +1283,6 @@ async function fetchLiveScores(): Promise<LiveScoreData[]> {
                 summary: `${homeName} ${homeScore} - ${awayScore} ${awayName} ${clock ? '(' + clock + ')' : ''}`.trim(),
                 homeTeam: {
                     name: homeName,
-                    shortName: homeShort,
-                    score: homeScore,
-                    logo: home.team?.logo,
-                    form: home.form
-                },
-                awayTeam: {
-                    name: awayName,
-                    shortName: awayShort,
-                    score: awayScore,
-                    logo: away.team?.logo,
-                    form: away.form
-                },
-                teams: [
-                    { name: homeName, shortName: homeShort, score: homeScore, logo: home.team?.logo },
-                    { name: awayName, shortName: awayShort, score: awayScore, logo: away.team?.logo }
-                ],
-                timeline: timeline.slice(0, 10),
-                venue: venueStr,
-                headline: headlineStr,
-                stats
-            });
-        });
-    });
-
-    // Parse Cricket
-    if (cricketData) {
-        const scoreGroups = Array.isArray(cricketData.scores) ? cricketData.scores : (Array.isArray(cricketData.events) ? [{ events: cricketData.events, leagues: [{ name: 'Cricket' }] }] : []);
-        scoreGroups.forEach((s: any) => {
-            const leagueName = s.leagues?.[0]?.name || 'International Cricket';
-            (s.events || []).forEach((ev: any) => {
-                const comp = ev.competitions?.[0];
-                if (!comp) return;
-                const competitors = comp.competitors || [];
-                if (competitors.length < 2) return;
-
-                const t1 = competitors[0];
-                const t2 = competitors[1];
-                const t1Name = t1.team?.displayName || t1.team?.name || 'Team 1';
-                const t2Name = t2.team?.displayName || t2.team?.name || 'Team 2';
-                const t1Raw = t1.score || 'Yet to bat';
-                const t2Raw = t2.score || 'Yet to bat';
-                const p1 = parseCricketScoreDetail(t1Raw);
-                const p2 = parseCricketScoreDetail(t2Raw);
-                const state = ev.status?.type?.state;
-                const isLive = state === 'in';
-                const isFinal = state === 'post';
-                const detail = ev.status?.type?.detail || '';
-                const matchSummary = ev.status?.summary || `${t1Name} ${p1.runs || t1Raw} vs ${t2Name} ${p2.runs || t2Raw} (${detail})`.trim();
-                const target = p1.target || p2.target || '';
-                const crr = calculateCricketRunRate(p2.runs || p1.runs, p2.overs || p1.overs);
-
-                const teams = [
-                    { name: t1Name, shortName: t1.team?.shortDisplayName || t1Name, score: p1.runs || t1Raw, overs: p1.overs || t1.currentOvers || '', logo: t1.team?.logo },
-                    { name: t2Name, shortName: t2.team?.shortDisplayName || t2Name, score: p2.runs || t2Raw, overs: p2.overs || t2.currentOvers || '', logo: t2.team?.logo }
-                ];
-
-                scoresList.push({
-                    hasScore: true,
-                    sport: 'Cricket',
-                    league: leagueName,
-                    isLive,
-                    isFinal,
-                    detail,
-                    summary: matchSummary,
-                    matchEquation: ev.status?.summary || '',
-                    target,
-                    currentRunRate: crr,
-                    session: detail,
-                    homeTeam: {
-                        name: t1Name,
-                        shortName: t1.team?.shortDisplayName || t1Name,
-                        score: p1.runs || t1Raw,
-                        overs: p1.overs || t1.currentOvers || '',
-                        logo: t1.team?.logo
-                    },
-                    awayTeam: {
-                        name: t2Name,
-                        shortName: t2.team?.shortDisplayName || t2Name,
-                        score: p2.runs || t2Raw,
-                        overs: p2.overs || t2.currentOvers || '',
-                        logo: t2.team?.logo
-                    },
-                    teams,
-                    venue: comp.venue?.fullName || ''
-                });
-            });
-        });
-    }
-
-    // Parse Basketball (NBA)
-    if (nbaData && Array.isArray(nbaData.events)) {
-        nbaData.events.forEach((ev: any) => {
-            const comp = ev.competitions?.[0];
-            if (!comp) return;
-            const home = comp.competitors?.find((c: any) => c.homeAway === 'home');
-            const away = comp.competitors?.find((c: any) => c.homeAway === 'away');
-            if (!home || !away) return;
-
-            const homeName = home.team?.displayName || home.team?.name || '';
-            const awayName = away.team?.displayName || away.team?.name || '';
-            const homeScore = home.score !== undefined ? String(home.score) : '0';
-            const awayScore = away.score !== undefined ? String(away.score) : '0';
-            const state = ev.status?.type?.state;
-            const isLive = state === 'in';
-            const isFinal = state === 'post';
-            const clock = ev.status?.displayClock || '';
-            const period = ev.status?.period ? `Q${ev.status.period}` : '';
-            const detail = ev.status?.type?.detail || (isLive ? `${period} ${clock}`.trim() : (isFinal ? 'Final' : 'Scheduled'));
-
-            scoresList.push({
-                hasScore: true,
-                sport: 'Basketball',
-                league: 'NBA',
-                isLive,
-                isFinal,
-                clock,
-                detail,
-                summary: `${awayName} ${awayScore} @ ${homeName} ${homeScore} (${detail})`.trim(),
-                homeTeam: {
-                    name: homeName,
                     shortName: home.team?.shortDisplayName || homeName,
                     score: homeScore,
                     logo: home.team?.logo
@@ -1504,12 +1292,36 @@ async function fetchLiveScores(): Promise<LiveScoreData[]> {
                     shortName: away.team?.shortDisplayName || awayName,
                     score: awayScore,
                     logo: away.team?.logo
-                },
-                teams: [
-                    { name: homeName, shortName: home.team?.shortDisplayName || homeName, score: homeScore, logo: home.team?.logo },
-                    { name: awayName, shortName: away.team?.shortDisplayName || awayName, score: awayScore, logo: away.team?.logo }
-                ],
-                venue: comp.venue?.fullName || ''
+                }
+            });
+        });
+    });
+
+    // Parse Cricket
+    if (cricketData && cricketData.events) {
+        cricketData.events.forEach((ev: any) => {
+            const comp = ev.competitions?.[0];
+            if (!comp) return;
+            const teams = (comp.competitors || []).map((c: any) => ({
+                name: c.team?.displayName || c.team?.name || '',
+                score: c.score || '',
+                overs: c.currentOvers || '',
+                logo: c.team?.logo
+            }));
+            const state = ev.status?.type?.state;
+            const isLive = state === 'in';
+            const isFinal = state === 'post';
+            const detail = ev.status?.type?.detail || '';
+
+            scoresList.push({
+                hasScore: true,
+                sport: 'Cricket',
+                league: ev.league?.name || 'International Cricket',
+                isLive,
+                isFinal,
+                detail,
+                summary: teams.map((t: any) => `${t.name} ${t.score}`).join(' vs '),
+                teams
             });
         });
     }
@@ -1519,95 +1331,32 @@ async function fetchLiveScores(): Promise<LiveScoreData[]> {
     return scoresList;
 }
 
-function matchLiveScore(event: { title?: string; category?: string; sportName?: string }, scores: LiveScoreData[]): LiveScoreData | null {
+function matchLiveScore(event: StreamicSportEvent, scores: LiveScoreData[]): LiveScoreData | null {
     if (!scores || scores.length === 0) return null;
     const t = (event.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ');
 
     for (const sc of scores) {
-        if (sc.homeTeam && sc.awayTeam) {
-            const h = (sc.homeTeam.name || '').toLowerCase();
-            const a = (sc.awayTeam.name || '').toLowerCase();
-            const hShort = (sc.homeTeam.shortName || '').toLowerCase();
-            const aShort = (sc.awayTeam.shortName || '').toLowerCase();
-            const hWords = h.split(' ').filter(w => w.length >= 4);
-            const aWords = a.split(' ').filter(w => w.length >= 4);
-
-            const homeMatches = t.includes(h) || (hShort.length >= 3 && t.includes(hShort)) || hWords.some(w => t.includes(w));
-            const awayMatches = t.includes(a) || (aShort.length >= 3 && t.includes(aShort)) || aWords.some(w => t.includes(w));
-
-            if (homeMatches && awayMatches) {
+        if (sc.sport === 'Football' && sc.homeTeam && sc.awayTeam) {
+            const h = sc.homeTeam.name.toLowerCase();
+            const a = sc.awayTeam.name.toLowerCase();
+            const hClean = h.split(' ')[0];
+            const aClean = a.split(' ')[0];
+            if ((t.includes(h) || (hClean.length >= 4 && t.includes(hClean))) &&
+                (t.includes(a) || (aClean.length >= 4 && t.includes(aClean)))) {
                 return sc;
             }
-        } else if (sc.teams && sc.teams.length >= 2) {
-            const t1 = (sc.teams[0].name || '').toLowerCase();
-            const t2 = (sc.teams[1].name || '').toLowerCase();
-            const t1Words = t1.split(' ').filter(w => w.length >= 4);
-            const t2Words = t2.split(' ').filter(w => w.length >= 4);
-
-            const m1 = t.includes(t1) || t1Words.some(w => t.includes(w));
-            const m2 = t.includes(t2) || t2Words.some(w => t.includes(w));
-
-            if (m1 && m2) {
+        } else if (sc.sport === 'Cricket' && sc.teams && sc.teams.length >= 2) {
+            const t1 = sc.teams[0].name.toLowerCase();
+            const t2 = sc.teams[1].name.toLowerCase();
+            const t1Word = t1.split(' ')[0];
+            const t2Word = t2.split(' ')[0];
+            if ((t.includes(t1) || (t1Word.length >= 4 && t.includes(t1Word))) &&
+                (t.includes(t2) || (t2Word.length >= 4 && t.includes(t2Word)))) {
                 return sc;
             }
         }
     }
     return null;
-}
-
-/**
- * Public resolver to get high-fidelity real-time score for any sport match
- */
-export async function getLiveScoreForMatch(title: string, category?: string, eventId?: string): Promise<LiveScoreData | null> {
-    if (!title) return null;
-    let scores = await fetchLiveScores();
-    let matched = matchLiveScore({ title, category }, scores);
-    if (matched) return matched;
-
-    // Force re-fetch if not found
-    scores = await fetchLiveScores();
-    matched = matchLiveScore({ title, category }, scores);
-    if (matched) return matched;
-
-    // Synthesize structured preview if not found in active live scoreboard
-    const cleanTitle = title.replace(/\b(live|hd|fhd|4k|stream|match|vs\.?|v|at|-)\b/gi, ' vs ');
-    const parts = title.split(/\s+(?:vs\.?|v|at|@|-)\s+/i);
-    let t1Name = 'Team A';
-    let t2Name = 'Team B';
-    if (parts.length >= 2) {
-        t1Name = parts[0].trim().replace(/^[^\w]+|[^\w]+$/g, '');
-        t2Name = parts[1].trim().replace(/\s+(?:on|live|hd|stream|in|at).*$/i, '').replace(/^[^\w]+|[^\w]+$/g, '');
-    }
-
-    const t1Logo = findKnownTeamLogo(t1Name) || '';
-    const t2Logo = findKnownTeamLogo(t2Name) || '';
-
-    return {
-        hasScore: false,
-        sport: category || 'Sports',
-        league: category || 'Championship Match',
-        isLive: false,
-        isFinal: false,
-        clock: 'Upcoming',
-        detail: 'Pre-Match Telemetry',
-        summary: `${t1Name} vs ${t2Name}`,
-        homeTeam: {
-            name: t1Name,
-            shortName: t1Name.split(' ')[0],
-            score: '-',
-            logo: t1Logo
-        },
-        awayTeam: {
-            name: t2Name,
-            shortName: t2Name.split(' ')[0],
-            score: '-',
-            logo: t2Logo
-        },
-        teams: [
-            { name: t1Name, shortName: t1Name.split(' ')[0], score: '-', logo: t1Logo },
-            { name: t2Name, shortName: t2Name.split(' ')[0], score: '-', logo: t2Logo }
-        ]
-    };
 }
 
 // ==========================================
@@ -1865,22 +1614,12 @@ export async function fetchEspnCricketEvents(): Promise<StreamicSportEvent[]> {
                 const primaryPlayUrl = primaryConverted ? primaryConverted.playUrl : null;
                 const primaryChannelName = primaryConverted ? primaryConverted.channelName : (broadcasterNames[0] || 'No Broadcast Available');
 
-                const t1Comp = comp.competitors?.[0];
-                const t2Comp = comp.competitors?.[1];
-                const p1Detail = parseCricketScoreDetail(t1Comp?.score || '');
-                const p2Detail = parseCricketScoreDetail(t2Comp?.score || '');
-                const cricketTarget = p1Detail.target || p2Detail.target || '';
-                const crrVal = calculateCricketRunRate(p2Detail.runs || p1Detail.runs, p2Detail.overs || p1Detail.overs);
-
-                const teamsScores = (comp.competitors || []).map((c: any) => {
-                    const parsed = parseCricketScoreDetail(c.score || '');
-                    return {
-                        name: c.team?.displayName || c.team?.name || '',
-                        score: parsed.runs || c.score || '',
-                        overs: parsed.overs || c.currentOvers || '',
-                        logo: c.team?.logo
-                    };
-                });
+                const teamsScores = (comp.competitors || []).map((c: any) => ({
+                    name: c.team?.displayName || c.team?.name || '',
+                    score: c.score || '',
+                    overs: c.currentOvers || '',
+                    logo: c.team?.logo
+                }));
 
                 const liveScore: LiveScoreData = {
                     hasScore: true,
@@ -1889,25 +1628,7 @@ export async function fetchEspnCricketEvents(): Promise<StreamicSportEvent[]> {
                     isLive,
                     isFinal: isEnded,
                     detail: ev.status?.type?.detail || '',
-                    summary: ev.status?.summary || teamsScores.map((t: any) => `${t.name} ${t.score}`).filter(Boolean).join(' vs ') || '',
-                    matchEquation: ev.status?.summary || '',
-                    target: cricketTarget,
-                    currentRunRate: crrVal,
-                    session: ev.status?.type?.detail || '',
-                    homeTeam: {
-                        name: t1Name,
-                        shortName: t1Comp?.team?.shortDisplayName || t1Name,
-                        score: p1Detail.runs || t1Comp?.score || '',
-                        overs: p1Detail.overs || t1Comp?.currentOvers || '',
-                        logo: t1Logo
-                    },
-                    awayTeam: {
-                        name: t2Name,
-                        shortName: t2Comp?.team?.shortDisplayName || t2Name,
-                        score: p2Detail.runs || t2Comp?.score || '',
-                        overs: p2Detail.overs || t2Comp?.currentOvers || '',
-                        logo: t2Logo
-                    },
+                    summary: teamsScores.map((t: any) => `${t.name} ${t.score}`).filter(Boolean).join(' vs ') || ev.status?.summary || '',
                     teams: teamsScores
                 };
 

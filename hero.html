@@ -4,6 +4,10 @@
     <meta name="robots" content="noindex">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
     <title>AETHERIS // Reality Is Just the Beginning</title>
 
     <!-- Typography -->
@@ -55,22 +59,18 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
     <script>
-        // Preserve active Offline PWA & Subway Surfers 3D cache while cleaning obsolete legacy caches
+        // Ensure zero local file caching: unregister any legacy Service Workers and purge CacheStorage
         (function() {
-            var ACTIVE_CACHE = 'aetheris-pwa-v12';
             if ('caches' in window) {
                 caches.keys().then(function(keys) {
                     keys.forEach(function(k) {
-                        if (k !== ACTIVE_CACHE) caches.delete(k).catch(function(){});
+                        caches.delete(k).catch(function(){});
                     });
                 }).catch(function(){});
             }
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
-                    reg.update().catch(function(){});
-                    if (reg.active) {
-                        reg.active.postMessage({ type: 'WARM_SUBWAY_CACHE' });
-                    }
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    regs.forEach(function(reg) { reg.unregister().catch(function(){}); });
                 }).catch(function(){});
             }
         })();
@@ -688,46 +688,41 @@
          AETHERIS PWA QUANTUM INTRO SPLASH OVERLAY
          Cinematic animated Infinity & Star launch sequence with Offline Dino Arcade access
          ========================================================================== -->
-    <div id="aetherisPwaIntro" class="fixed inset-0 z-[99999] bg-[#04060d] flex flex-col items-center justify-center overflow-hidden transition-all duration-700 select-none">
-        <!-- Ambient Radial Glows -->
-        <div class="absolute w-[420px] h-[420px] rounded-full bg-cyan-500/15 blur-[110px] pointer-events-none animate-pulse"></div>
-        <div class="absolute w-[340px] h-[340px] rounded-full bg-pink-500/10 blur-[100px] pointer-events-none"></div>
+    <!-- ==========================================================================
+         AETHERIS PWA CINEMATIC DARK INTRO / LOADER (0.5s Fast Reveal)
+         Minimalist pitch-black cinematic loader with glowing geometric ring & optical flare
+         ========================================================================== -->
+    <div id="aetherisPwaIntro" class="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center overflow-hidden transition-all duration-500 select-none">
+        <!-- Deep Ambient Eclipse Glow -->
+        <div class="absolute w-[380px] h-[380px] rounded-full bg-white/[0.03] blur-[120px] pointer-events-none"></div>
 
-        <!-- Animated Infinity & Star Emblem -->
+        <!-- Sleek Monolithic Emblem & Optical Pulse -->
         <div class="relative flex flex-col items-center z-10 px-6 text-center">
-            <div class="relative w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center mb-6">
-                <div class="absolute inset-0 rounded-3xl bg-gradient-to-tr from-cyan-500/20 via-indigo-500/15 to-pink-500/20 border border-white/15 shadow-[0_0_60px_rgba(0,242,254,0.28)] animate-[spin_14s_linear_infinite]"></div>
-                <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-[#070a14]/90 border border-white/15 flex items-center justify-center p-3 shadow-2xl">
-                    <img src="/apple-touch-icon.png" alt="Aetheris" class="w-full h-full object-contain drop-shadow-[0_0_18px_rgba(0,242,254,0.65)] animate-[pulse_2.4s_ease-in-out_infinite]">
+            <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center mb-5">
+                <!-- Precision Rotating Monolith Ring -->
+                <div class="absolute inset-0 rounded-full border border-white/20 border-t-white animate-[spin_1.2s_cubic-bezier(0.4,0,0.2,1)_infinite]"></div>
+                <div class="absolute inset-2 rounded-full border border-white/5 border-b-white/40 animate-[spin_2s_linear_infinite_reverse]"></div>
+                <!-- Core Brand Badge -->
+                <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-zinc-950 border border-white/10 flex items-center justify-center p-3 shadow-[0_0_40px_rgba(0,0,0,0.9)]">
+                    <img src="/apple-touch-icon.png" alt="Aetheris" class="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(255,255,255,0.45)]">
                 </div>
             </div>
 
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-[10px] font-mono uppercase tracking-[0.28em] text-cyan-300 mb-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
-                <span>QUANTUM STREAMING ENGINE</span>
+            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[9px] font-mono uppercase tracking-[0.3em] text-zinc-400 mb-2.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>SYSTEM ONLINE</span>
             </div>
 
-            <h1 class="font-tech font-extrabold text-3xl sm:text-5xl tracking-[0.22em] text-white uppercase drop-shadow-[0_4px_24px_rgba(255,255,255,0.25)]">
+            <h1 class="font-tech font-extrabold text-2xl sm:text-4xl tracking-[0.3em] text-white uppercase drop-shadow-[0_2px_15px_rgba(255,255,255,0.25)]">
                 AETHERIS
             </h1>
-            <p id="aetherisIntroStatus" class="mt-2 font-mono text-[11px] sm:text-xs text-zinc-400 tracking-widest uppercase">
-                INITIALIZING CONTINUUM CORE // 4K HDR &bull; LIVE TV &bull; CINEMA
+            <p id="aetherisIntroStatus" class="mt-2 font-mono text-[10px] sm:text-[11px] text-zinc-500 tracking-[0.2em] uppercase">
+                CALIBRATING QUANTUM STREAM ENGINE
             </p>
 
-            <!-- Progress Bar -->
-            <div class="w-56 sm:w-72 h-1 bg-white/10 rounded-full overflow-hidden mt-6 relative">
-                <div id="aetherisIntroBar" class="h-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-pink-500 rounded-full transition-all duration-300" style="width: 12%;"></div>
-            </div>
-
-            <!-- Action Controls -->
-            <div class="mt-7 flex flex-wrap items-center justify-center gap-3">
-                <button type="button" onclick="dismissAetherisIntro()" class="px-5 py-2 rounded-full bg-white text-black font-mono font-bold text-[11px] uppercase tracking-widest hover:bg-cyan-300 transition-all shadow-[0_0_25px_rgba(255,255,255,0.3)]">
-                    Enter Aetheris →
-                </button>
-                <a href="/offline.html" class="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-zinc-300 hover:text-cyan-300 font-mono text-[11px] uppercase tracking-wider transition-all flex items-center gap-1.5">
-                    <span>🦖</span>
-                    <span>Cyber-Rex Arcade</span>
-                </a>
+            <!-- Ultra-Clean Fast Micro Line (0.5s duration) -->
+            <div class="w-48 sm:w-60 h-[2px] bg-white/10 rounded-full overflow-hidden mt-5 relative">
+                <div id="aetherisIntroBar" class="h-full bg-white rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(255,255,255,0.8)]" style="width: 25%;"></div>
             </div>
         </div>
     </div>
@@ -738,9 +733,10 @@
             const statusEl = document.getElementById('aetherisIntroStatus');
             if (!introEl) return;
 
-            // If user isn't online, offer instant jump to Offline Cyber-Rex Dino Arcade
-            if (!navigator.onLine && statusEl) {
-                statusEl.textContent = 'OFFLINE DETECTED // LAUNCHING CYBER-REX ARCADE...';
+            // Offline instant redirect to Cyber-Rex / Subway Arcade
+            if (!navigator.onLine) {
+                window.location.replace('/offline.html');
+                return;
             }
 
             window.dismissAetherisIntro = function() {
@@ -748,14 +744,14 @@
                 introEl.dataset.dismissed = '1';
                 try { sessionStorage.setItem('aetheris_intro_seen', '1'); } catch (e) {}
                 introEl.style.opacity = '0';
-                introEl.style.transform = 'scale(1.04)';
+                introEl.style.transform = 'scale(1.02)';
                 introEl.style.pointerEvents = 'none';
                 setTimeout(() => {
                     if (introEl && introEl.parentNode) introEl.style.display = 'none';
-                }, 680);
+                }, 450);
             };
 
-            // Fast skip if already seen in this tab session (unless ?intro=1)
+            // Fast skip if already seen in this tab session
             const forceIntro = location.search.includes('intro=1');
             let alreadySeen = false;
             try { alreadySeen = sessionStorage.getItem('aetheris_intro_seen') === '1'; } catch (e) {}
@@ -765,21 +761,16 @@
                 return;
             }
 
-            const steps = [
-                { pct: '38%', text: 'SYNCING LIVE SPORTS & 4K VOD NODES...' },
-                { pct: '74%', text: 'CALIBRATING SPATIAL AUDIO & CLEARKEY DRM...' },
-                { pct: '100%', text: 'AETHERIS READY // REALITY IS JUST THE BEGINNING' }
-            ];
-            steps.forEach((step, idx) => {
-                setTimeout(() => {
-                    if (barEl) barEl.style.width = step.pct;
-                    if (statusEl && navigator.onLine) statusEl.textContent = step.text;
-                }, (idx + 1) * 480);
-            });
+            // High-speed 0.5s-0.7s sequence
+            setTimeout(() => {
+                if (barEl) barEl.style.width = '75%';
+                if (statusEl) statusEl.textContent = 'READY // ENTERING CINEMA';
+            }, 250);
 
             setTimeout(() => {
+                if (barEl) barEl.style.width = '100%';
                 window.dismissAetherisIntro();
-            }, 2100);
+            }, 550);
         })();
     </script>
 
@@ -1187,7 +1178,6 @@
         <div id="serverVideoWrapper" class="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-cover bg-center bg-black" data-fallback-photo="/assets/datacenter_cables.jpg">
             <video id="serverSmokeVideo" autoplay loop muted playsinline preload="metadata"
                    class="w-full h-full object-cover opacity-100 pointer-events-none">
-                <source src="/assets/Smoke_drifting_and_atmospheric_haze_20261025130433.mp4" type="video/mp4">
                 <source src="/assets/server_room_smoke.mp4" type="video/mp4">
             </video>
         </div>
@@ -2008,7 +1998,13 @@
 
                 // Fetch telemetry from local API backend, fallback to direct NASA API
                 function initNasaData() {
-                    fetch('/api/nasa/telemetry')
+                    var authParam = '';
+                    try {
+                        var p = new URLSearchParams(window.location.search);
+                        var tok = p.get('unlock_token') || localStorage.getItem('site_unlock_token') || sessionStorage.getItem('site_unlock_token') || '';
+                        if (tok) authParam = '?unlock_token=' + encodeURIComponent(tok);
+                    } catch(e) {}
+                    fetch('/api/nasa/telemetry' + authParam, { credentials: 'include' })
                         .then(function(res) {
                             if (!res.ok) throw new Error('Backend HTTP ' + res.status);
                             return res.json();
@@ -2059,7 +2055,6 @@
         <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
             <video id="musicBackgroundVideo" autoplay loop muted playsinline preload="metadata" class="w-full h-full object-cover">
                 <source src="/assets/music_cinematic_macro.mp4" type="video/mp4">
-                <source src="/assets/Cinematic_macro_slow-motion_camera_tracking_1080p_20261025152359.mp4" type="video/mp4">
             </video>
         </div>
 
@@ -4027,7 +4022,13 @@
             }
 
             try {
-                const res = await fetch('/api/hero-config');
+                var authParam = '';
+                try {
+                    var p = new URLSearchParams(window.location.search);
+                    var tok = p.get('unlock_token') || localStorage.getItem('site_unlock_token') || sessionStorage.getItem('site_unlock_token') || '';
+                    if (tok) authParam = '?unlock_token=' + encodeURIComponent(tok);
+                } catch(e) {}
+                const res = await fetch('/api/hero-config' + authParam, { credentials: 'include' });
                 const data = await res.json();
                 if (data.status === 'success' && data.config) {
                     const cfg = data.config;

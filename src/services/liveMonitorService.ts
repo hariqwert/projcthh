@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { Request } from 'express';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../middleware/auth';
 import { getAllBoundDevices, revokeDevice } from './deviceBindingService';
 import { getAllDetailedSessions, endUserStreamSession, formatDuration } from './loggerService';
 
@@ -146,6 +148,25 @@ export function loadUnlockedSessions(): void {
 }
 
 /**
+ * Helper to parse cookie header
+ */
+export function parseCookieHeader(cookieHeader?: string): Record<string, string> {
+    const cookies: Record<string, string> = {};
+    if (!cookieHeader) return cookies;
+    cookieHeader.split(';').forEach(cookie => {
+        const parts = cookie.split('=');
+        if (parts.length >= 2) {
+            try {
+                cookies[parts[0].trim()] = decodeURIComponent(parts.slice(1).join('=').trim());
+            } catch (e: any) {
+                cookies[parts[0].trim()] = parts.slice(1).join('=').trim();
+            }
+        }
+    });
+    return cookies;
+}
+
+/**
  * Persist Unlocked Sessions to disk
  */
 export function persistUnlockedSessions(): void {
@@ -157,7 +178,7 @@ export function persistUnlockedSessions(): void {
         // Also sync unlocked_ips.json
         const ipMap: Record<string, number> = {};
         for (const s of validSessions) {
-            if (s.ip && s.ip !== '127.0.0.1' && s.ip !== '::1' && s.ip !== 'localhost') {
+            if (s.ip) {
                 ipMap[s.ip] = Math.max(ipMap[s.ip] || 0, s.expiresAt);
             }
         }
@@ -191,17 +212,55 @@ export function recordVisitorFromRequest(req: Request): void {
 
         const ua = (req.headers['user-agent'] as string) || '';
         const { browserName, deviceLabel } = parseUserAgent(ua);
+        const rawCookies = parseCookieHeader(req.headers.cookie);
 
         // Check hardware deviceId from headers, query, or cookies
         const deviceId = String(
             req.headers['x-device-id'] ||
             req.query?.deviceId ||
-            req.cookies?.deviceId ||
+            rawCookies.site_bound_device_id ||
+            rawCookies.deviceId ||
+            (req as any).cookies?.deviceId ||
             ''
         ).trim();
 
-        const visitorKey = deviceId ? `${ip}_${deviceId}` : ip;
         const now = Date.now();
+
+        // Auto-detect and register unlocked sessions from site_unlock_token cookie or header
+        const unlockToken = rawCookies.site_unlock_token ||
+                            (req.headers['x-site-unlock-token'] as string) ||
+                            (req.query?.unlock_token as string);
+
+        if (unlockToken) {
+            try {
+                const decoded = jwt.verify(unlockToken, JWT_SECRET) as any;
+                if (decoded && decoded.unlocked === true && decoded.exp * 1000 > now) {
+                    const devId = decoded.deviceId || deviceId;
+                    const sessionKey = devId ? `${ip}_${devId}` : ip;
+                    if (!unlockedSessionsMap.has(sessionKey)) {
+                        unlockedSessionsMap.set(sessionKey, {
+                            ip,
+                            deviceId: devId,
+                            deviceLabel: decoded.deviceLabel || deviceLabel,
+                            browserName,
+                            userAgent: ua,
+                            authMethod: 'Site Passcode',
+                            enteredAt: decoded.timestamp || (now - 60000),
+                            expiresAt: decoded.exp * 1000,
+                            currentPage: p,
+                            lastSeenAt: now
+                        });
+                        persistUnlockedSessions();
+                    } else {
+                        const existingSession = unlockedSessionsMap.get(sessionKey)!;
+                        existingSession.currentPage = p;
+                        existingSession.lastSeenAt = now;
+                    }
+                }
+            } catch (_) {}
+        }
+
+        const visitorKey = deviceId ? `${ip}_${deviceId}` : ip;
 
         // Check if stream request
         const isStreaming = p.includes('/live.php') || p.includes('/api/play_stream') || p.includes('/proxy');

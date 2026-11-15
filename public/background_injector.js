@@ -11,6 +11,7 @@
         else if (pageName.includes('index')) targetBg = data.index;
         
         if (targetBg && targetBg.url) {
+            const finalType = String(targetBg.type || 'auto').toLowerCase();
             const container = document.createElement('div');
             container.id = 'global-admin-bg-container';
             container.style.position = 'fixed';
@@ -66,7 +67,7 @@
             }
 
             prompt.onclick = () => {
-                if ((typeof targetBg !== 'undefined' && targetBg.type === 'youtube') || (typeof type !== "undefined" && type === 'youtube')) {
+                if (finalType === 'youtube') {
                     const iframe = container.querySelector('iframe');
                     if (iframe && iframe.contentWindow) {
                         iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
@@ -128,7 +129,7 @@
                     const p = document.getElementById('bgUnmutePrompt');
                     if (p) p.style.display = 'none';
 
-                    if (finalType === 'youtube' || (typeof type !== "undefined" && type === 'youtube')) {
+                    if (finalType === 'youtube') {
                         const iframe = container.querySelector('iframe');
                         if (iframe && iframe.contentWindow) {
                             if (isMuted) {

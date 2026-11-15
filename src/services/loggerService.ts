@@ -11,8 +11,6 @@ export interface ServerLogEntry {
     stream?: string;
     userAgent?: string;
     durationMs?: number;
-    deviceId?: string;
-    mac?: string;
 }
 
 export interface DetailedSession {
@@ -130,7 +128,7 @@ let logCounter = 0;
 export function logServerEvent(
     level: 'INFO' | 'WARN' | 'ERROR' | 'STREAM' | 'AUTH' | 'PROXY',
     message: string,
-    meta: { ip?: string; stream?: string; userAgent?: string; durationMs?: number; deviceId?: string; mac?: string } = {}
+    meta: { ip?: string; stream?: string; userAgent?: string; durationMs?: number } = {}
 ): ServerLogEntry {
     const now = Date.now();
     const entry: ServerLogEntry = {
@@ -142,9 +140,7 @@ export function logServerEvent(
         ip: meta.ip?.replace('::ffff:', ''),
         stream: meta.stream,
         userAgent: meta.userAgent,
-        durationMs: meta.durationMs,
-        deviceId: meta.deviceId,
-        mac: meta.mac
+        durationMs: meta.durationMs
     };
 
     inMemoryLogs.push(entry);

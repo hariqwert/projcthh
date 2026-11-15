@@ -604,38 +604,37 @@
       }
     }
     async function triggerDownload(videoId, format, title, quality = '1080') {
-      const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const cobaltUrl = `https://cobalt.meowing.de/#${encodeURIComponent(ytUrl)}`;
-      
-      // Update UI to show we forwarded
+      const safeTitle = String(title || videoId).replace(/[^\w\s\-().]/g, '').trim() || videoId;
+      const ext = format === 'mp3' ? 'mp3' : 'mp4';
+      const streamUrl = `/api/v1/youtube/stream?v=${encodeURIComponent(videoId)}&type=${encodeURIComponent(format)}&quality=${encodeURIComponent(quality)}&download=1&title=${encodeURIComponent(safeTitle)}`;
+
       dlTimelineCard.classList.remove('hidden');
       dlTimelineCard.scrollIntoView({ behavior: 'smooth' });
-      dlVideoTitle.textContent = `🚀 Sent to Processing Engine: ${title || videoId}`;
-      
-      if (dlStatusIcon) dlStatusIcon.innerHTML = '<i data-lucide="loader" class="spinner"></i>';
-      if (dlStatusText) dlStatusText.innerHTML = '<span style="color:#eab308; font-weight: 600;">Processing Request...</span>';
-      
-      // Open as a small popup window instead of a full tab to keep UX clean while bypassing iframe blocks
-      const width = 600;
-      const height = 500;
-      const left = (window.innerWidth / 2) - (width / 2);
-      const top = (window.innerHeight / 2) - (height / 2);
-      window.open(cobaltUrl, 'CobaltDownload', `width=${width},height=${height},top=${top},left=${left},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`);
+      dlVideoTitle.textContent = `📥 ${quality}${format === 'mp4' ? 'p MP4' : 'k MP3'}: ${title || videoId}`;
+      const statusTextEl = document.getElementById('dlStatusText');
+      if (statusTextEl) statusTextEl.innerHTML = '<span style="color:#eab308; font-weight: 600;">Resolving Stream...</span>';
+      updateProgress(15, `Phase 1: Resolving ${quality} stream from engine...`, 1);
 
-      // Simulated Timeline for UX
-      updateProgress(10, `Phase 1: Initializing external download popup...`, 1);
-      
-      setTimeout(() => {
-        updateProgress(50, `Phase 2: Transferring media to engine...`, 2);
-      }, 1500);
+      try {
+        updateProgress(45, `Phase 2: Preparing ${ext.toUpperCase()} download stream...`, 2);
+        const a = document.createElement('a');
+        a.href = streamUrl;
+        a.download = `${safeTitle}.${ext}`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 1000);
 
-      setTimeout(() => {
-        updateProgress(100, `Phase 3: Task passed successfully! Check popup.`, 4);
-        if (dlStatusIcon) dlStatusIcon.innerHTML = '<i data-lucide="check-circle" style="color:#10b981;"></i>';
-        if (dlStatusText) dlStatusText.innerHTML = '<span style="color:#10b981; font-weight: 600;">Download Triggered</span>';
-        if (window.lucide) window.lucide.createIcons();
-      }, 3000);
-      
+        updateProgress(80, `Phase 3: Transferring file stream...`, 3);
+        setTimeout(() => {
+          updateProgress(100, `✅ Download started: ${safeTitle}.${ext}`, 4);
+          if (statusTextEl) statusTextEl.innerHTML = '<span style="color:#10b981; font-weight: 600;">Download Started</span>';
+        }, 1800);
+      } catch (e) {
+        updateProgress(100, `⚠️ Download failed: ${e?.message || 'Error'}`, 4);
+        if (statusTextEl) statusTextEl.innerHTML = '<span style="color:#ef4444; font-weight: 600;">Download Error</span>';
+      }
+
       if (window.lucide) window.lucide.createIcons();
     }
 

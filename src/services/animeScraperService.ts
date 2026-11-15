@@ -935,18 +935,14 @@ export async function scrapeAnimeEpisode(title: string, season: number = 1, epis
 
     const formatPlayableUrl = (m3uUrl: string): string => {
         if (!m3uUrl) return '';
+        if (m3uUrl.includes('fetch.nexabloom.top') || m3uUrl.includes('nexabloom.top')) {
+            return `https://api.framextv.tech/anime/api/proxy?url=${encodeURIComponent(m3uUrl)}`;
+        }
         return `/stream_proxy.php?url=${encodeURIComponent(m3uUrl)}`;
     };
 
-    const isDirectMediaStream = (u?: string | null): boolean => {
-        if (!u) return false;
-        const lower = u.toLowerCase();
-        if (lower.includes('abyssplayer.com') || lower.includes('/episode/') || lower.includes('/embed/')) return false;
-        return lower.includes('.m3u8') || lower.includes('.mp4') || lower.includes('/hls/') || lower.includes('/cdn/hls');
-    };
-
     // Direct Japanese Sub stream (HLS or Progressive MP4)
-    if (streamData.masterM3u8 && isDirectMediaStream(streamData.masterM3u8)) {
+    if (streamData.masterM3u8 && !streamData.masterM3u8.includes('animesalt.cx/episode')) {
         const isMp4 = streamData.masterM3u8.includes('.mp4') || streamData.masterM3u8.includes('hakunaymatata');
         sources.push({
             url: formatPlayableUrl(streamData.masterM3u8),
@@ -959,18 +955,18 @@ export async function scrapeAnimeEpisode(title: string, season: number = 1, epis
             skipProxy: true
         });
     } else {
-        // If masterM3u8 is an embed (like abyssplayer) or missing, resolve HiAnime/Zoko direct HLS first
         try {
             const malId = await resolveMalIdFromTitle(title);
             if (malId) {
                 const zokoSub = await resolveZokoStream(malId, epNum, 'sub');
                 if (zokoSub && zokoSub.success && zokoSub.masterM3u8) {
+                    streamData.masterM3u8 = zokoSub.masterM3u8;
                     sources.push({
                         url: formatPlayableUrl(zokoSub.masterM3u8),
                         rawUrl: zokoSub.masterM3u8,
                         quality: '1080p',
                         type: 'application/x-mpegurl',
-                        label: 'HiAnime / AnimeSalt Japanese Sub (Direct HLS)',
+                        label: 'Japanese Sub (Direct HLS)',
                         name: 'Anime Sub',
                         language: 'Japanese Sub',
                         skipProxy: true
@@ -978,21 +974,6 @@ export async function scrapeAnimeEpisode(title: string, season: number = 1, epis
                 }
             }
         } catch (_) {}
-
-        // If an embed URL was present, preserve it cleanly as an embed source (not m3u8)
-        if (streamData.masterM3u8 && (streamData.masterM3u8.includes('abyssplayer') || streamData.masterM3u8.includes('/embed/'))) {
-            sources.push({
-                url: streamData.masterM3u8,
-                rawUrl: streamData.masterM3u8,
-                quality: '1080p',
-                type: 'embed',
-                label: 'AnimeSalt Japanese Sub (Web Embed)',
-                name: 'AnimeSalt Embed',
-                language: 'Japanese Sub',
-                iframeUrl: streamData.masterM3u8,
-                skipProxy: true
-            });
-        }
     }
 
     // Direct English Dub stream (or fetch via ZokoAnime / HiAnime engine if missing)
@@ -1547,11 +1528,8 @@ export async function fetchAniListEpisodes(options: { id?: number | string; malI
         // Search by title if ID lookup did not return or wasn't provided
         if (!mediaData && title) {
             const cleanTitle = title
-                .replace(/\s*S\d+\s*E\d+/gi, '')
-                .replace(/\s*-\s*Episode\s*\d+/gi, '')
-                .replace(/\s*Episode\s*\d+/gi, '')
-                .replace(/\s*Season\s*\d+/gi, '')
-                .replace(/\s*E\d+/gi, '')
+                .replace(/\s*-\s*Episode\s*\d+/i, '')
+                .replace(/\s*Season\s*\d+/i, '')
                 .replace(/\(.*?\)/g, '')
                 .trim();
 

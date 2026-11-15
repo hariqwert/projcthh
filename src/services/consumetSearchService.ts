@@ -115,32 +115,6 @@ const POPULAR_MEDIA_SEED: FastMediaMatch[] = [
         cast: ["Dileep", "Bhavana", "Cochin Haneefa", "Jagathy Sreekumar", "Harisree Ashokan", "Oduvil Unnikrishnan"]
     },
     {
-        id: 62,
-        tmdbId: 62,
-        imdb_id: "tt0062622",
-        title: "2001: A Space Odyssey",
-        media_type: "movie",
-        poster_path: "/ve72VxNqjGM69Uky4WTo2bK6rfq.jpg",
-        backdrop_path: "/w5kFn4gK9sFv1s0Yj0q0oK1m9P6.jpg",
-        vote_average: 8.1,
-        release_date: "1968-04-02",
-        overview: "Humanity finds a mysterious object buried beneath the lunar surface and sets off on a voyage to Jupiter accompanied by the intelligent computer HAL 9000. Directed by Stanley Kubrick.",
-        original_language: "en",
-        cast: ["Keir Dullea", "Gary Lockwood", "William Sylvester", "Douglas Rain"]
-    },
-    {
-        id: 1368337,
-        tmdbId: 1368337,
-        title: "The Odyssey",
-        media_type: "movie",
-        poster_path: "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
-        backdrop_path: "/iDiTY1wA35YWzTmXLTtqaxtN6tc.jpg",
-        vote_average: 8.0,
-        release_date: "2026-07-15",
-        overview: "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point.",
-        original_language: "en"
-    },
-    {
         id: 1143248,
         title: "Aavesham",
         media_type: "movie",
@@ -1097,45 +1071,11 @@ export class ConsumetSearchService {
     }
 
     /**
-     * Ultra-fast Edge Bingr Search integration (<200ms) with pre-indexed TMDB records
-     */
-    private static async fetchBingrSearch(query: string): Promise<any[]> {
-        if (!query || query.trim().length < 2) return [];
-        try {
-            const resp = await axios.get(`https://api.bingr.one/api/search?q=${encodeURIComponent(query.trim())}`, {
-                timeout: 1200,
-                headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
-            });
-            if (resp.status === 200 && Array.isArray(resp.data?.results)) {
-                return resp.data.results.map((r: any) => {
-                    const isTv = (r.type === 'tv' || r.type === 'series');
-                    const mType = isTv ? 'tv' : 'movie';
-                    return {
-                        id: r.id,
-                        tmdbId: r.id,
-                        title: r.title,
-                        name: isTv ? r.title : undefined,
-                        media_type: mType,
-                        poster_path: r.poster ? (r.poster.startsWith('/') ? r.poster : r.poster.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
-                        backdrop_path: r.backdrop ? (r.backdrop.startsWith('/') ? r.backdrop : r.backdrop.replace(/https?:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/, '')) : null,
-                        vote_average: r.rating || 7.5,
-                        release_date: r.year ? `${r.year}-01-01` : undefined,
-                        first_air_date: isTv && r.year ? `${r.year}-01-01` : undefined,
-                        overview: r.overview || ''
-                    };
-                });
-            }
-        } catch {}
-        return [];
-    }
-
-    /**
      * Lightning Fast Movies & Series Search with Multi-Engine Parallel Resolution:
      * 1. Pre-Seeded Popular & Regional Library (<0.1ms)
-     * 2. Edge Bingr Pre-Indexed Database (<150ms)
+     * 2. SMMovieHub Direct Movie Catalog (<1ms)
      * 3. TMDB Multi-Page & Multi-Type Search (~250ms over IPv4)
      * 4. IMDb Instant Suggestion API (~20ms) for regional titles (M80 Moosa, etc.) & missing posters
-     * 5. SMMovieHub Direct Movie Catalog (<1ms)
      */
     public static async searchMoviesAndSeriesFast(query: string, limit: number = 48): Promise<FastMediaMatch[]> {
         if (!query) return [];
@@ -1206,24 +1146,23 @@ export class ConsumetSearchService {
             }
         } catch {}
 
-        // 3. Lightning Fast Concurrent Search: Bingr Edge Index + TMDB Multi + IMDb Suggestions
+        // 3. Lightning Fast Concurrent Search: TMDB Multi + IMDb Suggestions
         const isImdbId = /^tt\d{7,10}$/i.test(cleanTitleQuery);
         const tmdbPromises: Promise<any[]>[] = [];
 
         if (isImdbId) {
             tmdbPromises.push(
-                this.fetchTmdbEndpoint(`find/${cleanTitleQuery}?external_source=imdb_id`, 1400)
+                this.fetchTmdbEndpoint(`find/${cleanTitleQuery}?external_source=imdb_id`, 1600)
             );
         } else {
             // TMDB search/multi page 1 returns top 20 relevant movies AND tv series simultaneously in a single fast round-trip
             const yearParam = extractedYear ? `&year=${extractedYear}` : '';
             tmdbPromises.push(
-                this.fetchTmdbEndpoint(`search/multi?query=${encodeURIComponent(cleanTitleQuery)}&include_adult=false&page=1${yearParam}`, 1400)
+                this.fetchTmdbEndpoint(`search/multi?query=${encodeURIComponent(cleanTitleQuery)}&include_adult=false&page=1${yearParam}`, 1600)
             );
         }
 
-        const [bingrResults, imdbResults, ...tmdbPages] = await Promise.all([
-            this.fetchBingrSearch(cleanTitleQuery),
+        const [imdbResults, ...tmdbPages] = await Promise.all([
             this.fetchImdbSuggestions(cleanTitleQuery),
             ...tmdbPromises
         ]);
@@ -1237,25 +1176,9 @@ export class ConsumetSearchService {
             }
         }
 
-        // Flatten and normalize TMDB + Bingr items
+        // Flatten and normalize TMDB items
         const tmdbResults: FastMediaMatch[] = [];
         const seenTmdbIds = new Set<string>();
-
-        // Merge Bingr results as high-confidence fast hits
-        for (const bItem of bingrResults) {
-            if (!bItem || !bItem.id) continue;
-            const uniqueKey = `${bItem.media_type}_${bItem.id}`;
-            seenTmdbIds.add(uniqueKey);
-            const title = bItem.title || bItem.name || 'Untitled';
-            const normTitle = normalizeSearchKey(title);
-            let score = 250;
-            if (normTitle === normQ || compactSearchKey(title) === compactQ) score = 900;
-            else if (normTitle.startsWith(normQ)) score = 500;
-            tmdbResults.push({
-                ...bItem,
-                score
-            });
-        }
 
         for (let pIdx = 0; pIdx < tmdbPages.length; pIdx++) {
             const pageItems = tmdbPages[pIdx] || [];
@@ -1297,13 +1220,13 @@ export class ConsumetSearchService {
                     tmdbId: item.id,
                     imdb_id: matchingImdb?.imdb_id,
                     title,
-                    name: mediaType === 'tv' ? (item.name || title) : undefined,
+                    name: item.name || title,
                     media_type: mediaType,
                     poster_path: posterPath,
                     backdrop_path: backdropPath,
                     vote_average: voteAvg,
                     release_date: releaseDate,
-                    first_air_date: mediaType === 'tv' ? (item.first_air_date || releaseDate) : undefined,
+                    first_air_date: item.first_air_date || (mediaType === 'tv' ? releaseDate : undefined),
                     overview,
                     original_language: item.original_language,
                     cast: matchingImdb?.cast,
@@ -1373,53 +1296,87 @@ export class ConsumetSearchService {
     }
 
     /**
-     * Fast AniList Anime Search
+     * Fast AniList Anime Search (Raced with Bingr Edge for 200ms zero-lag response)
      */
     public static async searchAnimeFast(query: string, limit: number = 20): Promise<FastMediaMatch[]> {
         if (!query) return [];
+        const cleanQ = query.trim();
         try {
-            const gql = `
-                query ($search: String, $perPage: Int) {
-                    Page(page: 1, perPage: $perPage) {
-                        media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
-                            id
-                            idMal
-                            title { romaji english native }
-                            coverImage { large }
-                            bannerImage
-                            averageScore
-                            episodes
-                            format
-                            status
-                            description
-                            genres
+            const anilistPromise = (async () => {
+                const gql = `
+                    query ($search: String, $perPage: Int) {
+                        Page(page: 1, perPage: $perPage) {
+                            media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+                                id
+                                idMal
+                                title { romaji english native }
+                                coverImage { large }
+                                bannerImage
+                                averageScore
+                                episodes
+                                format
+                                status
+                                description
+                                genres
+                            }
                         }
                     }
-                }
-            `;
-            const resp = await axios.post('https://graphql.anilist.co', {
-                query: gql,
-                variables: { search: query, perPage: Math.min(limit, 10) }
-            }, {
-                timeout: 900,
-                httpAgent,
-                httpsAgent,
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+                `;
+                const resp = await axios.post('https://graphql.anilist.co', {
+                    query: gql,
+                    variables: { search: cleanQ, perPage: Math.min(limit, 10) }
+                }, {
+                    timeout: 2000,
+                    httpAgent,
+                    httpsAgent,
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+                });
+
+                const media = resp.data?.data?.Page?.media || [];
+                return media.map((item: any) => ({
+                    id: item.id,
+                    anilistId: item.id,
+                    malId: item.idMal || item.id,
+                    title: item.title?.english || item.title?.romaji || 'Anime',
+                    name: item.title?.english || item.title?.romaji || 'Anime',
+                    media_type: 'anime',
+                    poster_path: item.coverImage?.large || null,
+                    backdrop_path: item.bannerImage || null,
+                    vote_average: item.averageScore ? Number((item.averageScore / 10).toFixed(1)) : 8.0,
+                    overview: item.description ? item.description.replace(/<[^>]*>/g, '') : '',
+                    original_language: 'ja'
+                }));
+            })();
+
+            const bingrEdgePromise = (async () => {
+                const resp = await axios.get(`https://api.bingr.st/api/anime/search?q=${encodeURIComponent(cleanQ)}`, {
+                    timeout: 1800,
+                    httpAgent,
+                    httpsAgent,
+                    headers: { 'User-Agent': 'Mozilla/5.0' }
+                });
+                const results = resp.data?.results || [];
+                return results.map((item: any) => ({
+                    id: item.id,
+                    anilistId: item.id,
+                    malId: item.idMal || item.id,
+                    title: item.title || 'Anime',
+                    name: item.title || 'Anime',
+                    media_type: 'anime',
+                    poster_path: item.poster || null,
+                    backdrop_path: item.backdrop || null,
+                    vote_average: item.rating || 8.0,
+                    overview: item.overview || '',
+                    original_language: 'ja'
+                }));
+            })();
+
+            const results = await Promise.any([anilistPromise, bingrEdgePromise]).catch(async () => {
+                // If one failed, wait for the other
+                return await anilistPromise.catch(() => bingrEdgePromise.catch(() => []));
             });
 
-            const media = resp.data?.data?.Page?.media || [];
-            return media.map((item: any) => ({
-                id: item.id,
-                malId: item.idMal || item.id,
-                title: item.title?.english || item.title?.romaji || 'Anime',
-                name: item.title?.english || item.title?.romaji || 'Anime',
-                media_type: 'anime',
-                poster_path: item.coverImage?.large || null,
-                backdrop_path: item.bannerImage || null,
-                vote_average: item.averageScore ? Number((item.averageScore / 10).toFixed(1)) : 8.0,
-                overview: item.description ? item.description.replace(/<[^>]*>/g, '') : '',
-                original_language: 'ja'
-            }));
+            return results && results.length > 0 ? results : [];
         } catch {
             return [];
         }

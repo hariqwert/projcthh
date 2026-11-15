@@ -3033,8 +3033,10 @@ export async function scrapeBingrStream(params: {
                 try {
                     const cleanTitle = (requestedTitle || mediaTitle || '').replace(/\s*\((?:anime|tv|series|\d{4})\)/gi, '').trim();
                     let targetAniId: number | null = null;
-                    if (params.anilistId && !isNaN(Number(params.anilistId)) && Number(params.anilistId) !== Number(params.id) && Number(params.anilistId) !== Number(params.tmdbId)) {
+                    if (params.anilistId && !isNaN(Number(params.anilistId))) {
                         targetAniId = Number(params.anilistId);
+                    } else if ((params.type === 'anime' || params.t === 'anime') && params.id && !isNaN(Number(params.id))) {
+                        targetAniId = Number(params.id);
                     }
                     if (!targetAniId) {
                         const aniData = await fetchAniListEpisodes({
@@ -3063,16 +3065,21 @@ export async function scrapeBingrStream(params: {
 
                         if (aniWatch && aniWatch.success && aniWatch.streams && aniWatch.streams.length > 0) {
                             scraperName = `Kitsune Anivexa (${(aniWatch.provider || serverId).toUpperCase()}) [${targetAudio.toUpperCase()}]`;
-                            sources = aniWatch.streams.map((st: any) => ({
-                                url: st.url,
-                                proxyUrl: st.proxiedUrl,
-                                rawUrl: st.url,
-                                quality: '1080p FHD',
-                                type: 'application/x-mpegurl',
-                                label: `${st.server || 'HD-1'} (${st.audio ? st.audio.toUpperCase() : targetAudio.toUpperCase()})`,
-                                name: `Anivexa [${st.server || 'HD-1'}]`,
-                                audio: st.audio || targetAudio
-                            }));
+                            sources = aniWatch.streams.map((st: any) => {
+                                const playableUrl = st.proxiedUrl || st.url;
+                                return {
+                                    url: playableUrl,
+                                    proxyUrl: st.proxiedUrl || playableUrl,
+                                    rawUrl: st.url,
+                                    directUrl: playableUrl,
+                                    skipProxy: true,
+                                    quality: '1080p FHD',
+                                    type: 'application/x-mpegurl',
+                                    label: `${st.server || 'HD-1'} (${st.audio ? st.audio.toUpperCase() : targetAudio.toUpperCase()})`,
+                                    name: `Anivexa [${st.server || 'HD-1'}]`,
+                                    audio: st.audio || targetAudio
+                                };
+                            });
                             subtitles = (aniWatch.subtitles || []).map((sub: any) => ({
                                 lang: sub.lang || sub.label || 'en',
                                 url: sub.url || sub.file,
@@ -3559,7 +3566,8 @@ export async function scrapeBingrStream(params: {
                         }
                     } else {
                         const isFrameX = serverId === 'framex' || s.url.includes('framextv.tech') || (s as any).skipProxy;
-                        if (serverId !== 'bing_anime' && serverId !== 'animesalt' && !isFrameX) {
+                        const isAnivexaOrProxied = serverId === 'anivexa' || serverId === 'reanime' || serverId === 'anikoto' || serverId === 'anikoto_dub' || (s as any).proxyUrl?.includes('/anivexa/') || (s as any).proxyUrl?.includes('/anikoto/') || (s as any).skipProxy;
+                        if (serverId !== 'bing_anime' && serverId !== 'animesalt' && !isFrameX && !isAnivexaOrProxied) {
                             if (unwrapped.streamUrl && unwrapped.streamUrl.startsWith('http') && s.url !== unwrapped.streamUrl) {
                                 (s as any).proxyUrl = s.url;
                                 s.url = unwrapped.streamUrl;

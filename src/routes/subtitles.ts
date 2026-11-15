@@ -341,6 +341,9 @@ async function fetchOpenSubtitles(query: string, imdbId?: string, season?: strin
     }
 
     if (query && query.trim()) {
+        if (season && episode && season !== '0') {
+            urlsToTry.push(`https://rest.opensubtitles.org/search/query-${encodeURIComponent(query.trim())}/season-${season}/episode-${episode}`);
+        }
         urlsToTry.push(`https://rest.opensubtitles.org/search/query-${encodeURIComponent(query.trim())}`);
         const cleanQ = query
             .replace(/\.(mp4|mkv|avi|webm|ts|mov)$/i, '')
@@ -349,6 +352,9 @@ async function fetchOpenSubtitles(query: string, imdbId?: string, season?: strin
             .replace(/\s+/g, ' ')
             .trim();
         if (cleanQ && cleanQ.toLowerCase() !== query.trim().toLowerCase()) {
+            if (season && episode && season !== '0') {
+                urlsToTry.push(`https://rest.opensubtitles.org/search/query-${encodeURIComponent(cleanQ)}/season-${season}/episode-${episode}`);
+            }
             urlsToTry.push(`https://rest.opensubtitles.org/search/query-${encodeURIComponent(cleanQ)}`);
         }
     }
@@ -582,12 +588,16 @@ async function fetchKitsunekkoMirror(query: string, season?: string, episode?: s
 }
 
 // 3. Anime Tosho Helper (Automated Anime Subtitles & Attachments)
-async function fetchAnimeTosho(query: string): Promise<any[]> {
+async function fetchAnimeTosho(query: string, episode?: string): Promise<any[]> {
     const subs: any[] = [];
     if (!query || !query.trim()) return subs;
 
     try {
-        const cleanQuery = query.replace(/[\[\]\(\)\-\.]/g, ' ').replace(/\s+/g, ' ').trim();
+        let cleanQuery = query.replace(/[\[\]\(\)\-\.]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (episode && !cleanQuery.includes(episode)) {
+            const epNum = episode.padStart(2, '0');
+            cleanQuery = `${cleanQuery} ${epNum}`;
+        }
         const url = `https://animetosho.org/search?q=${encodeURIComponent(cleanQuery)}`;
         const res = await axios.get(url, {
             timeout: 6000,
@@ -623,12 +633,17 @@ async function fetchAnimeTosho(query: string): Promise<any[]> {
 }
 
 // 4. SubDL Helper
-async function fetchSubDL(query: string, imdbId?: string): Promise<any[]> {
+async function fetchSubDL(query: string, imdbId?: string, season?: string, episode?: string): Promise<any[]> {
     const subs: any[] = [];
     if (!query && !imdbId) return subs;
 
     try {
-        const url = `https://api.subdl.com/api/v1/subtitles?film_name=${encodeURIComponent(query)}&type=movie`;
+        let typeParam = 'type=movie';
+        if (season && episode && season !== '0') {
+            typeParam = `type=tv&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`;
+        }
+        const imdbQuery = imdbId ? `&imdb_id=${encodeURIComponent(imdbId)}` : '';
+        const url = `https://api.subdl.com/api/v1/subtitles?film_name=${encodeURIComponent(query)}&${typeParam}${imdbQuery}`;
         const res = await axios.get(url, {
             timeout: 5000,
             headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -826,12 +841,12 @@ router.get('/fetch', async (req: Request, res: Response) => {
 
     // 5. Anime Tosho (Encode-Synced Anime Subtitle Releases)
     if (provider === 'all' || provider === 'animetosho' || provider === 'anime') {
-        tasks.push(fetchAnimeTosho(title));
+        tasks.push(fetchAnimeTosho(title, episode));
     }
 
     // 6. SubDL
     if (provider === 'all' || provider === 'subdl') {
-        tasks.push(fetchSubDL(title, imdbId));
+        tasks.push(fetchSubDL(title, imdbId, season, episode));
     }
 
     // 7. MSone (Only when explicitly queried)

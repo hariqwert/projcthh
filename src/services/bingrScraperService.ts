@@ -3060,20 +3060,32 @@ export async function scrapeBingrStream(params: {
                     let targetAniId: number | null = null;
                     if (params.anilistId && !isNaN(Number(params.anilistId))) {
                         targetAniId = Number(params.anilistId);
-                    } else if ((params.type === 'anime' || (params as any).t === 'anime' || (params as any).media_type === 'anime') && params.id && !isNaN(Number(params.id))) {
-                        targetAniId = Number(params.id);
-                    } else if (params.id && !isNaN(Number(params.id)) && Number(params.id) > 1000) {
+                    } else if ((params as any).source === 'anilist' && params.id && !isNaN(Number(params.id))) {
                         targetAniId = Number(params.id);
                     }
                     if (!targetAniId) {
-                        const aniData = await fetchAniListEpisodes({
-                            malId: malId || undefined,
-                            title: cleanTitle || undefined
-                        });
-                        if (aniData && aniData.id) {
-                            targetAniId = aniData.id;
-                        } else if (malId && !isNaN(Number(malId))) {
+                        const searchQueries: string[] = [];
+                        if (s > 1) {
+                            searchQueries.push(`${cleanTitle} Season ${s}`);
+                            searchQueries.push(`${cleanTitle} ${s}`);
+                        }
+                        searchQueries.push(cleanTitle);
+
+                        for (const q of searchQueries) {
+                            const aniData = await fetchAniListEpisodes({
+                                malId: malId || undefined,
+                                title: q || undefined
+                            });
+                            if (aniData && aniData.id) {
+                                targetAniId = aniData.id;
+                                break;
+                            }
+                        }
+
+                        if (!targetAniId && malId && !isNaN(Number(malId))) {
                             targetAniId = Number(malId);
+                        } else if (!targetAniId && params.id && !isNaN(Number(params.id)) && !(params as any).tmdbId) {
+                            targetAniId = Number(params.id);
                         }
                     }
 

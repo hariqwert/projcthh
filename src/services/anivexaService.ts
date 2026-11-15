@@ -357,9 +357,29 @@ export async function fetchAnivexaBestStream(
 
     let lastError = 'No providers responded';
 
+    const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> => {
+        return Promise.race([
+            promise,
+            new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+        ]);
+    };
+
     for (const provider of priorityProviders) {
         try {
-            const res = await fetchAnivexaWatch(provider, anilistId, audio, episode);
+            const res = await withTimeout(
+                fetchAnivexaWatch(provider, anilistId, audio, episode),
+                3500,
+                {
+                    success: false,
+                    provider,
+                    anilistId,
+                    episode,
+                    audio,
+                    streams: [],
+                    subtitles: [],
+                    error: `Provider ${provider} timed out after 3.5s`
+                } as AnivexaWatchResult
+            );
             if (res.success && res.streams.length > 0) {
                 return res;
             }

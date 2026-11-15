@@ -473,6 +473,8 @@ const ALLOWED_STREAMING_DOMAINS = [
     'mistyhorizon.space',
     'eclipseharbor.space',
     'midnightvoyage.space',
+    'midnightvale.top',
+    'silverorbit.top',
     'onehpanddreaming.space',
     'broforgotsave.space',
     'goldenanchor.space',
@@ -491,12 +493,33 @@ export function isStreamingTargetAllowed(targetUrl: URL): boolean {
         if (host.endsWith('.space')) {
             return true;
         }
+        if (
+            targetUrl.pathname.includes('/anime/') ||
+            targetUrl.pathname.includes('/seg-') ||
+            host.includes('midnightvale') ||
+            host.includes('silverorbit') ||
+            host.includes('midnightvoyage') ||
+            host.includes('mistyhorizon') ||
+            host.includes('eclipseharbor') ||
+            host.includes('onehpanddreaming') ||
+            host.includes('broforgotsave') ||
+            host.includes('goldenanchor') ||
+            host.includes('fetchbox') ||
+            host.includes('nexabloom') ||
+            host.includes('megaplay') ||
+            host.includes('anicdn') ||
+            host.includes('dramiyos') ||
+            host.includes('rousav')
+        ) {
+            return true;
+        }
         if (ALLOWED_STREAMING_DOMAINS.some(domain => host === domain || host.endsWith('.' + domain))) {
             return true;
         }
         const pathAndQuery = (targetUrl.pathname + targetUrl.search).toLowerCase();
         const isMediaFile = /\.(m3u8|mpd|ts|m4s|mp4|webm|mkv|aac|m4a|key)(\?|&|$|%26|%3f)/i.test(pathAndQuery) ||
-            (/(?:seg-\d+|[a-f0-9]{32})\.(?:jpg|png|html|js|css|ts)/i.test(pathAndQuery));
+            (/(?:seg-[\w.-]+|[a-f0-9]{32})\.(?:jpg|png|html|js|css|ts|m4s|bin|raw)/i.test(pathAndQuery)) ||
+            (targetUrl.pathname.includes('/anime/') && targetUrl.pathname.includes('/seg-'));
         if (isMediaFile) {
             return true;
         }
@@ -693,6 +716,8 @@ export async function streamUrl(url: string, headersArray: string[], req: Reques
         url.includes('broforgotsave') || 
         url.includes('goldenanchor') || 
         url.includes('midnightvoyage') || 
+        url.includes('midnightvale') || 
+        url.includes('silverorbit') || 
         url.includes('eclipseharbor') || 
         (url.includes('.space') && url.includes('/anime/')) ||
         (url.includes('/anime/') && !url.includes('animesalt') && !url.includes('ravok'))

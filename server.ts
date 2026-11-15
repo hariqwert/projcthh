@@ -9290,6 +9290,8 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         u.hostname.includes('kmocx') || 
         u.hostname.includes('kwbly') || 
         u.hostname.includes('midnightvoyage') || 
+        u.hostname.includes('midnightvale') || 
+        u.hostname.includes('silverorbit') || 
         u.hostname.includes('onehpanddreaming') || 
         u.hostname.includes('broforgotsave') || 
         u.hostname.includes('goldenanchor') ||
@@ -9769,6 +9771,10 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
         const isHlsSegment = targetUrl.pathname.endsWith('.ts') || 
                              targetUrl.pathname.endsWith('.m4s') || 
                              targetUrl.pathname.endsWith('.png') ||
+                             targetUrl.pathname.endsWith('.jpg') ||
+                             targetUrl.pathname.endsWith('.jpeg') ||
+                             targetUrl.pathname.endsWith('.html') ||
+                             targetUrl.pathname.includes('/seg-') ||
                              targetUrl.pathname.includes('/5-') ||
                              targetUrl.pathname.includes('segment') ||
                              targetUrl.pathname.includes('chunk') ||

@@ -4014,7 +4014,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
         async function fetchExternalSubtitles() {
             try {
-                const sParam = MEDIA_TYPE === 'tv' ? `&season=${MEDIA_SEASON}&episode=${MEDIA_EPISODE}` : '';
+                const sParam = (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime' || isTvMode || isAnimeMode || MEDIA_SEASON || MEDIA_EPISODE) ? `&season=${encodeURIComponent(MEDIA_SEASON || 1)}&episode=${encodeURIComponent(MEDIA_EPISODE || 1)}` : '';
                 const imdbParam = IMDB_ID ? `&imdb=${encodeURIComponent(IMDB_ID)}` : '';
                 const tmdbParam = (MEDIA_ID && MEDIA_ID !== '{{ID}}') ? `&tmdb=${encodeURIComponent(MEDIA_ID)}` : '';
                 const res = await fetch(`/api/subtitles/fetch?title=${encodeURIComponent(MEDIA_TITLE)}${tmdbParam}${imdbParam}${sParam}`);
@@ -4200,13 +4200,14 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const seasonInput = document.getElementById('subSearchSeasonInput');
             const episodeInput = document.getElementById('subSearchEpisodeInput');
 
-            if (queryInput && !queryInput.value) {
+            if (queryInput && (!queryInput.value || queryInput.dataset.autoPrefilled === 'true')) {
                 queryInput.value = (MEDIA_TITLE && MEDIA_TITLE !== 'Cinema Presentation') ? MEDIA_TITLE : '';
+                queryInput.dataset.autoPrefilled = 'true';
             }
-            if (seasonInput && !seasonInput.value) {
+            if (seasonInput) {
                 seasonInput.value = MEDIA_SEASON || 1;
             }
-            if (episodeInput && !episodeInput.value) {
+            if (episodeInput) {
                 episodeInput.value = MEDIA_EPISODE || 1;
             }
         }

@@ -508,22 +508,67 @@ export async function scrapeAnikotoAnime(params: {
                         const intro = resolved.intro || (skipData?.intro ? { start: skipData.intro[0], end: skipData.intro[1] } : undefined);
                         const outro = resolved.outro || (skipData?.outro ? { start: skipData.outro[0], end: skipData.outro[1] } : undefined);
 
+                        // Primary stream resolved! Also attempt fast resolution for alternative audio (sub/dub) if available
+                        const sourcesList: Array<{
+                            url: string;
+                            rawUrl: string;
+                            quality: string;
+                            type: string;
+                            label: string;
+                            name: string;
+                            audio: 'sub' | 'dub';
+                        }> = [{
+                            url: resolved.m3u8,
+                            rawUrl: resolved.m3u8,
+                            quality: `1080p FHD (${srv.type.toUpperCase()})`,
+                            type: 'application/x-mpegurl',
+                            label: `Anikoto ${srv.name} (${srv.type === 'dub' ? 'English DUB' : 'Japanese SUB'})`,
+                            name: `Anikoto [${srv.type.toUpperCase()}]`,
+                            audio: srv.type
+                        }];
+
+                        // Check if opposite audio exists (e.g., if we got SUB, check if DUB server exists)
+                        const oppType = srv.type === 'sub' ? 'dub' : 'sub';
+                        const oppServer = servers.find(s => s.type === oppType);
+                        if (oppServer) {
+                            try {
+                                const oppRes = await axios.get(`https://anikoto.cz/ajax/server?get=${encodeURIComponent(oppServer.linkId)}`, {
+                                    headers: { ...COMMON_HEADERS, 'X-Requested-With': 'XMLHttpRequest' },
+                                    timeout: 3500
+                                });
+                                if (oppRes.data?.status === 200 && oppRes.data?.result?.url) {
+                                    const oppResolved = await resolveEmbedToM3u8(oppRes.data.result.url);
+                                    if (oppResolved && oppResolved.m3u8) {
+                                        sourcesList.push({
+                                            url: oppResolved.m3u8,
+                                            rawUrl: oppResolved.m3u8,
+                                            quality: `1080p FHD (${oppType.toUpperCase()})`,
+                                            type: 'application/x-mpegurl',
+                                            label: `Anikoto ${oppServer.name} (${oppType === 'dub' ? 'English DUB' : 'Japanese SUB'})`,
+                                            name: `Anikoto [${oppType.toUpperCase()}]`,
+                                            audio: oppType
+                                        });
+                                    }
+                                }
+                            } catch (_) {}
+                        }
+
+                        // Ensure subtitle URLs are properly mapped and proxied
+                        const mappedSubtitles = (resolved.subtitles || []).map(s => ({
+                            lang: s.lang,
+                            label: s.label,
+                            url: s.url.startsWith('http') ? `/api/subtitles/vtt?url=${encodeURIComponent(s.url)}` : s.url
+                        }));
+
                         return {
                             success: true,
-                            serverName: `Anikoto (${srv.name}) [${srv.type.toUpperCase()}]`,
+                            serverName: `Anikoto (${srv.name}) [${srv.type === 'dub' ? 'English DUB' : 'Japanese SUB'}]`,
                             streamUrl: resolved.m3u8,
                             rawUrl: resolved.m3u8,
                             quality: '1080p FHD',
                             type: 'application/x-mpegurl',
-                            sources: [{
-                                url: resolved.m3u8,
-                                rawUrl: resolved.m3u8,
-                                quality: '1080p FHD',
-                                type: 'application/x-mpegurl',
-                                label: `Anikoto ${srv.name} (${srv.type.toUpperCase()})`,
-                                name: `Anikoto [${srv.name}]`
-                            }],
-                            subtitles: resolved.subtitles || [],
+                            sources: sourcesList,
+                            subtitles: mappedSubtitles,
                             intro,
                             outro
                         };

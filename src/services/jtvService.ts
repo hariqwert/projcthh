@@ -118,6 +118,38 @@ export const DEFAULT_JTV_SOURCES: JtvSourceConfigItem[] = [
         enabled: true
     },
     {
+        id: 'jjtvxweb_jstr4web_json',
+        name: 'JJTVxWeb Master Catalog (jstr4web.json)',
+        url: 'https://jjtvxweb.pages.dev/jstr4web.json',
+        type: 'json_keys',
+        isPrimary: true,
+        enabled: true
+    },
+    {
+        id: 'jjtvxweb_denww_json',
+        name: 'JJTVxWeb Worldwide Catalog (den-ww.json)',
+        url: 'https://jjtvxweb.pages.dev/den-ww.json',
+        type: 'json_keys',
+        isPrimary: false,
+        enabled: true
+    },
+    {
+        id: 'allinonereborn_primary_cookie',
+        name: 'AllInOneReborn Primary Cookie (jstrweb2)',
+        url: 'https://allinonereborn2.online/jstrweb2/cookies.json',
+        type: 'cookie',
+        isPrimary: true,
+        enabled: true
+    },
+    {
+        id: 'allinonereborn_jstar_cookie',
+        name: 'AllInOneReborn Star/BTS Cookie (jstarcookie)',
+        url: 'https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json',
+        type: 'cookie',
+        isPrimary: false,
+        enabled: true
+    },
+    {
         id: 'sportlive18_wildcard_cookie',
         name: 'SportLive18 Wildcard Cookie JSON',
         url: 'https://raw.githubusercontent.com/sportlive18/playlist/main/cookie.json',
@@ -240,6 +272,9 @@ const IPL_HIGHLIGHTS_FANCODE_JSON = 'https://raw.githubusercontent.com/sportlive
 const IPL_HIGHLIGHTS_FANCODE3_JSON = 'https://raw.githubusercontent.com/sportlive18/playlist/main/fancode3.json';
 const STAR2_SPORTS_JSON = 'https://raw.githubusercontent.com/sportlive18/jio-tv-auto-update-playlist/refs/heads/main/star2.json';
 const SPORTS_COOKIE_URL = 'https://raw.githubusercontent.com/sportlive18/Sportlink-wtf/refs/heads/main/sportcookie.json';
+const JSTAR_COOKIE_URL = 'https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json';
+const JJTVXWEB_JSTR4WEB_URL = 'https://jjtvxweb.pages.dev/jstr4web.json';
+const JJTVXWEB_DENWW_URL = 'https://jjtvxweb.pages.dev/den-ww.json';
 const SPORTLINK_PAGES_JTVPLUS_URL = 'https://sportlink-tv10.pages.dev/jtvplus.json';
 const SPORTLINK_PAGES_JTV2_URL = 'https://sportlink-tv10.pages.dev/jtv2.json';
 
@@ -343,8 +378,29 @@ export class JtvService {
             return activeWildcardCookie;
         }
 
+        // 1. Primary cookie from allinonereborn2.online/jstrweb2/cookies.json (jjtvxweb.pages.dev primary source)
         try {
-            // First check sportlive18 auto-updated cookie.json
+            const res = await axios.get(WILDCARD_COOKIE_URL, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                httpsAgent: agent,
+                timeout: 6000
+            });
+            if (Array.isArray(res.data)) {
+                for (const item of res.data) {
+                    if (item && item.cookie && typeof item.cookie === 'string' && !isTokenExpired(item.cookie)) {
+                        activeWildcardCookie = item.cookie.trim();
+                        lastCookieFetch = now;
+                        console.log(`[JtvService] Updated primary wildcard cookie (jstrweb2): ${activeWildcardCookie.substring(0, 45)}...`);
+                        return activeWildcardCookie;
+                    }
+                }
+            }
+        } catch (e: any) {
+            // Fallback to secondary endpoint
+        }
+
+        // 2. Fallback to sportlive18 auto-updated cookie.json
+        try {
             const slRes = await axios.get(SPORTLIVE18_COOKIE_URL, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
                 httpsAgent: agent,
@@ -356,26 +412,6 @@ export class JtvService {
                         activeWildcardCookie = item.cookie.trim();
                         lastCookieFetch = now;
                         console.log(`[JtvService] Updated wildcard cookie from sportlive18: ${activeWildcardCookie.substring(0, 45)}...`);
-                        return activeWildcardCookie;
-                    }
-                }
-            }
-        } catch (e: any) {
-            // Fallback to secondary endpoint
-        }
-
-        try {
-            const res = await axios.get(WILDCARD_COOKIE_URL, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                httpsAgent: agent,
-                timeout: 8000
-            });
-            if (Array.isArray(res.data)) {
-                for (const item of res.data) {
-                    if (item && item.cookie && typeof item.cookie === 'string') {
-                        activeWildcardCookie = item.cookie.trim();
-                        lastCookieFetch = now;
-                        console.log(`[JtvService] Updated wildcard cookie: ${activeWildcardCookie.substring(0, 45)}...`);
                         return activeWildcardCookie;
                     }
                 }
@@ -433,31 +469,60 @@ export class JtvService {
             console.warn('[JtvService] Could not load cookies from sportlink-tv10:', slErr?.message);
         }
 
-        // 2. Overlay Broadpeak sportcookie.json results
+        // 1.5. Try jjtvxweb.pages.dev high-speed CDN token feed (1,176 active channels)
         try {
-            const res = await axios.get(SPORTS_COOKIE_URL, {
+            const jjRes = await axios.get(JJTVXWEB_JSTR4WEB_URL, {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 httpsAgent: agent,
                 timeout: 8000
             });
-            const data = res.data;
-            const results = [...(data?.successful_results || []), ...(data?.failed_results || [])];
-            for (const item of results) {
-                if (!item || !item.channel_id) continue;
-                let finalUrl = item.final_url || item.error_details?.final_url || '';
-                if (finalUrl) {
-                    finalUrl = finalUrl.replace('/output/', '/WDVLive/');
-                    newMap.set(String(item.channel_id).trim(), finalUrl);
+            const jjChannels = Array.isArray(jjRes.data) ? jjRes.data : (jjRes.data?.channels || []);
+            if (Array.isArray(jjChannels)) {
+                for (const item of jjChannels) {
+                    if (!item || !item.id) continue;
+                    const cId = String(item.id).trim();
+                    const sUrl = item.stream_url || item.url || '';
+                    const cVal = item.cookie || '';
+                    if (sUrl && cVal && !isTokenExpired(cVal)) {
+                        const tokenPart = cVal.startsWith('__hdnea__=') ? cVal : `__hdnea__=${cVal}`;
+                        const full = sUrl.includes('?') ? `${sUrl}&${tokenPart}` : `${sUrl}?${tokenPart}`;
+                        if (!newMap.has(cId)) newMap.set(cId, full);
+                    }
                 }
             }
-        } catch (e: any) {
-            console.warn('[JtvService] Failed to fetch sports cookies:', e?.message || e);
+        } catch (_) {}
+
+        // 2. Overlay Broadpeak sportcookie.json & allinonereborn2 jstarcookie/cookie.json results
+        for (const cookieSourceUrl of [JSTAR_COOKIE_URL, SPORTS_COOKIE_URL]) {
+            try {
+                const res = await axios.get(cookieSourceUrl, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                    httpsAgent: agent,
+                    timeout: 8000
+                });
+                const data = res.data;
+                // Only process verified successful results; never import failed or dead results from GitHub
+                const results = Array.isArray(data?.successful_results) ? data.successful_results : [];
+                for (const item of results) {
+                    if (!item || !item.channel_id) continue;
+                    const cId = String(item.channel_id).trim();
+                    let finalUrl = item.final_url || '';
+                    if (finalUrl && finalUrl.includes('__hdnea__=')) {
+                        finalUrl = finalUrl.replace('/output/', '/WDVLive/');
+                        if (!newMap.has(cId) || !isTokenExpired(finalUrl)) {
+                            newMap.set(cId, finalUrl);
+                        }
+                    }
+                }
+            } catch (e: any) {
+                console.warn(`[JtvService] Notice fetching sports cookies from ${cookieSourceUrl}:`, e?.message || e);
+            }
         }
 
         if (newMap.size > 0) {
             cachedSportsCookies = newMap;
             lastSportsCookiesFetch = now;
-            console.log(`[JtvService] Loaded ${newMap.size} fresh channel-specific tokens from sportlink-tv10 & sportcookie.`);
+            console.log(`[JtvService] Loaded ${newMap.size} fresh channel-specific tokens from jstarcookie, sportlink-tv10 & sportcookie.`);
         }
 
         return cachedSportsCookies;
@@ -625,108 +690,122 @@ export class JtvService {
             console.warn('[JtvService] Failed to merge sports cookies:', sErr?.message || sErr);
         }
 
-        // 1c. Ingest and merge Sportlink Pages JTVPLUS Dedicated Feed (sportlink-tv10.pages.dev/jtvplus.json) with 1,066+ live channels, official HD logos and multi-key DRM
+        // 1c. Ingest and merge JJTVxWeb Master Catalog (https://jjtvxweb.pages.dev/jstr4web.json & den-ww.json) + Sportlink Pages JTVPLUS
         try {
-            let slChannels: any[] = [];
+            let jjChannels: any[] = [];
             try {
-                const slRes = await axios.get(SPORTLINK_PAGES_JTVPLUS_URL, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                const jjRes = await axios.get(JJTVXWEB_JSTR4WEB_URL, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'X-Requested-With': 'XMLHttpRequest' },
                     httpsAgent: agent,
                     timeout: 9000
                 });
-                slChannels = slRes.data?.channels || (Array.isArray(slRes.data) ? slRes.data : []);
-            } catch (errPlus: any) {
-                console.warn('[JtvService] jtvplus.json fetch failed, trying jtv2.json fallback:', errPlus?.message || errPlus);
-                const slRes2 = await axios.get(SPORTLINK_PAGES_JTV2_URL, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                    httpsAgent: agent,
-                    timeout: 8000
-                });
-                slChannels = slRes2.data?.channels || (Array.isArray(slRes2.data) ? slRes2.data : []);
+                jjChannels = Array.isArray(jjRes.data) ? jjRes.data : (jjRes.data?.channels || []);
+            } catch {
+                try {
+                    const denRes = await axios.get(JJTVXWEB_DENWW_URL, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'X-Requested-With': 'XMLHttpRequest' },
+                        httpsAgent: agent,
+                        timeout: 9000
+                    });
+                    jjChannels = Array.isArray(denRes.data) ? denRes.data : (denRes.data?.channels || []);
+                } catch {}
             }
 
-            if (Array.isArray(slChannels) && slChannels.length > 0) {
-                let updatedCount = 0;
-                let addedCount = 0;
-                for (const item of slChannels) {
+            if (Array.isArray(jjChannels) && jjChannels.length > 0) {
+                let jjUpdated = 0;
+                let jjAdded = 0;
+                for (const item of jjChannels) {
                     const id = String(item.id || '').trim();
                     const name = (item.name || '').trim();
                     if (!id && !name) continue;
-                    const rawCookie = item.cookie || '';
-                    const token = rawCookie.startsWith('__hdnea__=') ? rawCookie : (rawCookie ? `__hdnea__=${rawCookie}` : '');
-                    let streamUrl = (item.stream_url || '').trim();
-                    if (streamUrl.includes('|')) {
-                        streamUrl = streamUrl.split('|')[0].trim();
+                    if (name.toLowerCase().includes('join telegram') || item.telegram) continue;
+
+                    const rawUrl = String(item.url || item.stream_url || '').trim();
+                    if (!rawUrl) continue;
+                    // Strip static baked-in __hdnea__ query string just like jjtvxweb.pages.dev/pworld does
+                    let cleanStreamUrl = rawUrl.split('?')[0].split('|')[0].replace('bpk-tv//', 'bpk-tv/').trim();
+                    if (cleanStreamUrl.includes('mini.allinonereborn.site/jtv-plus/jtv.php/')) {
+                        const slugPart = cleanStreamUrl.split('mini.allinonereborn.site/jtv-plus/jtv.php/')[1];
+                        if (slugPart && slugPart.includes('_BTS')) {
+                            cleanStreamUrl = `https://jiotvpllive.cdn.jio.com/bpk-tv/${slugPart}`;
+                        } else if (slugPart) {
+                            cleanStreamUrl = `https://jiotvmblive.cdn.jio.com/bpk-tv/${slugPart}`;
+                        }
                     }
-                    const fullStreamUrl = streamUrl ? (streamUrl + (streamUrl.includes('?') ? '&' : '?') + token) : '';
-                    const keyId = item.key_id || '';
-                    const key = item.key || '';
-                    const clearkey = Array.isArray(item.sportlink) && item.sportlink.length > 0
-                        ? item.sportlink.join(',')
-                        : ((keyId && key) ? `${keyId}:${key}` : '');
-                    const manifestUrl = id ? `/api/mdtv/manifest/${id}.mpd` : '';
 
-                    const existingIdx = allChannels.findIndex(c => String(c.id) === id || (name && c.name.toLowerCase() === name.toLowerCase()));
-                    const isCookieValid = rawCookie && !isTokenExpired(rawCookie);
-                    const cleanCat = categorizeChannel(name);
+                    const isPlLive = cleanStreamUrl.includes('jiotvpllive.cdn.jio.com') || cleanStreamUrl.includes('_BTS');
 
-                    if (existingIdx !== -1) {
-                        const existingCh = allChannels[existingIdx];
-                        const isExistingMob = existingCh.stream_url && existingCh.stream_url.includes('_MOB');
-                        const isNewBtsWithWildcard = streamUrl.includes('_BTS') && (!rawCookie || rawCookie.includes('acl=/*'));
-
-                        if (isCookieValid && (!isExistingMob || !isNewBtsWithWildcard)) {
-                            existingCh.cookie = rawCookie;
-                            existingCh.token = token;
-                            if (streamUrl && !isNewBtsWithWildcard) existingCh.stream_url = streamUrl;
-                            if (fullStreamUrl && !isNewBtsWithWildcard) existingCh.full_stream_url = fullStreamUrl;
-                        } else if (wildcardCookie) {
-                            existingCh.cookie = wildcardCookie;
-                            existingCh.token = wildcardCookie;
-                            if (existingCh.stream_url) {
-                                const base = existingCh.stream_url.split('?')[0].split('|')[0].trim();
-                                existingCh.stream_url = base;
-                                existingCh.full_stream_url = `${base}?${wildcardCookie}`;
+                    // Extract single or multi-key ClearKey DRM (supports item.keys array and item.keyId / item.key)
+                    let keyId = String(item.keyId || item.key_id || '').trim();
+                    let key = String(item.key || '').trim();
+                    const keyPairs: string[] = [];
+                    if (Array.isArray(item.keys) && item.keys.length > 0) {
+                        for (const kp of item.keys) {
+                            const kId = String(kp?.keyId || kp?.key_id || '').trim();
+                            const kVal = String(kp?.key || '').trim();
+                            if (kId && kVal && kId !== 'null' && kVal !== 'null') {
+                                if (!keyId) { keyId = kId; key = kVal; }
+                                const pair = `${kId}:${kVal}`;
+                                if (!keyPairs.includes(pair)) keyPairs.push(pair);
                             }
                         }
+                    }
+                    if (keyId && key && keyId !== 'null' && key !== 'null' && keyPairs.length === 0) {
+                        keyPairs.push(`${keyId}:${key}`);
+                    }
+                    const clearkey = keyPairs.join(',');
+
+                    // Select cookie per jjtvxweb.pages.dev/pworld rules:
+                    // 1) jiotvpllive.cdn.jio.com (_BTS) -> ONLY channel-specific starCookie from jstarcookie/cookie.json
+                    // 2) All other domains -> primary wildcardCookie from jstrweb2/cookies.json
+                    let activeCookie = '';
+                    if (isPlLive) {
+                        const starFull = cachedSportsCookies.get(id);
+                        if (starFull && starFull.includes('?')) {
+                            activeCookie = starFull.split('?')[1];
+                        }
+                    } else if (wildcardCookie) {
+                        activeCookie = wildcardCookie.startsWith('__hdnea__=') ? wildcardCookie : `__hdnea__=${wildcardCookie}`;
+                    }
+
+                    const fullStreamUrl = activeCookie ? `${cleanStreamUrl}?${activeCookie}` : cleanStreamUrl;
+                    const manifestUrl = id ? `/api/mdtv/manifest/${id}.mpd` : '';
+                    const cleanCat = item.category || categorizeChannel(name);
+
+                    const existingIdx = allChannels.findIndex(c => String(c.id) === id || (name && c.name.toLowerCase() === name.toLowerCase()));
+                    if (existingIdx !== -1) {
+                        const existingCh = allChannels[existingIdx];
+                        existingCh.name = name || existingCh.name;
+                        existingCh.stream_url = cleanStreamUrl;
+                        if (activeCookie) {
+                            existingCh.cookie = activeCookie;
+                            existingCh.token = activeCookie;
+                            existingCh.full_stream_url = fullStreamUrl;
+                        }
                         existingCh.manifest_url = manifestUrl;
-                        if (keyId && !isExistingMob) existingCh.key_id = keyId;
-                        if (key && !isExistingMob) existingCh.key = key;
+                        if (keyId) existingCh.key_id = keyId;
+                        if (key) existingCh.key = key;
                         if (clearkey) {
                             if (!existingCh.clearkey) existingCh.clearkey = clearkey;
                             else {
-                                const combined = [...new Set([...existingCh.clearkey.split(','), ...clearkey.split(',')])].join(',');
+                                const combined = [...new Set([...clearkey.split(','), ...existingCh.clearkey.split(',')])].filter(Boolean).join(',');
                                 existingCh.clearkey = combined;
                             }
                         }
-                        // Always update logo to fresh high-definition official JioTV logo
                         if (item.logo) existingCh.logo = item.logo;
                         existingCh.category = cleanCat;
                         existingCh.genre = cleanCat;
-                        updatedCount++;
+                        jjUpdated++;
                     } else {
-                        let finalStream = streamUrl;
-                        let finalCookie = rawCookie;
-                        let finalToken = token;
-                        if (!isCookieValid && wildcardCookie) {
-                            if (finalStream.includes('_BTS')) {
-                                finalStream = finalStream
-                                    .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
-                                    .replace('_BTS', '_MOB');
-                            }
-                            finalCookie = wildcardCookie;
-                            finalToken = wildcardCookie;
-                        }
-                        const finalFull = finalStream ? (finalStream + (finalStream.includes('?') ? '&' : '?') + finalToken) : '';
                         allChannels.push({
                             id,
                             name,
                             category: cleanCat,
                             genre: cleanCat,
-                            stream_url: finalStream,
-                            cookie: finalCookie,
-                            token: finalToken,
-                            full_stream_url: finalFull,
+                            stream_url: cleanStreamUrl,
+                            cookie: activeCookie,
+                            token: activeCookie,
+                            full_stream_url: fullStreamUrl,
                             manifest_url: manifestUrl,
                             key_id: keyId,
                             key,
@@ -734,14 +813,39 @@ export class JtvService {
                             logo: item.logo || '',
                             source: 'jtv' as const
                         });
-                        addedCount++;
+                        jjAdded++;
                     }
                 }
-                console.log(`[JtvService] sportlink-tv10 jtvplus.json synced: ${updatedCount} updated, ${addedCount} added.`);
+                console.log(`[JtvService] jjtvxweb.pages.dev catalog synced: ${jjUpdated} updated, ${jjAdded} added.`);
             }
-        } catch (e: any) {
-            console.warn('[JtvService] Failed to fetch sportlink-tv10 channels:', e?.message || e);
+        } catch (jjErr: any) {
+            console.warn('[JtvService] Failed to sync jjtvxweb.pages.dev catalog:', jjErr?.message || jjErr);
         }
+
+        // 1d. Merge additional multi-key pairs from sportlink-tv10.pages.dev/jtvplus.json without overwriting jjtvxweb stream URLs
+        try {
+            let slChannels: any[] = [];
+            try {
+                const slRes = await axios.get(SPORTLINK_PAGES_JTVPLUS_URL, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                    httpsAgent: agent,
+                    timeout: 8000
+                });
+                slChannels = slRes.data?.channels || (Array.isArray(slRes.data) ? slRes.data : []);
+            } catch {}
+
+            if (Array.isArray(slChannels) && slChannels.length > 0) {
+                for (const item of slChannels) {
+                    const id = String(item.id || '').trim();
+                    if (!id) continue;
+                    const existingCh = allChannels.find(c => String(c.id) === id);
+                    if (existingCh && Array.isArray(item.sportlink) && item.sportlink.length > 0) {
+                        const combined = [...new Set([...existingCh.clearkey.split(','), ...item.sportlink])].filter(Boolean).join(',');
+                        existingCh.clearkey = combined;
+                    }
+                }
+            }
+        } catch {}
 
         // Persist clean updated catalog to local assets/jtv2.json
         try {
@@ -1971,42 +2075,65 @@ export class JtvService {
             if (baseUrl.includes('|')) {
                 baseUrl = baseUrl.split('|')[0].trim();
             }
+
+            // If this is a jiotvpllive.cdn.jio.com (_BTS) channel and cookie is missing or wildcard (acl=/*), grab channel-specific starCookie
+            if ((baseUrl.includes('jiotvpllive.cdn.jio.com') || baseUrl.includes('_BTS')) && (!cookiePart || cookiePart.includes('acl=/*') || isTokenExpired(cookiePart))) {
+                const sportsTokens = await this.fetchSportsCookies(false);
+                const freshStarUrl = sportsTokens.get(String(channel.id));
+                if (freshStarUrl && freshStarUrl.includes('?')) {
+                    cookiePart = freshStarUrl.split('?')[1];
+                    baseUrl = freshStarUrl.split('?')[0].split('|')[0].trim() || baseUrl;
+                    channel.stream_url = baseUrl;
+                    channel.cookie = cookiePart;
+                    channel.token = cookiePart;
+                    channel.full_stream_url = `${baseUrl}?${cookiePart}`;
+                }
+            }
+
             const upstreamUrl = cookiePart ? `${baseUrl}?${cookiePart}` : baseUrl;
 
-            const isMobileCdn = baseUrl.includes('jiotvmblive') || baseUrl.includes('_MOB');
-            const headers: Record<string, string> = isMobileCdn
-                ? {
-                    'User-Agent': 'plaYtv/7.1.3 (Linux;Android 14) ExoPlayerLib/2.11.7',
-                    'Accept': '*/*'
+            // For jiotvpllive.cdn.jio.com (/bpk-tv/) channels, use mini.allinonereborn.site/jtv-plus/jtv.php/ relay first to bypass Cloud Run 451 geo-blocks
+            if (baseUrl.includes('jiotvpllive.cdn.jio.com/bpk-tv/')) {
+                const proxyUrl = upstreamUrl.replace('https://jiotvpllive.cdn.jio.com/bpk-tv/', 'https://mini.allinonereborn.site/jtv-plus/jtv.php/');
+                try {
+                    const proxyRes = await axios.get(proxyUrl, {
+                        headers: {
+                            'Referer': 'https://allinonereborn2.online/',
+                            'Origin': 'https://allinonereborn2.online',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+                            'Accept': '*/*',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Sec-Fetch-Dest': 'empty',
+                            'Sec-Fetch-Mode': 'cors',
+                            'Sec-Fetch-Site': 'cross-site'
+                        },
+                        httpsAgent: agent,
+                        timeout: 6500,
+                        responseType: 'text'
+                    });
+                    if (proxyRes.data && typeof proxyRes.data === 'string' && proxyRes.data.includes('<MPD')) {
+                        return proxyRes;
+                    }
+                } catch (_) {
+                    // Fall through to direct upstream fetch
                 }
-                : {
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-                    'Referer': 'https://www.jiotv.com/',
-                    'Origin': 'https://www.jiotv.com/'
-                };
+            }
+
+            const headers: Record<string, string> = {
+                'User-Agent': 'plaYtv/7.1.5',
+                'Referer': 'https://www.jiotv.com/',
+                'Origin': 'https://www.jiotv.com'
+            };
             if (cookiePart) {
                 headers['Cookie'] = cookiePart;
             }
 
-            try {
-                return await axios.get(upstreamUrl, {
-                    headers,
-                    httpsAgent: agent,
-                    timeout: 8000,
-                    responseType: 'text'
-                });
-            } catch (firstErr: any) {
-                // Secondary attempt: strip Referer/Origin and use plaYtv ExoPlayer User-Agent
-                delete headers['Referer'];
-                delete headers['Origin'];
-                headers['User-Agent'] = 'plaYtv/7.1.3 (Linux;Android 14) ExoPlayerLib/2.11.7';
-                return await axios.get(upstreamUrl, {
-                    headers,
-                    httpsAgent: agent,
-                    timeout: 8000,
-                    responseType: 'text'
-                });
-            }
+            return await axios.get(upstreamUrl, {
+                headers,
+                httpsAgent: agent,
+                timeout: 5000,
+                responseType: 'text'
+            });
         };
 
         let res: any;
@@ -2027,9 +2154,11 @@ export class JtvService {
 
             const applyMobFallbackMetadata = (targetCh: JtvChannel, wildcardCookie: string) => {
                 let mobUrl = targetCh.stream_url.split('?')[0].split('|')[0].trim();
+                let matchedFallback = false;
                 for (const [badSlug, fix] of Object.entries(BTS_SLUG_FALLBACKS)) {
                     if (mobUrl.includes(badSlug)) {
                         mobUrl = `https://jiotvmblive.cdn.jio.com/bpk-tv/${fix.slug}/WDVLive/index.mpd`;
+                        matchedFallback = true;
                         if (fix.keyId && fix.key) {
                             targetCh.key_id = fix.keyId;
                             targetCh.key = fix.key;
@@ -2041,10 +2170,9 @@ export class JtvService {
                         break;
                     }
                 }
-                if (mobUrl.includes('_BTS') || mobUrl.includes('jiotvpllive')) {
-                    mobUrl = mobUrl
-                        .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
-                        .replace('_BTS', '_MOB');
+                // Never blindly rewrite _BTS / jiotvpllive into _MOB unless it's in BTS_SLUG_FALLBACKS
+                if (!matchedFallback && (mobUrl.includes('_BTS') || mobUrl.includes('jiotvpllive'))) {
+                    return;
                 }
                 const tokenPart = wildcardCookie ? (wildcardCookie.startsWith('__hdnea__=') ? wildcardCookie : `__hdnea__=${wildcardCookie}`) : '';
                 targetCh.stream_url = mobUrl;
@@ -2058,7 +2186,6 @@ export class JtvService {
             };
 
             // Status 451 indicates upstream JioTV CDN datacenter/geo block (e.g. Cloud Run IP blocked by Varnish)
-            // Re-fetching from this same cloud datacenter IP will never succeed; prepare direct client fallback immediately
             if (status === 451) {
                 console.log(`[JtvService] Upstream geo/datacenter block (451) for ${idOrSlug}; preparing direct client fallback URL...`);
                 try {
@@ -2068,10 +2195,10 @@ export class JtvService {
                 throw err;
             }
 
-            if (status === 403 || status === 450 || status === 401 || status === 400) {
+            if (status === 403 || status === 450 || status === 401 || status === 400 || status === 404) {
                 console.log(`[JtvService] Manifest ${status} on ${idOrSlug}, refreshing sports cookies and jtv.m3u catalog...`);
                 let retrySuccess = false;
-                // 1. Try sportcookie.json first
+                // 1. Try jstarcookie.json / sportcookie.json first
                 const sportsTokens = await this.fetchSportsCookies(true);
                 let freshUrl = sportsTokens.get(String(ch.id));
 
@@ -2111,16 +2238,14 @@ export class JtvService {
                     }
                 }
 
-                // 3. Fallback: If still failing and stream is _BTS or jiotvpllive, try _MOB on jiotvmblive with fresh wildcard cookie
+                // 3. Fallback: If still failing and stream is in BTS_SLUG_FALLBACKS, try _MOB on jiotvmblive
                 if (!retrySuccess) {
                     try {
                         const wildcardCookie = await this.fetchWildcardCookie(true);
                         applyMobFallbackMetadata(ch, wildcardCookie);
-                        console.log(`[JtvService] Trying _MOB wildcard fallback for ${idOrSlug}: ${ch.stream_url}`);
                         res = await fetchUpstream(ch);
                         retrySuccess = true;
                     } catch (mobErr: any) {
-                        console.warn(`[JtvService] _MOB wildcard fallback failed for ${idOrSlug}:`, mobErr?.message || mobErr);
                         throw err;
                     }
                 }
@@ -2133,15 +2258,25 @@ export class JtvService {
         if (!data || typeof data !== 'string') return null;
 
         // Calculate absolute CDN base directory from stream_url
-        const lastSlash = ch.stream_url.lastIndexOf('/');
-        const cdnDir = lastSlash !== -1 ? ch.stream_url.substring(0, lastSlash + 1) : ch.stream_url;
+        const cleanStreamBase = ch.stream_url.split('?')[0].split('|')[0].trim();
+        const lastSlash = cleanStreamBase.lastIndexOf('/');
+        const cdnDir = lastSlash !== -1 ? cleanStreamBase.substring(0, lastSlash + 1) : cleanStreamBase;
 
-        // Rewrite relative BaseURL
-        data = data.replace(/<BaseURL>dash\/<\/BaseURL>/gi, `<BaseURL>${cdnDir}dash/</BaseURL>`);
-        data = data.replace(/<BaseURL>([a-zA-Z0-9_\-\/]+)<\/BaseURL>/gi, (match: string, p1: string) => {
-            if (p1.startsWith('http://') || p1.startsWith('https://')) return match;
-            return `<BaseURL>${cdnDir}${p1}</BaseURL>`;
-        });
+        if (data.includes('/jtv-plus/jtv.php/')) {
+            // Manifest came from mini.allinonereborn.site relay; strip relative <BaseURL>dash/</BaseURL> so /jtv-plus/jtv.php/... paths resolve against root
+            data = data.replace(/<BaseURL>dash\/<\/BaseURL>/gi, '');
+        } else {
+            // Rewrite relative BaseURL
+            data = data.replace(/<BaseURL>dash\/<\/BaseURL>/gi, `<BaseURL>${cdnDir}dash/</BaseURL>`);
+            data = data.replace(/<BaseURL>([a-zA-Z0-9_\-\/]+)<\/BaseURL>/gi, (match: string, p1: string) => {
+                if (p1.startsWith('http://') || p1.startsWith('https://')) return match;
+                return `<BaseURL>${cdnDir}${p1}</BaseURL>`;
+            });
+            // If manifest has no <BaseURL> tag at all (e.g. times-ott-live.akamaized.net), inject <BaseURL> inside <Period> so relative segments resolve to CDN
+            if (!/<BaseURL>/i.test(data) && cdnDir.startsWith('http')) {
+                data = data.replace(/(<Period\b[^>]*>)/i, `$1\n    <BaseURL>${cdnDir}</BaseURL>`);
+            }
+        }
 
         // Insert ClearKey ContentProtection if not present
         if (!data.includes('1077efec-c0b2-4d02-ace3-3c1e52e2fb4b')) {

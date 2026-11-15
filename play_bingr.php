@@ -1397,9 +1397,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         <div class="truncate">
                             <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
                                 <span>Anikoto HD</span>
-                                <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-1 py-0.5 rounded font-mono font-bold">1080p</span>
+                                <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-1 py-0.5 rounded font-mono font-bold">SUB</span>
                             </div>
-                            <div class="text-[9px] text-zinc-500 font-normal truncate">Pure HLS / Fast</div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">Japanese (1080p)</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('anikoto_dub')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
+                        <div class="truncate">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
+                                <span>Anikoto HD</span>
+                                <span class="text-[9px] bg-blue-950 text-blue-400 border border-blue-800 px-1 py-0.5 rounded font-mono font-bold">DUB</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">English Dubbed</div>
                         </div>
                     </button>
                     <button type="button" onclick="switchServerCluster('anivexa')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
@@ -2213,10 +2222,11 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             Boolean(ANILIST_ID && String(ANILIST_ID).trim() !== '' && String(ANILIST_ID) !== '0') ||
             _explicitTypeParam === 'anime' ||
             _explicitTypeParam === 'tv_anime' ||
-            ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'zanix'].includes(_explicitSrvParam)
+            ['anikoto', 'anikoto_dub', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'zanix'].includes(_explicitSrvParam)
         );
         const ANIME_SPECIAL_SERVERS = [
-            { id: 'anikoto', name: 'Anikoto HD (1080p Pure HLS / Dual Audio)', cc: 'JP' },
+            { id: 'anikoto', name: 'Anikoto HD (1080p Pure HLS / Japanese SUB)', cc: 'JP' },
+            { id: 'anikoto_dub', name: 'Anikoto HD (English DUB / 1080p Pure HLS)', cc: 'US' },
             { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' },
             { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' },
             { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
@@ -2250,7 +2260,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 CURRENT_SERVER = 'anikoto';
             }
         } else {
-            const pureAnimeOnlyIds = ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'zanix'];
+            const pureAnimeOnlyIds = ['anikoto', 'anikoto_dub', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'zanix'];
             if (pureAnimeOnlyIds.includes(CURRENT_SERVER)) {
                 CURRENT_SERVER = 'vidlink';
             }
@@ -2606,6 +2616,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     if (data.subtitles && data.subtitles.length > 0) {
                         externalSubtitlesLoaded = data.subtitles;
                         populateSubtitlesList();
+                        // Auto-select English subtitle track if not already active
+                        const engSub = data.subtitles.find(s => (s.lang && s.lang.toLowerCase().includes('en')) || (s.label && s.label.toLowerCase().includes('en'))) || data.subtitles[0];
+                        if (engSub && engSub.url && (!currentActiveSubtitleTrack || currentActiveSubtitleTrack === -1)) {
+                            setTimeout(() => {
+                                if (typeof loadExternalSubtitle === 'function') {
+                                    loadExternalSubtitle(engSub.url, engSub.label || engSub.lang || 'English', 0);
+                                }
+                            }, 1200);
+                        }
                     }
                     if (data.fallbackNote) {
                         showToast(data.fallbackNote, 'info');
@@ -2721,7 +2740,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['anikoto', 'anikoto_dub', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
                     ? ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'two_embed', 'flux', 'filmu', 's62', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
                     : ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62', 'flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
@@ -3774,7 +3793,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
             if (isAnimeContent) {
                 const animeAudioClusters = [
-                    { id: 'anikoto', name: 'Anikoto HD', desc: '1080p Pure HLS Direct' },
+                    { id: 'anikoto', name: 'Anikoto HD (SUB)', desc: '1080p Japanese Sub' },
+                    { id: 'anikoto_dub', name: 'Anikoto HD (DUB)', desc: '1080p English Dub' },
                     { id: 'megaplay_buzz', name: 'MegaPlay', desc: 'Direct Multi-Bitrate HLS' },
                     { id: 'animepahe', name: 'AnimePahe', desc: 'Direct Google CDN' },
                     { id: 'anivexa', name: 'Kitsune Anivexa', desc: '1080p Sub/Dub' },
@@ -4433,20 +4453,22 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    const animeAllowed = ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
-                    const pureAnimeOnly = ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'aniembed', 'zanix'];
+                    const animeAllowed = ['anikoto', 'anikoto_dub', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    const pureAnimeOnly = ['anikoto', 'anikoto_dub', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'aniembed', 'zanix'];
                     let list = isAnime 
                         ? data.servers.filter(s => animeAllowed.includes(s.id))
                         : data.servers.filter(s => !pureAnimeOnly.includes(s.id));
                     if (isAnime) {
                         const hasAnikoto = list.some(s => s.id === 'anikoto');
+                        const hasAnikotoDub = list.some(s => s.id === 'anikoto_dub');
                         const hasAnivexa = list.some(s => s.id === 'anivexa');
                         const hasReanime = list.some(s => s.id === 'reanime');
                         const hasMega = list.some(s => s.id === 'megaplay_buzz');
                         const hasPahe = list.some(s => s.id === 'animepahe');
                         const hasBing = list.some(s => s.id === 'bing_anime');
                         const prepend = [];
-                        if (!hasAnikoto) prepend.push({ id: 'anikoto', name: 'Anikoto HD (1080p Pure HLS / Dual Audio)', cc: 'JP' });
+                        if (!hasAnikoto) prepend.push({ id: 'anikoto', name: 'Anikoto HD (1080p Pure HLS / Japanese SUB)', cc: 'JP' });
+                        if (!hasAnikotoDub) prepend.push({ id: 'anikoto_dub', name: 'Anikoto HD (English DUB / 1080p Pure HLS)', cc: 'US' });
                         if (!hasAnivexa) prepend.push({ id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' });
                         if (!hasReanime) prepend.push({ id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' });
                         if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });

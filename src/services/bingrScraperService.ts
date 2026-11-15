@@ -5,7 +5,7 @@ import path from 'path';
 import { URL } from 'url';
 import axios from 'axios';
 import nacl from 'tweetnacl';
-import { scrapeAnimeEpisode, resolveMalIdFromTitle, fetchAniSkipTimes, resolveZokoStream, resolveRavokStream } from './animeScraperService';
+import { scrapeAnimeEpisode, resolveMalIdFromTitle, fetchAniListEpisodes, fetchAniSkipTimes, resolveZokoStream, resolveRavokStream } from './animeScraperService';
 import { resolveTokyoInsiderStream } from './tokyoInsiderService';
 import { resolveRareAnimeStream } from './rareAnimesService';
 import { scrapeMegaPlayAnime, getMegaPlayToken } from './megaPlayService';
@@ -19,7 +19,7 @@ import { resolveMegaPlayBuzzStream } from './megaPlayBuzzService';
 import { resolveAnimePaheStream } from './animePaheService';
 import { resolveMovieBoxStream } from './movieBoxService';
 import { scrapeAnikotoAnime } from './anikotoService';
-import { fetchAnivexaWatch, fetchAnivexaMedia } from './anivexaService';
+import { fetchAnivexaWatch, fetchAnivexaBestStream, fetchAnivexaMedia } from './anivexaService';
 import {
     findSmMovieStream,
     searchSmMovies,
@@ -1547,7 +1547,8 @@ export async function scrapeBingrNextGen(params: {
 }
 
 export const BINGR_SERVERS: BingrServerCluster[] = [
-    { id: 'anikoto', name: 'Anikoto HD (Pure HLS / Dual Audio)', cc: 'JP', priority: 1 },
+    { id: 'anikoto', name: 'Anikoto HD (Pure HLS / Japanese SUB)', cc: 'JP', priority: 1 },
+    { id: 'anikoto_dub', name: 'Anikoto HD (English DUB / 1080p Pure HLS)', cc: 'US', priority: 1 },
     { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP', priority: 1 },
     { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP', priority: 1 },
     { id: 'prism', name: 'Prism (Multi-Audio 1080p / Direct CDN)', cc: 'GL', priority: 1 },
@@ -2672,6 +2673,7 @@ export async function scrapeBingrStream(params: {
             let probeDurationSec: number | undefined = undefined;
             let upstreamDurationSec: number | undefined = undefined;
             let probeAudioTracks: any[] = [];
+            const isDubRequest = serverId.includes('dub') || (params as any).dub === true || (params as any).dub === '1' || (params as any).audio === 'dub' || (params as any).type === 'dub';
 
             if (serverId === 'megaplay_buzz' || serverId === 'megaplaybuzz') {
                 scraperName = 'MegaPlay Buzz (Direct Multi-Bitrate HLS)';
@@ -3010,15 +3012,16 @@ export async function scrapeBingrStream(params: {
                     url: sub.url,
                     label: sub.label
                 }));
-            } else if (serverId === 'anikoto') {
+            } else if (serverId === 'anikoto' || serverId === 'anikoto_dub') {
                 const cleanTitle = (requestedTitle || mediaTitle || '').replace(/\s*\((?:anime|tv|series|\d{4})\)/gi, '').trim();
+                const targetAudio: 'sub' | 'dub' = (serverId === 'anikoto_dub' || isDubRequest) ? 'dub' : 'sub';
                 const aniKotoRes = await scrapeAnikotoAnime({
                     title: cleanTitle,
                     episode: e,
-                    audio: 'sub'
+                    audio: targetAudio
                 });
                 if (aniKotoRes.success && aniKotoRes.sources.length > 0) {
-                    scraperName = aniKotoRes.serverName || 'Anikoto HD (Pure HLS)';
+                    scraperName = aniKotoRes.serverName || `Anikoto HD [${targetAudio.toUpperCase()}]`;
                     sources = aniKotoRes.sources;
                     subtitles = (aniKotoRes.subtitles || []).map(sub => ({
                         lang: sub.lang,
@@ -3028,33 +3031,70 @@ export async function scrapeBingrStream(params: {
                 }
             } else if (serverId === 'anivexa' || serverId === 'reanime') {
                 try {
+                    const cleanTitle = (requestedTitle || mediaTitle || '').replace(/\s*\((?:anime|tv|series|\d{4})\)/gi, '').trim();
                     let targetAniId: number | null = null;
                     if (params.anilistId && !isNaN(Number(params.anilistId)) && Number(params.anilistId) !== Number(params.id) && Number(params.anilistId) !== Number(params.tmdbId)) {
                         targetAniId = Number(params.anilistId);
-                    } else if (malId && !isNaN(Number(malId))) {
-                        targetAniId = Number(malId);
-                    } else if (mediaTitle) {
-                        const resolvedMal = await resolveMalIdFromTitle(mediaTitle);
-                        if (resolvedMal) targetAniId = resolvedMal;
+                    }
+                    if (!targetAniId) {
+                        const aniData = await fetchAniListEpisodes({
+                            malId: malId || undefined,
+                            title: cleanTitle || undefined
+                        });
+                        if (aniData && aniData.id) {
+                            targetAniId = aniData.id;
+                        } else if (malId && !isNaN(Number(malId))) {
+                            targetAniId = Number(malId);
+                        }
                     }
 
+                    const targetAudio: 'sub' | 'dub' = isDubRequest ? 'dub' : 'sub';
+
                     if (targetAniId) {
-                        const aniWatch = await fetchAnivexaWatch(serverId === 'anivexa' ? 'reanime' : serverId, targetAniId, 'sub', e);
-                        if (aniWatch.success && aniWatch.streams.length > 0) {
-                            scraperName = `Kitsune Anivexa (${serverId.toUpperCase()})`;
-                            sources = aniWatch.streams.map(st => ({
+                        let aniWatch: any = null;
+                        if (serverId === 'anivexa') {
+                            aniWatch = await fetchAnivexaBestStream(targetAniId, e, targetAudio);
+                            if (!aniWatch || !aniWatch.success || !aniWatch.streams || aniWatch.streams.length === 0) {
+                                aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, e);
+                            }
+                        } else {
+                            aniWatch = await fetchAnivexaWatch('reanime', targetAniId, targetAudio, e);
+                        }
+
+                        if (aniWatch && aniWatch.success && aniWatch.streams && aniWatch.streams.length > 0) {
+                            scraperName = `Kitsune Anivexa (${(aniWatch.provider || serverId).toUpperCase()}) [${targetAudio.toUpperCase()}]`;
+                            sources = aniWatch.streams.map((st: any) => ({
                                 url: st.url,
                                 proxyUrl: st.proxiedUrl,
                                 rawUrl: st.url,
                                 quality: '1080p FHD',
                                 type: 'application/x-mpegurl',
-                                label: `${st.server} (${st.audio.toUpperCase()})`,
-                                name: `Anivexa [${st.server}]`
+                                label: `${st.server || 'HD-1'} (${st.audio ? st.audio.toUpperCase() : targetAudio.toUpperCase()})`,
+                                name: `Anivexa [${st.server || 'HD-1'}]`,
+                                audio: st.audio || targetAudio
                             }));
-                            subtitles = (aniWatch.subtitles || []).map(sub => ({
+                            subtitles = (aniWatch.subtitles || []).map((sub: any) => ({
                                 lang: sub.lang || sub.label || 'en',
                                 url: sub.url || sub.file,
                                 label: sub.label || 'Subtitles'
+                            }));
+                        }
+                    }
+
+                    // Backend search fallback: If Anivexa/ReAnime had no streams, query Anikoto as resilient fallback
+                    if (sources.length === 0) {
+                        const aniKotoFallback = await scrapeAnikotoAnime({
+                            title: cleanTitle,
+                            episode: e,
+                            audio: targetAudio
+                        });
+                        if (aniKotoFallback.success && aniKotoFallback.sources.length > 0) {
+                            scraperName = `Anivexa-Anikoto (${serverId.toUpperCase()})`;
+                            sources = aniKotoFallback.sources;
+                            subtitles = (aniKotoFallback.subtitles || []).map(sub => ({
+                                lang: sub.lang,
+                                url: sub.url,
+                                label: sub.label
                             }));
                         }
                     }

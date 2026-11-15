@@ -2,6 +2,7 @@
 <html lang="en" class="dark">
 <head>
     <meta name="robots" content="noindex">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AETHERIS CORE | Quantum Matrix Console</title>
@@ -2968,6 +2969,67 @@
                                 <button onclick="triggerCleanup('favorites')" class="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white font-bold text-xs border border-red-500/20 px-4 py-2.5 rounded-xl transition-all">
                                     Wipe Favorites
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- YOUTUBE ENGINE CONFIGURATION -->
+                    <div class="lg:col-span-2 glass-card rounded-2xl p-6 border border-red-500/20 space-y-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <i data-lucide="youtube" class="w-5 h-5 text-red-500"></i>
+                                    <span>YouTube Engine &amp; yt-dlp Configuration</span>
+                                </h3>
+                                <p class="text-xs text-gray-400 mt-1">Configure extractor clients, PO tokens, proxy routing, default quality, and cookies used across Search, Downloader, Music &amp; Maintenance Audio.</p>
+                            </div>
+                            <span id="ytCfgCookieBadge" class="px-3 py-1 rounded-lg text-[11px] font-bold bg-gray-800 text-gray-300 border border-gray-700">Checking cookies...</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Player Clients</label>
+                                <input type="text" id="ytCfgPlayerClients" placeholder="android,web" class="w-full bg-black/50 border border-gray-800 focus:border-red-500/50 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none">
+                                <p class="text-[11px] text-gray-500 mt-1">Comma-separated (e.g. android,web or tv_embedded,web)</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Default Video Quality</label>
+                                <select id="ytCfgVideoQuality" class="w-full bg-black/50 border border-gray-800 focus:border-red-500/50 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none">
+                                    <option value="2160">2160p (4K)</option>
+                                    <option value="1080">1080p (Full HD)</option>
+                                    <option value="720">720p (HD)</option>
+                                    <option value="480">480p (SD)</option>
+                                    <option value="360">360p (Data Saver)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Default Audio Quality</label>
+                                <select id="ytCfgAudioQuality" class="w-full bg-black/50 border border-gray-800 focus:border-red-500/50 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none">
+                                    <option value="320">320 kbps (Highest)</option>
+                                    <option value="192">192 kbps (High)</option>
+                                    <option value="128">128 kbps (Standard)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Proxy URL (Optional)</label>
+                                <input type="text" id="ytCfgProxyUrl" placeholder="http://user:pass@host:port or socks5://..." class="w-full bg-black/50 border border-gray-800 focus:border-red-500/50 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">PO Token (Optional)</label>
+                                <input type="text" id="ytCfgPoToken" placeholder="Proof-of-origin token" class="w-full bg-black/50 border border-gray-800 focus:border-red-500/50 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Visitor Data (Optional)</label>
+                                <input type="text" id="ytCfgVisitorData" placeholder="YouTube VISITOR_INFO / visitor_data" class="w-full bg-black/50 border border-gray-800 focus:border-red-500/50 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none font-mono">
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">YouTube Netscape Cookies (cookies.txt)</label>
+                            <textarea id="ytCfgCookies" rows="4" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;..." class="w-full bg-black/50 border border-gray-800 focus:border-red-500/50 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 font-mono outline-none"></textarea>
+                            <div class="flex flex-wrap items-center gap-3 pt-1">
+                                <button onclick="saveYoutubeConfig()" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-all">Save Engine Config</button>
+                                <button onclick="saveAdminYtCookies()" class="px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 font-bold text-xs transition-all">Save Cookies</button>
+                                <button onclick="deleteAdminYtCookies()" class="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-red-500/20 text-gray-300 hover:text-red-300 border border-gray-700 font-bold text-xs transition-all">Clear Cookies</button>
+                                <button onclick="testYoutubeConfig()" class="px-4 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 font-bold text-xs transition-all">Test Extraction</button>
+                                <span id="ytCfgTestStatus" class="text-xs text-gray-400 font-medium"></span>
                             </div>
                         </div>
                     </div>

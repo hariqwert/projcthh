@@ -679,6 +679,7 @@ window.switchTab = switchTab;
         fetchDeveloperSettings();
         fetchFeatures();
         if (typeof loadGlobalBackgroundConfig === 'function') loadGlobalBackgroundConfig();
+        if (typeof loadYoutubeConfig === 'function') loadYoutubeConfig();
     }
     if (tabId === 'sports') {
         loadSportsStreams();
@@ -4572,20 +4573,32 @@ window.previewAdminBroadcastVideo = function() {
 
     if (effectiveType === 'youtube') {
         let videoId = '';
-        if (rawUrl.includes('youtu.be/')) {
-            videoId = rawUrl.split('youtu.be/')[1]?.split('?')[0]?.split('&')[0];
-        } else if (rawUrl.includes('youtube.com/watch')) {
-            videoId = new URL(rawUrl).searchParams.get('v') || '';
-        } else if (rawUrl.includes('youtube.com/live/')) {
-            videoId = rawUrl.split('youtube.com/live/')[1]?.split('?')[0];
-        } else if (rawUrl.includes('youtube.com/shorts/')) {
-            videoId = rawUrl.split('youtube.com/shorts/')[1]?.split('?')[0];
-        } else if (rawUrl.length === 11) {
-            videoId = rawUrl;
+        const trimmed = (rawUrl || '').trim();
+        if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+            videoId = trimmed;
+        } else {
+            const m = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|live\/|shorts\/))([\w-]{11})/);
+            if (m && m[1]) {
+                videoId = m[1];
+            } else {
+                const v = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+                if (v && v[1]) videoId = v[1];
+            }
         }
 
-        const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${isAutoplay ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=${isLoop ? 1 : 0}&playlist=${videoId}&controls=1&playsinline=1&enablejsapi=1`;
-        frame.innerHTML = `<iframe src="${embedUrl}" class="w-full h-full border-0" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        if (!videoId) {
+            showToast('Invalid YouTube URL', 'Could not detect a valid 11-character YouTube Video ID.', 'warning');
+            return;
+        }
+
+        let embedUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=${isAutoplay ? 1 : 0}&mute=${isMuted ? 1 : 0}&playsinline=1&controls=1&rel=0`;
+        if (isLoop) {
+            embedUrl += `&loop=1&playlist=${encodeURIComponent(videoId)}`;
+        }
+        if (window.location && window.location.origin && window.location.origin !== 'null') {
+            embedUrl += `&origin=${encodeURIComponent(window.location.origin)}`;
+        }
+        frame.innerHTML = `<iframe src="${embedUrl}" class="w-full h-full border-0" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
     } else if (effectiveType === 'facebook') {
         const fbEmbed = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(rawUrl)}&show_text=false&autoplay=${isAutoplay ? 'true' : 'false'}`;
         frame.innerHTML = `<iframe src="${fbEmbed}" class="w-full h-full border-0" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
@@ -5172,7 +5185,7 @@ window.playAdminSavedTrack = function(idx, target = 'maintenance') {
 };
 
 window.toggleAdminMusic = function(target = 'maintenance') {
-    if (adminYtPlayer && typeof adminYtPlayer.getPlayerState === 'function') {
+    if (window._activeAdminIsYoutube && adminYtPlayer && typeof adminYtPlayer.getPlayerState === 'function') {
         const state = adminYtPlayer.getPlayerState();
         if (state === YT.PlayerState.PLAYING) {
             adminYtPlayer.pauseVideo();
@@ -5480,7 +5493,7 @@ const CURATED_MUSIC_CATALOG = [
         title: 'Chillhop Cafe Lounge & Coffee',
         artist: 'Chillhop Music Collection',
         img: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300',
-        url: 'https://stream.zeno.fm/fvr Westinghouse'
+        url: 'https://stream.zeno.fm/yn65fsaurfhvv'
     },
     {
         id: 'curated_night_jazz',
@@ -5501,13 +5514,13 @@ const CURATED_MUSIC_CATALOG = [
         title: 'Acoustic Guitar Calm Sunshine',
         artist: 'Peaceful Acoustic Strings',
         img: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=300',
-        url: 'https://stream.zeno.fm/v22nng packaging'
+        url: 'https://stream.zeno.fm/k78b9z4m0a0uv'
     }
 ];
 
 window.searchAdminMusic = async function(target = 'maintenance') {
     if (window._adminActiveMusicSource === 'upload') {
-        const fileInput = document.getElementById(target === 'power' ? 'powerAudioUpload' : (target === 'bgAudio' ? 'bgAudioUpload' : 'maintenanceAudioUpload'));
+        const fileInput = document.getElementById(target === 'power' ? 'powerAudioUpload' : (target === 'bgAudio' ? 'bgAudioUploadInput' : 'maintenanceAudioUpload'));
         if (fileInput) fileInput.click();
         return;
     }
@@ -7179,7 +7192,7 @@ function openNewLiveEventModal() {
     document.getElementById('liveEventsUrl').value = '';
     if(document.getElementById('liveEventsBgUrl')) document.getElementById('liveEventsBgUrl').value = '';
     if(document.getElementById('liveEventsPlayerPng')) document.getElementById('liveEventsPlayerPng').value = '';
-    if(document.getElementById('liveEventsIsMainHomeSpotlight')) document.getElementById('liveEventsIsMainHomeSpotlight').checked = false;
+    if(document.getElementById('liveEventsIsMainHomeSpotlight')) document.getElementById('liveEventsIsMainHomeSpotlight').checked = true;
     if(document.getElementById('liveEventsInLiveNowHome')) document.getElementById('liveEventsInLiveNowHome').checked = true;
     toggleLiveEventsModal(true);
     lucide.createIcons();
@@ -14656,6 +14669,146 @@ window.saveSsChannelForm = saveSsChannelForm;
 window.deleteSsChannel = deleteSsChannel;
 window.promoteItemToSpotlight = promoteItemToSpotlight;
 window.setSsCutoutPreset = setSsCutoutPreset;
+
+async function loadYoutubeConfig() {
+    try {
+        const res = await secureFetch('/api/admin/youtube-config');
+        const data = await res.json();
+        if (data && data.status === 'success' && data.config) {
+            const c = data.config;
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+            setVal('ytCfgPlayerClients', c.playerClients || 'android,web');
+            setVal('ytCfgVideoQuality', c.defaultVideoQuality || '1080');
+            setVal('ytCfgAudioQuality', c.defaultAudioQuality || '320');
+            setVal('ytCfgProxyUrl', c.proxyUrl || '');
+            setVal('ytCfgPoToken', c.poToken || '');
+            setVal('ytCfgVisitorData', c.visitorData || '');
+            setVal('ytCfgCookies', data.cookiesContent || '');
+            const badge = document.getElementById('ytCfgCookieBadge');
+            if (badge) {
+                badge.textContent = data.hasCookies ? 'Cookies Active' : 'No Cookies Stored';
+                badge.className = data.hasCookies
+                    ? 'px-3 py-1 rounded-lg text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'px-3 py-1 rounded-lg text-[11px] font-bold bg-gray-800 text-gray-300 border border-gray-700';
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load YouTube config:', e);
+    }
+}
+
+async function saveYoutubeConfig() {
+    try {
+        const getVal = (id, fallback = '') => {
+            const el = document.getElementById(id);
+            return el ? String(el.value || '').trim() : fallback;
+        };
+        const payload = {
+            playerClients: getVal('ytCfgPlayerClients', 'android,web') || 'android,web',
+            defaultVideoQuality: getVal('ytCfgVideoQuality', '1080') || '1080',
+            defaultAudioQuality: getVal('ytCfgAudioQuality', '320') || '320',
+            proxyUrl: getVal('ytCfgProxyUrl', ''),
+            poToken: getVal('ytCfgPoToken', ''),
+            visitorData: getVal('ytCfgVisitorData', '')
+        };
+        const res = await secureFetch('/api/admin/youtube-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data && data.status === 'success') {
+            showToast('YouTube Config Saved', data.message || 'Settings updated.', 'success');
+        } else {
+            showToast('Error', (data && data.message) || 'Failed to save config', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to save config', 'error');
+    }
+}
+
+async function saveAdminYtCookies() {
+    const el = document.getElementById('ytCfgCookies');
+    const cookies = el ? String(el.value || '').trim() : '';
+    if (!cookies) {
+        showToast('Missing Cookies', 'Paste Netscape YouTube cookies content before saving.', 'warning');
+        return;
+    }
+    try {
+        const res = await secureFetch('/api/v1/youtube/cookies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cookies })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+            showToast('Cookies Saved', 'YouTube cookies file updated.', 'success');
+            loadYoutubeConfig();
+        } else {
+            showToast('Error', (data && data.error) || 'Failed to save cookies', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to save cookies', 'error');
+    }
+}
+
+async function deleteAdminYtCookies() {
+    try {
+        const res = await secureFetch('/api/v1/youtube/cookies', { method: 'DELETE' });
+        const data = await res.json();
+        if (data && data.success) {
+            const el = document.getElementById('ytCfgCookies');
+            if (el) el.value = '';
+            showToast('Cookies Cleared', 'Stored YouTube cookies removed.', 'info');
+            loadYoutubeConfig();
+        } else {
+            showToast('Error', (data && data.error) || 'Failed to delete cookies', 'error');
+        }
+    } catch (e) {
+        showToast('Error', e.message || 'Failed to delete cookies', 'error');
+    }
+}
+
+async function testYoutubeConfig() {
+    const statusEl = document.getElementById('ytCfgTestStatus');
+    if (statusEl) {
+        statusEl.textContent = 'Running yt-dlp extraction test...';
+        statusEl.className = 'text-xs text-blue-400 font-medium animate-pulse';
+    }
+    try {
+        const res = await secureFetch('/api/admin/youtube-config/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId: 'dQw4w9WgXcQ' })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+            if (statusEl) {
+                statusEl.textContent = `OK (${data.latencyMs}ms): "${data.title}" — ${data.audioFormatsCount} audio / ${data.videoFormatsCount} video formats`;
+                statusEl.className = 'text-xs text-emerald-400 font-semibold';
+            }
+            showToast('Extraction Verified', `yt-dlp resolved ${data.audioFormatsCount} audio & ${data.videoFormatsCount} video streams.`, 'success');
+        } else {
+            const errMsg = (data && data.message) || 'Extraction failed';
+            if (statusEl) {
+                statusEl.textContent = `Failed: ${errMsg}`;
+                statusEl.className = 'text-xs text-red-400 font-semibold';
+            }
+            showToast('Extraction Error', errMsg, 'error');
+        }
+    } catch (e) {
+        if (statusEl) {
+            statusEl.textContent = `Error: ${e.message || 'Request failed'}`;
+            statusEl.className = 'text-xs text-red-400 font-semibold';
+        }
+    }
+}
+
+window.loadYoutubeConfig = loadYoutubeConfig;
+window.saveYoutubeConfig = saveYoutubeConfig;
+window.saveAdminYtCookies = saveAdminYtCookies;
+window.deleteAdminYtCookies = deleteAdminYtCookies;
+window.testYoutubeConfig = testYoutubeConfig;
 
 
 

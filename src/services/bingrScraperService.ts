@@ -3035,7 +3035,7 @@ export async function scrapeBingrStream(params: {
                     let targetAniId: number | null = null;
                     if (params.anilistId && !isNaN(Number(params.anilistId))) {
                         targetAniId = Number(params.anilistId);
-                    } else if ((params.type === 'anime' || params.t === 'anime') && params.id && !isNaN(Number(params.id))) {
+                    } else if ((params.type === 'anime' || (params as any).t === 'anime') && params.id && !isNaN(Number(params.id))) {
                         targetAniId = Number(params.id);
                     }
                     if (!targetAniId) {

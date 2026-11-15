@@ -991,6 +991,155 @@
                             </div>
                         </div>
                     </div>
+                    <!-- LIVE MONITOR REAL-TIME TELEMETRY SUMMARY & AUTO-TRACKING BAR -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div class="glass-card rounded-2xl border border-cyan-500/20 p-4 bg-cyan-950/10 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Online Website Users</div>
+                                <div id="monStatOnlineUsers" class="text-2xl font-black text-white mt-1 font-mono">0</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">Auto-tracked every 2s</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                                <i data-lucide="users" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-2xl border border-emerald-500/20 p-4 bg-emerald-950/10 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Playing Stream Now</div>
+                                <div id="monStatActiveStreams" class="text-2xl font-black text-white mt-1 font-mono">0</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">Live channels & VOD</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                <i data-lucide="play-circle" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-2xl border border-amber-500/20 p-4 bg-amber-950/10 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400">Password Unlocked</div>
+                                <div id="monStatPasswordUsers" class="text-2xl font-black text-white mt-1 font-mono">0</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">Active PIN sessions</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                                <i data-lucide="key-round" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-2xl border border-purple-500/20 p-4 bg-purple-950/10 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-purple-400">Bound 2FA Devices</div>
+                                <div id="monStatBoundDevices" class="text-2xl font-black text-white mt-1 font-mono">0</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">Hardware signatures</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                                <i data-lucide="cpu" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-2xl border border-rose-500/20 p-4 bg-rose-950/10 flex items-center justify-between col-span-2 sm:col-span-1">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-rose-400">Firewall Banned IPs</div>
+                                <div id="monStatBlacklisted" class="text-2xl font-black text-white mt-1 font-mono">0</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">Blocked from portal</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                                <i data-lucide="shield-ban" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LIVE ACTIVE WEBSITE USERS — PAGE & NOW-PLAYING STREAM TRACKER (AUTOMATED) -->
+                    <div class="glass-card rounded-2xl border border-cyan-500/30 overflow-hidden shadow-2xl">
+                        <div class="p-6 border-b border-gray-800/60 bg-gradient-to-r from-cyan-950/30 via-gray-900/60 to-gray-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="relative flex h-3 w-3 shrink-0">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-white flex items-center gap-2.5 flex-wrap">
+                                        <span>Live Website Users — Active Page & Stream Tracker</span>
+                                        <span id="liveWebsiteUsersCount" class="text-[10px] font-black bg-cyan-500/15 text-cyan-300 px-3 py-1 rounded-full border border-cyan-500/30">0 ACTIVE NOW</span>
+                                        <span class="text-[9px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">AUTO-TRACKING ON</span>
+                                    </h3>
+                                    <p class="text-xs text-gray-400 mt-0.5">Automatically tracks every visitor currently using the website, which page/tab they are viewing, and which stream they are playing right now.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="loadLiveMonitorOverview()" class="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center gap-1.5">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                    <span>Sync Now</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-900/70 text-[10px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-800">
+                                    <tr>
+                                        <th class="px-5 py-3.5">User IP & Hardware Device</th>
+                                        <th class="px-5 py-3.5">Page / Section Using Now</th>
+                                        <th class="px-5 py-3.5">Stream Playing Right Now</th>
+                                        <th class="px-5 py-3.5">Online Duration</th>
+                                        <th class="px-5 py-3.5">Password / Auth Timer</th>
+                                        <th class="px-5 py-3.5 text-right">Instant Kick / Ban</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="liveWebsiteUsersList" class="divide-y divide-gray-800/60">
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-10 text-center text-gray-500 text-xs">
+                                            Scanning active website visitors...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PASSWORD ACCESS & AUTHENTICATED SESSIONS LEDGER -->
+                    <div class="glass-card rounded-2xl border border-amber-500/30 overflow-hidden shadow-2xl">
+                        <div class="p-6 border-b border-gray-800/60 bg-gradient-to-r from-amber-950/30 via-gray-900/60 to-gray-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                                    <i data-lucide="key-round" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-white flex items-center gap-2.5 flex-wrap">
+                                        <span>Password Access & Expiry Hours Ledger</span>
+                                        <span id="passwordSessionsCount" class="text-[10px] font-black bg-amber-500/15 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">0 UNLOCKED</span>
+                                    </h3>
+                                    <p class="text-xs text-gray-400 mt-0.5">Tracks who entered the site password/PIN, remaining hours before password expiry, custom hour extensions, and individual IP/device revocation.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button onclick="loadLiveMonitorOverview()" class="p-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-bold transition-all" title="Refresh Password Ledger">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="clearAllUnlockedSessionsConfirm()" class="px-3.5 py-2 rounded-xl bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all flex items-center gap-1.5">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                    <span>Revoke All Passwords</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-900/70 text-[10px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-800">
+                                    <tr>
+                                        <th class="px-5 py-3.5">Who Entered Password (IP & Device)</th>
+                                        <th class="px-5 py-3.5">Hardware ID & Browser</th>
+                                        <th class="px-5 py-3.5">Entered Time</th>
+                                        <th class="px-5 py-3.5">Hours Remaining to Expiry</th>
+                                        <th class="px-5 py-3.5">Extend / Set Hours</th>
+                                        <th class="px-5 py-3.5 text-right">Individual Revoke / Kick / Ban</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="passwordSessionsList" class="divide-y divide-gray-800/60">
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-10 text-center text-gray-500 text-xs">
+                                            Loading authenticated password sessions...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- ACTIVE SESSIONS -->
                     <div class="glass-card rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
                         <div class="p-6 border-b border-gray-800/60 bg-gray-900/40 flex items-center justify-between">

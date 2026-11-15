@@ -11,7 +11,8 @@ import { requireAdmin, JWT_SECRET, getClientIp, isAdminAuthenticated } from '../
 import { SecurityGateKeeper } from '../services/securityGateKeeper';
 import { PerimeterDefenseShield } from '../services/perimeterDefense';
 import { StalkerAPI } from '../stalkerAPI';
-import { activeSessions, refreshBlacklist, systemState, systemStatus as globalSystemStatus, notifyVideoBroadcastChanged, clearUnlockedIps } from '../../server';
+import { execFile } from 'child_process';
+import { activeSessions, refreshBlacklist, systemState, systemStatus as globalSystemStatus, notifyVideoBroadcastChanged, clearUnlockedIps, buildYtdlpArgs, getYoutubeRuntimeConfig } from '../../server';
 import * as server from '../../server';
 import { killAllActiveStreams } from '../proxy';
 import { getOrUpdatePlaylist } from './sportsM3u';
@@ -42,6 +43,14 @@ import { searchAnimeSalt, scrapeAnimeEpisode } from '../services/animeScraperSer
 import { searchRareAnimes, resolveRareAnimeStream } from '../services/rareAnimesService';
 import { CHATBOT_ROLES } from '../services/geminiChatService';
 import { HariEngineService } from '../services/hariEngineService';
+import {
+    getLiveMonitorOverview,
+    revokePasswordSession,
+    extendPasswordSession,
+    kickUser,
+    recordPasswordUnlock,
+    clearAllPasswordSessions
+} from '../services/liveMonitorService';
 
 const router = Router();
 
@@ -287,6 +296,14 @@ interface AdminDB {
         stalkerEnabled: boolean;
         firewallEnabled: boolean;
         publicPlaylistEnabled: boolean;
+    };
+    youtubeConfig?: {
+        proxyUrl?: string;
+        poToken?: string;
+        visitorData?: string;
+        playerClients?: string;
+        defaultAudioQuality?: string;
+        defaultVideoQuality?: string;
     };
 }
 
@@ -990,69 +1007,12 @@ router.get('/perimeter/status', requireAdmin, (req: Request, res: Response) => {
     });
 });
 
-// GET /perimeter/export-blocklist - Export active blocked IPs for Fail2ban, iptables, nftables, or ipset
-router.get('/perimeter/export-blocklist', requireAdmin, (req: Request, res: Response) => {
-    const format = String(req.query.format || 'plain') as any;
-    const content = PerimeterDefenseShield.exportBlocklist(format);
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', `inline; filename="stalker_blocklist_${format}.txt"`);
-    res.send(content);
-});
-
 // POST /perimeter/unban - Unban an IP from dynamic firewall
 router.post('/perimeter/unban', requireAdmin, (req: Request, res: Response) => {
     const { ip } = req.body || {};
     if (!ip) return res.status(400).json({ status: "error", message: "ip is required" });
     const ok = PerimeterDefenseShield.unbanIp(String(ip));
     return res.json({ status: "success", unbanned: ok, ip });
-});
-
-// POST /perimeter/ban-ip - Manually ban an IP in Perimeter Defense
-router.post('/perimeter/ban-ip', requireAdmin, (req: Request, res: Response) => {
-    const { ip, reason = 'Manual Admin Quarantine', durationMinutes = 1440, permanent = false } = req.body || {};
-    if (!ip) return res.status(400).json({ status: "error", message: "ip is required" });
-    PerimeterDefenseShield.banIp(String(ip), String(reason), Number(durationMinutes) * 60 * 1000, !!permanent);
-    return res.json({ status: "success", banned: true, ip, reason, durationMinutes, permanent: !!permanent });
-});
-
-// POST /perimeter/ban-mac - Manually ban a MAC address in Perimeter Defense
-router.post('/perimeter/ban-mac', requireAdmin, (req: Request, res: Response) => {
-    const { mac, reason = 'Manual Admin MAC Quarantine', durationMinutes = 1440, permanent = false } = req.body || {};
-    if (!mac) return res.status(400).json({ status: "error", message: "mac is required" });
-    const norm = PerimeterDefenseShield.normalizeMac(String(mac));
-    if (!norm) return res.status(400).json({ status: "error", message: "Invalid MAC format. Expecting 12 hex digits or XX:XX:XX:XX:XX:XX" });
-    PerimeterDefenseShield.banMac(norm, String(reason), Number(durationMinutes) * 60 * 1000, !!permanent);
-    return res.json({ status: "success", banned: true, mac: norm, reason, durationMinutes, permanent: !!permanent });
-});
-
-// POST /perimeter/unban-mac - Unban a MAC address
-router.post('/perimeter/unban-mac', requireAdmin, (req: Request, res: Response) => {
-    const { mac } = req.body || {};
-    if (!mac) return res.status(400).json({ status: "error", message: "mac is required" });
-    const ok = PerimeterDefenseShield.unbanMac(String(mac));
-    return res.json({ status: "success", unbanned: ok, mac });
-});
-
-// POST /perimeter/ban-device - Manually ban a Hardware Device ID or Fingerprint
-router.post('/perimeter/ban-device', requireAdmin, (req: Request, res: Response) => {
-    const { deviceId, deviceFingerprint, reason = 'Manual Admin Device Quarantine', durationMinutes = 1440, permanent = false } = req.body || {};
-    if (!deviceId && !deviceFingerprint) return res.status(400).json({ status: "error", message: "deviceId or deviceFingerprint is required" });
-    PerimeterDefenseShield.banDevice(
-        deviceId ? String(deviceId) : undefined, 
-        deviceFingerprint ? String(deviceFingerprint) : undefined, 
-        String(reason), 
-        Number(durationMinutes) * 60 * 1000,
-        !!permanent
-    );
-    return res.json({ status: "success", banned: true, deviceId, deviceFingerprint, reason, durationMinutes, permanent: !!permanent });
-});
-
-// POST /perimeter/unban-device - Unban a Hardware Device
-router.post('/perimeter/unban-device', requireAdmin, (req: Request, res: Response) => {
-    const { deviceId, deviceFingerprint } = req.body || {};
-    if (!deviceId && !deviceFingerprint) return res.status(400).json({ status: "error", message: "deviceId or deviceFingerprint is required" });
-    const ok = PerimeterDefenseShield.unbanDevice(deviceId ? String(deviceId) : undefined, deviceFingerprint ? String(deviceFingerprint) : undefined);
-    return res.json({ status: "success", unbanned: ok, deviceId, deviceFingerprint });
 });
 
 // POST /maintenance - Update Maintenance Mode
@@ -1136,6 +1096,24 @@ router.post('/maintenance', requireAdmin, (req: Request, res: Response) => {
     if (scheduleAutoActivate !== undefined) db.maintenanceSchedule.autoActivate = !!scheduleAutoActivate;
 
     saveDB(db);
+
+    // Sync full maintenance presentation, audio & video broadcast settings immediately to live memory
+    (systemState as any).activeTemplate = db.activeTemplate;
+    (systemState as any).maintenanceTitle = db.maintenanceTitle;
+    (systemState as any).maintenanceText = db.maintenanceText;
+    (systemState as any).maintenanceMusicMode = db.maintenanceMusicMode;
+    (systemState as any).maintenanceMusicQuery = db.maintenanceMusicQuery;
+    (systemState as any).maintenanceMusicPlaylist = db.maintenanceMusicPlaylist;
+    (systemState as any).maintenanceVideoEnabled = !!db.maintenanceVideoEnabled;
+    (systemState as any).maintenanceVideoType = db.maintenanceVideoType || 'auto';
+    (systemState as any).maintenanceVideoUrl = db.maintenanceVideoUrl || '';
+    (systemState as any).maintenanceVideoTitle = db.maintenanceVideoTitle || '';
+    (systemState as any).maintenanceVideoSubtitle = db.maintenanceVideoSubtitle || '';
+    (systemState as any).maintenanceVideoAutoplay = db.maintenanceVideoAutoplay !== false;
+    (systemState as any).maintenanceVideoMuted = db.maintenanceVideoMuted !== undefined ? !!db.maintenanceVideoMuted : false;
+    (systemState as any).maintenanceVideoLoop = db.maintenanceVideoLoop !== undefined ? !!db.maintenanceVideoLoop : true;
+    (systemState as any).maintenanceVideoUploadedFile = db.maintenanceVideoUploadedFile || '';
+    notifyVideoBroadcastChanged();
 
     // If setting active right now, persist to systemState and handle lock files
     if (db.maintenanceMode) {
@@ -1602,27 +1580,17 @@ router.get('/gate-status', (req: Request, res: Response) => {
  * 0. Tier 1 Perimeter Gate Verification (Pre-Auth)
  */
 router.post('/gate-verify', async (req: Request, res: Response) => {
-    const { passcode, pin, password, turnstileResponse, deviceId, deviceFingerprint } = req.body;
+    const { passcode, pin, password, turnstileResponse } = req.body;
     const clientIp = getClientIp(req);
     const cleanPass = String(passcode || pin || password || '').trim();
 
-    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
-    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
-    const activeDevId = deviceId || extractedDev.deviceId;
-    const activeDevFp = deviceFingerprint || extractedDev.deviceFingerprint;
-    const identifiers = {
-        deviceId: activeDevId,
-        deviceFingerprint: activeDevFp,
-        mac: extractedMac || undefined
-    };
-
-    // 1. Enforce Sliding-Window Lockout across IP, Hardware Device, and MAC
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
+    // 1. Enforce Sliding-Window Lockout
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp);
     if (lockoutCheck.locked) {
         res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
         return res.status(423).json({
             status: "error",
-            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            message: `SECURITY LOCKOUT: Too many failed security attempts. Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
             retryAfter: lockoutCheck.remainingSeconds
         });
     }
@@ -1644,13 +1612,13 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
     // 2. Strict Turnstile Siteverify Verification
     const captchaResult = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
     if (!captchaResult.success) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_turnstile', undefined, identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_turnstile');
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         if (fail.isLockedOut) {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1680,7 +1648,7 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
 
     if (isValid) {
         console.log(`[PERIMETER-GATE] IP ${clientIp} successfully unlocked Perimeter Gate 1`);
-        SecurityGateKeeper.recordSuccess(clientIp, identifiers);
+        SecurityGateKeeper.recordSuccess(clientIp);
 
         const gateToken = jwt.sign(
             { ip: clientIp, role: 'perimeter_cleared' },
@@ -1700,7 +1668,7 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
             message: "Perimeter authorization granted."
         });
     } else {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_passcode', cleanPass.slice(0, 2) + '***', identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate1_passcode');
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         console.warn(`[SECURITY WARN] Perimeter Gate failure (${fail.attempts}/5) from IP: ${clientIp}`);
 
@@ -1708,7 +1676,7 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1724,25 +1692,16 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
  * 1. Admin Login Endpoint (IP-Bound with Strict Gate 1 Enforcement)
  */
 router.post('/login', async (req: Request, res: Response) => {
-    const { username, password, turnstileResponse, deviceId, deviceFingerprint } = req.body;
+    const { username, password, turnstileResponse } = req.body;
     const clientIp = getClientIp(req);
-    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
-    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
-    const activeDevId = deviceId || extractedDev.deviceId;
-    const activeDevFp = deviceFingerprint || extractedDev.deviceFingerprint;
-    const identifiers = {
-        deviceId: activeDevId,
-        deviceFingerprint: activeDevFp,
-        mac: extractedMac || undefined
-    };
 
-    // 1. Enforce Sliding-Window Lockout across IP, Hardware Device, and MAC
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
+    // 1. Enforce Sliding-Window Lockout
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp);
     if (lockoutCheck.locked) {
         res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
         return res.status(423).json({
             status: "error",
-            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            message: `SECURITY LOCKOUT: Too many failed security attempts. Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
             retryAfter: lockoutCheck.remainingSeconds
         });
     }
@@ -1750,7 +1709,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // 2. Strict Gate 1 Perimeter Verification (Cannot bypass Gate 1)
     const gate1Check = SecurityGateKeeper.verifyGate1(req);
     if (!gate1Check.valid) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_missing_perimeter', undefined, identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_missing_perimeter');
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         return res.status(403).json({
             status: "error",
@@ -1775,13 +1734,13 @@ router.post('/login', async (req: Request, res: Response) => {
     // 3. Strict Turnstile Siteverify Verification
     const captchaResult = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
     if (!captchaResult.success) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_turnstile', undefined, identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_turnstile');
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         if (fail.isLockedOut) {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP and Hardware Device for 24 hours.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1825,7 +1784,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     if (userMatches && isPasswordCorrect) {
         console.log(`[STAGE-1-SUCCESS] User "${cleanUsername}" passed credential check from ${clientIp}. Issuing 2FA challenge token.`);
-        SecurityGateKeeper.recordSuccess(clientIp, identifiers);
+        SecurityGateKeeper.recordSuccess(clientIp);
 
         const challengeToken = jwt.sign(
             { ip: clientIp, stage: '2fa_challenge', user: adminUser },
@@ -1840,7 +1799,7 @@ router.post('/login', async (req: Request, res: Response) => {
             message: "Stage 1 verification passed. Please enter your 6-digit Security PIN for Device Binding."
         });
     } else {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_login', cleanUsername, identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate2_login', cleanUsername);
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
 
         console.warn(`[SECURITY WARN] Unauthorized login attempt (${fail.attempts}/5) from IP: ${clientIp} using Username: "${username}"`);
@@ -1849,7 +1808,7 @@ router.post('/login', async (req: Request, res: Response) => {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1865,25 +1824,16 @@ router.post('/login', async (req: Request, res: Response) => {
  * 1b. Stage 2: Two-Way Verification & Device Binding Endpoint (Strict Gate 1 & 2 Enforcement)
  */
 router.post('/verify-2fa', async (req: Request, res: Response) => {
-    const { challengeToken, pin, deviceFingerprint, deviceId, turnstileResponse } = req.body;
+    const { challengeToken, pin, deviceFingerprint, turnstileResponse } = req.body;
     const clientIp = getClientIp(req);
-    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
-    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
-    const activeDevId = deviceId || extractedDev.deviceId;
-    const activeDevFp = deviceFingerprint || extractedDev.deviceFingerprint;
-    const identifiers = {
-        deviceId: activeDevId,
-        deviceFingerprint: activeDevFp,
-        mac: extractedMac || undefined
-    };
 
     // 1. Enforce Sliding-Window Lockout
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
+    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp);
     if (lockoutCheck.locked) {
         res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
         return res.status(423).json({
             status: "error",
-            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
+            message: `SECURITY LOCKOUT: Too many failed security attempts. Access locked for ${lockoutCheck.remainingSeconds} seconds.`,
             retryAfter: lockoutCheck.remainingSeconds
         });
     }
@@ -1891,7 +1841,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     // 2. Strict Gate 1 Perimeter Verification (Must still be active)
     const gate1Check = SecurityGateKeeper.verifyGate1(req);
     if (!gate1Check.valid) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_missing_perimeter', undefined, identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_missing_perimeter');
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         return res.status(403).json({
             status: "error",
@@ -1916,13 +1866,13 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     // 3. Strict Turnstile Siteverify Verification
     const captchaResult = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
     if (!captchaResult.success) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_turnstile', undefined, identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_turnstile');
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         if (fail.isLockedOut) {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP and Hardware Device for 24 hours.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1934,7 +1884,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
 
     let payload: any;
     try {
-        payload = jwt.verify(challengeToken, JWT_SECRET, { algorithms: ['HS256'] });
+        payload = jwt.verify(challengeToken, JWT_SECRET);
     } catch (err) {
         return res.status(401).json({
             status: "error",
@@ -1970,7 +1920,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     if (!isValidPin) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_pin', cleanPin.slice(0, 2) + '***', identifiers);
+        const fail = SecurityGateKeeper.recordFailure(clientIp, 'gate3_pin');
         await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
         console.warn(`[SECURITY WARN] Security PIN failure (${fail.attempts}/5) from IP: ${clientIp}`);
 
@@ -1978,7 +1928,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
             refreshBlacklist();
             return res.status(423).json({
                 status: "error",
-                message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
+                message: "SECURITY LOCKOUT: Too many failed security attempts. Access locked for 15 minutes.",
                 retryAfter: fail.lockoutSeconds
             });
         }
@@ -1990,7 +1940,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     // Reset failure tracking on full gate clearance
-    SecurityGateKeeper.recordSuccess(clientIp, identifiers);
+    SecurityGateKeeper.recordSuccess(clientIp);
 
     const adminUser = payload.user || (process.env.ADMIN_USER || 'hari').trim();
     // Device signature is stored as soft telemetry only
@@ -3666,8 +3616,12 @@ router.post('/live_events', requireAdmin, (req: Request, res: Response) => {
     }
     const db = getDB();
     if (!db.liveEvents) db.liveEvents = [];
-    const flagHome = !!(inHomeSpotlight || isMainHomeSpotlight);
-    const flagLiveNow = !!(inLiveNowHome || isLiveNowSpotlight);
+    const flagHome = (inHomeSpotlight !== undefined || isMainHomeSpotlight !== undefined)
+        ? !!(inHomeSpotlight || isMainHomeSpotlight)
+        : true;
+    const flagLiveNow = (inLiveNowHome !== undefined || isLiveNowSpotlight !== undefined)
+        ? !!(inLiveNowHome || isLiveNowSpotlight)
+        : true;
 
     const newItem: SportsSection = {
         id: 'event_' + Date.now().toString(),
@@ -3687,7 +3641,7 @@ router.post('/live_events', requireAdmin, (req: Request, res: Response) => {
         isSportsSpotlight: !!isSportsSpotlight,
         addedAt: new Date().toISOString()
     };
-    if (isMainHomeSpotlight) {
+    if (flagHome) {
         if (!db.spotlightStudio) db.spotlightStudio = {};
         db.spotlightStudio.mainHomeSpotlight = {
             enabled: true,
@@ -6549,6 +6503,227 @@ router.get('/stream-sources/download-m3u', requireAdmin, async (req: Request, re
         return res.send(content);
     } catch (e: any) {
         return res.status(500).json({ status: 'error', message: e?.message || 'Failed to download active M3U' });
+    }
+});
+
+// GET /api/admin/youtube-config - Read active yt-dlp / YouTube engine configuration & cookie status
+router.get('/youtube-config', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const db = getDB();
+        const runtime = getYoutubeRuntimeConfig();
+        const stored = db.youtubeConfig || {};
+        const cookiePath = path.join(DARK_SIDE, 'youtube_cookies.txt');
+        let hasCookies = false;
+        let cookiesContent = '';
+        if (fs.existsSync(cookiePath)) {
+            try {
+                cookiesContent = fs.readFileSync(cookiePath, 'utf8');
+                hasCookies = cookiesContent.trim().length > 10;
+            } catch (e) {}
+        }
+        return res.json({
+            status: 'success',
+            config: {
+                proxyUrl: stored.proxyUrl ?? runtime.proxyUrl ?? '',
+                poToken: stored.poToken ?? runtime.poToken ?? '',
+                visitorData: stored.visitorData ?? runtime.visitorData ?? '',
+                playerClients: stored.playerClients || runtime.playerClients || 'android,web',
+                defaultAudioQuality: stored.defaultAudioQuality || runtime.defaultAudioQuality || '320',
+                defaultVideoQuality: stored.defaultVideoQuality || runtime.defaultVideoQuality || '1080'
+            },
+            hasCookies,
+            cookiesContent
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to read YouTube configuration' });
+    }
+});
+
+// POST /api/admin/youtube-config - Persist yt-dlp / YouTube extractor configuration
+router.post('/youtube-config', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const db = getDB();
+        const body = req.body || {};
+        const nextConfig = {
+            proxyUrl: String(body.proxyUrl ?? '').trim(),
+            poToken: String(body.poToken ?? '').trim(),
+            visitorData: String(body.visitorData ?? '').trim(),
+            playerClients: String(body.playerClients || 'android,web').trim() || 'android,web',
+            defaultAudioQuality: String(body.defaultAudioQuality || '320').trim() || '320',
+            defaultVideoQuality: String(body.defaultVideoQuality || '1080').trim() || '1080'
+        };
+        db.youtubeConfig = nextConfig;
+        (systemState as any).youtubeConfig = nextConfig;
+        saveDB(db);
+        return res.json({
+            status: 'success',
+            message: 'YouTube engine configuration saved and activated.',
+            config: nextConfig
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to save YouTube configuration' });
+    }
+});
+
+// POST /api/admin/youtube-config/test - Verify live yt-dlp extraction using current config
+router.post('/youtube-config/test', requireAdmin, async (req: Request, res: Response) => {
+    const rawId = String(req.body?.videoId || 'dQw4w9WgXcQ').trim();
+    const idMatch = rawId.match(/([a-zA-Z0-9_-]{11})/);
+    const testId = idMatch ? idMatch[1] : 'dQw4w9WgXcQ';
+    const watchUrl = `https://www.youtube.com/watch?v=${testId}`;
+    const localBin = path.join(process.cwd(), 'bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+    const ytdlpBin = fs.existsSync(localBin) ? localBin : 'yt-dlp';
+    const args = buildYtdlpArgs(['--dump-single-json', '--no-check-certificates', watchUrl]);
+
+    const startedAt = Date.now();
+    execFile(ytdlpBin, args, { timeout: 20000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout, stderr) => {
+        const latencyMs = Date.now() - startedAt;
+        if (err) {
+            return res.status(200).json({
+                status: 'error',
+                success: false,
+                videoId: testId,
+                latencyMs,
+                message: (stderr || err.message || 'yt-dlp extraction failed').trim().slice(0, 300)
+            });
+        }
+        try {
+            const info = JSON.parse(stdout);
+            const formats = Array.isArray(info.formats) ? info.formats : [];
+            const audioFormats = formats.filter((f: any) => f.acodec && f.acodec !== 'none' && f.url);
+            const videoFormats = formats.filter((f: any) => f.vcodec && f.vcodec !== 'none' && f.url);
+            return res.json({
+                status: 'success',
+                success: true,
+                videoId: testId,
+                title: info.title || testId,
+                uploader: info.uploader || info.channel || 'YouTube',
+                duration: info.duration || 0,
+                audioFormatsCount: audioFormats.length,
+                videoFormatsCount: videoFormats.length,
+                latencyMs
+            });
+        } catch (parseErr: any) {
+            return res.status(200).json({
+                status: 'error',
+                success: false,
+                videoId: testId,
+                latencyMs,
+                message: parseErr?.message || 'Invalid JSON output from yt-dlp'
+            });
+        }
+    });
+});
+
+// ==========================================
+// LIVE ACTIVITY MONITOR & PASSWORD SESSIONS LEDGER
+// ==========================================
+
+// GET /api/admin/live-monitor/overview - Real-time active website users, stream tracking & password sessions
+router.get('/live-monitor/overview', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const db = getDB();
+        const overview = getLiveMonitorOverview(db.blacklist || []);
+        return res.json(overview);
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to fetch live monitor overview' });
+    }
+});
+
+// POST /api/admin/live-monitor/password-revoke - Revoke password access for a single IP or hardware device
+router.post('/live-monitor/password-revoke', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const { ip, deviceId } = req.body || {};
+        revokePasswordSession(ip, deviceId);
+        if (ip && (server as any).unlockedIpsMap) {
+            const clean = String(ip).replace(/^::ffff:/, '').trim();
+            (server as any).unlockedIpsMap.delete(clean);
+            if (typeof (server as any).saveUnlockedIpsToDisk === 'function') {
+                (server as any).saveUnlockedIpsToDisk();
+            }
+        }
+        return res.json({
+            status: 'success',
+            message: `Password access revoked for ${ip || deviceId || 'client'}.`
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to revoke password session' });
+    }
+});
+
+// POST /api/admin/live-monitor/password-extend - Extend or set password expiry hours for an IP or device
+router.post('/live-monitor/password-extend', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const { ip, deviceId, hours, mode } = req.body || {};
+        const numHours = parseFloat(hours);
+        if (isNaN(numHours) || numHours <= 0) {
+            return res.status(400).json({ status: 'error', message: 'Invalid hours specified' });
+        }
+        const outcome = extendPasswordSession({
+            ip,
+            deviceId,
+            hours: numHours,
+            mode: mode === 'set' ? 'set' : 'add'
+        });
+        if (outcome.success && ip && outcome.newExpiresAt && (server as any).unlockedIpsMap) {
+            const clean = String(ip).replace(/^::ffff:/, '').trim();
+            (server as any).unlockedIpsMap.set(clean, outcome.newExpiresAt);
+            if (typeof (server as any).saveUnlockedIpsToDisk === 'function') {
+                (server as any).saveUnlockedIpsToDisk();
+            }
+        }
+        return res.json({
+            status: 'success',
+            message: `Password timer updated to ${outcome.remainingHours || numHours} hours.`,
+            remainingHours: outcome.remainingHours
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to update password timer' });
+    }
+});
+
+// POST /api/admin/live-monitor/kick - Instant terminate user stream & drop active session
+router.post('/live-monitor/kick', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const { ip, deviceId, reason } = req.body || {};
+        kickUser(ip, deviceId);
+        if (ip && (server as any).unlockedIpsMap) {
+            const clean = String(ip).replace(/^::ffff:/, '').trim();
+            (server as any).unlockedIpsMap.delete(clean);
+        }
+        return res.json({
+            status: 'success',
+            message: `User ${ip || deviceId || 'client'} kicked instantly and streams disconnected.`
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to kick user' });
+    }
+});
+
+// POST /api/admin/live-monitor/ban - Permanently blacklist IP, revoke device, and terminate all streams
+router.post('/live-monitor/ban', requireAdmin, (req: Request, res: Response) => {
+    try {
+        const { ip, deviceId, reason } = req.body || {};
+        const cleanIp = String(ip || '').replace(/^::ffff:/, '').trim();
+
+        if (cleanIp && cleanIp !== '127.0.0.1' && cleanIp !== '::1' && cleanIp !== 'localhost') {
+            const db = getDB();
+            if (!db.blacklist) db.blacklist = [];
+            if (!db.blacklist.includes(cleanIp)) {
+                db.blacklist.push(cleanIp);
+                saveDB(db);
+                refreshBlacklist();
+            }
+        }
+
+        kickUser(cleanIp, deviceId);
+
+        return res.json({
+            status: 'success',
+            message: `User ${cleanIp || deviceId} permanently banned, blacklisted, and session terminated.`
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message || 'Failed to ban user' });
     }
 });
 

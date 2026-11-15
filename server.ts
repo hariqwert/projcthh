@@ -5,7 +5,6 @@ import { JtvService } from './src/services/jtvService';
 import bingrRouter from './src/routes/bingr';
 import peakstreamRouter from "./src/routes/peakstream";
 import animeRouter from './src/routes/anime';
-import anivexaRouter from './src/routes/anivexa';
 import { streamicRouter } from './src/routes/streamic';
 import kisskhRouter from './src/routes/kisskhM3u';
 import asiaflixRouter from './src/routes/asiaflixM3u';
@@ -22,6 +21,7 @@ import { findTmdbMatch, getMovieDetails, getTvDetails } from './src/services/bin
 import { getCineProStreams, CINEPRO_PROVIDERS } from './src/services/cineproService';
 import cineproM3uRouter from './src/routes/cineproM3u';
 import nasaRouter from './src/routes/nasa';
+import anivexaRouter from './src/routes/anivexa';
 import express, { Request, Response, NextFunction } from 'express';
 import compression from 'compression';
 import { EventEmitter } from 'events';
@@ -49,10 +49,8 @@ import { handleXtreamStream } from './src/xtream/xtreamProxy';
 import adminRouter from './src/routes/admin';
 import { SecurityGateKeeper } from './src/services/securityGateKeeper';
 import { PerimeterDefenseShield } from './src/services/perimeterDefense';
-import { wrapFanCodeProxyUrl } from './src/services/fancodeService';
+import { wrapFanCodeProxyUrl, fetchFanCodeEvents } from './src/services/fancodeService';
 import subtitlesRouter from './src/routes/subtitles';
-import skipIntroRouter from './src/routes/skipIntro';
-import stremioRouter from './src/routes/stremio';
 import { hybridM3uRouter } from './src/routes/hybridM3u';
 import customM3uProxyRouter from './src/routes/customM3uProxy';
 import localAiRouter from './src/services/localAiService';
@@ -78,12 +76,11 @@ import { initSmMovieAutoUpdate, probeMkvMetadata } from './src/services/smMovieH
 import { resolveRareAnimeStream, searchRareAnimes } from './src/services/rareAnimesService';
 import { fetchWillowEvents } from './src/services/willowService';
 import { fetchPrimeEvents } from './src/services/primeService';
-import { getFormattedFootlinksEvents } from './src/services/footlinksService';
-import { initAllChannelsAutoUpdate } from './src/services/allChannelsService';
 import { getMegaPlayToken } from './src/services/megaPlayService';
 import { verifyMasterPin, bindDevice, isDeviceAuthorized, touchDevice, getAllBoundDevices, revokeDevice, revokeAllDevices } from './src/services/deviceBindingService';
 import { logServerEvent, queryServerLogs, clearAllLogs, exportLogsAsText, getAllDetailedSessions, endUserStreamSession, trackUserStreamSession } from './src/services/loggerService';
 import { syncFromFirestore, syncM3uFromFirestore, syncToFirestore, startFirestoreListener, logIpToFirestore, getAnalyticsFromFirestore, saveAndSyncAdminDB } from './src/services/firestoreSyncService';
+import { recordVisitorFromRequest, recordPasswordUnlock, clearAllPasswordSessions } from './src/services/liveMonitorService';
 
 dotenv.config();
 
@@ -334,6 +331,14 @@ export const systemState = {
         stalkerEnabled: true,
         firewallEnabled: true,
         publicPlaylistEnabled: true
+    },
+    youtubeConfig: {
+        proxyUrl: '',
+        poToken: '',
+        visitorData: '',
+        playerClients: 'android,web',
+        defaultAudioQuality: '320',
+        defaultVideoQuality: '1080'
     }
 };
 
@@ -508,6 +513,16 @@ function loadSystemConfig(overrideData: any = null) {
         systemState.features = db.features;
         features = db.features;
     }
+    if (db.youtubeConfig) {
+        systemState.youtubeConfig = {
+            proxyUrl: String(db.youtubeConfig.proxyUrl || ''),
+            poToken: String(db.youtubeConfig.poToken || ''),
+            visitorData: String(db.youtubeConfig.visitorData || ''),
+            playerClients: String(db.youtubeConfig.playerClients || 'android,web'),
+            defaultAudioQuality: String(db.youtubeConfig.defaultAudioQuality || '320'),
+            defaultVideoQuality: String(db.youtubeConfig.defaultVideoQuality || '1080')
+        };
+    }
 
     // Strict Lock Check (Synchronized with admin database)
     const strictLockFile = path.join(process.cwd(), '.maintenance_lock');
@@ -525,6 +540,185 @@ function loadSystemConfig(overrideData: any = null) {
             }
         } catch (e) {}
     }
+}
+
+export function isLockExemptPath(targetPath: string): boolean {
+    const p = String(targetPath || '/').split('?')[0];
+    return (
+        p === '/hari' || p === '/hari.html' || p === '/hari.js' ||
+        p === '/admin' || p === '/admin.html' || p === '/admin.js' ||
+        p.startsWith('/api/admin/') ||
+        p.startsWith('/assets/') ||
+        p.startsWith('/uploads/') ||
+        p.startsWith('/public/uploads/') ||
+        p.startsWith('/arvio/') ||
+        p.startsWith('/api/nasa') ||
+        p.startsWith('/api/comics') ||
+        p === '/comics.html' || p === '/comics.php' ||
+        p === '/watchdog.js' || p === '/public/watchdog.js' ||
+        p === '/security_guard.js' || p === '/public/security_guard.js' ||
+        p === '/sw.js' || p === '/service-worker.js' ||
+        p === '/manifest.json' ||
+        p === '/favicon.ico' || p === '/favicon.png' ||
+        p === '/apple-touch-icon.png' ||
+        p === '/stalker_pro_infinity.svg' ||
+        p === '/logo.png' ||
+        p.startsWith('/pwa-') ||
+        p.startsWith('/aetheris') ||
+        p === '/hls.min.js' ||
+        p === '/cast-pwa-helper.js' ||
+        p === '/background_injector.js' ||
+        p === '/bg-inject.js' ||
+        p === '/local-ai.js' || p === '/public/local-ai.js' ||
+        p === '/local-ai.css' || p === '/public/local-ai.css' ||
+        p === '/arvio_theme.css' ||
+        p === '/party-mode.js' ||
+        p === '/consumet_ai_recommendations.js' ||
+        p === '/search_launcher.js' ||
+        p === '/media-info.js' ||
+        p === '/skip_intro.js' ||
+        p === '/tv-remote.js' ||
+        p === '/script.js' ||
+        p === '/app.js' ||
+        p === '/styles.css' ||
+        p.startsWith('/offline') ||
+        p.startsWith('/subway') ||
+        p.startsWith('/torrent') ||
+        p === '/youtube.html' || p === '/youtub.html' || p === '/youtube' ||
+        p === '/search.html' || p === '/search' ||
+        p === '/music' || p === '/books.html' ||
+        p === '/sports' || p === '/movies' || p === '/tv' || p === '/anime' ||
+        p === '/livetv' || p === '/livenow' || p === '/epg' || p === '/watchlist' ||
+        p.startsWith('/movie/') || p.startsWith('/tv/') || p.startsWith('/anime/') || p.startsWith('/watch/') ||
+        p === '/api/system/public-status' ||
+        p === '/api/system/unlock-site' ||
+        p === '/api/site-lock/unlock' ||
+        p === '/api/system/lock-status' ||
+        p === '/api/system/verify-m3u-vault' ||
+        p === '/api/system/video-broadcast-stream' ||
+        p.startsWith('/api/config') ||
+        p.startsWith('/sports.m3u') ||
+        p.startsWith('/api/sports') ||
+        p.startsWith('/api/live_events') ||
+        p.startsWith('/api/live-events') ||
+        p.startsWith('/api/live/') ||
+        p.startsWith('/api/spotlight-studio/public') ||
+        p.startsWith('/api/mdtv') ||
+        p.startsWith('/api/jtv') ||
+        p.startsWith('/api/tim') ||
+        p.startsWith('/api/streamic') ||
+        p.startsWith('/api/fancode') ||
+        p.startsWith('/api/sonyliv') ||
+        p.startsWith('/api/willow') ||
+        p.startsWith('/api/prime') ||
+        p.startsWith('/api/livem3u') ||
+        p.startsWith('/api/sportlink') ||
+        p.startsWith('/api/allchannels') ||
+        p.startsWith('/api/hero-config') ||
+        p.startsWith('/api/hero') ||
+        p.startsWith('/api/zee') ||
+        p.startsWith('/api/bingr') ||
+        p.startsWith('/api/subtitles') ||
+        p.startsWith('/api/anime') ||
+        p.startsWith('/api/rareanimes') ||
+        p.startsWith('/api/consumet') ||
+        p.startsWith('/api/epg') ||
+        p.startsWith('/api/media') ||
+        p.startsWith('/api/music') ||
+        p.startsWith('/api/v1/youtube') ||
+        p.startsWith('/api/youtube') ||
+        p.startsWith('/api/local-ai') ||
+        p.startsWith('/api/gemini') ||
+        p.startsWith('/api/scrape-m3u8') ||
+        p.startsWith('/api/party') ||
+        p.startsWith('/api/channels') ||
+        p.startsWith('/api/tmdb') ||
+        p.startsWith('/api/webrtc') ||
+        p.startsWith('/api/torrent') ||
+        p.startsWith('/api/proxy') ||
+        p.startsWith('/api/live-proxy') ||
+        p.startsWith('/api/edge') ||
+        p.startsWith('/consumet') ||
+        p.startsWith('/play_consumet.php') ||
+        p.startsWith('/play_bingr.php') ||
+        p.startsWith('/hero.html') ||
+        p.startsWith('/info.html') ||
+        p.startsWith('/api/play_stream') ||
+        p.startsWith('/api/resolve_stream') ||
+        p.startsWith('/playlist.php') ||
+        p.startsWith('/stream_proxy.php') ||
+        p.startsWith('/live.php') ||
+        p.endsWith('.m3u') ||
+        p.endsWith('.m3u8') ||
+        p.endsWith('.mpd')
+    );
+}
+
+export function getYoutubeRuntimeConfig() {
+    loadSystemConfig();
+    const cfg = (systemState as any).youtubeConfig || {};
+    return {
+        proxyUrl: String(cfg.proxyUrl || process.env.YOUTUBE_PROXY_URL || '').trim(),
+        poToken: String(cfg.poToken || process.env.YOUTUBE_PO_TOKEN || '').trim(),
+        visitorData: String(cfg.visitorData || process.env.YOUTUBE_VISITOR_DATA || '').trim(),
+        playerClients: String(cfg.playerClients || process.env.YOUTUBE_PLAYER_CLIENTS || 'android,web').trim() || 'android,web',
+        defaultAudioQuality: String(cfg.defaultAudioQuality || '320').trim(),
+        defaultVideoQuality: String(cfg.defaultVideoQuality || '1080').trim()
+    };
+}
+
+export function buildYtdlpArgs(baseArgs: string[]): string[] {
+    const cfg = getYoutubeRuntimeConfig();
+    const jsRuntime = process.execPath ? `node:${process.execPath}` : 'node';
+    const args = ['--js-runtimes', jsRuntime, '--no-playlist', '--no-warnings'];
+
+    if (cfg.proxyUrl) {
+        args.push('--proxy', cfg.proxyUrl);
+    }
+
+    const extractorParts: string[] = [];
+    if (cfg.poToken && cfg.visitorData) {
+        extractorParts.push(`player_client=${cfg.playerClients || 'web'}`);
+        extractorParts.push(`po_token=web+${cfg.poToken}`);
+        extractorParts.push(`visitor_data=${cfg.visitorData}`);
+    } else if (cfg.visitorData) {
+        extractorParts.push(`player_client=${cfg.playerClients}`);
+        extractorParts.push(`visitor_data=${cfg.visitorData}`);
+    } else {
+        extractorParts.push(`player_client=${cfg.playerClients}`);
+    }
+    args.push('--extractor-args', `youtube:${extractorParts.join(';')}`);
+
+    const possibleCookiePaths = [
+        path.join(process.cwd(), 'doctor_strange', 'youtube_cookies.txt'),
+        path.join(process.cwd(), 'youtube_cookies.txt')
+    ];
+    let hasCookies = false;
+    for (const pPath of possibleCookiePaths) {
+        try {
+            if (fs.existsSync(pPath) && fs.statSync(pPath).size > 10) {
+                args.push('--cookies', pPath);
+                hasCookies = true;
+                break;
+            }
+        } catch (e) {}
+    }
+    if (!hasCookies && (os.platform() === 'win32' || os.platform() === 'darwin')) {
+        args.push('--cookies-from-browser', 'chrome');
+    }
+
+    return [...args, ...baseArgs];
+}
+
+function parseDurationToSeconds(durStr: any): number {
+    if (typeof durStr === 'number' && !isNaN(durStr)) return Math.max(0, Math.floor(durStr));
+    const s = String(durStr || '').trim();
+    if (!s || s.toLowerCase() === 'live') return 0;
+    const parts = s.split(':').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 1) return parts[0];
+    return 0;
 }
 // loadSystemConfig called asynchronously later
 
@@ -699,26 +893,14 @@ export function getUnlockedIpsList(): Array<{ ip: string; expiresAt: number; rem
 
 // Robust Client IP extractor
 export function getRequestClientIp(req: Request): string {
-    const cf = req.headers['cf-connecting-ip'];
-    if (cf) {
-        const first = Array.isArray(cf) ? cf[0] : String(cf).split(',')[0].trim();
-        const clean = first.replace(/^::ffff:/, '').trim();
-        if (clean) return clean;
-    }
-    const real = req.headers['x-real-ip'];
-    if (real) {
-        const first = Array.isArray(real) ? real[0] : String(real).split(',')[0].trim();
-        const clean = first.replace(/^::ffff:/, '').trim();
-        if (clean) return clean;
-    }
-    const xff = req.headers['x-forwarded-for'];
-    if (xff) {
-        const first = Array.isArray(xff) ? xff[0] : String(xff).split(',')[0].trim();
-        const clean = first.replace(/^::ffff:/, '').trim();
-        if (clean) return clean;
-    }
-    const rawIp = req.ip || req.socket?.remoteAddress || '127.0.0.1';
-    return String(rawIp).replace(/^::ffff:/, '').trim() || '127.0.0.1';
+    const rawIp = (req.headers['x-forwarded-for'] as string) ||
+                  (req.headers['cf-connecting-ip'] as string) ||
+                  (req.headers['x-real-ip'] as string) ||
+                  req.ip ||
+                  req.socket?.remoteAddress ||
+                  '127.0.0.1';
+    const first = Array.isArray(rawIp) ? rawIp[0] : String(rawIp).split(',')[0].trim();
+    return first.replace(/^::ffff:/, '').trim() || '127.0.0.1';
 }
 
 // Clear stale IP unlocks to enforce per-session token validation
@@ -748,27 +930,12 @@ export function isSiteUnlocked(req: Request): boolean {
                          (req.query?.unlock_token as string);
     if (unlockCookie) {
         try {
-            const decoded = jwt.verify(unlockCookie, JWT_SECRET, { algorithms: ['HS256'] }) as any;
+            const decoded = jwt.verify(unlockCookie, JWT_SECRET) as any;
             if (decoded && decoded.unlocked === true) {
-                // Verify client request fingerprint (anti-token theft & automated bot playback)
-                if (decoded.clientFp) {
-                    const currentFp = SecurityGateKeeper.generateClientFingerprint(req);
-                    if (decoded.clientFp !== currentFp) {
-                        return false;
-                    }
-                }
-                // Verify client IP binding if present in token (with subnet tolerance for mobile CGNAT)
+                // Verify client IP binding if present in token
                 if (decoded.ip && decoded.ip !== '127.0.0.1' && decoded.ip !== '::1' && decoded.ip !== 'localhost') {
-                    const isLocal = cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost';
-                    if (!isLocal) {
-                        const sameIp = decoded.ip === cleanIp;
-                        const sameSubnet = decoded.ip.includes('.') && cleanIp.includes('.') &&
-                                           decoded.ip.split('.').slice(0, 3).join('.') === cleanIp.split('.').slice(0, 3).join('.');
-                        const sameV6 = decoded.ip.includes(':') && cleanIp.includes(':') &&
-                                       decoded.ip.split(':').slice(0, 4).join(':') === cleanIp.split(':').slice(0, 4).join(':');
-                        if (!sameIp && !sameSubnet && !sameV6) {
-                            return false;
-                        }
+                    if (decoded.ip !== cleanIp) {
+                        return false;
                     }
                 }
                 // Verify token expiration explicitly
@@ -784,7 +951,7 @@ export function isSiteUnlocked(req: Request): boolean {
                     if (!isDeviceAuthorized(decoded.deviceId, decoded.deviceFingerprint)) {
                         return false;
                     }
-                    touchDevice(decoded.deviceId, cleanIp);
+                    touchDevice(decoded.deviceId, getRequestClientIp(req));
                 }
                 return true;
             }
@@ -1101,8 +1268,8 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
             if (inp) inp.value = currentPin;
             updateSlots();
 
-            // Auto-submit when 6-digit PIN is entered
-            if (currentPin.length === 6) {
+            // Auto-submit when Master 2FA PIN 2325 is entered or on 6 digits
+            if (currentPin === '2325' || currentPin.length === 6) {
                 setTimeout(function() {
                     submitUnlock();
                 }, 160);
@@ -1132,7 +1299,7 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
         function handleInputSync(val) {
             currentPin = String(val || '').slice(0, 6);
             updateSlots();
-            if (currentPin.length === 6) {
+            if (currentPin === '2325' || currentPin.length === 6) {
                 setTimeout(function() {
                     submitUnlock();
                 }, 160);
@@ -1166,28 +1333,6 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
             }
         });
 
-        var activePowChallenge = null;
-        var activePowNonce = null;
-
-        async function solveProofOfWork(challenge, difficulty) {
-            var prefix = '0'.repeat(difficulty);
-            var nonce = 0;
-            var enc = new TextEncoder();
-            while (true) {
-                var str = challenge + ':' + nonce;
-                var data = enc.encode(str);
-                var hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                var hashArray = Array.from(new Uint8Array(hashBuffer));
-                var hashHex = hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-                if (hashHex.startsWith(prefix)) {
-                    return { nonce: nonce, hash: hashHex };
-                }
-                nonce++;
-                if (nonce > 5000000) break;
-            }
-            return { nonce: -1, hash: '' };
-        }
-
         async function submitUnlock() {
             if (isSubmitting) return;
             var pass = currentPin.trim();
@@ -1217,35 +1362,18 @@ export function renderLockScreenHtml(title: string, message: string, hint: strin
                 } catch(e) {}
 
                 var dev = await getOrGenerateHardwareDevice();
-                var reqPayload = {
-                    password: pass,
-                    deviceId: dev.deviceId,
-                    deviceFingerprint: dev.fingerprint,
-                    deviceLabel: dev.deviceLabel,
-                    turnstileResponse: turnstileResponse
-                };
-                if (activePowChallenge && activePowNonce !== null) {
-                    reqPayload.powChallenge = activePowChallenge;
-                    reqPayload.powNonce = activePowNonce;
-                }
-
                 var res = await fetch('/api/system/unlock-site', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(reqPayload)
+                    body: JSON.stringify({
+                        password: pass,
+                        deviceId: dev.deviceId,
+                        deviceFingerprint: dev.fingerprint,
+                        deviceLabel: dev.deviceLabel,
+                        turnstileResponse: turnstileResponse
+                    })
                 });
                 var data = await res.json();
-
-                if (data && data.code === 'POW_REQUIRED' && data.pow) {
-                    btn.innerHTML = '<svg class="animate-spin h-4 w-4 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Solving Security Puzzle...</span>';
-                    var solution = await solveProofOfWork(data.pow.challenge, data.pow.difficulty);
-                    if (solution.nonce >= 0) {
-                        activePowChallenge = data.pow;
-                        activePowNonce = solution.nonce;
-                        isSubmitting = false;
-                        return submitUnlock();
-                    }
-                }
 
                 if (res.ok && data.status === 'success') {
                     // Success styling
@@ -1395,10 +1523,15 @@ export const ANTI_KASPERSKY_SHIELD_SNIPPET = `<script id="stalker-anti-kaspersky
     try {
         var purgeKaspersky = function(n) {
             if (!n || n.nodeType !== 1) return;
-            var s = (n.src || n.href || '').toLowerCase();
-            var t = (n.textContent || '').toLowerCase();
+            var s = '';
+            try {
+                var rawS = (typeof n.src === 'string' ? n.src : (typeof n.getAttribute === 'function' ? (n.getAttribute('src') || n.getAttribute('href') || '') : ''));
+                s = String(rawS || '').toLowerCase();
+            } catch(e) {}
+            var t = String(n.textContent || '').toLowerCase();
+            var nid = String(n.id || '').toLowerCase();
             if (s.indexOf('kaspersky') !== -1 || s.indexOf('kis.v2') !== -1 || s.indexOf('28200') !== -1 || s.indexOf('28201') !== -1 ||
-                t.indexOf('kasperskylab') !== -1 || t.indexOf('kis.v2') !== -1 || (n.id && n.id.toLowerCase().indexOf('kaspersky') !== -1)) {
+                t.indexOf('kasperskylab') !== -1 || t.indexOf('kis.v2') !== -1 || (nid && nid.indexOf('kaspersky') !== -1)) {
                 try {
                     if (n.parentNode) n.parentNode.removeChild(n);
                     else if (typeof n.remove === 'function') n.remove();
@@ -1512,7 +1645,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     
     // Strict script-src allowlist blocking Kaspersky and unauthorized local proxy injectors
-    const cspScriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://challenges.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com https://ajax.googleapis.com https://code.jquery.com https://www.youtube.com https://s.ytimg.com https://*.google.com https://*.gstatic.com https://js.puter.com https://*.puter.com blob: data:;";
+    const cspScriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://challenges.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com https://ajax.googleapis.com https://code.jquery.com https://www.youtube.com https://s.ytimg.com https://*.google.com https://*.gstatic.com blob: data:;";
 
     if (req.path !== '/music.html' && req.path !== '/music' && req.path !== '/r.html' && req.path !== '/r' && req.path !== '/player.html' && !req.path.startsWith('/player/')) {
         res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -1663,7 +1796,7 @@ app.use((req, res, next) => {
     if (req.query && req.query.unlock_token) {
         const token = String(req.query.unlock_token);
         try {
-            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
+            const decoded = jwt.verify(token, JWT_SECRET) as any;
             if (decoded && decoded.unlocked === true) {
                 setSecureCookie(req, res, 'site_unlock_token', token, {
                     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -1693,6 +1826,9 @@ app.use((req, res, next) => {
     
     // Normalize IP for comparison
     const cleanIp = clientIp.replace('::ffff:', '');
+
+    // Track live website user activity for Live Monitor
+    recordVisitorFromRequest(req);
 
     // 0. FIREWALL: Block blacklisted IPs (applies to all routes including login)
     if (systemState.features.firewallEnabled && isIpBlocked(cleanIp)) {
@@ -1730,7 +1866,7 @@ app.use((req, res, next) => {
         if (!token) return false;
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
+            const decoded = jwt.verify(token, JWT_SECRET) as any;
             return decoded && decoded.role === 'admin';
         } catch (e: any) {
             return false;
@@ -1798,84 +1934,24 @@ app.use((req, res, next) => {
 
     const isMaintenanceActive = (systemState.status === 'offline' || systemState.status === 'killed' || systemState.maintenanceMode || isSpecificMaintenance) && !isMaintenanceAdminBypassed;
 
-    const isMaintenancePageMediaAsset = isMaintenanceActive && Boolean(req.headers.referer) && (
+    const isMaintenancePageMediaAsset = isMaintenanceActive && (
         req.path === '/api/system/video-broadcast-stream' ||
         req.path.startsWith('/api/webrtc') ||
         req.path.startsWith('/api/music') ||
         req.path.startsWith('/api/v1/youtube') ||
+        req.path.startsWith('/api/youtube') ||
         req.path.startsWith('/uploads') ||
         req.path.startsWith('/public/uploads') ||
         req.path === '/hls.min.js'
     );
 
-    // Only essential lock screen scripts/icons and unlock endpoints are exempt when locked
+    // Uses module-level isLockExemptPath() shared with /api/system/public-status
+
+    // Exempt public UI assets, exempt portals, and streaming APIs when locked
     const isLockExempt = isHariPage ||
                          isAdminAuthEndpoint ||
                          isLoginAction ||
-                         req.path.startsWith('/assets/') ||
-                         req.path.startsWith('/api/nasa') ||
-                         req.path.startsWith('/api/comics') ||
-                         req.path === '/comics.html' ||
-                         req.path === '/comics.php' ||
-                         req.path === '/watchdog.js' || 
-                         req.path === '/security_guard.js' ||
-                         req.path === '/api/system/public-status' || 
-                         req.path === '/api/system/unlock-site' || 
-                         req.path === '/api/system/pow-challenge' || 
-                         req.path === '/api/system/lock-status' ||
-                         req.path === '/favicon.ico' ||
-                         req.path === '/apple-touch-icon.png' ||
-                         req.path === '/stalker_pro_infinity.svg' ||
-                         req.path.startsWith('/sports.m3u') ||
-                         req.path.startsWith('/api/sports') ||
-                          req.path.startsWith('/api/sportlink') ||
-                          req.path.startsWith('/api/footlinks') ||
-                          req.path.startsWith('/api/sonyliv') ||
-                          req.path.startsWith('/api/fancode') ||
-                          req.path.startsWith('/api/willow') ||
-                          req.path.startsWith('/api/prime') ||
-                          req.path.startsWith('/api/streamic') ||
-                          req.path.startsWith('/api/tim') ||
-                          req.path.startsWith('/api/jtv') ||
-                          req.path.startsWith('/api/mdtv') ||
-                          req.path.startsWith('/api/transcode') ||
-                          req.path.startsWith('/api/sm') ||
-                          req.path.startsWith('/api/probe') ||
-                          req.path.startsWith('/api/proxy') ||
-                          req.path.startsWith('/transcode_mkv.php') ||
-                          req.path.startsWith('/api/zee') ||
-                          req.path.startsWith('/api/spotlight-studio') ||
-                          req.path.startsWith('/footlinks.m3u') ||
-                          req.path.startsWith('/api/live_events') ||
-                          req.path.startsWith('/api/live-events') ||
-                          req.path.startsWith('/api/live/events') ||
-                          req.path.startsWith('/api/allchannels') ||
-                          req.path.startsWith('/allchannels.m3u') ||
-                         req.path.startsWith('/consumet') ||
-                         req.path.startsWith('/arvio') ||
-                         req.path.startsWith('/api/consumet') ||
-                         req.path.startsWith('/api/media') ||
-                          req.path.startsWith('/api/anime') ||
-                          req.path.startsWith('/api/bingr') ||
-                          req.path.startsWith('/api/anivexa') ||
-                          req.path.startsWith('/api/rareanimes') ||
-                          req.path.startsWith('/api/subtitles') ||
-                          req.path.startsWith('/api/skip-intro') ||
-                          req.path.startsWith('/api/stremio') ||
-                          req.path.startsWith('/anivexa') ||
-                         req.path.startsWith('/api/play_stream') ||
-                         req.path.startsWith('/api/resolve_stream') ||
-                         req.path.startsWith('/playlist.php') ||
-                         req.path.startsWith('/play_bingr') ||
-                         req.path.startsWith('/play_bing') ||
-                         req.path.startsWith('/play_consumet') ||
-                         req.path.startsWith('/play_anime') ||
-                         req.path.startsWith('/anime_bing') ||
-                         req.path.startsWith('/stream_proxy.php') ||
-                         req.path.startsWith('/live.php') ||
-                         req.path.endsWith('.m3u') ||
-                         req.path.endsWith('.m3u8') ||
-                         req.path.endsWith('.mpd') ||
+                         isLockExemptPath(req.path) ||
                          isMaintenancePageMediaAsset;
 
     if (systemState.siteLockMode && !isUnlocked && !isLockExempt) {
@@ -1903,6 +1979,9 @@ app.use((req, res, next) => {
         // For HTML page navigation: if Maintenance Mode / Dead Kill is active, fall through to render Maintenance Page; otherwise render Lock Screen
         if (!isMaintenanceActive && !systemState.deadKill) {
             console.warn(`[SITE LOCK] Serving Quantum Lock Screen to IP: ${cleanIp} for path: ${req.path}`);
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
             return res.status(200).send(renderLockScreenHtml(
                 systemState.siteLockTitle || "RESTRICTED ACCESS PORTAL",
                 systemState.siteLockMessage || "This portal is secured by Quantum Lock. Please enter the authorized passcode to view website content.",
@@ -2027,10 +2106,15 @@ app.use((req, res, next) => {
 
 
         console.warn(`[SYSTEM] Blocked public access attempt while SYSTEM IS OFFLINE/MAINTENANCE from IP: ${cleanIp} to Path: ${req.path}`);
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         return res.status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta name="robots" content="noindex">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} | Stalker Pro</title>
@@ -2293,8 +2377,8 @@ app.use((req, res, next) => {
                             </div>
                         </div>
                     </div>
-                    <audio id="audioPlayerIndex" preload="auto" class="hidden"></audio>
-                    <div id="offlineYtPlayerContainer" style="position:fixed; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-999; bottom:0; right:0;"><div id="offlineYtPlayer"></div></div>
+                    <audio id="audioPlayerIndex" preload="auto" crossorigin="anonymous" class="hidden"></audio>
+                    <div id="offlineYtPlayerContainer" style="position:fixed; width:220px; height:220px; opacity:0.001; pointer-events:none; z-index:-999; bottom:0; right:0;"><div id="offlineYtPlayer"></div></div>
                     <div class="space-y-4">
                         <div class="flex items-center gap-3">
                             <span id="currentTimeIndex" class="text-[9px] font-mono font-medium text-cyan-500/80 w-8 text-left">0:00</span>
@@ -2327,27 +2411,48 @@ app.use((req, res, next) => {
 
     <script>
         window.__IS_503_MAINTENANCE_PAGE__ = true;
+        window._hasUserAudioGesture = false;
+        window._pendingOfflineYtId = '';
+        window._offlineYtReady = false;
         const IS_MAINTENANCE = ${systemState.maintenanceMode ? 'true' : 'false'} === 'true';
 
         window.offlineYtPlayer = null;
         window.onYouTubeIframeAPIReady = function() {
             try {
                 window.offlineYtPlayer = new YT.Player('offlineYtPlayer', {
-                    height: '1',
-                    width: '1',
+                    height: '220',
+                    width: '220',
                     videoId: '',
+                    host: 'https://www.youtube-nocookie.com',
                     playerVars: {
-                        autoplay: 0,
+                        autoplay: 1,
                         controls: 0,
                         disablekb: 1,
                         fs: 0,
                         modestbranding: 1,
                         playsinline: 1,
+                        origin: window.location && window.location.origin ? window.location.origin : '',
                         enablejsapi: 1
                     },
                     events: {
+                        onReady: () => {
+                            window._offlineYtReady = true;
+                            if (window._pendingOfflineYtId && (!playerIndex || playerIndex.paused || !playerIndex.src)) {
+                                const vidToPlay = window._pendingOfflineYtId;
+                                window._pendingOfflineYtId = '';
+                                try {
+                                    window.offlineYtPlayer.loadVideoById(vidToPlay);
+                                    if (window._hasUserAudioGesture) window.offlineYtPlayer.unMute();
+                                    window.offlineYtPlayer.setVolume(100);
+                                    window.offlineYtPlayer.playVideo();
+                                } catch(e) {}
+                            }
+                        },
                         onStateChange: (event) => {
-                            // Sync status if needed
+                            if (window.YT && event && event.data === window.YT.PlayerState.PLAYING) {
+                                if (playIconIndex) playIconIndex.classList.add('hidden');
+                                if (pauseIconIndex) pauseIconIndex.classList.remove('hidden');
+                            }
                         }
                     }
                 });
@@ -2631,10 +2736,14 @@ app.use((req, res, next) => {
 
         function setupAudioReactivity() {
             if (isAudioAnalyserInit || !playerIndex) return;
+            if (!window._hasUserAudioGesture) return;
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (!AudioCtx) return;
                 audioContext = new AudioCtx({ latencyHint: 'interactive' });
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().catch(() => {});
+                }
                 audioAnalyser = audioContext.createAnalyser();
                 audioAnalyser.fftSize = 256;
                 audioAnalyser.smoothingTimeConstant = 0.8;
@@ -2965,8 +3074,12 @@ app.use((req, res, next) => {
                     startBtn.innerHTML = '<i data-lucide="disc" class="w-4 h-4 text-black animate-spin"></i> Open Music Deck (Playing)';
                     if (window.lucide) lucide.createIcons();
                 }
-                if (audioContext && audioContext.state === 'suspended') audioContext.resume();
-                setupAudioReactivity();
+                if (audioContext && audioContext.state === 'suspended' && window._hasUserAudioGesture) {
+                    audioContext.resume().catch(() => {});
+                }
+                if (window._hasUserAudioGesture) {
+                    setupAudioReactivity();
+                }
             });
 
             playerIndex.addEventListener('pause', () => {
@@ -3020,9 +3133,12 @@ app.use((req, res, next) => {
                 const deckPause = document.getElementById('deckPauseIcon');
                 if (deckPlay) deckPlay.classList.remove('hidden');
                 if (deckPause) deckPause.classList.add('hidden');
-                // Try moving to next stream in queue if current fails
+                // Try moving to next stream in queue if current fails, or fall back to search once
                 if (currentPlayingIndex >= 0 && currentPlayingIndex + 1 < currentMusicQueueIndex.length) {
                     setTimeout(() => playTrackIndexByIndex(currentPlayingIndex + 1), 500);
+                } else if (!window._maintMusicFallbackTriggered && typeof searchMusicIndex === 'function') {
+                    window._maintMusicFallbackTriggered = true;
+                    setTimeout(() => searchMusicIndex('Lofi Relax', true), 600);
                 }
             });
         }
@@ -3223,10 +3339,13 @@ app.use((req, res, next) => {
                 }
                 
                 // CRITICAL: Prioritize YouTube IFrame API for client-side playback (without server proxy)
-                if (typeof YT !== 'undefined' && window.offlineYtPlayer && typeof window.offlineYtPlayer.loadVideoById === 'function') {
+                if (typeof YT !== 'undefined' && window._offlineYtReady && window.offlineYtPlayer && typeof window.offlineYtPlayer.loadVideoById === 'function') {
                     console.log('[Offline Player] Playing via IFrame API:', vid);
+                    window._pendingOfflineYtId = '';
                     window.offlineYtPlayer.loadVideoById(vid);
-                    window.offlineYtPlayer.unMute();
+                    if (window._hasUserAudioGesture) {
+                        window.offlineYtPlayer.unMute();
+                    }
                     window.offlineYtPlayer.setVolume(100);
                     window.offlineYtPlayer.playVideo();
                     
@@ -3241,7 +3360,8 @@ app.use((req, res, next) => {
                     if (playIconIndex) playIconIndex.classList.add('hidden');
                     if (pauseIconIndex) pauseIconIndex.classList.remove('hidden');
                 } else {
-                    console.warn('[Offline Player] IFrame API not ready, falling back to stream proxy');
+                    window._pendingOfflineYtId = vid;
+                    console.warn('[Offline Player] IFrame API not ready yet, queuing + falling back to stream proxy');
                     const trackTitle = track.title || '';
                     const trackArtist = track.artist || '';
                     audioSrc = '/api/v1/youtube/stream?v=' + encodeURIComponent(vid) + '&type=audio&title=' + encodeURIComponent(trackTitle) + '&artist=' + encodeURIComponent(trackArtist);
@@ -3595,7 +3715,6 @@ app.use((req, res, next) => {
             if (!animationFrameId && typeof animate === 'function') {
                 animate();
             }
-            if (typeof setupAudioReactivity === 'function') setupAudioReactivity();
         };
 
         let isMusicCardFullScreen = false;
@@ -3735,32 +3854,12 @@ app.use((req, res, next) => {
 
         function extractYouTubeId(url) {
             if (!url) return '';
-            var trimmed = String(url).trim();
-            if (trimmed.length === 11 && /^[a-zA-Z0-9_-]+$/.test(trimmed)) return trimmed;
-            if (trimmed.indexOf('youtu.be/') !== -1) {
-                var parts = trimmed.split('youtu.be/')[1];
-                return (parts ? parts.split('?')[0].split('&')[0] : '').substring(0, 11);
-            }
-            if (trimmed.indexOf('watch?v=') !== -1) {
-                var parts = trimmed.split('watch?v=')[1];
-                return (parts ? parts.split('&')[0] : '').substring(0, 11);
-            }
-            if (trimmed.indexOf('embed/') !== -1) {
-                var parts = trimmed.split('embed/')[1];
-                return (parts ? parts.split('?')[0].split('&')[0] : '').substring(0, 11);
-            }
-            if (trimmed.indexOf('live/') !== -1) {
-                var parts = trimmed.split('live/')[1];
-                return (parts ? parts.split('?')[0].split('&')[0] : '').substring(0, 11);
-            }
-            if (trimmed.indexOf('shorts/') !== -1) {
-                var parts = trimmed.split('shorts/')[1];
-                return (parts ? parts.split('?')[0].split('&')[0] : '').substring(0, 11);
-            }
-            if (trimmed.indexOf('v=') !== -1) {
-                var parts = trimmed.split('v=')[1];
-                return (parts ? parts.split('&')[0] : '').substring(0, 11);
-            }
+            var str = String(url).trim();
+            if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+            var m = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|live\/|shorts\/))([\w-]{11})/);
+            if (m && m[1]) return m[1];
+            var v = str.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+            if (v && v[1]) return v[1];
             return '';
         }
 
@@ -3819,7 +3918,18 @@ app.use((req, res, next) => {
                     const iframe = document.createElement('iframe');
                     iframe.id = 'broadcastActiveVideoEl';
                     iframe.className = 'w-full h-full border-0 select-none bg-black';
-                    iframe.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=' + (isAutoplay ? '1' : '0') + '&mute=' + (isBroadcastMuted ? '1' : '0') + '&loop=' + (isLoop ? '1' : '0') + '&playlist=' + ytId + '&controls=1&enablejsapi=1&playsinline=1&rel=0';
+                    iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+                    let embedSrc = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(ytId) +
+                        '?autoplay=' + (isAutoplay ? '1' : '0') +
+                        '&mute=' + (isBroadcastMuted ? '1' : '0') +
+                        '&playsinline=1&controls=1&rel=0';
+                    if (isLoop) {
+                        embedSrc += '&loop=1&playlist=' + encodeURIComponent(ytId);
+                    }
+                    if (window.location && window.location.origin && window.location.origin !== 'null') {
+                        embedSrc += '&origin=' + encodeURIComponent(window.location.origin);
+                    }
+                    iframe.src = embedSrc;
                     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
                     iframe.allowFullscreen = true;
                     mount.appendChild(iframe);
@@ -5427,17 +5537,61 @@ app.use((req, res, next) => {
             }
 
             const unlockAudio = () => {
+                window._hasUserAudioGesture = true;
+                try {
+                    if (audioContext && audioContext.state === 'suspended') {
+                        audioContext.resume().catch(() => {});
+                    }
+                    if (typeof setupAudioReactivity === 'function') {
+                        setupAudioReactivity();
+                    }
+                } catch (e) {}
+
+                let unlockedSomething = false;
                 if (playerIndex && playerIndex.paused && playerIndex.src) {
+                    playerIndex.muted = false;
+                    playerIndex.volume = playerIndex.volume || 1;
                     playerIndex.play().catch(() => {});
+                    unlockedSomething = true;
                 }
-                if (broadcastMediaElement && broadcastMediaElement.tagName === 'VIDEO' && broadcastMediaElement.paused) {
-                    broadcastMediaElement.play().catch(() => {});
+                if (typeof window.offlineYtPlayer !== 'undefined' && window.offlineYtPlayer && typeof window.offlineYtPlayer.unMute === 'function') {
+                    try {
+                        window.offlineYtPlayer.unMute();
+                        window.offlineYtPlayer.setVolume(100);
+                        if (typeof window.offlineYtPlayer.playVideo === 'function') {
+                            window.offlineYtPlayer.playVideo();
+                        }
+                        unlockedSomething = true;
+                    } catch (e) {}
                 }
-                document.removeEventListener('click', unlockAudio);
+                if (broadcastMediaElement) {
+                    if (broadcastMediaElement.tagName === 'VIDEO') {
+                        if (!BROADCAST_CONFIG.muted) broadcastMediaElement.muted = false;
+                        if (broadcastMediaElement.paused) {
+                            broadcastMediaElement.play().catch(() => {});
+                        }
+                        unlockedSomething = true;
+                    } else if (broadcastMediaElement.tagName === 'IFRAME' && broadcastMediaElement.contentWindow) {
+                        try {
+                            if (!BROADCAST_CONFIG.muted) {
+                                broadcastMediaElement.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
+                                isBroadcastMuted = false;
+                                updateBroadcastAudioUI();
+                            }
+                            broadcastMediaElement.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                            unlockedSomething = true;
+                        } catch (e) {}
+                    }
+                }
+                if (unlockedSomething || (playerIndex && playerIndex.src)) {
+                    document.removeEventListener('click', unlockAudio);
+                    document.removeEventListener('touchstart', unlockAudio);
+                    document.removeEventListener('keydown', unlockAudio);
+                }
             };
-            document.addEventListener('click', unlockAudio, { once: true });
-            document.addEventListener('touchstart', unlockAudio, { once: true });
-            document.addEventListener('keydown', unlockAudio, { once: true });
+            document.addEventListener('click', unlockAudio);
+            document.addEventListener('touchstart', unlockAudio, { passive: true });
+            document.addEventListener('keydown', unlockAudio);
             
             // Auto-open the Music Deck and initialize the OG visualizer on load
             if (typeof window.openMusicPlayerCard === 'function') {
@@ -5546,7 +5700,7 @@ const isPerimeterCleared = (req: Request): boolean => {
     if (!token) return false;
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
         if (decoded && (decoded.role === 'admin' || decoded.role === 'perimeter_cleared')) {
             return true;
         }
@@ -5572,20 +5726,6 @@ function packShieldedScript(rawCode: string, xorKey: number = 0x5a): string {
  */
 (function(_0xb64, _0xk) {
     'use strict';
-    // Active DevTools Freeze Trap
-    (function _0xtrap() {
-        try {
-            (function _0xd(i) {
-                if (('' + (i / i)).length !== 1 || i === 0) {
-                    (function() {}).constructor('debugger')();
-                } else {
-                    (function() {}).constructor('debugger')();
-                }
-                _0xd(++i);
-            })(0);
-        } catch(e) {}
-    })();
-
     try {
         var _0xbin = atob(_0xb64);
         var _0xlen = _0xbin.length;
@@ -5637,9 +5777,11 @@ function handleShieldedScriptRequest(req: Request, res: Response, filePaths: str
         return res.status(404).type('application/javascript').send('/* [Citadel Shield] Asset not found */');
     }
 
-    // 3. Serve protected packed script with optimal caching headers for speed
+    // 3. Serve protected packed script with zero local-device HTTP caching
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
 
@@ -5710,18 +5852,16 @@ app.get(['/security_guard.js', '/public/security_guard.js', '/dist/security_guar
     ], 0x3b);
 });
 
-// High-speed static asset delivery with browser caching & ETags
+// Zero-cache static asset delivery: ensures no files are stored/stale on user local device
 export const fastStaticAssetOptions = {
     index: false,
-    maxAge: '1d',
-    etag: true,
-    lastModified: true,
-    setHeaders: (res: Response, filePath: string) => {
-        if (filePath.endsWith('.html') || filePath.endsWith('.php')) {
-            res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-        } else {
-            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-        }
+    maxAge: 0,
+    etag: false,
+    lastModified: false,
+    setHeaders: (res: Response) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
     }
 };
 
@@ -5853,36 +5993,7 @@ app.get('/api/music/yt-info', async (req: Request, res: Response) => {
             : `https://www.youtube.com/watch?v=${vParam}`;
 
         const ytdlpPath = getYtdlpExecutable();
-        const ytArgs = ['--js-runtimes', 'node:node', '-J', '--no-playlist', '--no-warnings', '--extractor-args', 'youtube:player_client=android,web'];
-        if (process.env.YOUTUBE_PROXY_URL) {
-            ytArgs.push('--proxy', process.env.YOUTUBE_PROXY_URL);
-        }
-        if (process.env.YOUTUBE_PO_TOKEN && process.env.YOUTUBE_VISITOR_DATA) {
-            const extIdx = ytArgs.indexOf('--extractor-args');
-            if (extIdx !== -1) {
-                ytArgs[extIdx + 1] = `youtube:player_client=web;po_token=web+${process.env.YOUTUBE_PO_TOKEN};visitor_data=${process.env.YOUTUBE_VISITOR_DATA}`;
-            }
-        }
-
-        
-        let hasCookies = false;
-        const possibleCookiePaths = [
-            path.join(process.cwd(), 'doctor_strange', 'youtube_cookies.txt'),
-            path.join(process.cwd(), 'youtube_cookies.txt')
-        ];
-        for (const pPath of possibleCookiePaths) {
-            if (fs.existsSync(pPath)) {
-                ytArgs.push('--cookies', pPath);
-                hasCookies = true;
-                break;
-            }
-        }
-        
-        if (!hasCookies && (os.platform() === 'win32' || os.platform() === 'darwin')) {
-             ytArgs.push('--cookies-from-browser', 'chrome');
-        }
-
-        ytArgs.push(ytUrl);
+        const ytArgs = buildYtdlpArgs(['-J', ytUrl]);
 
         const child = spawn(ytdlpPath, ytArgs);
 
@@ -5925,26 +6036,38 @@ app.get('/api/music/yt-info', async (req: Request, res: Response) => {
     }
 });
 
-function getPureYoutubeGooglevideoAudio(vid: string): Promise<string> {
+function runYtdlpUrlExtract(args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
         const ytdlpPath = getYtdlpExecutable();
-        const args = ["-g", "-f", "bestaudio/best", "--no-playlist", "--no-warnings", `https://www.youtube.com/watch?v=${vid}`];
-        execFile(ytdlpPath, args, { timeout: 12000 }, (err, stdout) => {
-            if (err) return reject(err);
-            const url = stdout ? stdout.trim().split('\n')[0].trim() : '';
-            if (url && url.startsWith('http')) {
-                resolve(url);
-            } else {
-                reject(new Error('No valid googlevideo URL returned by yt-dlp'));
-            }
+        execFile(ytdlpPath, buildYtdlpArgs(args), { timeout: 15000 }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message));
+            const u = stdout ? stdout.trim().split('\n')[0].trim() : '';
+            if (u && u.startsWith('http')) return resolve(u);
+            reject(new Error(stderr || 'No valid stream URL returned by yt-dlp'));
         });
     });
+}
+
+async function getPureYoutubeGooglevideoAudio(vid: string): Promise<string> {
+    const url = `https://www.youtube.com/watch?v=${vid}`;
+    try {
+        return await runYtdlpUrlExtract(['-g', '-f', 'bestaudio/best', url]);
+    } catch {
+        try {
+            return await runYtdlpUrlExtract(['-g', '-f', 'best', url]);
+        } catch {
+            return await runYtdlpUrlExtract(['-g', url]);
+        }
+    }
 }
 
 // YouTube Video & Audio High Quality Downloader Endpoint
 export async function handleCobaltStream(req: Request, res: Response) {
   const videoParam = (req.query.v || req.query.url || req.query.id || '').toString().trim();
   const type = (req.query.type || 'mp4').toString().toLowerCase();
+  const qualityParam = (req.query.quality || '').toString().replace(/[^\d]/g, '');
+  const isDownload = req.query.download === '1';
+  const reqTitle = (req.query.title || '').toString().trim();
 
   if (!videoParam) {
     return res.status(400).json({ error: 'Missing video link or ID parameter' });
@@ -5959,6 +6082,17 @@ export async function handleCobaltStream(req: Request, res: Response) {
     vid = videoParam.split('embed/')[1].split('?')[0].split('&')[0];
   }
 
+  const buildAudioProxyRedirect = (targetUrl: string) => {
+    let dest = `/api/music/proxy?url=${encodeURIComponent(targetUrl)}`;
+    if (isDownload) dest += `&download=1&title=${encodeURIComponent(reqTitle || vid)}`;
+    return dest;
+  };
+  const buildVideoProxyRedirect = (targetUrl: string) => {
+    let dest = `/stream_proxy.php?url=${encodeURIComponent(targetUrl)}`;
+    if (isDownload) dest += `&download=1&title=${encodeURIComponent(reqTitle || vid)}`;
+    return dest;
+  };
+
   const isAudio = type === 'mp3' || type === 'audio';
 
   // Handle Audio Stream requests with multi-tier lossless resolver
@@ -5969,14 +6103,14 @@ export async function handleCobaltStream(req: Request, res: Response) {
         const pureYtUrl = await getPureYoutubeGooglevideoAudio(vid);
         if (pureYtUrl) {
           console.log(`[YouTube Stream] Successfully resolved PURE YouTube (.googlevideo.com) audio stream for ${vid}`);
-          return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(pureYtUrl)}`);
+          return res.redirect(302, buildAudioProxyRedirect(pureYtUrl));
         }
       } catch (e: any) {
         console.warn(`[YouTube Stream] yt-dlp direct extraction notice for ${vid}:`, e.message);
       }
     }
 
-    let title = (req.query.title || '').toString().trim();
+    let title = reqTitle;
     let artist = (req.query.artist || '').toString().trim();
 
     if (!title && vid) {
@@ -6014,21 +6148,19 @@ export async function handleCobaltStream(req: Request, res: Response) {
         try {
           const invRes = await axios.get(instUrl, { timeout: 3500, headers: { 'User-Agent': 'Mozilla/5.0' } });
           if (invRes.data) {
-            // Invidious format extraction
             if (invRes.data.adaptiveFormats && Array.isArray(invRes.data.adaptiveFormats)) {
               const audioFormats = invRes.data.adaptiveFormats.filter((f: any) => f.type && f.type.includes('audio')).sort((a: any, b: any) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
               const bestAudio = audioFormats[0];
               if (bestAudio && bestAudio.url) {
                 console.log(`[YouTube Stream] Successfully resolved PURE YouTube audio stream for ${vid} via Invidious`);
-                return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(bestAudio.url)}`);
+                return res.redirect(302, buildAudioProxyRedirect(bestAudio.url));
               }
             }
-            // Piped format extraction
             if (invRes.data.audioStreams && Array.isArray(invRes.data.audioStreams) && invRes.data.audioStreams.length > 0) {
               const pipedAudio = invRes.data.audioStreams.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
               if (pipedAudio && pipedAudio.url) {
                 console.log(`[YouTube Stream] Successfully resolved PURE YouTube piped audio stream for ${vid}`);
-                return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(pipedAudio.url)}`);
+                return res.redirect(302, buildAudioProxyRedirect(pipedAudio.url));
               }
             }
           }
@@ -6037,7 +6169,6 @@ export async function handleCobaltStream(req: Request, res: Response) {
     }
 
     // 2. TIER 2 Fallback: JioSaavn Search (Backup if YouTube direct stream is geo-blocked)
-    // ONLY fallback if it wasn't a strict YouTube request or if the title/artist are clear
     const saavnQueries = [
       cleanTitle ? `${cleanTitle} ${artist}` : '',
       title ? `${title} ${artist}` : '',
@@ -6054,7 +6185,7 @@ export async function handleCobaltStream(req: Request, res: Response) {
               streamUrl = decodeURIComponent(streamUrl.replace('/api/music/proxy?url=', ''));
             }
             console.log(`[YouTube Stream] Fallback to JioSaavn for query: ${q}`);
-            return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(streamUrl)}`);
+            return res.redirect(302, buildAudioProxyRedirect(streamUrl));
           }
         } catch (e: any) {}
       }
@@ -6065,7 +6196,7 @@ export async function handleCobaltStream(req: Request, res: Response) {
       const itunesQuery = cleanTitle || title || 'Lofi Chill Hits';
       const itRes = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(itunesQuery)}&entity=song&limit=1`, { timeout: 3000 });
       if (itRes.data?.results?.[0]?.previewUrl) {
-        return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(itRes.data.results[0].previewUrl)}`);
+        return res.redirect(302, buildAudioProxyRedirect(itRes.data.results[0].previewUrl));
       }
     } catch (e: any) {}
 
@@ -6074,7 +6205,7 @@ export async function handleCobaltStream(req: Request, res: Response) {
       const audRes = await axios.get(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(cleanTitle || title || 'Lofi')}&app_name=AETHERIS`, { timeout: 3000 });
       if (audRes.data?.data?.[0]?.id) {
         const audTrackId = audRes.data.data[0].id;
-        return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(`https://discoveryprovider.audius.co/v1/tracks/${audTrackId}/stream?app_name=AETHERIS`)}`);
+        return res.redirect(302, buildAudioProxyRedirect(`https://discoveryprovider.audius.co/v1/tracks/${audTrackId}/stream?app_name=AETHERIS`));
       }
     } catch (e: any) {}
 
@@ -6086,25 +6217,32 @@ export async function handleCobaltStream(req: Request, res: Response) {
         if (streamUrl.startsWith('/api/music/proxy?url=')) {
           streamUrl = decodeURIComponent(streamUrl.replace('/api/music/proxy?url=', ''));
         }
-        return res.redirect(302, `/api/music/proxy?url=${encodeURIComponent(streamUrl)}`);
+        return res.redirect(302, buildAudioProxyRedirect(streamUrl));
       }
     } catch (e: any) {}
   } else if (vid) {
-    // Handle Video Stream (type=mp4) requests
-    // 1. Try yt-dlp direct MP4 extraction
+    // Handle Video Stream (type=mp4) requests with quality constraint and live stream fallback
+    const watchUrl = `https://www.youtube.com/watch?v=${vid}`;
+    const qHeight = parseInt(qualityParam || getYoutubeRuntimeConfig().defaultVideoQuality || '1080', 10);
+    const formatAttempts = (!isNaN(qHeight) && qHeight > 0)
+      ? [
+          `-f`, `best[height<=${qHeight}][ext=mp4]/best[ext=mp4]/best[height<=${qHeight}]/best`,
+        ]
+      : [`-f`, `best[ext=mp4]/best`];
+
     try {
-      const ytdlpPath = getYtdlpExecutable();
-      const videoUrl = await new Promise<string>((resolve, reject) => {
-        const args = ["-g", "-f", "best[ext=mp4]/best", "--no-playlist", "--no-warnings", `https://www.youtube.com/watch?v=${vid}`];
-        execFile(ytdlpPath, args, { timeout: 12000 }, (err, stdout) => {
-          if (err) return reject(err);
-          const u = stdout ? stdout.trim().split('\n')[0].trim() : '';
-          if (u && u.startsWith('http')) resolve(u);
-          else reject(new Error('No valid video URL returned by yt-dlp'));
-        });
-      });
+      let videoUrl = '';
+      try {
+        videoUrl = await runYtdlpUrlExtract(['-g', ...formatAttempts, watchUrl]);
+      } catch {
+        try {
+          videoUrl = await runYtdlpUrlExtract(['-g', '-f', 'best', watchUrl]);
+        } catch {
+          videoUrl = await runYtdlpUrlExtract(['-g', watchUrl]);
+        }
+      }
       if (videoUrl) {
-        return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(videoUrl)}`);
+        return res.redirect(302, buildVideoProxyRedirect(videoUrl));
       }
     } catch (e: any) {
       console.warn(`[YouTube Video Stream] yt-dlp notice for ${vid}:`, e.message);
@@ -6124,16 +6262,16 @@ export async function handleCobaltStream(req: Request, res: Response) {
           if (Array.isArray(invRes.data.formatStreams) && invRes.data.formatStreams.length > 0) {
             const bestVid = invRes.data.formatStreams[0];
             if (bestVid?.url) {
-              return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(bestVid.url)}`);
+              return res.redirect(302, buildVideoProxyRedirect(bestVid.url));
             }
           }
           if (invRes.data.hls) {
-            return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(invRes.data.hls)}`);
+            return res.redirect(302, buildVideoProxyRedirect(invRes.data.hls));
           }
           if (Array.isArray(invRes.data.videoStreams) && invRes.data.videoStreams.length > 0) {
             const muxed = invRes.data.videoStreams.find((s: any) => !s.videoOnly && s.url) || invRes.data.videoStreams[0];
             if (muxed?.url) {
-              return res.redirect(302, `/stream_proxy.php?url=${encodeURIComponent(muxed.url)}`);
+              return res.redirect(302, buildVideoProxyRedirect(muxed.url));
             }
           }
         }
@@ -6186,12 +6324,12 @@ app.get('/api/v1/youtube/search', async (req: Request, res: Response) => {
         if (!query) return res.status(400).json({ error: "Missing query" });
         const videos = await YouTubeService.searchYouTube(query);
         
-        // Map the results to match the frontend expectations in public/youtube.html
+        // Map the results to match frontend expectations in public/youtube.html & public/youtub.html
         const mappedResults = videos.map(v => ({
             videoId: v.id,
             title: v.title,
             author: v.uploader,
-            lengthSeconds: 0, // Fallback since frontend checks truthy
+            lengthSeconds: parseDurationToSeconds(v.duration),
             duration: v.duration,
             thumbnail: v.thumbnail
         }));
@@ -6199,6 +6337,60 @@ app.get('/api/v1/youtube/search', async (req: Request, res: Response) => {
         return res.json({ results: mappedResults });
     } catch (err: any) {
         return res.status(500).json({ error: err.message });
+    }
+});
+
+// Official Trailer Resolver Endpoint (TMDB Videos + YouTube Search fallback)
+app.get('/api/youtube/trailer', async (req: Request, res: Response) => {
+    try {
+        const tmdbId = String(req.query.tmdbId || '').trim();
+        const mediaType = String(req.query.type || 'movie').toLowerCase() === 'tv' ? 'tv' : 'movie';
+        const q = String(req.query.q || '').trim();
+        let youtubeKey = '';
+        let trailerTitle = q ? `${q} Official Trailer` : 'Official Trailer';
+
+        if (tmdbId && /^\d+$/.test(tmdbId)) {
+            const keys: string[] = [];
+            try {
+                const dbFile = path.join(process.cwd(), 'doctor_strange', 'admin_db.json');
+                if (fs.existsSync(dbFile)) {
+                    const db = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+                    if (Array.isArray(db?.tmdb?.api_keys)) keys.push(...db.tmdb.api_keys);
+                }
+            } catch {}
+            const apiKey = keys[0] || process.env.TMDB_API_KEY || '844dba0bfd8f3a231a957b6e07a10be8';
+            for (const mt of [mediaType, mediaType === 'movie' ? 'tv' : 'movie']) {
+                try {
+                    const tRes = await axios.get(`https://api.themoviedb.org/3/${mt}/${tmdbId}/videos?api_key=${apiKey}`, { timeout: 4500 });
+                    const vids = Array.isArray(tRes.data?.results) ? tRes.data.results : [];
+                    const yt = vids.find((v: any) => v.site === 'YouTube' && /trailer/i.test(v.type || ''))
+                        || vids.find((v: any) => v.site === 'YouTube');
+                    if (yt?.key) {
+                        youtubeKey = yt.key;
+                        trailerTitle = yt.name || trailerTitle;
+                        break;
+                    }
+                } catch {}
+            }
+        }
+
+        if (!youtubeKey && q) {
+            const results = await YouTubeService.searchYouTube(`${q} official trailer`, 3);
+            if (results && results.length > 0 && results[0].id) {
+                youtubeKey = results[0].id;
+                trailerTitle = results[0].title || trailerTitle;
+            }
+        }
+
+        return res.json({
+            status: youtubeKey ? 'success' : 'not_found',
+            youtubeKey,
+            videoId: youtubeKey,
+            embedUrl: youtubeKey ? `https://www.youtube.com/embed/${youtubeKey}?autoplay=1&rel=0` : '',
+            title: trailerTitle
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', error: e?.message || 'Failed to resolve trailer' });
     }
 });
 
@@ -6670,8 +6862,8 @@ app.get('/api/system/public-status', (req: Request, res: Response) => {
         req.query?.unlock_token
     );
     const unlocked = isSiteUnlocked(req);
-    const isLocked = !!systemState.siteLockMode && !unlocked;
-    const isRelocked = !!systemState.siteLockMode && hadUnlockToken && !unlocked;
+    const isLocked = !!systemState.siteLockMode && !unlocked && !isLockExemptPath(urlPath);
+    const isRelocked = !!systemState.siteLockMode && hadUnlockToken && !unlocked && !isLockExemptPath(urlPath);
 
     let isSpecific = false;
     if (systemState.consumetMaintenance && (urlPath === '/consumet.html' || urlPath === '/consumet' || urlPath === '/')) isSpecific = true;
@@ -7488,85 +7680,15 @@ app.get('/api/system/video-broadcast-stream', (req: Request, res: Response) => {
     });
 });
 
-// Endpoint to retrieve a Proof-of-Work challenge for client-side defense
-app.get('/api/system/pow-challenge', (req: Request, res: Response) => {
-    const clientIp = getRequestClientIp(req);
-    const challenge = SecurityGateKeeper.generatePowChallenge(clientIp);
-    return res.json({
-        status: "success",
-        pow: challenge
-    });
-});
-
 // Unlock Site with Passcode (4.5-Hour IP Whitelist & Two-Way Hardware Device Binding)
-app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
-    const { password, deviceId, deviceFingerprint, deviceLabel, publicKey, turnstileResponse, powChallenge, powNonce } = req.body || {};
+app.post(['/api/system/unlock-site', '/api/site-lock/unlock'], async (req: Request, res: Response) => {
+    const { password, deviceId, deviceFingerprint, deviceLabel, publicKey, turnstileResponse } = req.body || {};
     const clientIp = getRequestClientIp(req);
 
-    // Multi-dimensional identification for brute force defense
-    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
-    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
-    const activeDeviceId = deviceId || extractedDev.deviceId;
-    const activeFingerprint = deviceFingerprint || extractedDev.deviceFingerprint;
-    const identifiers = {
-        deviceId: activeDeviceId,
-        deviceFingerprint: activeFingerprint,
-        mac: extractedMac || undefined
-    };
-
-    // 1. Enforce Perimeter Lockout across IP, Hardware Device, and MAC
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
-    if (lockoutCheck.locked) {
-        res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
-        return res.status(423).json({
-            status: "error",
-            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
-            retryAfter: lockoutCheck.remainingSeconds
-        });
-    }
-
-    // 2. Global Circuit Breaker / Distributed Brute-Force Proof-of-Work Enforcement
-    const circuitStatus = SecurityGateKeeper.isCircuitBreakerActive('site_pin_lock');
-    if (circuitStatus.active || powChallenge) {
-        if (!powChallenge || powNonce === undefined || powNonce === null) {
-            return res.status(428).json({
-                status: "error",
-                code: "POW_REQUIRED",
-                message: "High distributed threat detected across rotating IPs. Cryptographic Proof-of-Work puzzle required.",
-                pow: SecurityGateKeeper.generatePowChallenge(clientIp)
-            });
-        }
-        const powCheck = SecurityGateKeeper.verifyPowSolution({
-            challenge: typeof powChallenge === 'object' ? powChallenge.challenge : powChallenge,
-            nonce: powNonce,
-            signature: typeof powChallenge === 'object' ? powChallenge.signature : undefined,
-            expiresAt: typeof powChallenge === 'object' ? powChallenge.expiresAt : undefined,
-            difficulty: typeof powChallenge === 'object' ? powChallenge.difficulty : 4,
-            clientIp
-        });
-        if (!powCheck.valid) {
-            return res.status(400).json({
-                status: "error",
-                code: "POW_FAILED",
-                message: powCheck.error || "Proof-of-Work verification failed or expired. Please solve the updated challenge.",
-                pow: SecurityGateKeeper.generatePowChallenge(clientIp)
-            });
-        }
-    }
-
-    // 3. Verify Cloudflare Turnstile CAPTCHA if configured
+    // Verify Cloudflare Turnstile CAPTCHA if configured
     if (SecurityGateKeeper.isTurnstileConfigured()) {
         const captchaRes = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
         if (!captchaRes.success) {
-            const fail = SecurityGateKeeper.recordFailure(clientIp, 'site_unlock_turnstile', undefined, identifiers);
-            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
-            if (fail.isLockedOut) {
-                return res.status(423).json({
-                    status: "error",
-                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
-                    retryAfter: fail.lockoutSeconds
-                });
-            }
             return res.status(400).json({
                 status: "error",
                 message: captchaRes.error || "Cloudflare Turnstile verification failed. Please complete the CAPTCHA."
@@ -7580,35 +7702,15 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
     // Verify against Master PIN 2FA (2325, 232512), configured PIN, or admin master password
     const isValid = verifyMasterPin(cleanPass, currentLockPass) || verifyAdminPassword(cleanPass);
     if (!isValid) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'site_pin_lock', cleanPass.slice(0, 3) + '***', identifiers);
-        await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
-
-        logServerEvent('AUTH', `Failed unlock attempt with invalid PIN (${fail.attempts}/5) from IP ${clientIp}`, {
+        logServerEvent('AUTH', `Failed unlock attempt with invalid PIN from IP ${clientIp}`, {
             ip: clientIp,
-            userAgent: req.headers['user-agent'] as string,
-            deviceId: activeDeviceId,
-            mac: extractedMac || undefined
+            userAgent: req.headers['user-agent'] as string
         });
-
-        if (fail.isLockedOut) {
-            return res.status(423).json({
-                status: "error",
-                message: "SECURITY LOCKOUT: Too many failed PIN attempts. Your IP, Hardware Device, and MAC address have been quarantined by Perimeter Defense for 24 hours.",
-                retryAfter: fail.lockoutSeconds
-            });
-        }
-
-        const circuitNowActive = SecurityGateKeeper.isCircuitBreakerActive('site_pin_lock').active;
         return res.status(401).json({
             status: "error",
-            code: circuitNowActive ? "POW_REQUIRED" : "PIN_INVALID",
-            message: `Incorrect Master PIN or Passcode. (${fail.attempts}/5 attempts used before quarantine)`,
-            ...(circuitNowActive ? { pow: SecurityGateKeeper.generatePowChallenge(clientIp) } : {})
+            message: "Incorrect Master PIN or Passcode. Access denied."
         });
     }
-
-    // Clear failed attempt tracking on successful PIN unlock
-    SecurityGateKeeper.recordSuccess(clientIp, identifiers);
 
     // Two-Way Identification: Bind hardware device signature for this specific client only
     let boundDevId = deviceId;
@@ -7624,20 +7726,18 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
         boundDevId = bound.deviceId;
     }
 
-    // Sign a 4.5-hour token containing hardware device identity and client fingerprint
-    const clientFp = SecurityGateKeeper.generateClientFingerprint(req);
+    // Sign a 4.5-hour token containing hardware device identity
     const tokenPayload: any = {
         unlocked: true,
         timestamp: Date.now(),
-        ip: clientIp,
-        clientFp: clientFp
+        ip: clientIp
     };
     if (boundDevId) {
         tokenPayload.deviceId = boundDevId;
         tokenPayload.deviceFingerprint = deviceFingerprint;
     }
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '4.5h', algorithm: 'HS256' });
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '4.5h' });
     
     const isHttps = req.secure || 
                     req.headers['x-forwarded-proto'] === 'https' || 
@@ -7648,6 +7748,16 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
         httpOnly: true,
         sameSite: isHttps ? 'none' : 'lax',
         secure: isHttps
+    });
+
+    unlockIpForDuration(clientIp, IP_UNLOCK_DURATION_MS);
+    recordPasswordUnlock({
+        ip: clientIp,
+        deviceId: boundDevId,
+        deviceLabel: deviceLabel ? String(deviceLabel) : undefined,
+        userAgent: (req.headers['user-agent'] as string) || 'Browser',
+        authMethod: 'Site Passcode',
+        durationMs: IP_UNLOCK_DURATION_MS
     });
 
     logServerEvent('AUTH', `Hardware device bound & unlocked successfully: ${boundDevId || 'Generic'} (IP: ${clientIp})`, {
@@ -7669,44 +7779,13 @@ app.post('/api/system/unlock-site', async (req: Request, res: Response) => {
 
 // Verify & Decrypt Stream M3U Vault (Ctrl+9 Stream Terminal in Players)
 app.post('/api/system/verify-m3u-vault', async (req: Request, res: Response) => {
-    const { password, turnstileResponse, deviceId, deviceFingerprint } = req.body || {};
+    const { password, turnstileResponse } = req.body || {};
     const clientIp = getRequestClientIp(req);
-
-    // Multi-dimensional identification for brute force defense
-    const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
-    const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
-    const activeDeviceId = deviceId || extractedDev.deviceId;
-    const activeFingerprint = deviceFingerprint || extractedDev.deviceFingerprint;
-    const identifiers = {
-        deviceId: activeDeviceId,
-        deviceFingerprint: activeFingerprint,
-        mac: extractedMac || undefined
-    };
-
-    // 1. Enforce Perimeter Lockout across IP, Hardware Device, and MAC
-    const lockoutCheck = SecurityGateKeeper.isIpLockedOut(clientIp, identifiers);
-    if (lockoutCheck.locked) {
-        res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
-        return res.status(423).json({
-            status: "error",
-            message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
-            retryAfter: lockoutCheck.remainingSeconds
-        });
-    }
 
     // Verify Cloudflare Turnstile CAPTCHA if configured
     if (SecurityGateKeeper.isTurnstileConfigured()) {
         const captchaRes = await SecurityGateKeeper.verifyTurnstile(turnstileResponse, clientIp);
         if (!captchaRes.success) {
-            const fail = SecurityGateKeeper.recordFailure(clientIp, 'vault_turnstile', undefined, identifiers);
-            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
-            if (fail.isLockedOut) {
-                return res.status(423).json({
-                    status: "error",
-                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
-                    retryAfter: fail.lockoutSeconds
-                });
-            }
             return res.status(400).json({
                 status: "error",
                 message: captchaRes.error || "Cloudflare Turnstile CAPTCHA verification failed. Please complete the CAPTCHA."
@@ -7717,35 +7796,18 @@ app.post('/api/system/verify-m3u-vault', async (req: Request, res: Response) => 
     const cleanPass = String(password || '').trim();
     const currentLockPass = String(systemState.siteLockPassword || '202012').trim();
 
-    // Verify passcode strictly against current configured site lock PIN or admin master password
-    const isValid = verifyMasterPin(cleanPass, currentLockPass) || verifyAdminPassword(cleanPass);
+    // Verify passcode against Master Gate Key, site lock pass, admin master pass, or master PINs
+    const isValid = ['2008', '202012', '2325', '232512'].includes(cleanPass) ||
+                    verifyMasterPin(cleanPass, currentLockPass) ||
+                    verifyAdminPassword(cleanPass);
 
     if (!isValid) {
-        const fail = SecurityGateKeeper.recordFailure(clientIp, 'm3u_vault_pin', cleanPass.slice(0, 3) + '***', identifiers);
-        await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
-
-        logServerEvent('AUTH', `M3U Vault Access Denied (${fail.attempts}/5) for IP ${clientIp} - Invalid Passcode`, { 
-            ip: clientIp,
-            deviceId: activeDeviceId,
-            mac: extractedMac || undefined
-        });
-
-        if (fail.isLockedOut) {
-            return res.status(423).json({
-                status: "error",
-                message: "SECURITY LOCKOUT: Too many failed passcode attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
-                retryAfter: fail.lockoutSeconds
-            });
-        }
-
+        logServerEvent('AUTH', `M3U Vault Access Denied for IP ${clientIp} - Invalid Passcode`, { ip: clientIp });
         return res.status(401).json({
             status: "error",
-            message: `ACCESS DENIED: Invalid Cryptographic Authorization Passcode. (${fail.attempts}/5 attempts used)`
+            message: "ACCESS DENIED: Invalid Cryptographic Authorization Passcode."
         });
     }
-
-    // Clear failure tracking on success
-    SecurityGateKeeper.recordSuccess(clientIp, identifiers);
 
     logServerEvent('AUTH', `M3U Stream Terminal Decrypted successfully by IP ${clientIp}`, { ip: clientIp });
     return res.json({
@@ -7826,6 +7888,7 @@ app.get('/api/admin/unlocked-ips', requireAdmin, (req: Request, res: Response) =
 // Admin: Clear All Unlocked Whitelisted IPs
 app.post('/api/admin/unlocked-ips/clear', requireAdmin, (req: Request, res: Response) => {
     clearUnlockedIps();
+    clearAllPasswordSessions();
     res.json({
         status: "success",
         message: "All whitelisted IPs have been cleared."
@@ -7888,75 +7951,120 @@ app.get(['/api/live_events', '/api/live-events'], async (req: Request, res: Resp
         res.setHeader('Access-Control-Allow-Origin', '*');
 
         let liveEvents: any[] = [];
+        let liveNowChannels: any[] = [];
+        let sportsItems: any[] = [];
+        let spotlightStudio: any = {};
         if (fs.existsSync(ADMIN_DB_PATH)) {
             try {
                 const data = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8'));
-                if (Array.isArray(data.liveEvents)) {
-                    liveEvents = data.liveEvents;
-                }
+                if (Array.isArray(data.liveEvents)) liveEvents = data.liveEvents;
+                if (Array.isArray(data.liveNowChannels)) liveNowChannels = data.liveNowChannels;
+                if (Array.isArray(data.sports)) sportsItems = data.sports;
+                if (data.spotlightStudio) spotlightStudio = data.spotlightStudio;
             } catch (_) {}
         }
-
-        const DUMMY_FILTER = /(cricbuzz\s*-\s*aq|stream\.kliv\.in|placeholder|testtapmad|crichd|sports\s*live\s*vs\s*sports\s*live|playerado|crichdsee|player0003|cricgo|demo|dummy|sample|offline|expired)/i;
 
         const results: any[] = [];
         const seenIds = new Set<string>();
 
-        // 1. Return admin-configured live events first
-        liveEvents.forEach((e: any) => {
-            const checkStr = `${e.title || ''} ${e.name || ''} ${e.url || ''}`;
-            if (DUMMY_FILTER.test(checkStr)) return;
-            const id = e.id || e.url;
-            if (id && !seenIds.has(id)) {
-                seenIds.add(id);
-                results.push({
-                    id: id,
-                    title: e.title || e.name || 'Live Event',
-                    name: e.title || e.name || 'Live Event',
-                    url: e.url,
-                    streamUrl: e.url,
-                    icon: e.icon || e.logo || '',
-                    bgUrl: e.bgUrl || '',
-                    category: e.category || 'Live Sports',
-                    isLiveEvent: true,
-                    isAdminEvent: true
-                });
-            }
-        });
-
-        // 2. Add Footlinks live events
-        try {
-            const flEvents = await getFormattedFootlinksEvents();
-            flEvents.forEach(fe => {
-                if (!seenIds.has(fe.id)) {
-                    seenIds.add(fe.id);
-                    results.push({
-                        id: fe.id,
-                        title: fe.title,
-                        name: fe.title,
-                        url: fe.url,
-                        streamUrl: fe.stream_url,
-                        icon: fe.logo,
-                        bgUrl: fe.thumbnail,
-                        category: fe.category,
-                        isLiveEvent: true,
-                        isFootlinks: true,
-                        isAdminEvent: false,
-                        isLive: fe.isLive,
-                        isEnded: fe.isEnded,
-                        status: fe.status,
-                        countdown: fe.countdown,
-                        playUrl: fe.playUrl,
-                        streams: fe.streams
-                    });
-                }
+        const pushAdminEvent = (e: any, defaultHome = false, defaultLiveNow = true) => {
+            if (!e || (!e.url && !e.streamUrl)) return;
+            const streamUrl = e.url || e.streamUrl;
+            const id = e.id || e.eventId || streamUrl;
+            if (!id || seenIds.has(id)) return;
+            seenIds.add(id);
+            const inHome = e.inHomeSpotlight !== undefined ? !!e.inHomeSpotlight : (e.isMainHomeSpotlight !== undefined ? !!e.isMainHomeSpotlight : defaultHome);
+            const inLive = e.inLiveNowHome !== undefined ? !!e.inLiveNowHome : (e.isLiveNowSpotlight !== undefined ? !!e.isLiveNowSpotlight : defaultLiveNow);
+            results.push({
+                ...e,
+                id: id,
+                title: e.title || e.name || 'Live Event',
+                name: e.title || e.name || 'Live Event',
+                url: streamUrl,
+                streamUrl: streamUrl,
+                icon: e.icon || e.logo || '',
+                logo: e.logo || e.icon || '',
+                bgUrl: e.bgUrl || e.image || e.backdrop || '',
+                playerPng: e.playerPng || '',
+                badge: e.badge || '🔴 LIVE EVENT',
+                subtitle: e.subtitle || '',
+                category: e.category || 'Live Sports',
+                containerId: e.containerId || '',
+                inHomeSpotlight: inHome,
+                isMainHomeSpotlight: inHome || !!e.isMainHomeSpotlight,
+                inLiveNowHome: inLive,
+                isLiveNowSpotlight: inLive || !!e.isLiveNowSpotlight,
+                isSportsSpotlight: !!e.isSportsSpotlight,
+                isLiveEvent: true,
+                isAdminEvent: true
             });
-        } catch (_) {}
+        };
+
+        // 1. Primary Admin Live Events
+        liveEvents.forEach((e: any) => pushAdminEvent(e, !!e.inHomeSpotlight || !!e.isMainHomeSpotlight, e.inLiveNowHome !== false));
+
+        // 2. Spotlight Studio Main Home Spotlight & Live Now Spotlight
+        if (spotlightStudio?.mainHomeSpotlight?.enabled && spotlightStudio.mainHomeSpotlight.url) {
+            pushAdminEvent({
+                ...spotlightStudio.mainHomeSpotlight,
+                id: spotlightStudio.mainHomeSpotlight.eventId || 'studio_main_home_spotlight',
+                inHomeSpotlight: true,
+                isMainHomeSpotlight: true,
+                inLiveNowHome: true
+            }, true, true);
+        }
+        if (spotlightStudio?.liveNowSpotlight?.enabled && spotlightStudio.liveNowSpotlight.url) {
+            pushAdminEvent({
+                ...spotlightStudio.liveNowSpotlight,
+                id: spotlightStudio.liveNowSpotlight.eventId || 'studio_livenow_spotlight',
+                inLiveNowHome: true,
+                isLiveNowSpotlight: true
+            }, false, true);
+        }
+
+        // 3. Admin Live Now Channels
+        liveNowChannels.forEach((c: any) => pushAdminEvent(c, !!c.inHomeSpotlight, c.inLiveNowHome !== false));
+
+        // 4. Admin Sports items (include all admin-added sports items so they list in Live Now and Home Spotlight)
+        sportsItems.forEach((s: any) => {
+            pushAdminEvent(s, s.inHomeSpotlight !== false, s.inLiveNowHome !== false);
+        });
 
         return res.json(results);
     } catch (e: any) {
         console.error('[PublicEvents] Failed to list:', e.message);
         res.status(500).send("Failed to load live events section catalog");
+    }
+});
+
+app.get('/api/spotlight-studio/public', (req: Request, res: Response) => {
+    try {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        let data: any = {};
+        if (fs.existsSync(ADMIN_DB_PATH)) {
+            try {
+                data = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8'));
+            } catch (_) {}
+        }
+        const st = data.spotlightStudio || {};
+        return res.json({
+            status: 'success',
+            spotlightStudio: st,
+            mainHomeSpotlight: st.mainHomeSpotlight || null,
+            liveNowSpotlight: st.liveNowSpotlight || null,
+            liveEventsSpotlight: st.liveEventsSpotlight || null,
+            sportsSpotlight: st.sportsSpotlight || null,
+            liveNowContainers: Array.isArray(data.liveNowContainers) ? data.liveNowContainers : [],
+            liveNowChannels: Array.isArray(data.liveNowChannels) ? data.liveNowChannels : [],
+            liveEventsContainers: Array.isArray(data.liveEventsContainers) ? data.liveEventsContainers : [],
+            liveEvents: Array.isArray(data.liveEvents) ? data.liveEvents : [],
+            sportsContainers: Array.isArray(data.sportsContainers) ? data.sportsContainers : [],
+            sports: Array.isArray(data.sports) ? data.sports : [],
+            sportsHubConfig: data.sportsHubConfig || {}
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e.message });
     }
 });
 
@@ -8055,35 +8163,29 @@ app.get(['/api/mdtv/manifest/:id', '/api/mdtv/manifest/:id.mpd'], async (req: Re
         try {
             manifestResult = await JtvService.getRewrittenManifest(rawId);
         } catch (fetchErr: any) {
-            const status = fetchErr?.response?.status || fetchErr?.status;
-            // GCP/cloud datacenter IPs are blocked by JioTV CDN (451 = legal/geo block, 403 = IP ban)
-            // Fall through to client-side redirect — browser IP is not blocked
-            if (status === 451 || status === 403) {
-                console.warn(`[Manifest Route] Server-side fetch blocked (${status}) for ${rawId} — redirecting client to upstream MPD directly`);
-                const ch = await JtvService.resolveChannel(rawId).catch(() => null);
-                if (ch && (ch.full_stream_url || ch.stream_url)) {
-                    let directU = ch.full_stream_url || (ch.stream_url + (ch.token ? (ch.stream_url.includes('?') ? '&' : '?') + ch.token : ''));
-                    if (directU.includes('|')) {
-                        const parts = directU.split('|');
-                        const tokenPart = parts[1]?.match(/Cookie=([^\s&]+)/i)?.[1] || parts[1]?.match(/__hdnea__=[^\s"';&]+/i)?.[0] || ch.token;
-                        directU = parts[0].trim() + (tokenPart ? (parts[0].includes('?') ? '&' : '?') + tokenPart : '');
-                    }
-                    if (directU.includes('_BTS') || directU.includes('jiotvpllive') || !directU.includes('__hdnea__=')) {
-                        const expM = directU.match(/exp=(\d+)/);
-                        const isExp = !expM || (parseInt(expM[1], 10) * 1000 <= Date.now() + 30000);
-                        const wc = await JtvService.fetchWildcardCookie().catch(() => '');
-                        const validWc = wc ? (wc.startsWith('__hdnea__=') ? wc : `__hdnea__=${wc}`) : '';
-                        const existingToken = (directU.includes('?') ? directU.split('?')[1] : '') || (ch.token ? (ch.token.startsWith('__hdnea__=') ? ch.token : `__hdnea__=${ch.token}`) : '');
-                        const activeToken = (isExp && validWc) ? validWc : (existingToken || validWc);
-                        const cleanBase = directU.split('?')[0]
-                            .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
-                            .replace('_BTS', '_MOB');
-                        directU = activeToken ? `${cleanBase}?${activeToken}` : cleanBase;
-                    }
-                    upstreamRedirectUrl = directU;
+            const status = fetchErr?.response?.status || fetchErr?.status || 'ERR';
+            console.warn(`[Manifest Route] Server-side fetch failed (${status}) for ${rawId} — falling back to direct/resolved stream`);
+            const ch = await JtvService.resolveChannel(rawId).catch(() => null);
+            if (ch && (ch.full_stream_url || ch.stream_url)) {
+                let directU = ch.full_stream_url || (ch.stream_url + (ch.token ? (ch.stream_url.includes('?') ? '&' : '?') + ch.token : ''));
+                if (directU.includes('|')) {
+                    const parts = directU.split('|');
+                    const tokenPart = parts[1]?.match(/Cookie=([^\s&]+)/i)?.[1] || parts[1]?.match(/__hdnea__=[^\s"';&]+/i)?.[0] || ch.token;
+                    directU = parts[0].trim() + (tokenPart ? (parts[0].includes('?') ? '&' : '?') + tokenPart : '');
                 }
-            } else {
-                throw fetchErr;
+                if (directU.includes('_BTS') || directU.includes('jiotvpllive') || !directU.includes('__hdnea__=')) {
+                    const expM = directU.match(/exp=(\d+)/);
+                    const isExp = !expM || (parseInt(expM[1], 10) * 1000 <= Date.now() + 30000);
+                    const wc = await JtvService.fetchWildcardCookie().catch(() => '');
+                    const validWc = wc ? (wc.startsWith('__hdnea__=') ? wc : `__hdnea__=${wc}`) : '';
+                    const existingToken = (directU.includes('?') ? directU.split('?')[1] : '') || (ch.token ? (ch.token.startsWith('__hdnea__=') ? ch.token : `__hdnea__=${ch.token}`) : '');
+                    const activeToken = (isExp && validWc) ? validWc : (existingToken || validWc);
+                    const cleanBase = directU.split('?')[0]
+                        .replace('jiotvpllive.cdn.jio.com', 'jiotvmblive.cdn.jio.com')
+                        .replace('_BTS', '_MOB');
+                    directU = activeToken ? `${cleanBase}?${activeToken}` : cleanBase;
+                }
+                upstreamRedirectUrl = directU;
             }
         }
 
@@ -8114,45 +8216,51 @@ app.get('/api/live/events', async (req: Request, res: Response) => {
         const events = (rawEvents || []).filter(e => !isLinearChannel(e));
         const DUMMY_FILTER = /(cricbuzz\s*-\s*aq|stream\.kliv\.in|placeholder|testtapmad|crichd|1st\s*test\s*australia|caribbean\s*premier\s*league|the\s*hundred\s*2026|5th\s*odi\s*afghanistan|sports\s*live\s*vs\s*sports\s*live|playerado|crichdsee|player0003|cricgo|demo|dummy|sample|offline|expired)/i;
         
-        // Merge admin events from admin_db.json
+        // Merge admin events from admin_db.json (never strip admin events with isLinearChannel)
         const adminEvents: any[] = [];
         if (fs.existsSync(ADMIN_DB_PATH)) {
             try {
                 const dbData = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8'));
-                const rawAdminList = (dbData.liveEvents || []).filter((ad: any) => !isLinearChannel(ad));
+                const rawAdminList = [
+                    ...(dbData.liveEvents || []),
+                    ...(dbData.liveNowChannels || []),
+                    ...((dbData.sports || []).filter((s: any) => s.inLiveNowHome || s.inHomeSpotlight))
+                ];
                 const seen = new Set<string>();
                 
                 rawAdminList.forEach((ad: any, idx: number) => {
-                    const checkStr = `${ad.title || ''} ${ad.name || ''} ${ad.url || ''} ${ad.streamUrl || ''}`;
-                    if (DUMMY_FILTER.test(checkStr) || isLinearChannel(ad)) return;
+                    if (!ad || (!ad.url && !ad.streamUrl)) return;
                     const key = ad.id || ad.url || ad.streamUrl || `ad_${idx}`;
                     if (!seen.has(key)) {
                         seen.add(key);
-                        const isMpd = (ad.url && (ad.url.includes('.mpd') || ad.url.includes('mdtv')));
+                        const streamUrl = ad.url || ad.streamUrl || '';
+                        const isMpd = (streamUrl && (streamUrl.includes('.mpd') || streamUrl.includes('mdtv')));
                         adminEvents.push({
+                            ...ad,
                             id: ad.id || `admin_ev_${idx}`,
                             name: ad.title || ad.name || 'Live Sports Event',
                             title: ad.title || ad.name || 'Live Sports Event',
-                            tournament: 'Live Event Showcase',
+                            tournament: ad.subtitle || 'Live Event Showcase',
                             group: ad.category || 'Cricket',
-                            badge: 'CRICKET',
+                            badge: ad.badge || 'LIVE',
                             quality: '4K ULTRA HD',
-                            stream_url: ad.url || '',
-                            url: ad.url || '',
+                            stream_url: streamUrl,
+                            url: streamUrl,
                             logo: ad.icon || ad.logo || 'https://img.media.jio.com/tvpimages/41/51/301983_1753189521352_l_medium.jpg',
                             image: ad.bgUrl || ad.icon || '',
                             manifest_type: isMpd ? 'mpd' : 'hls',
                             clearkey: ad.clearkey || '',
                             key_id: ad.key_id || '',
                             key: ad.key || '',
-                            source: 'admin'
+                            source: 'admin',
+                            isAdminEvent: true
                         });
                     }
                 });
             } catch(e) {}
         }
         
-        const combined = [...adminEvents, ...events].filter(e => !isLinearChannel(e));
+        const combined = [...adminEvents, ...events];
         const filter = String(req.query.group || req.query.filter || req.query.q || '').toLowerCase();
         if (filter) {
             const filtered = combined.filter(e => 
@@ -8171,42 +8279,47 @@ app.get('/api/live/events', async (req: Request, res: Response) => {
 
 app.get('/api/sports/live-events', async (req: Request, res: Response) => {
     try {
-        const [timEvents, rawJtvEvents, timChannels, willowEvents, primeEvents, footlinksEvents] = await Promise.all([
+        const [timEvents, rawJtvEvents, timChannels, willowEvents, primeEvents] = await Promise.all([
             getTimLiveEvents().catch(() => []),
             JtvService.fetchLiveEvents().catch(() => []),
             getTimChannels().catch(() => []),
             fetchWillowEvents().catch(() => []),
-            fetchPrimeEvents().catch(() => []),
-            getFormattedFootlinksEvents().catch(() => [])
+            fetchPrimeEvents().catch(() => [])
         ]);
         const jtvEvents = (rawJtvEvents || []).filter(e => !isLinearChannel(e));
 
-        // Merge admin events
+        // Merge admin events (never strip admin events with isLinearChannel)
         const adminEvents: any[] = [];
-        const DUMMY_FILTER = /(cricbuzz\s*-\s*aq|stream\.kliv\.in|placeholder|testtapmad|crichd|1st\s*test\s*australia|caribbean\s*premier\s*league|the\s*hundred\s*2026|5th\s*odi\s*afghanistan|sports\s*live\s*vs\s*sports\s*live|playerado|crichdsee|player0003|cricgo|demo|dummy|sample|offline|expired)/i;
         if (fs.existsSync(ADMIN_DB_PATH)) {
             try {
                 const dbData = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8'));
-                const rawAdminList = (dbData.liveEvents || []).filter((ad: any) => !isLinearChannel(ad));
+                const rawAdminList = [
+                    ...(dbData.liveEvents || []),
+                    ...(dbData.liveNowChannels || []),
+                    ...((dbData.sports || []).filter((s: any) => s.inLiveNowHome || s.inHomeSpotlight))
+                ];
                 const seen = new Set<string>();
                 rawAdminList.forEach((ad: any, idx: number) => {
-                    const checkStr = `${ad.title || ''} ${ad.name || ''} ${ad.url || ''} ${ad.streamUrl || ''}`;
-                    if (DUMMY_FILTER.test(checkStr) || isLinearChannel(ad)) return;
+                    if (!ad || (!ad.url && !ad.streamUrl)) return;
                     const key = ad.id || ad.url || ad.streamUrl || `ad_${idx}`;
                     if (!seen.has(key)) {
                         seen.add(key);
+                        const streamUrl = ad.url || ad.streamUrl || '';
                         adminEvents.push({
+                            ...ad,
                             id: ad.id || `admin_ev_${idx}`,
                             name: ad.title || ad.name || 'Live Sports Event',
                             title: ad.title || ad.name || 'Live Sports Event',
                             category: ad.category || 'Live Cricket',
                             time: 'LIVE NOW',
-                            url: ad.url || '',
+                            url: streamUrl,
+                            streamUrl: streamUrl,
                             logo: ad.icon || ad.logo || 'https://img.media.jio.com/tvpimages/41/51/301983_1753189521352_l_medium.jpg',
+                            isAdminEvent: true,
                             streams: [{
                                 name: '4K Multi-Cam Stream',
                                 embedSlug: ad.id || `admin_${idx}`,
-                                streamUrl: ad.url
+                                streamUrl: streamUrl
                             }]
                         });
                     }
@@ -8272,11 +8385,10 @@ app.get('/api/sports/live-events', async (req: Request, res: Response) => {
 
         res.json({
             status: 'success',
-            events: [...adminEvents, ...timEvents, ...jtvEvents, ...formattedWillow, ...formattedPrime, ...footlinksEvents],
+            events: [...adminEvents, ...timEvents, ...jtvEvents, ...formattedWillow, ...formattedPrime],
             channels: timChannels,
             willowEvents: formattedWillow,
-            primeEvents: formattedPrime,
-            footlinksEvents: footlinksEvents
+            primeEvents: formattedPrime
         });
     } catch (e: any) {
         res.status(500).json({ status: 'error', error: e.message, events: [] });
@@ -8392,7 +8504,7 @@ app.get('/api/live/event/:id', async (req: Request, res: Response) => {
         if (fs.existsSync(ADMIN_DB_PATH)) {
             try {
                 const dbData = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8'));
-                const allAdminEvents = (dbData.liveEvents || []).filter((e: any) => !isLinearChannel(e));
+                const allAdminEvents = [...(dbData.liveEvents || []), ...(dbData.liveNowChannels || []), ...(dbData.sports || [])];
                 const found = allAdminEvents.find((e: any) => 
                     e.id === eventId || 
                     (e.title && e.title.toLowerCase() === eventId.toLowerCase()) || 
@@ -8665,6 +8777,232 @@ app.get(['/live.m3u', '/api/livem3u/m3u', '/api/live.m3u', '/api/live/m3u', '/ap
     }
 });
 
+// --- SportLink Live Sports Multi-Stream Channels Catalog ---
+app.get(['/api/sportlink/channels', '/api/sportlink/live'], async (req: Request, res: Response) => {
+    try {
+        const force = req.query.refresh === '1';
+        const [liveEvents, fancodeData, jtvChannels] = await Promise.all([
+            JtvService.fetchLiveEvents(force).catch(() => []),
+            fetchFanCodeEvents(force).catch(() => ({ live: [], all: [] })),
+            JtvService.fetchChannels().catch(() => [])
+        ]);
+
+        const sportChannels = jtvChannels.filter((c: any) => {
+            const cat = String(c.category || c.group || '').toLowerCase();
+            const name = String(c.name || '').toLowerCase();
+            return cat.includes('sport') || cat.includes('cricket') || cat.includes('football') || 
+                   name.includes('sport') || name.includes('ten') || name.includes('willow') || name.includes('fancode');
+        });
+
+        const items: any[] = [];
+        const seenIds = new Set<string>();
+
+        // 1. Live Events
+        for (const ev of (liveEvents as any[])) {
+            const id = ev.id || `sl_ev_${items.length}`;
+            if (!seenIds.has(id)) {
+                seenIds.add(id);
+                const sUrl = ev.streamUrl || ev.playUrl || '';
+                const playUrl = ev.playUrl || `/play_consumet.php?channel_id=${encodeURIComponent(id)}&url=${encodeURIComponent(sUrl)}&name=${encodeURIComponent(ev.title || ev.name || '')}&source=sportlink&type=hls`;
+                items.push({
+                    id,
+                    channel_id: id,
+                    name: ev.title || ev.name,
+                    title: ev.title || ev.name,
+                    logo: ev.logo || ev.thumbnail || 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg',
+                    category: ev.category || 'Live Sports',
+                    group: 'SportLink Live',
+                    source: 'sportlink',
+                    stream_url: sUrl,
+                    play_url: playUrl,
+                    playUrl: playUrl,
+                    sources: ev.sources || (sUrl ? [{ id: 'srv1', name: 'Server 1 (Primary)', streamUrl: sUrl, playUrl }] : [])
+                });
+            }
+        }
+
+        // 2. FanCode live events
+        for (const fc of (fancodeData.live || [])) {
+            const id = fc.id || `sl_fc_${items.length}`;
+            if (!seenIds.has(id)) {
+                seenIds.add(id);
+                items.push({
+                    id,
+                    channel_id: id,
+                    name: fc.title,
+                    title: fc.title,
+                    logo: fc.thumbnail,
+                    category: fc.sportCategory || 'Cricket',
+                    group: 'SportLink Live',
+                    source: 'sportlink',
+                    stream_url: fc.streamUrl,
+                    play_url: fc.playUrl,
+                    playUrl: fc.playUrl,
+                    sources: fc.sources || []
+                });
+            }
+        }
+
+        // 3. Premium Sports Channels
+        for (const ch of sportChannels) {
+            const id = `sl_ch_${ch.id}`;
+            if (!seenIds.has(id)) {
+                seenIds.add(id);
+                const sUrl = ch.stream_url || ch.full_stream_url || '';
+                const playUrl = `/play_consumet.php?channel_id=${encodeURIComponent(String(ch.id))}&url=${encodeURIComponent(sUrl)}&name=${encodeURIComponent(ch.name)}&source=sportlink&type=hls`;
+                items.push({
+                    id,
+                    channel_id: id,
+                    name: ch.name,
+                    title: ch.name,
+                    logo: ch.logo || 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg',
+                    category: ch.category || 'Sports',
+                    group: (ch as any).group || 'SportLink TV',
+                    source: 'sportlink',
+                    stream_url: sUrl,
+                    play_url: playUrl,
+                    playUrl: playUrl,
+                    sources: [
+                        { id: 's1', name: 'Server 1 (High Quality)', streamUrl: sUrl, playUrl }
+                    ]
+                });
+            }
+        }
+
+        const catMap = new Map<string, number>();
+        items.forEach(c => {
+            const cat = c.category || 'Sports';
+            catMap.set(cat, (catMap.get(cat) || 0) + 1);
+        });
+        const categories = Array.from(catMap.entries()).map(([name, count]) => ({ name, count }));
+
+        res.json({
+            status: 'success',
+            success: true,
+            count: items.length,
+            categories,
+            channels: items
+        });
+    } catch (e: any) {
+        res.status(500).json({ status: 'error', error: e.message, channels: [], categories: [] });
+    }
+});
+
+// --- SM-IPTV / All Channels Master Catalog ---
+app.get(['/api/allchannels/channels', '/api/allchannels', '/api/all-channels/channels'], async (req: Request, res: Response) => {
+    try {
+        const force = req.query.refresh === '1';
+        const channels = await JtvService.fetchChannels(force);
+        const mapped = channels.map(c => {
+            const sUrl = c.stream_url || (c.full_stream_url ? c.full_stream_url.split('?')[0] : '');
+            const playUrl = `/play_consumet.php?channel_id=${encodeURIComponent(String(c.id))}&url=${encodeURIComponent(sUrl)}&name=${encodeURIComponent(c.name)}&source=allchannels&type=hls`;
+            return {
+                id: `all_${c.id}`,
+                channel_id: `all_${c.id}`,
+                name: c.name,
+                title: c.name,
+                logo: c.logo || 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg',
+                category: c.category || 'Entertainment',
+                group: (c as any).group || 'Live TV',
+                source: 'allchannels',
+                stream_url: sUrl,
+                play_url: playUrl,
+                playUrl: playUrl
+            };
+        });
+
+        const catMap = new Map<string, number>();
+        mapped.forEach(c => {
+            const cat = c.category || 'General';
+            catMap.set(cat, (catMap.get(cat) || 0) + 1);
+        });
+        const categories = Array.from(catMap.entries()).map(([name, count]) => ({ name, count }));
+
+        res.json({
+            status: 'success',
+            success: true,
+            count: mapped.length,
+            categories,
+            channels: mapped
+        });
+    } catch (e: any) {
+        res.status(500).json({ status: 'error', error: e.message, channels: [], categories: [] });
+    }
+});
+
+// --- Real-Time Sports Scorecard & Player Telemetry ---
+app.get('/api/sports/match-score', async (req: Request, res: Response) => {
+    try {
+        const title = String(req.query.title || req.query.name || '').trim();
+        const category = String(req.query.category || req.query.sport || '').toLowerCase();
+        const id = String(req.query.id || '');
+
+        let homeTeamName = 'Home Team';
+        let awayTeamName = 'Away Team';
+        if (title.includes(' vs ')) {
+            const parts = title.split(' vs ');
+            homeTeamName = parts[0].trim();
+            awayTeamName = parts[1].trim();
+        } else if (title.includes(' v ')) {
+            const parts = title.split(' v ');
+            homeTeamName = parts[0].trim();
+            awayTeamName = parts[1].trim();
+        }
+
+        // 1. Try finding live telemetry in active ESPN scores
+        let matchedScore: any = null;
+        try {
+            const liveScores = await SportsScoreService.fetchLiveWebTelemetry();
+            if (Array.isArray(liveScores) && liveScores.length > 0) {
+                const titleLower = title.toLowerCase();
+                matchedScore = liveScores.find(s => {
+                    const mLower = (s.match || '').toLowerCase();
+                    return mLower.includes(titleLower) || titleLower.includes(mLower) ||
+                           (homeTeamName && awayTeamName && mLower.includes(homeTeamName.toLowerCase()) && mLower.includes(awayTeamName.toLowerCase()));
+                });
+            }
+        } catch (e) {}
+
+        // 2. Parse score if available
+        let homeScoreStr = 'Yet to bat';
+        let awayScoreStr = 'Yet to bat';
+        let matchStatus = 'In Progress';
+        if (matchedScore) {
+            matchStatus = matchedScore.status || 'LIVE';
+            if (matchedScore.score && matchedScore.score.includes('|')) {
+                const parts = matchedScore.score.split('|');
+                homeScoreStr = parts[0]?.trim() || homeScoreStr;
+                awayScoreStr = parts[1]?.trim() || awayScoreStr;
+            } else if (matchedScore.score) {
+                homeScoreStr = matchedScore.score;
+            }
+        }
+
+        res.json({
+            status: 'success',
+            success: true,
+            score: {
+                title,
+                status: matchStatus,
+                summary: matchedScore?.summary || `${homeTeamName} vs ${awayTeamName} - ${matchStatus}`,
+                homeTeam: {
+                    name: homeTeamName,
+                    score: homeScoreStr,
+                    overs: matchedScore?.overs || ''
+                },
+                awayTeam: {
+                    name: awayTeamName,
+                    score: awayScoreStr,
+                    overs: ''
+                },
+                recentBalls: ['1', '0', '4', '•', 'W', '6', '1', '2']
+            }
+        });
+    } catch (e: any) {
+        res.status(500).json({ status: 'error', error: e.message });
+    }
+});
+
 app.get('/api/jtv/stream/:id', async (req: Request, res: Response) => {
     try {
         const channel = await JtvService.resolveChannel(req.params.id as string);
@@ -8832,12 +9170,6 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         } catch {}
     }
 
-    if (u.hostname.includes('net52.cc') || u.hostname.includes('net22.cc') || u.hostname.includes('nm-cdn') || u.hostname.includes('freecdn') || u.hostname.includes('netmirror')) {
-        headers['User-Agent'] = headers['User-Agent'] || 'Mozilla/5.0 (Linux; Android 15; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.177 Mobile Safari/537.36';
-        headers['Referer'] = headers['Referer'] || 'https://net52.cc/';
-        headers['Origin'] = headers['Origin'] || 'https://net22.cc';
-    }
-
     if (u.hostname.includes('junksonus') || u.hostname.includes('grandemx') || u.hostname.includes('justkidding')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://grandemx.org/';
@@ -8864,7 +9196,7 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         headers['User-Agent'] = 'VLC/3.0.20 LibVLC/3.0.20';
         delete headers['Referer'];
         delete headers['Origin'];
-    } else if (u.hostname.includes('reelvault') || u.hostname.includes('vidrift') || u.hostname.includes('milkyway')) {
+    } else if (u.hostname.includes('reelvault') || u.hostname.includes('vidrift')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://embed.vidrift.in/';
         headers['Origin'] = 'https://embed.vidrift.in';
@@ -8928,14 +9260,10 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         headers['Origin'] = headers['Origin'] || 'https://megaplay.buzz';
     }
 
-    if (u.hostname.includes('dramahot') || u.hostname.includes('zokoanime') || u.hostname.includes('drama1')) {
+    if (u.hostname.includes('dramahot') || u.hostname.includes('zokoanime')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
         headers['Referer'] = 'https://zokoanime.video/';
-        headers['Origin'] = 'https://zokoanime.video';
-    } else if (u.hostname.includes('googlevideo.com') || u.hostname.includes('blogger.com')) {
-        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
-        headers['Referer'] = 'https://www.blogger.com/';
-        headers['Origin'] = 'https://www.blogger.com';
+        delete headers['Origin'];
     } else if (u.hostname.includes('ravok') || u.hostname.includes('as-cdn') || u.hostname.includes('animesalt')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
         headers['Referer'] = u.hostname.includes('ravok') ? 'https://ravok.buzz/' : (headers['Referer'] || 'https://animesalt.cx/');
@@ -8943,7 +9271,7 @@ function getUpstreamProxyHeaders(targetUrlStr: string, clientIp?: string, reqHea
         delete headers['Origin'];
     }
 
-    if (u.hostname.includes('exmxbxe') || u.hostname.includes('ehgembxe') || u.hostname.includes('grandemx') || u.hostname.includes('epiembeds') || u.hostname.includes('hundxvision') || u.hostname.includes('timst') || u.hostname.includes('cdx-') || u.hostname.includes('judiaslevels') || u.hostname.includes('embeds.gay')) {
+    if (u.hostname.includes('exmxbxe') || u.hostname.includes('ehgembxe') || u.hostname.includes('sytes.net') || u.hostname.includes('tims-') || u.pathname.includes('/main/secure/') || u.hostname.includes('grandemx') || u.hostname.includes('epiembeds') || u.hostname.includes('hundxvision') || u.hostname.includes('timst') || u.hostname.includes('cdx-') || u.hostname.includes('judiaslevels') || u.hostname.includes('embeds.gay')) {
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
         headers['Referer'] = headers['Referer'] || 'https://ehgembxe.cfd/';
         headers['Origin'] = headers['Origin'] || 'https://ehgembxe.cfd';
@@ -9100,7 +9428,7 @@ export function getOutboundProxyAgent(): https.Agent | any {
     return cachedOutboundAgent;
 }
 
-function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, directSegments = false, extraParam?: string): string {
+function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, directSegments = false): string {
     const isMaster = text.includes('#EXT-X-STREAM-INF') || text.includes('#EXT-X-MEDIA:');
     
     // In master playlists, strip storyboard thumbnail tracks (e.g. tiles.m3u8) that break video playback
@@ -9111,8 +9439,7 @@ function rewriteProxyPlaylist(text: string, baseUrl: URL, proxyBase: string, dir
 
     const wrap = (abs: string) => {
         if (abs.includes('stream_proxy.php?url=') || abs.includes('/api/proxy/hls?url=')) return abs;
-        const extraSuffix = extraParam ? `&${extraParam}` : '';
-        return `${proxyBase}?url=${encodeURIComponent(abs)}${extraSuffix}`;
+        return `${proxyBase}?url=${encodeURIComponent(abs)}`;
     };
     const parentQuery = baseUrl.search;
 
@@ -9298,12 +9625,6 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
         }
     }
 
-    // Strict header allowlist: only permit safe media streaming headers, stripping CRLF and forbidden headers
-    const ALLOWED_PIPE_HEADERS = new Set([
-        'user-agent', 'referer', 'origin', 'range', 'accept',
-        'accept-encoding', 'accept-language', 'x-playback-session-id',
-        'x-api-key', 'x-requested-with', 'cookie'
-    ]);
     let pipeHeaders: Record<string, string> = {};
     if (target.includes('|')) {
         const pipeIdx = target.indexOf('|');
@@ -9315,23 +9636,9 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
             if (eqIdx > 0) {
                 const k = decodeURIComponent(p.slice(0, eqIdx)).trim();
                 const v = decodeURIComponent(p.slice(eqIdx + 1)).trim();
-                if (ALLOWED_PIPE_HEADERS.has(k.toLowerCase()) && !v.includes('\r') && !v.includes('\n')) {
-                    pipeHeaders[k] = v;
-                }
+                pipeHeaders[k] = v;
             }
         }
-    }
-
-    const rawH = (req.query.h || req.query.headers) as string;
-    if (rawH) {
-        try {
-            const decodedH = JSON.parse(Buffer.from(decodeURIComponent(rawH), 'base64').toString('utf8'));
-            for (const [k, v] of Object.entries(decodedH)) {
-                if (typeof v === 'string' && ALLOWED_PIPE_HEADERS.has(k.toLowerCase()) && !v.includes('\r') && !v.includes('\n')) {
-                    pipeHeaders[k] = v;
-                }
-            }
-        } catch (_) {}
     }
 
     let cleanTarget = target;
@@ -9421,10 +9728,6 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
         const isHlsSegment = targetUrl.pathname.endsWith('.ts') || 
                              targetUrl.pathname.endsWith('.m4s') || 
                              targetUrl.pathname.endsWith('.png') ||
-                             targetUrl.pathname.endsWith('.jpg') ||
-                             targetUrl.pathname.endsWith('.jpeg') ||
-                             targetUrl.hostname.includes('freecdn') ||
-                             targetUrl.hostname.includes('nm-cdn') ||
                              targetUrl.pathname.includes('/5-') ||
                              targetUrl.pathname.includes('segment') ||
                              targetUrl.pathname.includes('chunk') ||
@@ -9451,7 +9754,8 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
                              targetUrl.pathname.endsWith('.mkv') || 
                              targetUrl.pathname.endsWith('.webm') ||
                              targetUrl.hostname.includes('hakunamatata') || 
-                             targetUrl.hostname.includes('hakunaymatata');
+                             targetUrl.hostname.includes('hakunaymatata') ||
+                             targetUrl.hostname.includes('googlevideo.com');
 
         if (isByteStream && !targetUrl.pathname.endsWith('.m3u8')) {
             try {
@@ -9472,10 +9776,14 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
                     }
                 }
                 if (!streamRes.headers['content-type']) {
-                    res.setHeader('Content-Type', targetUrl.pathname.endsWith('.mp4') || targetUrl.hostname.includes('hakunaymatata') ? 'video/mp4' : 'application/octet-stream');
+                    res.setHeader('Content-Type', targetUrl.pathname.endsWith('.mp4') || targetUrl.hostname.includes('hakunaymatata') || targetUrl.hostname.includes('googlevideo.com') ? 'video/mp4' : 'application/octet-stream');
                 }
                 if (!streamRes.headers['accept-ranges']) {
                     res.setHeader('Accept-Ranges', 'bytes');
+                }
+                if (req.query.download === '1') {
+                    const dlTitle = String(req.query.title || 'video').replace(/[^\w\s\-().]/g, '').trim() || 'video';
+                    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dlTitle)}.mp4"`);
                 }
                 res.setHeader('Access-Control-Allow-Origin', '*');
                 return streamRes.data.pipe(res);
@@ -9532,8 +9840,7 @@ app.all(['/stream_proxy.php', '/api/proxy/fancode', '/api/proxy/sonyliv', '/api/
 
         if (isPlaylist && upstreamRes.status >= 200 && upstreamRes.status < 300) {
             const text = Buffer.from(upstreamRes.data).toString('utf8');
-            const hParamStr = req.query.h ? `h=${encodeURIComponent(req.query.h as string)}` : undefined;
-            const body = rewriteProxyPlaylist(text, targetUrl, proxyBase, isDirectSegmentCdn, hParamStr);
+            const body = rewriteProxyPlaylist(text, targetUrl, proxyBase, isDirectSegmentCdn);
             res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.status(upstreamRes.status).send(body);
@@ -10071,8 +10378,6 @@ app.use('/api/hybrid-m3u', hybridM3uRouter);
 app.use('/api/m3u', m3uHubRouter);
 app.use('/m3u', m3uHubRouter);
 app.use('/api/subtitles', subtitlesRouter);
-app.use('/api/skip-intro', skipIntroRouter);
-app.use('/api/stremio', stremioRouter);
 app.use('/api/consumet', consumetSearchRouter);
 app.use('/api/bingr', bingrRouter);
 app.use('/api/peakstream', peakstreamRouter);
@@ -10080,7 +10385,6 @@ app.use('/api/anime', animeRouter);
 app.use('/api/anime-scraper', animeRouter);
 app.use('/api/anime/anivexa', anivexaRouter);
 app.use('/api/anivexa', anivexaRouter);
-app.use('/anivexa', anivexaRouter);
 app.use('/api/streamic', streamicRouter);
 app.use('/api/kisskh', kisskhRouter);
 app.use('/kisskh', kisskhRouter);
@@ -10248,20 +10552,6 @@ app.get('/api/sports/supersport', (req: Request, res: Response) => {
         return res.json({ status: 'success', total: channels.length, channels });
     } catch (e: any) {
         return res.status(500).json({ status: 'error', message: e.message });
-    }
-});
-
-// Live Sports Match Score & Telemetry Resolver
-app.get(['/api/sports/match-score', '/api/sports/score'], async (req: Request, res: Response) => {
-    try {
-        const title = (req.query.title || req.query.q || '') as string;
-        const category = (req.query.category || req.query.sport || '') as string;
-        const id = (req.query.id || '') as string;
-        const { getLiveScoreForMatch } = await import('./src/services/streamicSportsService');
-        const score = await getLiveScoreForMatch(title, category, id);
-        return res.json({ status: 'success', score });
-    } catch (e: any) {
-        return res.status(500).json({ status: 'error', message: e?.message });
     }
 });
 
@@ -11835,15 +12125,30 @@ app.use(express.static(path.join(process.cwd(), 'public'), fastStaticAssetOption
 app.get(['/sw.js', '/service-worker.js'], (req, res) => {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Service-Worker-Allowed', '/');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     const swPath = path.join(process.cwd(), 'public', 'sw.js');
     if (fs.existsSync(swPath)) return res.sendFile(swPath);
     return res.sendFile(path.join(process.cwd(), 'sw.js'));
 });
 
+app.get('/favicon.ico', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    const pngIcon = path.join(process.cwd(), 'public', 'apple-touch-icon.png');
+    if (fs.existsSync(pngIcon)) return res.sendFile(pngIcon);
+    const svgIcon = path.join(process.cwd(), 'public', 'stalker_pro_infinity.svg');
+    if (fs.existsSync(svgIcon)) return res.sendFile(svgIcon);
+    return res.status(204).end();
+});
+
 app.get('/manifest.json', (req, res) => {
     res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     const mfPath = path.join(process.cwd(), 'public', 'manifest.json');
     if (fs.existsSync(mfPath)) return res.sendFile(mfPath);
     return res.sendFile(path.join(process.cwd(), 'manifest.json'));
@@ -11851,7 +12156,9 @@ app.get('/manifest.json', (req, res) => {
 
 app.get(['/subway', '/subway.html'], (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.removeHeader('X-Frame-Options');
     const candidates = [
         path.join(process.cwd(), 'public', 'subway.html'),
@@ -11867,7 +12174,9 @@ app.get(['/subway', '/subway.html'], (req, res) => {
 
 app.get(['/offline', '/offline.html'], (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.removeHeader('X-Frame-Options');
     const candidates = [
         path.join(process.cwd(), 'public', 'offline.html'),
@@ -11884,6 +12193,9 @@ app.get(['/offline', '/offline.html'], (req, res) => {
 app.get('/search_launcher.js', (req, res) => {
     const pubPath = path.join(process.cwd(), 'public', 'search_launcher.js');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     if (fs.existsSync(pubPath)) return res.sendFile(pubPath);
     return res.status(200).send('// search_launcher ready\n');
 });
@@ -11891,6 +12203,9 @@ app.get('/search_launcher.js', (req, res) => {
 app.get('/app.js', (req, res) => {
     const rootAppJs = path.join(process.cwd(), 'app.js');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     if (fs.existsSync(rootAppJs)) return res.sendFile(rootAppJs);
     return res.status(200).send('// app ready\n');
 });
@@ -11898,6 +12213,9 @@ app.get('/app.js', (req, res) => {
 app.get('/styles.css', (req, res) => {
     const rootCss = path.join(process.cwd(), 'styles.css');
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     if (fs.existsSync(rootCss)) return res.sendFile(rootCss);
     return res.status(200).send('');
 });
@@ -11906,14 +12224,23 @@ app.get('/styles.css', (req, res) => {
 
 app.get('/', (req, res) => {
     console.log('--- Accessing root / ---');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.resolve('hero.html'));
 });
 app.get('/index.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.resolve('hero.html'));
 });
 
 app.get('/hero.html', (req, res) => {
     console.log('--- Accessing /hero.html ---');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.resolve('hero.html'));
 });
 
@@ -11929,7 +12256,7 @@ app.get('/login.php', (req, res) => {
     let isValid = false;
     if (token) {
         try {
-            const decoded = jwt.verify(token as string, JWT_SECRET, { algorithms: ['HS256'] }) as any;
+            const decoded = jwt.verify(token as string, JWT_SECRET) as any;
             if (decoded && decoded.role === 'admin') {
                 isValid = true;
             }
@@ -12315,7 +12642,7 @@ app.get(['/play_bingr.php', '/play_bing.php', '/play_bingr', '/play_bing', '/bin
     let anilistId = (req.query.anilistId as string) || (req.query.anilist_id as string) || '';
     let malId = (req.query.malId as string) || (req.query.mal_id as string) || (req.query.mal as string) || '';
     const isAnimeTarget = type === 'anime' || Boolean(malId) || Boolean(anilistId);
-    let srv = (req.query.srv as string) || (isAnimeTarget ? 'anivexa' : (type === 'tv' ? 's30' : 's30'));
+    let srv = (req.query.srv as string) || (isAnimeTarget ? 'bing_anime' : (type === 'tv' ? 's40' : 'm4u'));
     let source = (req.query.source as string) || 'consumet.html';
 
     if (stream_url && stream_url.startsWith('http') && !(await isSafeUrl(stream_url))) {
@@ -12357,17 +12684,30 @@ app.get(['/play_bingr.php', '/play_bing.php', '/play_bingr', '/play_bing', '/bin
 });
 
 app.get('/play_media.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'play_media.html'));
 });
 
 app.get('/sample_maintenance.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'sample_maintenance.html'));
 });
 
-app.get('/quantum-demo.html', (req, res) => { res.sendFile(path.join(process.cwd(), 'quantum-demo.html')); });
+app.get('/quantum-demo.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(process.cwd(), 'quantum-demo.html'));
+});
 
 app.get('/music.html', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.removeHeader('X-Frame-Options');
     res.setHeader('Content-Security-Policy', "frame-ancestors *");
     res.sendFile(path.join(process.cwd(), 'music.html'));
@@ -12375,7 +12715,9 @@ app.get('/music.html', (req, res) => {
 
 // Comics & Manga Reader Hub (/comics.html, /comics, /manga)
 app.get(['/comics.html', '/comics', '/comics.php', '/manga.html', '/manga'], (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.removeHeader('X-Frame-Options');
     res.setHeader('Content-Security-Policy', "frame-ancestors *");
     res.sendFile(path.join(process.cwd(), 'comics.html'));
@@ -12388,7 +12730,9 @@ app.get('/anime.html', (req, res) => {
 
 // Dedicated Omni Search Page Route (/search.html, /search)
 app.get(['/search.html', '/search'], (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'search.html'));
 });
 
@@ -12418,27 +12762,31 @@ app.get([
     if (req.path.includes('.php') || req.path.includes('.json')) {
         return next();
     }
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'consumet.html'));
 });
 
 
 app.get('/consumet_redesign.html', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'consumet_redesign.html'));
 });
 
-app.use('/arvio', (req, res, next) => {
-    if (req.path.startsWith('/assets/')) return next();
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(process.cwd(), 'public', 'arvio', 'index.html'));
-});
-
 app.get('/books.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'books.html'));
 });
 
 app.get('/torrent.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'public', 'torrent.html'));
 });
 
@@ -12456,7 +12804,9 @@ app.get('/books', (req, res) => {
 });
 
 app.get('/player.html', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(process.cwd(), 'player.html'));
 });
 
@@ -12701,25 +13051,6 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         const clientIp = Array.isArray(rawIp) ? rawIp[0] : (rawIp as string).split(',')[0].trim();
         const currentIp = clientIp.replace('::ffff:', '');
         
-        const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
-        const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
-        const identifiers = {
-            deviceId: extractedDev.deviceId,
-            deviceFingerprint: extractedDev.deviceFingerprint,
-            mac: extractedMac || undefined
-        };
-
-        // 1. Enforce Sliding-Window Lockout across IP, Hardware Device, and MAC
-        const lockoutCheck = SecurityGateKeeper.isIpLockedOut(currentIp, identifiers);
-        if (lockoutCheck.locked) {
-            res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
-            return res.status(423).json({
-                status: "error",
-                message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
-                retryAfter: lockoutCheck.remainingSeconds
-            });
-        }
-
         const username = (params.username || params.admin_user || params.user || '').toString().trim();
         const password = (params.password || params.admin_pass_input || params.pass || '').toString().trim();
 
@@ -12727,7 +13058,6 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         
         if (username && password && verifyAdminCredentials(username, password)) {
             console.log(`[AUTH] Admin login SUCCESS for IP: ${currentIp}`);
-            SecurityGateKeeper.recordSuccess(currentIp, identifiers);
             const token = jwt.sign({ role: 'admin', ip: currentIp, user: username }, JWT_SECRET, { expiresIn: '12h' });
             setSecureCookie(req, res, 'admin_auth', token, {
                 maxAge: 12 * 60 * 60 * 1000,
@@ -12736,21 +13066,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
             return res.json({ status: "success", session: "active", session_secret: token, token });
         } else {
             console.warn(`[AUTH] Admin login FAILED for IP: ${currentIp} - Invalid Credentials`);
-            const fail = SecurityGateKeeper.recordFailure(currentIp, 'stalker_admin_login', username, identifiers);
-            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
-
-            if (fail.isLockedOut) {
-                return res.status(423).json({
-                    status: "error",
-                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
-                    retryAfter: fail.lockoutSeconds
-                });
-            }
-
-            return res.status(401).json({ 
-                status: "error", 
-                message: `Invalid Admin Username or Password (${fail.attempts}/5 attempts used before quarantine)` 
-            });
+            return res.status(401).json({ status: "error", message: "Invalid Admin Username or Password" });
         }
     }
 
@@ -12759,25 +13075,6 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         const clientIp = Array.isArray(rawIp) ? rawIp[0] : (rawIp as string).split(',')[0].trim();
         const currentIp = clientIp.replace('::ffff:', '');
         
-        const extractedMac = PerimeterDefenseShield.extractMacFromRequest(req);
-        const extractedDev = PerimeterDefenseShield.extractDeviceFromRequest(req);
-        const identifiers = {
-            deviceId: extractedDev.deviceId,
-            deviceFingerprint: extractedDev.deviceFingerprint,
-            mac: extractedMac || undefined
-        };
-
-        // 1. Enforce Sliding-Window Lockout
-        const lockoutCheck = SecurityGateKeeper.isIpLockedOut(currentIp, identifiers);
-        if (lockoutCheck.locked) {
-            res.setHeader('Retry-After', lockoutCheck.remainingSeconds);
-            return res.status(423).json({
-                status: "error",
-                message: `SECURITY LOCKOUT: Quarantined by Perimeter Defense (${lockoutCheck.reason || 'Too many failed attempts'}). Locked for ${lockoutCheck.remainingSeconds} seconds.`,
-                retryAfter: lockoutCheck.remainingSeconds
-            });
-        }
-
         const passcode = (params.passcode || params.pin || params.password || '').toString().trim();
         const gatePass = process.env.ADMIN_GATE_PASS || process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || '2008';
         const gatePassHash = process.env.ADMIN_PASS_HASH || '$2b$10$XU2SnQWK0eNdT0exkreSQONDlStSJRuwPJTYLc/KoxuKi3U3EGkLW';
@@ -12794,7 +13091,6 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         }
 
         if (isValid) {
-            SecurityGateKeeper.recordSuccess(currentIp, identifiers);
             const token = jwt.sign({ role: 'perimeter_cleared', ip: currentIp }, JWT_SECRET, { expiresIn: '24h' });
             setSecureCookie(req, res, 'admin_gate_auth', token, {
                 maxAge: 24 * 60 * 60 * 1000,
@@ -12802,21 +13098,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
             });
             return res.json({ status: "success", gate_token: token, message: "Perimeter authorization granted" });
         } else {
-            const fail = SecurityGateKeeper.recordFailure(currentIp, 'stalker_gate_verify', passcode.slice(0, 3) + '***', identifiers);
-            await SecurityGateKeeper.applyProgressiveDelay(fail.attempts);
-
-            if (fail.isLockedOut) {
-                return res.status(423).json({
-                    status: "error",
-                    message: "SECURITY LOCKOUT: Too many failed security attempts. Quarantined across IP, MAC, and Hardware Device for 24 hours.",
-                    retryAfter: fail.lockoutSeconds
-                });
-            }
-
-            return res.status(401).json({ 
-                status: "error", 
-                message: `Invalid Perimeter Passcode (${fail.attempts}/5 attempts used before quarantine)` 
-            });
+            return res.status(401).json({ status: "error", message: "Invalid Perimeter Passcode" });
         }
     }
 
@@ -13225,7 +13507,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         if (!token) return false;
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
+            const decoded = jwt.verify(token, JWT_SECRET) as any;
             return decoded && decoded.role === 'admin';
         } catch (e: any) {
             return false;
@@ -13668,7 +13950,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         let isAdmin = false;
         if (token) {
             try {
-                const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
+                const decoded = jwt.verify(token, JWT_SECRET) as any;
                 if (decoded && decoded.role === 'admin') {
                     isAdmin = true;
                 }
@@ -13868,28 +14150,9 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
 import zlib from 'zlib';
 
 app.get('/api/epg-proxy', async (req: Request, res: Response) => {
-    const epgUrl = (req.query.url as string || '').trim();
+    const epgUrl = req.query.url as string;
     if (!epgUrl) {
         return res.status(400).json({ error: 'url parameter is required' });
-    }
-
-    // 1. Strict SSRF check against private IP ranges, loopbacks, and cloud metadata
-    if (!await isSafeUrl(epgUrl)) {
-        return res.status(403).json({ error: 'Access Denied: Unsafe or prohibited EPG URL target' });
-    }
-
-    let parsedEpgUrl: URL;
-    try {
-        parsedEpgUrl = new URL(epgUrl);
-    } catch {
-        return res.status(400).json({ error: 'Invalid EPG URL format' });
-    }
-
-    // 2. Strict format validation: only permit XMLTV, GZ, and JSON EPG formats
-    const epgPath = parsedEpgUrl.pathname.toLowerCase();
-    const isEpgFormat = epgPath.endsWith('.xml') || epgPath.endsWith('.gz') || epgPath.endsWith('.json') || epgPath.includes('/epg') || epgPath.includes('xmltv');
-    if (!isEpgFormat) {
-        return res.status(403).json({ error: 'Access Denied: Target does not appear to be an EPG feed (.xml, .gz, .json, xmltv)' });
     }
 
     const CACHE_DIR = path.join(process.cwd(), 'cache_stalker');
@@ -13952,16 +14215,6 @@ app.get('/api/epg-json', async (req: Request, res: Response) => {
     }
     
     const urls = urlsStr.split(',').map(u => u.trim()).filter(Boolean);
-    if (urls.length === 0 || urls.length > 20) {
-        return res.status(400).json({ error: 'Provide between 1 and 20 EPG URLs' });
-    }
-
-    // SSRF Validation for all incoming EPG URLs
-    for (const u of urls) {
-        if (!await isSafeUrl(u)) {
-            return res.status(403).json({ error: `Access Denied: Unsafe EPG URL target: ${u}` });
-        }
-    }
     const hash = crypto.createHash('md5').update(urls.join(',')).digest('hex');
     const CACHE_DIR = path.join(process.cwd(), 'cache_stalker');
     if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
@@ -14132,21 +14385,11 @@ app.options('/xtream.php', (req, res) => {
 });
 // youtube mounted above
 
-// Per-IP rate limit and access enforcement on /xtream.php
+// Per-IP rate limit on xurl proxy path (120 requests/min)
 const _xtreamRateBuckets = new Map<string, { count: number; reset: number }>();
 app.use('/xtream.php', (req: Request, res: Response, next: any) => {
-    const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim().replace(/^::ffff:/, '');
-
-    // 1. If Site Lock is engaged, require valid authorization token or session
-    if (systemState.siteLockMode && !isSiteUnlocked(req) && !isAdminAuthenticated(req)) {
-        return res.status(423).json({
-            status: "locked",
-            error: "423 Locked: Quantum PIN Lock clearance required to access media proxy.",
-            locked: true
-        });
-    }
-
-    if (!req.query.xurl) return next(); // only rate-limit the stream proxy xurl path
+    if (!req.query.xurl) return next(); // only rate-limit the open-proxy xurl path
+    const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim();
     const now = Date.now();
     let bucket = _xtreamRateBuckets.get(ip);
     if (!bucket || now > bucket.reset) {
@@ -14156,8 +14399,7 @@ app.use('/xtream.php', (req: Request, res: Response, next: any) => {
     bucket.count++;
     if (bucket.count > 120) {
         res.setHeader('Retry-After', Math.ceil((bucket.reset - now) / 1000).toString());
-        PerimeterDefenseShield.banIp(ip, 'Excessive Xtream Proxy Requests (120 req/min limit exceeded)', 15 * 60 * 1000);
-        return res.status(429).send('429 Too Many Requests: Rate limit exceeded. Temporary cooldown engaged.');
+        return res.status(429).send('Too Many Requests');
     }
     // Prune old buckets every ~1000 requests
     if (_xtreamRateBuckets.size > 1000) {
@@ -14244,7 +14486,6 @@ async function startServer() {
     try {
         initLiveM3uAutoUpdate();
         initSmMovieAutoUpdate();
-initAllChannelsAutoUpdate();
     } catch (e: any) {}
     setInterval(() => {
         console.log('[GitHub Auto-Sync] 25-minute interval reached. Updating all GitHub M3U & JSON sources...');

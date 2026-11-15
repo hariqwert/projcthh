@@ -6667,7 +6667,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             }},
             { id: 'm4uhd_vip', name: 'M4UHD VIP (Multi-Source Cluster)', url: (t, id) => `https://m4uhd.vip/search/${id}.html` },
             { id: 'arc018_stream', name: 'Arc018 Stream (Fast HD Embed)', url: (t, id) => `https://arc018.stream/` },
-            { id: 'm4u_custom', name: 'Movie 4U (Direct Embed)', url: () => customEmbedUrl || 'https://new4.movies4u.garden' }
+            { id: 'm4u_custom', name: 'Movie 4U (Direct Embed)', url: () => customEmbedUrl || 'https://new8.movies4u.garden' }
         ];
 
         function populateEmbedProviders() {

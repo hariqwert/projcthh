@@ -2,8 +2,9 @@ import axios from 'axios';
 import { URL } from 'url';
 
 // Dynamic Movies4u Mirror Registry & Auto-Discovery Engine
-export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new5.movies4u.garden/';
+export const MOVIES4U_PRIMARY_INDEX_URL = 'https://new8.movies4u.garden/';
 export const MOVIES4U_COMPANION_INDEXES = [
+    'https://new8.movies4u.garden',
     'https://new5.movies4u.garden',
     'https://new4.movies4u.garden',
     'https://new3.movies4u.garden',
@@ -14,6 +15,7 @@ export const MOVIES4U_COMPANION_INDEXES = [
 ];
 
 export let movies4uActiveMirrors: string[] = [
+    'https://new8.movies4u.garden',
     'https://new5.movies4u.garden',
     'https://movies4u.cm'
 ];
@@ -40,12 +42,12 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
     }
 
     if (isDiscoveringMirrors) {
-        return { primary: movies4uActiveMirrors[0] || 'https://new5.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
+        return { primary: movies4uActiveMirrors[0] || 'https://new8.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: true };
     }
 
     isDiscoveringMirrors = true;
     try {
-        const candidates = ['https://new5.movies4u.garden', 'https://new4.movies4u.garden', 'https://movies4u.cm', 'https://new3.movies4u.garden', 'https://movies4u.ws'];
+        const candidates = ['https://new8.movies4u.garden', 'https://new5.movies4u.garden', 'https://new4.movies4u.garden', 'https://movies4u.cm', 'https://new3.movies4u.garden', 'https://movies4u.ws'];
         const verified: string[] = [];
 
         await Promise.all(candidates.map(async (origin) => {
@@ -89,7 +91,7 @@ export async function discoverAndPromoteMovies4uMirrors(force = false): Promise<
         isDiscoveringMirrors = false;
     }
 
-    return { primary: movies4uActiveMirrors[0] || 'https://new5.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: false };
+    return { primary: movies4uActiveMirrors[0] || 'https://new8.movies4u.garden', mirrors: movies4uActiveMirrors, fromCache: false };
 }
 
 // Initial background startup discovery
@@ -118,7 +120,7 @@ export async function getDirectM3u8FromMorenciusId(fileIdOrUrl: string, mirrorOr
         const rawId = fileIdOrUrl.includes('/')
             ? (fileIdOrUrl.split('?')[0].split('#')[0].split('/').filter(Boolean).pop() || '')
             : fileIdOrUrl;
-        const refererUrl = mirrorOrigin || movies4uActiveMirrors[0] || 'https://new5.movies4u.garden/';
+        const refererUrl = mirrorOrigin || movies4uActiveMirrors[0] || 'https://new8.movies4u.garden/';
         
         // Prioritize active, highly-responsive domains (m4uplay.quest / vidhidefast / vidhidevip)
         const candidateEmbedUrls: string[] = [];

@@ -429,6 +429,8 @@ const ALLOWED_STREAMING_DOMAINS = [
     'filmu.in',
     'movies4u.cm',
     'movies4u.quest',
+    'movies4u.garden',
+    'm4uplay.quest',
     'acekem.cfd',
     'vidrift.in',
     'swish.com',
@@ -509,7 +511,9 @@ export function isStreamingTargetAllowed(targetUrl: URL): boolean {
             host.includes('megaplay') ||
             host.includes('anicdn') ||
             host.includes('dramiyos') ||
-            host.includes('rousav')
+            host.includes('rousav') ||
+            host.includes('movies4u') ||
+            host.includes('m4uplay')
         ) {
             return true;
         }

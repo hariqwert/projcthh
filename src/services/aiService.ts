@@ -233,7 +233,7 @@ export async function queryAiBroadcastAssistant(
                     `- **CORS Bypass**: Proxied via \`/stream_proxy.php\` with Referer: https://bingr.one/.\n`;
             } else if (isM4u) {
                 localAnswer += `### [Movies4u Acek Engine · Status: ONLINE / VERIFIED]\n` +
-                    `- **Mirror Hub**: Multi-domain dynamic mirror promoter (active fast edge: new3.movies4u.garden).\n` +
+                    `- **Mirror Hub**: Multi-domain dynamic mirror promoter (active fast edge: new8.movies4u.garden).\n` +
                     `- **Stream Fidelity**: Acek CDN master playlist (1080p Full HD).\n` +
                     `- **Headers**: Referer: https://m4uplay.quest/.\n`;
             } else if (isAphelion || isNova || isOrion || isPolaris) {

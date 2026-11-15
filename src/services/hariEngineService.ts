@@ -434,7 +434,7 @@ Click the button below to launch the channel natively inside the Stalker Pro Pla
 **Cluster Search Outcomes:**
 1. **SM Movie Hub (Fibwatch 36k Catalog):** ${smFound ? `✅ Match found: *${smFound.title}* (${smFound.quality || '1080p'})` : 'No direct index match'}
 2. **FrameX Multi-Provider Cluster:** ${framexResult?.success ? `✅ Direct HLS Stream resolved (${framexResult.sources.length} sources, ${framexResult.subtitles?.length || 0} subtitles)` : 'Upstream query bypassed'}
-3. **Movies4u Mirror Engine:** Ready on standby via \`https://new1.movies4u.garden\`
+3. **Movies4u Mirror Engine:** Ready on standby via \`https://new8.movies4u.garden\`
 
 **Primary Direct Stream:**
 \`\`\`text

@@ -235,7 +235,7 @@
                         id="globalSearchInput"
                         oninput="handleSearchDebounced(this.value)"
                         onkeydown="handleSearchKeyDown(event)"
-                        placeholder="Search manga or comics..."
+                        placeholder="Search manga or paste WebtoonClub, BaeToon, ThunderScans, Atsu, Comix URL..."
                         class="w-full h-10 pl-11 pr-12 rounded-full bg-white/[0.05] border border-white/10 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-[#ff6a00] focus:ring-1 focus:ring-[#ff6a00]/50 transition-all"
                     />
                     <!-- Shortcut pill '/' -->
@@ -335,7 +335,7 @@
                 id="mobileSearchInput"
                 oninput="handleSearchDebounced(this.value)"
                 onkeydown="handleSearchKeyDown(event)"
-                placeholder="Search manga or comics..."
+                placeholder="Search or paste WebtoonClub, BaeToon, ThunderScans, Atsu, Comix URL..."
                 class="w-full h-10 pl-11 pr-4 rounded-full bg-white/[0.05] border border-white/10 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#ff6a00]"
             />
         </div>
@@ -1554,7 +1554,7 @@
                         <img src="${safeCover}" alt="" referrerpolicy="no-referrer" class="w-10 h-14 object-cover rounded-lg flex-shrink-0" onerror="handleCardImageError(this, '${r.title.replace(/'/g, "\\'")}')" />
                         <div class="min-w-0 flex-1">
                             <div class="text-xs font-bold text-white truncate">${r.title}</div>
-                            <div class="text-[11px] text-gray-400 font-mono">${r.type || 'Manga'} • ${r.chapterCount ? r.chapterCount + ' Chapters' : r.status || ''}</div>
+                            <div class="text-[11px] text-gray-400 font-mono"><span class="px-1.5 py-0.5 rounded text-[9px] bg-[#ff6a00]/20 text-[#ff6a00] font-bold mr-1.5">${(r.source || 'MANGA').toUpperCase()}</span>${r.type || 'Manga'} • ${r.chapterCount ? r.chapterCount + ' Chapters' : r.status || ''}</div>
                         </div>
                         <span class="text-[#ff6a00] text-xs font-bold">Open →</span>
                     </div>

@@ -1,6 +1,7 @@
 import { isSafeUrl } from '../proxy';
 import axios from 'axios';
 import https from 'https';
+import * as cheerio from 'cheerio';
 
 export interface ComicChapter {
     id: string;
@@ -12,7 +13,7 @@ export interface ComicChapter {
 }
 
 export interface ComicDetails {
-    source: 'readcomics' | 'atsu' | 'comix';
+    source: 'readcomics' | 'atsu' | 'comix' | 'webtoonclub' | 'baetoon' | 'thunderscans';
     id: string;
     slug?: string;
     title: string;
@@ -38,7 +39,7 @@ export interface ChapterPagesResult {
 
 export interface ComicSearchResult {
     id: string;
-    source: 'atsu' | 'readcomics' | 'comix';
+    source: 'atsu' | 'readcomics' | 'comix' | 'webtoonclub' | 'baetoon' | 'thunderscans';
     title: string;
     altTitles?: string[];
     cover: string;
@@ -57,7 +58,7 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 mins
 /**
  * Normalizes input URL or source/ID into standard resolver params
  */
-export function parseComicUrl(input: string): { source: 'readcomics' | 'atsu' | 'comix'; mangaId: string; chapterId?: string } | null {
+export function parseComicUrl(input: string): { source: 'readcomics' | 'atsu' | 'comix' | 'webtoonclub' | 'baetoon' | 'thunderscans'; mangaId: string; chapterId?: string } | null {
     if (!input) return null;
     const clean = input.trim();
 
@@ -99,6 +100,39 @@ export function parseComicUrl(input: string): { source: 'readcomics' | 'atsu' | 
             source: 'comix',
             mangaId: mangaSlug,
             chapterId: chapterNum
+        };
+    }
+
+    // 4. WebtoonClub: https://webtoonclub.com/webtoon/magic-emperor/chapter/936
+    const wtcMatch = clean.match(/webtoonclub\.com\/webtoon\/([^\/]+)(?:\/chapter\/([^\/?#]+))?/i);
+    if (wtcMatch) {
+        return {
+            source: 'webtoonclub',
+            mangaId: wtcMatch[1],
+            chapterId: wtcMatch[2]
+        };
+    }
+
+    // 5. BaeToon: https://baetoon.com/chapter-detail/6af5f137a91bdf88681d38b9 or title-detail/...
+    const baeMatch = clean.match(/baetoon\.com\/(chapter-detail|title-detail)\/([^\/?#]+)/i);
+    if (baeMatch) {
+        const isChapter = baeMatch[1] === 'chapter-detail';
+        return {
+            source: 'baetoon',
+            mangaId: baeMatch[2],
+            chapterId: isChapter ? baeMatch[2] : undefined
+        };
+    }
+
+    // 6. ThunderScans: https://en-thunderscans.com/return-of-the-devourer-chapter-56/ or thunderscans.com
+    const thunMatch = clean.match(/(?:en-)?thunderscans\.com\/(?:manga\/)?([^\/?#]+)/i);
+    if (thunMatch) {
+        const fullSlug = thunMatch[1].replace(/^\/|\/$/g, '');
+        const mangaSlug = fullSlug.replace(/-chapter-.*$/, '');
+        return {
+            source: 'thunderscans',
+            mangaId: mangaSlug || fullSlug,
+            chapterId: fullSlug
         };
     }
 
@@ -792,6 +826,408 @@ export async function searchComics(query: string): Promise<ComicSearchResult[]> 
 }
 
 // ==========================================
+// 🚀 WEBTOONCLUB RESOLVER ENGINE
+// ==========================================
+export async function getWebtoonClubDetails(slug: string): Promise<ComicDetails | null> {
+    const cleanSlug = slug.replace(/^webtoonclub:/, '').trim();
+    const cacheKey = `webtoonclub:details:${cleanSlug}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        const url = `https://webtoonclub.com/webtoon/${encodeURIComponent(cleanSlug)}`;
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': 'https://webtoonclub.com/'
+            },
+            timeout: 8000
+        });
+
+        const $ = cheerio.load(res.data);
+        const rawTitle = $('h1').first().text().trim() || $('title').text().replace(/–.*|\|.*/g, '').trim() || cleanSlug;
+        const title = rawTitle.replace(/\s+Manhua\s*$/i, '').trim();
+        const cover = $('meta[property="og:image"]').attr('content') || $('img[src*="/covers/"], img[src*="/webtoon/"]').attr('src') || '';
+        const synopsis = $('meta[name="description"]').attr('content') || $('.synopsis, .description').text().trim() || '';
+
+        const chapters: ComicChapter[] = [];
+        const seenChapters = new Set<string>();
+
+        $('a[href*="/chapter/"]').each((i, el) => {
+            const href = $(el).attr('href') || '';
+            const match = href.match(/\/chapter\/([^\/?#]+)/i);
+            if (!match) return;
+            const chId = match[1];
+            if (seenChapters.has(chId)) return;
+            seenChapters.add(chId);
+
+            const chText = $(el).text().replace(/\s+/g, ' ').trim();
+            const numMatch = chId.match(/(\d+(\.\d+)?)/) || chText.match(/(\d+(\.\d+)?)/);
+            const chNum = numMatch ? parseFloat(numMatch[1]) : (i + 1);
+
+            chapters.push({
+                id: chId,
+                chapterNumber: chNum,
+                title: chText ? (chText.startsWith('Ch') || chText.startsWith('Chapter') ? chText : `Chapter ${chId} - ${chText}`) : `Chapter ${chId}`,
+                url: href.startsWith('http') ? href : `https://webtoonclub.com${href}`
+            });
+        });
+
+        chapters.sort((a, b) => (parseFloat(String(a.chapterNumber)) || 0) - (parseFloat(String(b.chapterNumber)) || 0));
+
+        const details: ComicDetails = {
+            source: 'webtoonclub',
+            id: cleanSlug,
+            slug: cleanSlug,
+            title,
+            synopsis,
+            cover: cover ? `/api/comics/proxy-image?url=${encodeURIComponent(cover)}` : '',
+            status: 'Ongoing',
+            totalChapters: chapters.length,
+            chapters
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: details });
+        return details;
+    } catch (e: any) {
+        console.warn(`[ComicsService] WebtoonClub details error for "${cleanSlug}":`, e.message);
+        return null;
+    }
+}
+
+export async function getWebtoonClubChapterPages(slug: string, chapterId: string): Promise<ChapterPagesResult | null> {
+    const cleanSlug = slug.replace(/^webtoonclub:/, '').trim();
+    const cacheKey = `webtoonclub:chapter:${cleanSlug}:${chapterId}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        const url = `https://webtoonclub.com/webtoon/${encodeURIComponent(cleanSlug)}/chapter/${encodeURIComponent(chapterId)}`;
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': `https://webtoonclub.com/webtoon/${cleanSlug}`
+            },
+            timeout: 8000
+        });
+
+        const html = res.data;
+        const $ = cheerio.load(html);
+
+        const imgs: string[] = [];
+        $('img').each((i, el) => {
+            const src = $(el).attr('src') || $(el).attr('data-src');
+            if (src && src.includes('/uploads/chapters/')) {
+                imgs.push(src.startsWith('http') ? src : `https://webtoonclub.com${src}`);
+            }
+        });
+
+        let allPages = [...new Set(imgs)];
+        if (allPages.length > 0 && allPages.length < 20) {
+            const sample = allPages[0];
+            const baseDir = sample.replace(/\/\d+\.webp.*$/, '/');
+            const checkBatch: string[] = [];
+            for (let p = allPages.length + 1; p <= 60; p++) {
+                const padded = String(p).padStart(3, '0');
+                checkBatch.push(`${baseDir}${padded}.webp`);
+            }
+            for (let i = 0; i < checkBatch.length; i += 6) {
+                const batch = checkBatch.slice(i, i + 6);
+                const results = await Promise.all(batch.map(u =>
+                    axios.head(u, { headers: { 'Referer': 'https://webtoonclub.com/' }, timeout: 2000 })
+                        .then(r => r.status === 200 ? u : null)
+                        .catch(() => null)
+                ));
+                const valid = results.filter((x): x is string => !!x);
+                allPages.push(...valid);
+                if (valid.length < batch.length) break;
+            }
+        }
+
+        const pages = allPages.map(p => `/api/comics/proxy-image?url=${encodeURIComponent(p)}`);
+
+        const result: ChapterPagesResult = {
+            source: 'webtoonclub',
+            mangaId: cleanSlug,
+            chapterId,
+            title: `Chapter ${chapterId}`,
+            pages,
+            total: pages.length
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+        return result;
+    } catch (e: any) {
+        console.warn(`[ComicsService] WebtoonClub chapter error for "${cleanSlug}/${chapterId}":`, e.message);
+        return null;
+    }
+}
+
+// ==========================================
+// 🚀 BAETOON RESOLVER ENGINE
+// ==========================================
+export async function getBaetoonDetails(slugOrId: string): Promise<ComicDetails | null> {
+    const cleanId = slugOrId.replace(/^baetoon:/, '').trim();
+    const cacheKey = `baetoon:details:${cleanId}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        const isChapterHash = /^[a-f0-9]{24}$/i.test(cleanId);
+        const url = isChapterHash
+            ? `https://baetoon.com/chapter-detail/${cleanId}`
+            : (cleanId.includes('title-detail') ? (cleanId.startsWith('http') ? cleanId : `https://baetoon.com/${cleanId}`) : `https://baetoon.com/title-detail/${cleanId}`);
+
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': 'https://baetoon.com/'
+            },
+            timeout: 8000
+        });
+
+        const html = res.data;
+        let title = 'Korean Manhwa';
+        let cover = '';
+        const titleMatch = html.match(/"seriesTitle":\s*"([^"]+)"/i) || html.match(/<title>([^<]+)<\/title>/i);
+        if (titleMatch) title = titleMatch[1].replace(/Read\s+|Korean Manhwa.*|Online Free.*|BaeToon.*|Chapter\s+\d+.*/gi, '').replace(/[-|–].*$/, '').trim();
+
+        const coverMatch = html.match(/"cover":\s*"([^"]+)"/i) || html.match(/property="og:image"\s+content="([^"]+)"/i);
+        if (coverMatch) cover = coverMatch[1];
+
+        const chapters: ComicChapter[] = [];
+        const chListMatch = html.match(/"allChapters":\s*(\[[^\]]+\])/i);
+        if (chListMatch) {
+            try {
+                const list = JSON.parse(chListMatch[1]);
+                for (const ch of list) {
+                    chapters.push({
+                        id: ch.id,
+                        chapterNumber: parseFloat(ch.number) || ch.number || 1,
+                        title: ch.title ? (ch.title.startsWith('Chapter') ? ch.title : `Chapter ${ch.number}`) : `Chapter ${ch.number}`,
+                        url: ch.href ? (ch.href.startsWith('http') ? ch.href : `https://baetoon.com${ch.href}`) : undefined,
+                        pageCount: ch.pagesCount || 0
+                    });
+                }
+            } catch {}
+        }
+
+        if (chapters.length === 0 && isChapterHash) {
+            chapters.push({
+                id: cleanId,
+                chapterNumber: 1,
+                title: 'Chapter ' + cleanId.slice(0, 8),
+                url: `https://baetoon.com/chapter-detail/${cleanId}`
+            });
+        }
+
+        chapters.sort((a, b) => (parseFloat(String(a.chapterNumber)) || 0) - (parseFloat(String(b.chapterNumber)) || 0));
+
+        const details: ComicDetails = {
+            source: 'baetoon',
+            id: cleanId,
+            slug: cleanId,
+            title: title || 'Korean Manhwa',
+            cover: cover ? `/api/comics/proxy-image?url=${encodeURIComponent(cover)}` : '',
+            status: 'Ongoing',
+            totalChapters: chapters.length,
+            chapters
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: details });
+        return details;
+    } catch (e: any) {
+        console.warn(`[ComicsService] Baetoon details error for "${cleanId}":`, e.message);
+        return null;
+    }
+}
+
+export async function getBaetoonChapterPages(chapterId: string): Promise<ChapterPagesResult | null> {
+    const cleanId = chapterId.replace(/^baetoon:/, '').trim();
+    const cacheKey = `baetoon:chapter:${cleanId}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        const url = cleanId.startsWith('http') ? cleanId : `https://baetoon.com/chapter-detail/${cleanId}`;
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': 'https://baetoon.com/'
+            },
+            timeout: 8000
+        });
+
+        const html = res.data;
+        const rawUrls = [...html.matchAll(/(https?:\/\/[a-z0-9.-]*poke-black-and-white\.net\/storage\/[^"'\s\\]+)/gi)]
+            .map(m => m[1].replace(/\\$/, ''));
+        const pages = [...new Set(rawUrls)];
+
+        let chTitle = 'Chapter';
+        const chTitleMatch = html.match(/"title":\s*"([^"]+)"/i);
+        if (chTitleMatch) chTitle = chTitleMatch[1];
+
+        const result: ChapterPagesResult = {
+            source: 'baetoon',
+            mangaId: cleanId,
+            chapterId: cleanId,
+            title: chTitle,
+            pages,
+            total: pages.length
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+        return result;
+    } catch (e: any) {
+        console.warn(`[ComicsService] Baetoon chapter pages error for "${cleanId}":`, e.message);
+        return null;
+    }
+}
+
+// ==========================================
+// 🚀 THUNDERSCANS RESOLVER ENGINE
+// ==========================================
+export async function getThunderScansDetails(slug: string): Promise<ComicDetails | null> {
+    const cleanSlug = slug.replace(/^thunderscans:/, '').trim();
+    const cacheKey = `thunderscans:details:${cleanSlug}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        const url = cleanSlug.startsWith('http')
+            ? cleanSlug
+            : (cleanSlug.includes('chapter')
+                ? `https://en-thunderscans.com/${cleanSlug}/`
+                : `https://en-thunderscans.com/manga/${cleanSlug}/`);
+
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': 'https://en-thunderscans.com/'
+            },
+            timeout: 8000
+        });
+
+        const html = res.data;
+        const $ = cheerio.load(html);
+
+        const title = $('h1.entry-title').text().trim() || $('title').text().replace(/[-|–].*$/, '').trim() || cleanSlug;
+        const cover = $('.thumb img').attr('src') || $('meta[property="og:image"]').attr('content') || '';
+        const synopsis = $('.entry-content p, .synopsis p').text().trim() || $('meta[name="description"]').attr('content') || '';
+
+        const chapters: ComicChapter[] = [];
+        const seen = new Set<string>();
+
+        $('#chapterlist ul li, .eplister ul li').each((i, el) => {
+            const a = $(el).find('a');
+            const href = a.attr('href') || '';
+            const chNumAttr = $(el).attr('data-num') || a.find('.chapternum').text() || a.text();
+            const numMatch = chNumAttr.match(/(\d+(\.\d+)?)/);
+            const num = numMatch ? parseFloat(numMatch[1]) : (i + 1);
+            const chSlugMatch = href.match(/en-thunderscans\.com\/([^\/?#]+)/i);
+            const chId = chSlugMatch ? chSlugMatch[1] : String(num);
+
+            if (!seen.has(chId)) {
+                seen.add(chId);
+                chapters.push({
+                    id: chId,
+                    chapterNumber: num,
+                    title: `Chapter ${num}`,
+                    url: href
+                });
+            }
+        });
+
+        if (chapters.length === 0 && cleanSlug.includes('chapter')) {
+            const numMatch = cleanSlug.match(/chapter-(\d+(\.\d+)?)/i);
+            const num = numMatch ? parseFloat(numMatch[1]) : 1;
+            chapters.push({
+                id: cleanSlug,
+                chapterNumber: num,
+                title: `Chapter ${num}`,
+                url: url
+            });
+        }
+
+        chapters.sort((a, b) => (parseFloat(String(a.chapterNumber)) || 0) - (parseFloat(String(b.chapterNumber)) || 0));
+
+        const details: ComicDetails = {
+            source: 'thunderscans',
+            id: cleanSlug,
+            slug: cleanSlug,
+            title,
+            synopsis,
+            cover: cover ? `/api/comics/proxy-image?url=${encodeURIComponent(cover)}` : '',
+            status: 'Ongoing',
+            totalChapters: chapters.length,
+            chapters
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: details });
+        return details;
+    } catch (e: any) {
+        console.warn(`[ComicsService] ThunderScans details error for "${cleanSlug}":`, e.message);
+        return null;
+    }
+}
+
+export async function getThunderScansChapterPages(slug: string, chapterId?: string): Promise<ChapterPagesResult | null> {
+    const targetSlug = (chapterId && chapterId.includes('chapter')) ? chapterId : slug;
+    const cacheKey = `thunderscans:chapter:${targetSlug}`;
+    const cached = COMIC_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    try {
+        const url = targetSlug.startsWith('http') ? targetSlug : `https://en-thunderscans.com/${targetSlug.replace(/^\/|\/$/g, '')}/`;
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': 'https://en-thunderscans.com/'
+            },
+            timeout: 8000
+        });
+
+        const html = res.data;
+        let images: string[] = [];
+        let chTitle = `Chapter ${chapterId || ''}`;
+
+        const tsRun = html.match(/ts_reader\.run\(([\s\S]*?)\);\s*<\/script>/i);
+        if (tsRun) {
+            try {
+                const data = JSON.parse(tsRun[1]);
+                images = (data.sources?.[0]?.images || []).filter(Boolean);
+            } catch {}
+        }
+
+        if (images.length === 0) {
+            const $ = cheerio.load(html);
+            $('#readerarea img').each((i, el) => {
+                const src = $(el).attr('src') || $(el).attr('data-src');
+                if (src && src.startsWith('http')) images.push(src);
+            });
+            chTitle = $('h1.entry-title').text().trim() || chTitle;
+        }
+
+        const pages = images.map(u => `/api/comics/proxy-image?url=${encodeURIComponent(u)}`);
+
+        const result: ChapterPagesResult = {
+            source: 'thunderscans',
+            mangaId: slug,
+            chapterId: targetSlug,
+            title: chTitle,
+            pages,
+            total: pages.length
+        };
+
+        COMIC_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+        return result;
+    } catch (e: any) {
+        console.warn(`[ComicsService] ThunderScans chapter pages error for "${targetSlug}":`, e.message);
+        return null;
+    }
+}
+
+// ==========================================
 // 🚀 MASTER RESOLVERS
 // ==========================================
 export async function resolveComicInfo(params: { source?: string; id?: string; url?: string }): Promise<ComicDetails | null> {
@@ -808,7 +1244,13 @@ export async function resolveComicInfo(params: { source?: string; id?: string; u
 
     if (!id) return null;
 
-    if (source === 'atsu' || isUuid(id) || id.length === 4 || id.length === 5 || MANGADEX_ID_MAP[id] || (!source && id.match(/^[a-zA-Z0-9]{4,5}$/))) {
+    if (source === 'webtoonclub' || id.includes('webtoonclub')) {
+        return await getWebtoonClubDetails(id);
+    } else if (source === 'baetoon' || id.includes('baetoon') || /^[a-f0-9]{24}$/i.test(id)) {
+        return await getBaetoonDetails(id);
+    } else if (source === 'thunderscans' || id.includes('thunderscans')) {
+        return await getThunderScansDetails(id);
+    } else if (source === 'atsu' || isUuid(id) || id.length === 4 || id.length === 5 || MANGADEX_ID_MAP[id] || (!source && id.match(/^[a-zA-Z0-9]{4,5}$/))) {
         return await getAtsuComicDetails(id);
     } else if (source === 'readcomics' || (id.includes('marvel') || id.includes('deadpool') || id.includes('batman') || id.includes('spider-man'))) {
         return await getReadComicsDetails(id);
@@ -816,7 +1258,7 @@ export async function resolveComicInfo(params: { source?: string; id?: string; u
         return await getComixDetails(id);
     }
 
-    return (await getAtsuComicDetails(id)) || (await getReadComicsDetails(id)) || (await getComixDetails(id));
+    return (await getWebtoonClubDetails(id)) || (await getBaetoonDetails(id)) || (await getThunderScansDetails(id)) || (await getAtsuComicDetails(id)) || (await getReadComicsDetails(id)) || (await getComixDetails(id));
 }
 
 export async function resolveChapterPages(params: { source?: string; mangaId?: string; chapterId?: string; url?: string }): Promise<ChapterPagesResult | null> {
@@ -835,7 +1277,13 @@ export async function resolveChapterPages(params: { source?: string; mangaId?: s
 
     if (!mangaId) return null;
 
-    if (source === 'atsu' || isUuid(mangaId) || isUuid(chapterId) || mangaId.length === 4 || mangaId.length === 5 || MANGADEX_ID_MAP[mangaId]) {
+    if (source === 'webtoonclub') {
+        return await getWebtoonClubChapterPages(mangaId, chapterId);
+    } else if (source === 'baetoon') {
+        return await getBaetoonChapterPages(chapterId || mangaId);
+    } else if (source === 'thunderscans') {
+        return await getThunderScansChapterPages(mangaId, chapterId);
+    } else if (source === 'atsu' || isUuid(mangaId) || isUuid(chapterId) || mangaId.length === 4 || mangaId.length === 5 || MANGADEX_ID_MAP[mangaId]) {
         if (/^\d+(\.\d+)?$/.test(chapterId) && !isUuid(chapterId)) {
             const atsuDetails = await getAtsuComicDetails(mangaId);
             if (atsuDetails && atsuDetails.chapters.length > 0) {
@@ -857,7 +1305,7 @@ export async function resolveChapterPages(params: { source?: string; mangaId?: s
         }
     }
 
-    return (await getAtsuChapterPages(mangaId, chapterId)) || (await getReadComicsChapterPages(mangaId, chapterId));
+    return (await getWebtoonClubChapterPages(mangaId, chapterId)) || (await getBaetoonChapterPages(chapterId || mangaId)) || (await getThunderScansChapterPages(mangaId, chapterId)) || (await getAtsuChapterPages(mangaId, chapterId)) || (await getReadComicsChapterPages(mangaId, chapterId));
 }
 
 /**
@@ -865,6 +1313,7 @@ export async function resolveChapterPages(params: { source?: string; mangaId?: s
  */
 const ALLOWED_COMIC_HOSTS = [
     'atsu.moe',
+    'cdn.atsu.moe',
     'comix.to',
     'readallcomics.com',
     'readcomicsonline.ru',
@@ -876,7 +1325,15 @@ const ALLOWED_COMIC_HOSTS = [
     'chapmanganelo.com',
     'cloudinary.com',
     'imgur.com',
-    'wp.com'
+    'wp.com',
+    'webtoonclub.com',
+    'baetoon.com',
+    'poke-black-and-white.net',
+    'bulbasaur.poke-black-and-white.net',
+    'en-thunderscans.com',
+    'thunderscans.com',
+    'ibb.co',
+    'i.ibb.co'
 ];
 
 export function isAllowedComicHost(urlStr: string): boolean {
@@ -928,6 +1385,12 @@ export async function streamComicImage(imageUrl: string, res: any): Promise<void
             reqHeaders['Referer'] = 'https://atsu.moe/';
         } else if (targetUrl.includes('comix.to')) {
             reqHeaders['Referer'] = 'https://comix.to/';
+        } else if (targetUrl.includes('webtoonclub.com')) {
+            reqHeaders['Referer'] = 'https://webtoonclub.com/';
+        } else if (targetUrl.includes('baetoon.com') || targetUrl.includes('poke-black-and-white.net')) {
+            reqHeaders['Referer'] = 'https://baetoon.com/';
+        } else if (targetUrl.includes('en-thunderscans.com') || targetUrl.includes('thunderscans.com')) {
+            reqHeaders['Referer'] = 'https://en-thunderscans.com/';
         }
 
         const resp = await axios.get(targetUrl, {

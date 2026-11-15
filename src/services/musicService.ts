@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 import { JioSaavnService, SaavnSong } from './jiosaavnService';
 import { YouTubeService } from './youtubeService';
 
@@ -12,7 +13,7 @@ export interface MusicTrack {
     artwork: string;
     streamUrl: string;
     downloadUrl: string;
-    source: 'jiosaavn' | 'audius' | 'youtube' | 'jamendo';
+    source: 'jiosaavn' | 'audius' | 'youtube' | 'jamendo' | 'anison';
 }
 
 export class MusicService {
@@ -242,6 +243,81 @@ export class MusicService {
                 };
             });
         } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * Search Anime songs from Anison.online (OPs, EDs, insert songs, theme songs)
+     */
+    static async searchAnison(query: string, limit: number = 20): Promise<MusicTrack[]> {
+        const cleanQ = (query || '').trim();
+        if (!cleanQ) return [];
+
+        try {
+            const url = `https://anison.online/en/song?search_text=${encodeURIComponent(cleanQ)}`;
+            const res = await axios.get(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9'
+                },
+                timeout: 8000
+            });
+
+            const $ = cheerio.load(res.data);
+            const tracks: MusicTrack[] = [];
+
+            $('a[href*="/anime/"][href*="#song"]').each((i, el) => {
+                if (tracks.length >= limit) return;
+
+                const $a = $(el);
+                let title = $a.text().trim();
+                const href = $a.attr('href') || '';
+
+                // Handle obfuscated JS titles: window.addEventListener('DOMContentLoaded', function () { o('...', '...'); });
+                const jsMatch = title.match(/o\(['"]([^'"]+)['"]/);
+                if (jsMatch) {
+                    try {
+                        title = Buffer.from(jsMatch[1], 'base64').toString('utf8');
+                    } catch {}
+                }
+
+                if (!title || title.includes('window.addEvent')) return;
+                try {
+                    title = decodeURIComponent(title);
+                } catch {}
+
+                const $card = $a.closest('.border, .rounded, [class*="card"], div.p-3, div.p-4, div.song-card').first();
+                const $parent = $card.length ? $card : $a.parent().parent();
+
+                let artist = $parent.find('a[href*="/artist/"]').first().text().trim() || 'Anime Artist';
+                let anime = $parent.find('a[href*="/anime/"]').not('[href*="#song"]').first().text().trim() || cleanQ;
+                let season = $parent.find('a[href*="/season"]').first().text().replace(/\s+/g, ' ').trim();
+
+                const songIdMatch = href.match(/#song-?(\d+)/);
+                const songId = songIdMatch ? songIdMatch[1] : ('anison_' + i);
+
+                const songQuery = `${title} ${artist} ${anime} theme`;
+                const streamUrl = `/api/v1/youtube/stream?query=${encodeURIComponent(songQuery)}&type=audio&title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
+
+                tracks.push({
+                    id: `anison-${songId}`,
+                    title,
+                    artist,
+                    album: `${anime}${season ? ' (' + season + ')' : ''}`,
+                    duration: 210,
+                    durationFormatted: '3:30',
+                    artwork: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=480',
+                    streamUrl,
+                    downloadUrl: streamUrl,
+                    source: 'anison'
+                });
+            });
+
+            return tracks;
+        } catch (err: any) {
+            console.error('[MusicService] Anison search error:', err.message);
             return [];
         }
     }

@@ -6564,16 +6564,20 @@ app.get('/api/music/resolve-link', async (req: Request, res: Response) => {
     }
 });
 
-// Robust Multi-Provider Full-Length Music Search API (Audius + YouTube Music + JioSaavn)
+// Robust Multi-Provider Full-Length Music Search API (Audius + YouTube Music + JioSaavn + Anison)
 app.get('/api/music/search', async (req: Request, res: Response) => {
     const query = (req.query.q || req.query.query || req.query.term || '').toString().trim();
     if (!query) {
         return res.status(400).json({ error: 'Missing query parameter q' });
     }
 
+    const source = (req.query.source || '').toString().toLowerCase();
+
     try {
         let tracks: any[] = [];
-        if (query.startsWith('http://') || query.startsWith('https://')) {
+        if (source === 'anison') {
+            tracks = await MusicService.searchAnison(query, 20);
+        } else if (query.startsWith('http://') || query.startsWith('https://')) {
             const resolvedTracks = await MusicService.resolveLink(query);
             if (resolvedTracks && resolvedTracks.length > 0) tracks.push(...resolvedTracks);
         } else {
@@ -6585,7 +6589,7 @@ app.get('/api/music/search', async (req: Request, res: Response) => {
             title: t.title,
             artist: t.artist,
             album: t.album || 'Lossless Studio Audio',
-            genre: 'Lossless FLAC/MP3',
+            genre: t.source === 'anison' ? 'Anime OST / OP / ED' : 'Lossless FLAC/MP3',
             url: t.streamUrl,
             streamUrl: t.streamUrl,
             downloadUrl: t.downloadUrl,
@@ -6607,6 +6611,47 @@ app.get('/api/music/search', async (req: Request, res: Response) => {
     } catch (err: any) {
         console.error('[Music Search Error]:', err.message);
         res.status(500).json({ status: 'error', message: 'Failed to search audio catalog' });
+    }
+});
+
+// Dedicated Anison.online Anime Music Search API
+app.get('/api/music/anison', async (req: Request, res: Response) => {
+    const query = (req.query.q || req.query.query || req.query.term || '').toString().trim();
+    if (!query) {
+        return res.status(400).json({ error: 'Missing query parameter q' });
+    }
+
+    try {
+        const limit = parseInt((req.query.limit as string) || '20', 10);
+        const tracks = await MusicService.searchAnison(query, limit);
+
+        const mappedResults = tracks.map(t => ({
+            id: t.id,
+            title: t.title,
+            artist: t.artist,
+            album: t.album || 'Anime Soundtrack',
+            genre: 'Anime OST / OP / ED',
+            url: t.streamUrl,
+            streamUrl: t.streamUrl,
+            downloadUrl: t.downloadUrl,
+            img: t.artwork,
+            image: t.artwork,
+            source: 'anison',
+            duration: t.durationFormatted || '3:30',
+            isFullLength: true
+        }));
+
+        res.json({
+            status: 'success',
+            query,
+            total: mappedResults.length,
+            count: mappedResults.length,
+            tracks: mappedResults,
+            results: mappedResults
+        });
+    } catch (err: any) {
+        console.error('[Anison Search Error]:', err.message);
+        res.status(500).json({ status: 'error', message: 'Failed to search Anison catalog' });
     }
 });
 

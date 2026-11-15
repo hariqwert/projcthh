@@ -16,8 +16,6 @@ import { fetchSonyLivEvents } from '../services/sonylivService';
 import { getMix1TvChannels } from '../services/mix1tvService';
 import { fetchWillowEvents } from '../services/willowService';
 import { fetchPrimeEvents } from '../services/primeService';
-import { generateFootlinksM3u, getFootlinksData, getFormattedFootlinksEvents } from '../services/footlinksService';
-import { getAllChannelsData, generateAllChannelsM3u } from '../services/allChannelsService';
 
 const router = Router();
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours for the channel list itself
@@ -732,10 +730,12 @@ router.get(['/api/resolve_stream', '/api/resolve_stream/:id', '/api/resolve_stre
         if (streamUrl) {
             let proxiedUrl = streamUrl;
             if (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) {
-                if (!streamUrl.includes('/live.php') && !streamUrl.includes('/api/mdtv/manifest/')) {
+                if (!streamUrl.includes('/live.php') && !streamUrl.includes('/api/mdtv/manifest/') && !streamUrl.includes('/stream_proxy.php')) {
                     proxiedUrl = `/live.php?url=${encodeURIComponent(streamUrl)}`;
                 }
-            } else if (!streamUrl.startsWith('/api/proxy/')) {
+            } else if (streamUrl.startsWith('/')) {
+                proxiedUrl = streamUrl;
+            } else {
                 const stalkerEnc = StalkerAPI.scarletWitch('encrypt', streamUrl.substring(0, streamUrl.lastIndexOf('/') + 1));
                 const wandaEnc = StalkerAPI.scarletWitch('encrypt', streamUrl);
                 proxiedUrl = `/live.php?token=STALKER_PRO&stalker=${stalkerEnc}&wanda=${wandaEnc}&m3u=1`;
@@ -870,27 +870,71 @@ router.get('/api/biggboss/resolve', async (req: Request, res: Response) => {
     }
 });
 
+let sportsChannelsCatalogCache: any[] | null = null;
+let sportsChannelsCatalogTime = 0;
+const SPORTS_CHANNELS_TTL_MS = 60 * 1000; // 60s fast in-memory cache
+
 // JSON channels list endpoint for fast rendering and admin channel picker
 router.get('/api/sports/channels', async (req: Request, res: Response) => {
     try {
         const force = req.query.refresh === '1';
-        await getOrUpdatePlaylist(force);
-        
+
+        // Fast In-Memory Cache return (Instant sub-millisecond response)
+        if (!force && sportsChannelsCatalogCache && (Date.now() - sportsChannelsCatalogTime < SPORTS_CHANNELS_TTL_MS)) {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('X-Cache-Lookup', 'HIT');
+            return res.json(sportsChannelsCatalogCache);
+        }
+
         let allChannels: any[] = [];
         const existingIds = new Set<string>();
 
+        const isLegitSports = (ch: any): boolean => {
+            if (!ch) return false;
+            if (ch.isEvent || ch.isLive || ch.source === 'sonyliv' || ch.source === 'fancode' || ch.source === 'tim_events' || ch.source === 'jtv_events') return true;
+            const n = (ch.name || '').toLowerCase();
+            const grp = (ch.group || ch.genre || '').toLowerCase();
+            // Blacklist non-sports genres (e.g. general entertainment, serials, devotional, regional movie hubs)
+            if (grp.includes('entertainment') || grp.includes('serial') || grp.includes('music') || grp.includes('devotional') || grp.includes('kids') || grp.includes('news')) {
+                if (!n.includes('sport') && !n.includes('cricket') && !n.includes('football') && !n.includes('tennis') && !n.includes('wrestling') && !n.includes('ten ') && !n.includes('willow') && !n.includes('fancode')) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
         const registerChannel = (ch: any) => {
-            if (!ch) return;
+            if (!ch || !isLegitSports(ch)) return;
             const idKey = String(ch.channel_id || ch.id || ch.stream_url || '');
             if (!idKey || existingIds.has(idKey)) return;
             existingIds.add(idKey);
             allChannels.push(ch);
         };
 
-        // 1. SonyLIV Live & Upcoming Matches (Priority in Live)
-        try {
-            const sonyData = await fetchSonyLivEvents(force);
-            (sonyData.live || []).forEach(sl => {
+        // Parallel non-blocking execution of all channel sources
+        const [
+            sonyRes,
+            fancodeRes,
+            timEventsRes,
+            jtvEventsRes,
+            jtvChannelsRes,
+            mixDataRes,
+            timChsRes,
+            proxyStreamsRes
+        ] = await Promise.allSettled([
+            fetchSonyLivEvents(force),
+            fetchFanCodeEvents(force),
+            getTimLiveEvents(force),
+            JtvService.fetchLiveEvents(force),
+            JtvService.fetchChannels(force),
+            getMix1TvChannels(force),
+            getTimChannels(force),
+            getProxyStreamsList()
+        ]);
+
+        // 1. SonyLIV Live & Upcoming Matches
+        if (sonyRes.status === 'fulfilled' && sonyRes.value?.live) {
+            (sonyRes.value.live || []).forEach((sl: any) => {
                 if (sl.streamUrl) {
                     registerChannel({
                         channel_id: `sonyliv_${sl.id || sl.contentId}`,
@@ -906,12 +950,11 @@ router.get('/api/sports/channels', async (req: Request, res: Response) => {
                     });
                 }
             });
-        } catch (_) {}
+        }
 
-        // 2. Ongoing Live FanCode Matches
-        try {
-            const { live } = await fetchFanCodeEvents(force);
-            live.forEach(fc => {
+        // 2. FanCode Matches
+        if (fancodeRes.status === 'fulfilled' && fancodeRes.value?.live) {
+            (fancodeRes.value.live || []).forEach((fc: any) => {
                 if (fc.streamUrl) {
                     registerChannel({
                         channel_id: fc.id,
@@ -927,175 +970,128 @@ router.get('/api/sports/channels', async (req: Request, res: Response) => {
                     });
                 }
             });
-        } catch (_) {}
+        }
 
-        // 3. TimStreams Live Match Events
-        try {
-            const timEvents = await getTimLiveEvents(force);
-            if (Array.isArray(timEvents)) {
-                timEvents.forEach((ev: any) => {
-                    const slug = (ev.streams && ev.streams[0]?.embedSlug) || ev.url;
-                    if (slug) {
-                        registerChannel({
-                            channel_id: 'tim_' + slug,
-                            id: 'tim_' + slug,
-                            name: `⚡ ${ev.name} [TimStreams Event]`,
-                            genre: ev.category ? `TimStreams ${ev.category}` : 'TimStreams Events',
-                            group: 'TimStreams Events',
-                            logo: ev.logo || 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg',
-                            stream_url: `tim_${slug}`,
-                            source: 'tim_events',
-                            isLive: true,
-                            isEvent: true
-                        });
-                    }
-                });
-            }
-        } catch (_) {}
-
-        // 4. JioTV Match Events & Dedicated Feeds
-        try {
-            const jtvEvents = await JtvService.fetchLiveEvents(force);
-            if (Array.isArray(jtvEvents)) {
-                jtvEvents.forEach(ev => {
-                    if (ev.stream_url) {
-                        registerChannel({
-                            channel_id: `jtv_ev_${ev.id}`,
-                            id: `jtv_ev_${ev.id}`,
-                            name: `🔴 ${ev.name || ev.title} [Jio Match Feed]`,
-                            genre: ev.tournament || ev.badge || 'JioTV Events',
-                            group: 'JioTV Events',
-                            logo: ev.logo || 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg',
-                            stream_url: ev.stream_url,
-                            source: 'jtv_events',
-                            isLive: true,
-                            isEvent: true
-                        });
-                    }
-                });
-            }
-        } catch (_) {}
-
-        // 5. JioTV 24/7 Channels (Star Sports, Sony Ten, DD Sports, etc.)
-        try {
-            const jtvChannels = await JtvService.fetchChannels(force);
-            if (Array.isArray(jtvChannels)) {
-                jtvChannels.forEach(ch => {
-                    const cat = (ch.category || ch.genre || '').toLowerCase();
-                    const n = (ch.name || '').toLowerCase();
-                    const isSports = cat.includes('sport') || n.includes('sport') || n.includes('ten') || n.includes('cricket') || n.includes('eurosport') || n.includes('dd sports') || n.includes('willow') || n.includes('fancode') || n.includes('golf') || n.includes('football');
-                    if (!isSports) return; // Strictly skip non-sports channels from /api/sports/channels
+        // 3. TimStreams Match Events
+        if (timEventsRes.status === 'fulfilled' && Array.isArray(timEventsRes.value)) {
+            timEventsRes.value.forEach((ev: any) => {
+                const slug = (ev.streams && ev.streams[0]?.embedSlug) || ev.url;
+                if (slug) {
                     registerChannel({
-                        channel_id: `mdtv-${ch.id}`,
-                        id: `mdtv-${ch.id}`,
-                        name: `${ch.name} (JioTV)`,
-                        genre: ch.category || 'Sports',
-                        group: 'JioTV Sports',
-                        logo: ch.logo,
-                        stream_url: `/live.php?token=STALKER_PRO&id=mdtv-${ch.id}&m3u=1`,
-                        source: 'jtv',
+                        channel_id: 'tim_' + slug,
+                        id: 'tim_' + slug,
+                        name: `⚡ ${ev.name} [TimStreams Event]`,
+                        genre: ev.category ? `TimStreams ${ev.category}` : 'TimStreams Events',
+                        group: 'TimStreams Events',
+                        logo: ev.logo || 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg',
+                        stream_url: `tim_${slug}`,
+                        source: 'tim_events',
+                        isLive: true,
+                        isEvent: true
+                    });
+                }
+            });
+        }
+
+        // 4. JioTV Match Events
+        if (jtvEventsRes.status === 'fulfilled' && Array.isArray(jtvEventsRes.value)) {
+            jtvEventsRes.value.forEach((ev: any) => {
+                if (ev.stream_url) {
+                    registerChannel({
+                        channel_id: `jtv_ev_${ev.id}`,
+                        id: `jtv_ev_${ev.id}`,
+                        name: `🔴 ${ev.name || ev.title} [Jio Match Feed]`,
+                        genre: ev.tournament || ev.badge || 'JioTV Events',
+                        group: 'JioTV Events',
+                        logo: ev.logo || 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/tv.svg',
+                        stream_url: ev.stream_url,
+                        source: 'jtv_events',
+                        isLive: true,
+                        isEvent: true
+                    });
+                }
+            });
+        }
+
+        // 5. JioTV 24/7 Sports Channels
+        if (jtvChannelsRes.status === 'fulfilled' && Array.isArray(jtvChannelsRes.value)) {
+            jtvChannelsRes.value.forEach((ch: any) => {
+                const cat = (ch.category || ch.genre || '').toLowerCase();
+                const n = (ch.name || '').toLowerCase();
+                const isSports = cat.includes('sport') || n.includes('sport') || n.includes('ten') || n.includes('cricket') || n.includes('eurosport') || n.includes('dd sports') || n.includes('willow') || n.includes('fancode') || n.includes('golf') || n.includes('football');
+                if (!isSports) return;
+                registerChannel({
+                    channel_id: `mdtv-${ch.id}`,
+                    id: `mdtv-${ch.id}`,
+                    name: `${ch.name} (JioTV)`,
+                    genre: ch.category || 'Sports',
+                    group: 'JioTV Sports',
+                    logo: ch.logo,
+                    stream_url: `/live.php?token=STALKER_PRO&id=mdtv-${ch.id}&m3u=1`,
+                    source: 'jtv',
+                    isLive: true
+                });
+            });
+        }
+
+        // 6. Mix1TV Channels
+        if (mixDataRes.status === 'fulfilled' && mixDataRes.value?.channels && Array.isArray(mixDataRes.value.channels)) {
+            mixDataRes.value.channels.forEach((ch: any) => {
+                const grp = (ch.group || '').toLowerCase();
+                const n = (ch.name || '').toLowerCase();
+                const isSports = grp.includes('sports') || grp.includes('sonyliv') || grp.includes('fancode') || n.includes('sports') || n.includes('ten') || n.includes('cricket');
+                if (!isSports) return;
+                registerChannel({
+                    channel_id: `mix1tv_${ch.id}`,
+                    id: `mix1tv_${ch.id}`,
+                    name: `${ch.name} (Mix1TV)`,
+                    genre: ch.group || 'Mix1TV',
+                    group: isSports ? 'Mix1TV Sports' : 'Mix1TV',
+                    logo: ch.logo,
+                    stream_url: ch.stream_url,
+                    source: 'mix1tv',
+                    isLive: true
+                });
+            });
+        }
+
+        // 7. TimStreams 24/7 Channels
+        if (timChsRes.status === 'fulfilled' && Array.isArray(timChsRes.value)) {
+            timChsRes.value.forEach((tc: any) => {
+                if (tc.url) {
+                    registerChannel({
+                        channel_id: 'tim_' + tc.url,
+                        id: 'tim_' + tc.url,
+                        name: `⚡ ${tc.name} (TimStreams)`,
+                        genre: tc.category || 'TimStreams',
+                        group: 'TimStreams',
+                        logo: tc.logo,
+                        stream_url: `tim_${tc.url}`,
+                        source: 'timstreams',
                         isLive: true
                     });
-                });
-            }
-        } catch (_) {}
+                }
+            });
+        }
 
-        // 6. Mix1TV Channels (mixiptv.m3u)
-        try {
-            const mixData = await getMix1TvChannels(force);
-            if (mixData && Array.isArray(mixData.channels)) {
-                mixData.channels.forEach((ch: any) => {
-                    const grp = (ch.group || '').toLowerCase();
-                    const n = (ch.name || '').toLowerCase();
-                    const isSports = grp.includes('sports') || grp.includes('sonyliv') || grp.includes('fancode') || n.includes('sports') || n.includes('ten') || n.includes('cricket');
-                    if (!isSports) return; // Strictly skip non-sports channels
-                    registerChannel({
-                        channel_id: `mix1tv_${ch.id}`,
-                        id: `mix1tv_${ch.id}`,
-                        name: `${ch.name} (Mix1TV)`,
-                        genre: ch.group || 'Mix1TV',
-                        group: isSports ? 'Mix1TV Sports' : 'Mix1TV',
-                        logo: ch.logo,
-                        stream_url: ch.stream_url,
-                        source: 'mix1tv',
-                        drm: ch.clearkey ? {
-                            type: 'clearkey',
-                            key_id: ch.key_id,
-                            key: ch.key
-                        } : undefined,
-                        key_id: ch.key_id,
-                        key: ch.key,
-                        cookie: ch.cookie,
-                        headers: {
-                            'Referer': ch.referrer || 'https://www.jiotv.com/',
-                            'User-Agent': ch.userAgent || 'Premium Plugx',
-                            ...(ch.cookie ? { 'Cookie': ch.cookie } : {})
-                        },
-                        isLive: true
-                    });
-                });
-            }
-        } catch (_) {}
-
-        // 7. Zee Network Live Channels
-        try {
-            const zeeChs = await syncZeeChannels(force);
-            if (Array.isArray(zeeChs)) {
-                zeeChs.forEach((z: any) => {
-                    registerChannel({
-                        channel_id: `zee_${z.id}`,
-                        id: `zee_${z.id}`,
-                        name: `${z.name} (Zee Network)`,
-                        genre: z.genre || 'Entertainment',
-                        group: 'Zee Network',
-                        logo: z.logo,
-                        stream_url: z.streamUrl,
-                        source: 'zee',
-                        isLive: true
-                    });
-                });
-            }
-        } catch (_) {}
-
-        // 8. TimStreams 24/7 Channels
-        try {
-            const timChs = await getTimChannels(force);
-            if (Array.isArray(timChs)) {
-                timChs.forEach((tc: any) => {
-                    if (tc.url) {
-                        registerChannel({
-                            channel_id: 'tim_' + tc.url,
-                            id: 'tim_' + tc.url,
-                            name: `⚡ ${tc.name} (TimStreams)`,
-                            genre: tc.category || 'TimStreams',
-                            group: 'TimStreams',
-                            logo: tc.logo,
-                            stream_url: `tim_${tc.url}`,
-                            source: 'timstreams',
-                            isLive: true
-                        });
-                    }
-                });
-            }
-        } catch (_) {}
-
-        // 9. Master Curated Catalog from channels.json
+        // 8. Master Curated Catalog from channels.json
         try {
             const data = ChannelJsonService.getChannels();
             if (Array.isArray(data)) {
                 data.forEach(c => registerChannel(c));
             }
-        } catch (err: any) {
-            console.error('[!] Failed to read channels in /api/sports/channels:', err.message);
-        }
-
-        // 10. Curated Proxy Streams (DLHD, Sky Sports, TNT, etc.)
-        try {
-            const proxyStreams = await getProxyStreamsList();
-            proxyStreams.forEach(ps => registerChannel(ps));
         } catch (_) {}
 
+        // 9. Curated Proxy Streams
+        if (proxyStreamsRes.status === 'fulfilled' && Array.isArray(proxyStreamsRes.value)) {
+            proxyStreamsRes.value.forEach((ps: any) => registerChannel(ps));
+        }
+
+        sportsChannelsCatalogCache = allChannels;
+        sportsChannelsCatalogTime = Date.now();
+
         res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('X-Cache-Lookup', 'MISS');
         res.json(allChannels);
     } catch (e) {
         res.status(500).json({ error: 'Failed to load channels' });
@@ -1389,8 +1385,8 @@ router.post('/api/sports/probe-sources', async (req: Request, res: Response) => 
         }
 
         const probeOne = async (item: { id: string; url?: string; streamUrl?: string; playUrl?: string }) => {
-            const rawTarget = item.streamUrl || item.url || '';
-            const playUrl = item.playUrl || '';
+            const rawTarget = (item.streamUrl || item.url || '').trim();
+            const playUrl = (item.playUrl || '').trim();
             let target = rawTarget;
 
             if (!target && playUrl) {
@@ -1401,11 +1397,15 @@ router.post('/api/sports/probe-sources', async (req: Request, res: Response) => 
                 } else if (playUrl.includes('channel_id=')) {
                     try {
                         const chId = decodeURIComponent(playUrl.split('channel_id=')[1].split('&')[0]);
-                        target = `http://127.0.0.1:3000/live.php?token=STALKER_PRO&id=${encodeURIComponent(chId)}`;
+                        target = chId;
                     } catch (_) {}
                 } else {
                     target = playUrl;
                 }
+            }
+
+            if (!target && item.id) {
+                target = String(item.id).trim();
             }
 
             if (!target) {
@@ -1426,41 +1426,94 @@ router.post('/api/sports/probe-sources', async (req: Request, res: Response) => 
                 };
             }
 
-            // Direct in-memory channel resolution if target is local play_stream route (eliminates loopback redirect lag)
+            const t0 = Date.now();
+
+            // Extract channel ID from local proxy URLs or bare IDs so we resolve in-memory without loopback HTTP overhead
+            let extractedChId = '';
             if (target.includes('/api/play_stream/')) {
+                extractedChId = target.split('/api/play_stream/')[1].split('?')[0];
+            } else if (target.includes('/api/resolve_stream/')) {
+                extractedChId = target.split('/api/resolve_stream/')[1].split('?')[0];
+            } else if (target.includes('id=') && (target.includes('/live.php') || target.includes('play_consumet.php'))) {
+                const m = target.match(/[?&]id=([^&]+)/);
+                if (m) extractedChId = m[1];
+            } else if (target.includes('channel_id=')) {
+                const m = target.match(/[?&]channel_id=([^&]+)/);
+                if (m) extractedChId = m[1];
+            } else if (!target.startsWith('http://') && !target.startsWith('https://') && !target.startsWith('/')) {
+                extractedChId = target;
+            } else if (playUrl.includes('channel_id=')) {
+                const m = playUrl.match(/[?&]channel_id=([^&]+)/);
+                if (m) extractedChId = m[1];
+            }
+
+            if (extractedChId) {
                 try {
-                    const chId = target.split('/api/play_stream/')[1].split('?')[0];
-                    const inMemStream = await resolveChannelStream(decodeURIComponent(chId));
+                    extractedChId = decodeURIComponent(extractedChId).trim();
+                    const inMemStream = await resolveChannelStream(extractedChId);
                     if (inMemStream) {
                         target = inMemStream;
                     }
                 } catch (_) {}
             }
 
-            const t0 = Date.now();
             try {
                 let checkUrl = target;
-                if (checkUrl.includes('/live.php?url=') || checkUrl.includes('/stream_proxy.php?url=')|| checkUrl.includes('play_consumet.php?url=')) {
+                while (checkUrl.includes('/live.php?url=') || checkUrl.includes('/stream_proxy.php?url=') || checkUrl.includes('play_consumet.php?url=')) {
                     try {
                         const directUpstream = decodeURIComponent(checkUrl.split('url=')[1].split('&')[0]);
-                        if (directUpstream.startsWith('http://') || directUpstream.startsWith('https://')) {
+                        if (directUpstream.startsWith('http://') || directUpstream.startsWith('https://') || directUpstream.startsWith('/')) {
                             checkUrl = directUpstream;
+                        } else {
+                            break;
                         }
-                    } catch (_) {}
+                    } catch (_) {
+                        break;
+                    }
                 }
+
+                // If checkUrl resolved to another local /live.php?token=STALKER_PRO&id=... (e.g. mdtv-162), resolve that ID too
+                if (checkUrl.startsWith('/live.php') && checkUrl.includes('id=')) {
+                    const innerIdMatch = checkUrl.match(/[?&]id=([^&]+)/);
+                    if (innerIdMatch) {
+                        const innerResolved = await resolveChannelStream(decodeURIComponent(innerIdMatch[1])).catch(() => null);
+                        if (innerResolved) checkUrl = innerResolved;
+                    }
+                }
+
                 if (checkUrl.startsWith('/')) {
                     checkUrl = `http://127.0.0.1:3000${checkUrl}`;
                 }
 
+                const isTimCdn = checkUrl.includes('sytes.net') || checkUrl.includes('tims-') || checkUrl.includes('/main/secure/') || checkUrl.includes('ehgembxe') || checkUrl.includes('exmxbxe') || checkUrl.includes('judiaslevels') || checkUrl.includes('embeds.gay');
+                const isTimMain = checkUrl.includes('timstreams') || checkUrl.includes('timst');
+                const probeReferer = checkUrl.includes('fancode')
+                    ? 'https://www.fancode.com/'
+                    : checkUrl.includes('sonyliv')
+                    ? 'https://www.sonyliv.com/'
+                    : isTimCdn
+                    ? 'https://ehgembxe.cfd/'
+                    : isTimMain
+                    ? 'https://timstreams.co.rw/'
+                    : checkUrl.includes('romponalis') || checkUrl.includes('dlhd')
+                    ? 'https://hamis.romponalis.st/'
+                    : 'https://epiembeds.online/';
+
+                const probeHeaders: Record<string, string> = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept': '*/*',
+                    'Referer': probeReferer
+                };
+                if (isTimCdn) {
+                    probeHeaders['Origin'] = 'https://ehgembxe.cfd';
+                } else if (!checkUrl.includes('.m3u8') && !checkUrl.includes('.mpd')) {
+                    probeHeaders['Range'] = 'bytes=0-1024';
+                }
+
                 // TTFB stream probe: Promise resolves the instant response headers arrive, then stream is aborted immediately!
                 const resp = await axios.get(checkUrl, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                        'Accept': '*/*',
-                        'Range': 'bytes=0-1024',
-                        'Referer': checkUrl.includes('fancode') ? 'https://www.fancode.com/' : (checkUrl.includes('sonyliv') ? 'https://www.sonyliv.com/' : 'https://epiembeds.online/')
-                    },
-                    timeout: 1800,
+                    headers: probeHeaders,
+                    timeout: 4500,
                     httpAgent: probeHttpAgent,
                     httpsAgent: probeHttpsAgent,
                     responseType: 'stream',
@@ -1502,114 +1555,10 @@ router.post('/api/sports/probe-sources', async (req: Request, res: Response) => 
             }
         };
 
-        const results = await Promise.all(sources.slice(0, 10).map(s => probeOne(s)));
+        const results = await Promise.all(sources.slice(0, 12).map(s => probeOne(s)));
         return res.json({ status: 'success', results });
     } catch (e: any) {
         return res.status(500).json({ status: 'error', message: e?.message || 'Probe failed' });
-    }
-});
-
-/**
- * GET /footlinks.m3u & /api/sports/footlinks.m3u
- * Dynamic live sports playlist scraped and parsed from Footlinks (SPORTLINK TV)
- */
-router.get(['/footlinks.m3u', '/api/sports/footlinks.m3u'], async (req: Request, res: Response) => {
-    try {
-        const host = req.get('host') || 'localhost:3000';
-        const protocol = req.protocol || 'http';
-        const baseUrl = `${protocol}://${host}`;
-        const m3uContent = await generateFootlinksM3u(baseUrl);
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
-        res.setHeader('Content-Disposition', 'inline; filename="footlinks.m3u"');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        return res.send(m3uContent);
-    } catch (err: any) {
-        return res.status(500).send('#EXTM3U\n# Error generating Footlinks playlist: ' + (err?.message || err));
-    }
-});
-
-/**
- * GET /api/sports/footlinks/events
- * Returns JSON of current live events and multi-stream sources
- */
-router.get('/api/sports/footlinks/events', async (req: Request, res: Response) => {
-    try {
-        const events = await getFormattedFootlinksEvents();
-        return res.json({ status: 'success', count: events.length, events });
-    } catch (err: any) {
-        return res.status(500).json({ status: 'error', message: err?.message || 'Failed to fetch events' });
-    }
-});
-
-/**
- * GET /api/sportlink/channels & /api/footlinks/channels
- * Returns JSON catalog of SportLink live matches and multi-stream channels with categories
- */
-router.get(['/api/sportlink/channels', '/api/footlinks/channels'], async (req: Request, res: Response) => {
-    try {
-        const events = await getFormattedFootlinksEvents();
-        const catMap = new Map<string, number>();
-        events.forEach(e => {
-            const cat = e.category || 'Live Sports';
-            catMap.set(cat, (catMap.get(cat) || 0) + 1);
-        });
-
-        const categories = Array.from(catMap.entries()).map(([name, count]) => ({
-            name,
-            count
-        })).sort((a, b) => b.count - a.count);
-
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cache-Control', 'public, max-age=60');
-        return res.json({
-            status: 'success',
-            count: events.length,
-            categories,
-            channels: events
-        });
-    } catch (err: any) {
-        return res.status(500).json({ status: 'error', message: err?.message || 'Failed to fetch sportlink channels' });
-    }
-});
-
-/**
- * GET /api/allchannels/channels
- * Returns JSON catalog of SM-IPTV Combined Live TV (1,352+ channels)
- */
-router.get('/api/allchannels/channels', async (req: Request, res: Response) => {
-    try {
-        const force = req.query.refresh === '1';
-        const data = await getAllChannelsData(force);
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cache-Control', 'public, max-age=600');
-        return res.json({
-            status: 'success',
-            count: data.totalCount,
-            categories: data.categories,
-            channels: data.channels,
-            timestamp: data.timestamp
-        });
-    } catch (err: any) {
-        return res.status(500).json({ status: 'error', message: err?.message || 'Failed to load All Channels' });
-    }
-});
-
-/**
- * GET /allchannels.m3u & /api/allchannels/playlist.m3u
- * Exports Combined Live TV M3U playlist with all categories
- */
-router.get(['/allchannels.m3u', '/api/allchannels/playlist.m3u'], async (req: Request, res: Response) => {
-    try {
-        const host = req.get('host') || 'localhost:3000';
-        const protocol = req.protocol || 'http';
-        const baseUrl = `${protocol}://${host}`;
-        const m3uContent = await generateAllChannelsM3u(baseUrl);
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
-        res.setHeader('Content-Disposition', 'inline; filename="allchannels.m3u"');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        return res.send(m3uContent);
-    } catch (err: any) {
-        return res.status(500).send('#EXTM3U\n# Error generating All Channels playlist: ' + (err?.message || err));
     }
 });
 

@@ -177,14 +177,10 @@ function mapRawTimEvent(ev: any): TimLiveEvent {
         };
     });
     const eventName = (ev.name || 'Live Event').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-    let eventLogo = (ev.logo || '').replace(/&amp;/g, '&').trim();
-    if (eventLogo && eventLogo.startsWith('/')) {
-        eventLogo = `https://timstreams.co.rw${eventLogo}`;
-    }
     return {
         url: ev.url || '',
         name: eventName,
-        logo: eventLogo,
+        logo: ev.logo || '',
         genre: ev.genre,
         sub_genre: ev.sub_genre,
         time: ev.time,
@@ -198,10 +194,10 @@ function mapRawTimEvent(ev: any): TimLiveEvent {
 }
 
 const TIMSTREAMS_MIRRORS = [
-    'https://tim-streams.com',
     'https://timstreams.co.rw',
     'https://timst.top',
-    'https://timst.cfd'
+    'https://timst.cfd',
+    'https://tim-streams.com'
 ];
 
 /**
@@ -332,14 +328,9 @@ export async function getTimChannels(forceRefresh = false): Promise<TimChannel[]
 
             const raw = res.data?.channels || res.data || [];
             if (Array.isArray(raw) && raw.length > 0) {
-                const cleaned = raw.map((c: any) => {
-                    let logo = (c.logo || c.poster || c.icon || '').replace(/&amp;/g, '&').trim();
-                    if (logo && logo.startsWith('/')) logo = `https://timstreams.co.rw${logo}`;
-                    return { ...c, logo };
-                });
-                channelsCache = cleaned;
+                channelsCache = raw;
                 channelsCacheTime = now;
-                return cleaned;
+                return raw;
             }
         } catch (e: any) {
             // Try next mirror
@@ -473,37 +464,8 @@ async function resolveBinaryTokenUrl(tokenUrl: string, embedUrl?: string): Promi
 export async function extractM3u8FromHtml(html: string, embedUrl?: string): Promise<string | null> {
     if (!html || typeof html !== 'string') return null;
 
-    // Pattern 0: Direct script block scanner for modern multi-script embeds (ehgembxe/exmxbxe/tim-streams)
-    const scripts = html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/gi) || [];
-    for (const s of scripts) {
-        if (s.includes('fromCharCode') && s.includes('^')) {
-            const arrMatch = s.match(/var\s+[a-zA-Z0-9_$]+\s*=\s*\[([0-9,\s]+)\]/);
-            const keysMatch = s.match(/,\s*[a-zA-Z0-9_$]+\s*=\s*(\d+)\s*,\s*[a-zA-Z0-9_$]+\s*=\s*(\d+)/);
-            if (arrMatch && keysMatch) {
-                try {
-                    const arr = arrMatch[1].split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-                    const k1 = parseInt(keysMatch[1], 10);
-                    const k2 = parseInt(keysMatch[2], 10);
-                    let decoded = '';
-                    for (let i = 0; i < arr.length; i++) {
-                        decoded += String.fromCharCode(((arr[i] ^ k1) - k2 + 256) % 256);
-                    }
-                    const tokenMatch = decoded.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
-                                       decoded.match(/https?:\/\/[^\s'"\\]+\/p\/[a-zA-Z0-9_-]+/i);
-                    if (tokenMatch) {
-                        const tokenUrl = tokenMatch[1] || tokenMatch[0];
-                        const resolved = await resolveBinaryTokenUrl(tokenUrl, embedUrl);
-                        if (resolved) return resolved;
-                    }
-                    const m3u8Match = decoded.match(/https?:\/\/[^\s'"\\]+\.m3u8[^\s'"\\]*/);
-                    if (m3u8Match) return m3u8Match[0];
-                } catch (_) {}
-            }
-        }
-    }
-
     // Pattern 1: Deobfuscate array XOR / addition cipher used by exmxbxe.cfd, ehgembxe.cfd & timst embeds
-    const cipherMatch = html.match(/var\s+([a-zA-Z0-9_$]+)\s*=\s*\[([\d,\s]+)\]\s*,\s*([a-zA-Z0-9_$]+)\s*=\s*(\d+)\s*,\s*([a-zA-Z0-9_$]+)\s*=\s*(\d+)/);
+    const cipherMatch = html.match(/(?:var\s+)?([a-zA-Z0-9_$]+)\s*=\s*\[([\d,\s]+)\]\s*,\s*([a-zA-Z0-9_$]+)\s*=\s*(\d+)\s*,\s*([a-zA-Z0-9_$]+)\s*=\s*(\d+)/);
     if (cipherMatch) {
         try {
             const arr = cipherMatch[2].split(',').map(n => parseInt(n.trim(), 10));
@@ -517,8 +479,9 @@ export async function extractM3u8FromHtml(html: string, embedUrl?: string): Prom
             const m3u8Match = decoded.match(/https?:\/\/[^\s'"\\]+\.m3u8[^\s'"\\]*/);
             if (m3u8Match) return m3u8Match[0];
 
-            // 1b. Binary token resolver endpoint (loadStreamUrl)
-            const tokenMatch = decoded.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
+            // 1b. Binary token resolver endpoint (loadStreamUrl or ticketUrl)
+            const tokenMatch = decoded.match(/["']ticketUrl["']\s*:\s*["']([^"']+)["']/i) ||
+                               decoded.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
                                decoded.match(/https?:\/\/[^\s'"\\]+\/p\/[a-zA-Z0-9_-]+/i);
             if (tokenMatch) {
                 const tokenUrl = tokenMatch[1] || tokenMatch[0];
@@ -551,7 +514,8 @@ export async function extractM3u8FromHtml(html: string, embedUrl?: string): Prom
             const m3u8Match = decoded.match(/https?:\/\/[^\s'"\\]+\.m3u8[^\s'"\\]*/);
             if (m3u8Match) return m3u8Match[0];
 
-            const tokenMatch = decoded.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
+            const tokenMatch = decoded.match(/["']ticketUrl["']\s*:\s*["']([^"']+)["']/i) ||
+                               decoded.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
                                decoded.match(/https?:\/\/[^\s'"\\]+\/p\/[a-zA-Z0-9_-]+/i);
             if (tokenMatch) {
                 const tokenUrl = tokenMatch[1] || tokenMatch[0];
@@ -561,8 +525,9 @@ export async function extractM3u8FromHtml(html: string, embedUrl?: string): Prom
         } catch (e) {}
     }
 
-    // Pattern 4: Direct loadStreamUrl in raw HTML
-    const rawTokenMatch = html.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
+    // Pattern 4: Direct ticketUrl or loadStreamUrl in raw HTML
+    const rawTokenMatch = html.match(/["']ticketUrl["']\s*:\s*["']([^"']+)["']/i) ||
+                          html.match(/loadStreamUrl\s*\(\s*["']([^"']+)["']/i) ||
                           html.match(/https?:\/\/[^\s'"\\]+\/p\/[a-zA-Z0-9_-]+/i);
     if (rawTokenMatch) {
         const tokenUrl = rawTokenMatch[1] || rawTokenMatch[0];
@@ -618,45 +583,34 @@ export async function resolveEmbedUrl(embedUrl: string, forceFresh = false): Pro
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     };
 
-    // Prioritize direct URL first for speed (sub-second resolution)
-    const candidates = [embedUrl];
-    
-    // Add primary mirror domain only if needed
-    if (embedUrl.includes('exmxbxe.cfd')) {
-        candidates.push(embedUrl.replace('exmxbxe.cfd', 'ehgembxe.cfd'));
-    } else if (embedUrl.includes('ehgembxe.cfd')) {
-        candidates.push(embedUrl.replace('ehgembxe.cfd', 'exmxbxe.cfd'));
-    } else if (embedUrl.includes('grandemx.org')) {
-        candidates.push(embedUrl.replace('grandemx.org', 'ehgembxe.cfd'));
+    // Prioritize active working mirror (ehgembxe.cfd) first; avoid dead exmxbxe.cfd timeouts
+    const normalizedUrl = embedUrl.replace(/exmxbxe\.cfd/g, 'ehgembxe.cfd');
+    const candidates = [normalizedUrl];
+    if (normalizedUrl !== embedUrl) {
+        candidates.push(embedUrl);
     }
 
     for (const urlToTry of candidates) {
         let html: string | null = null;
-        let finalUrl = urlToTry;
         try {
             const res = await axios.get(urlToTry, {
                 headers: browserHeaders,
                 httpsAgent: agent,
-                timeout: 5000,
-                maxRedirects: 5
+                timeout: 3500
             });
             if (res.status === 200 && typeof res.data === 'string') {
                 html = res.data;
-                finalUrl = (res.request?.res?.responseUrl || res.config?.url || urlToTry);
             }
         } catch (e: any) {
-            html = await fetchHtmlViaCurl(urlToTry, 'https://tim-streams.com/');
+            html = await fetchHtmlViaCurl(urlToTry, 'https://timstreams.co.rw/');
         }
 
         if (html) {
-            const m3u8 = await extractM3u8FromHtml(html, finalUrl);
+            const m3u8 = await extractM3u8FromHtml(html, urlToTry);
             if (m3u8 && !m3u8.includes('epidd.hundxvision.co.uk')) {
                 streamUrlCache.set(embedUrl, { m3u8, timestamp: Date.now() });
                 if (urlToTry !== embedUrl) {
                     streamUrlCache.set(urlToTry, { m3u8, timestamp: Date.now() });
-                }
-                if (finalUrl !== embedUrl) {
-                    streamUrlCache.set(finalUrl, { m3u8, timestamp: Date.now() });
                 }
                 return m3u8;
             }
@@ -769,6 +723,13 @@ const KNOWN_ALIASES: Record<string, string> = {
     'fs2': 'fox-sports-2',
     'fs2-usa': 'fox-sports-2',
 
+    // ACC Network
+    'accn': 'acc-network',
+    'accn-usa': 'acc-network',
+    'acc-network': 'acc-network',
+    'accnetwork': 'acc-network',
+    'acc': 'acc-network',
+
     // ESPN
     'espn': 'espn',
     'espn-usa': 'espn',
@@ -799,15 +760,13 @@ export async function resolveTimChannel(channelSlugOrId: string, forceFresh = fa
 
     // 1. If it is an HTTP/HTTPS URL, detect whether it is a timstreams/timst page or an embed
     if (channelSlugOrId.startsWith('http://') || channelSlugOrId.startsWith('https://')) {
-        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?(?:timst\.(?:top|cfd)|timstreams\.co\.rw|tim-streams\.com)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
+        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?(?:timst\.(?:top|cfd)|timstreams\.co\.rw)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
         if (pageMatch && pageMatch[1]) {
             channelSlugOrId = pageMatch[1];
         } else if (channelSlugOrId.includes('exmxbxe') || channelSlugOrId.includes('ehgembxe') || channelSlugOrId.includes('grandemx') || channelSlugOrId.includes('epiembeds') || channelSlugOrId.includes('/e/')) {
             return await resolveEmbedUrl(channelSlugOrId, forceFresh);
-        } else if ((channelSlugOrId.includes('timst') || channelSlugOrId.includes('timstreams') || channelSlugOrId.includes('tim-streams')) && channelSlugOrId.includes('/channel/')) {
+        } else if ((channelSlugOrId.includes('timst') || channelSlugOrId.includes('timstreams')) && channelSlugOrId.includes('/channel/')) {
             channelSlugOrId = channelSlugOrId.split('/channel/')[1].split(/[?#]/)[0];
-        } else if (channelSlugOrId.includes('/watch/')) {
-            channelSlugOrId = channelSlugOrId.split('/watch/')[1].split(/[?#]/)[0];
         } else {
             return channelSlugOrId;
         }
@@ -928,8 +887,9 @@ export async function resolveTimChannel(channelSlugOrId: string, forceFresh = fa
         }
     }
 
-    // 5. Secondary Fallback: JioTV / MDTV ClearKey HD stream mapping if TimStreams embed is not active or unresolvable
-    const SONY_MDTV_MAP: Record<string, string> = {
+    // 5. Secondary Fallback: Direct ClearKey HD stream mapping when TimStreams embed is 502/down
+    const SPORTS_MDTV_MAP: Record<string, string> = {
+        // Sony Sports Network
         'sony-sports-network': '/live.php?token=STALKER_PRO&id=mdtv-162&m3u=1',
         'sonyten1': '/live.php?token=STALKER_PRO&id=mdtv-162&m3u=1',
         'sony-ten-1': '/live.php?token=STALKER_PRO&id=mdtv-162&m3u=1',
@@ -954,11 +914,33 @@ export async function resolveTimChannel(channelSlugOrId: string, forceFresh = fa
         'sony-sports-network-5': '/live.php?token=STALKER_PRO&id=mdtv-155&m3u=1',
         'sonyten5': '/live.php?token=STALKER_PRO&id=mdtv-155&m3u=1',
         'sony-ten-5': '/live.php?token=STALKER_PRO&id=mdtv-155&m3u=1',
-        'sony-sports-5': '/live.php?token=STALKER_PRO&id=mdtv-155&m3u=1'
+        'sony-sports-5': '/live.php?token=STALKER_PRO&id=mdtv-155&m3u=1',
+
+        // Star Sports Network
+        'star-sports-1': '/live.php?token=STALKER_PRO&id=mdtv-1106&m3u=1',
+        'starsports1': '/live.php?token=STALKER_PRO&id=mdtv-1106&m3u=1',
+        'starsports-1': '/live.php?token=STALKER_PRO&id=mdtv-1106&m3u=1',
+        'star-sports-1-hd': '/live.php?token=STALKER_PRO&id=mdtv-1106&m3u=1',
+        'star-sports-2': '/live.php?token=STALKER_PRO&id=mdtv-1107&m3u=1',
+        'starsports2': '/live.php?token=STALKER_PRO&id=mdtv-1107&m3u=1',
+        'star-sports-hindi': '/live.php?token=STALKER_PRO&id=mdtv-1109&m3u=1',
+        'star-sports-1-hindi': '/live.php?token=STALKER_PRO&id=mdtv-1109&m3u=1',
+        'star-sports-select-1': '/live.php?token=STALKER_PRO&id=mdtv-1110&m3u=1',
+        'starsportsselect1': '/live.php?token=STALKER_PRO&id=mdtv-1110&m3u=1',
+        'star-sports-khel': '/live.php?token=STALKER_PRO&id=mdtv-1998&m3u=1',
+
+        // Sports18 & DD Sports & Eurosport
+        'sports18': '/live.php?token=STALKER_PRO&id=mdtv-297&m3u=1',
+        'sports18-1': '/live.php?token=STALKER_PRO&id=mdtv-297&m3u=1',
+        'sports18-1-hd': '/live.php?token=STALKER_PRO&id=mdtv-297&m3u=1',
+        'dd-sports': '/live.php?token=STALKER_PRO&id=mdtv-204&m3u=1',
+        'ddsports': '/live.php?token=STALKER_PRO&id=mdtv-204&m3u=1',
+        'eurosport': '/live.php?token=STALKER_PRO&id=mdtv-262&m3u=1',
+        'eurosport-1': '/live.php?token=STALKER_PRO&id=mdtv-262&m3u=1'
     };
 
-    if (SONY_MDTV_MAP[cleanSlug]) {
-        return SONY_MDTV_MAP[cleanSlug];
+    if (SPORTS_MDTV_MAP[cleanSlug]) {
+        return SPORTS_MDTV_MAP[cleanSlug];
     }
 
     return null;

@@ -1330,127 +1330,122 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         <!-- MOBILE MODAL BACKDROP -->
         <div id="mobileModalBackdrop" onclick="closeAllOpenModals()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
 
-        <!-- DUAL-COLUMN QUALITY & SERVER DRAWER MODAL (TRANSPARENT GLASS) -->
-        <div id="qualityServerModal" class="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-auto sm:inset-auto sm:top-16 sm:right-6 lg:right-10 z-50 sm:z-40 hidden animate-fade-in w-full sm:w-[480px] max-h-[85vh] sm:max-h-[80vh] overflow-y-auto glass-panel rounded-t-3xl sm:rounded-2xl p-4 sm:p-5 shadow-[0_25px_60px_rgba(0,0,0,0.95)] text-white pb-8 sm:pb-5">
-            <div class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 sm:hidden"></div>
-            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+        <!-- DUAL-COLUMN QUALITY & SERVER DRAWER MODAL (BLACK & GRAY THEME) -->
+        <div id="qualityServerModal" class="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-auto sm:inset-auto sm:top-16 sm:right-6 lg:right-10 z-50 sm:z-40 hidden animate-fade-in w-full sm:w-[480px] max-h-[85vh] sm:max-h-[80vh] overflow-y-auto bg-[#0a0a0c]/95 backdrop-blur-2xl border border-zinc-800/90 rounded-t-3xl sm:rounded-2xl p-4 sm:p-5 shadow-[0_25px_70px_rgba(0,0,0,0.95)] text-zinc-100 pb-8 sm:pb-5">
+            <div class="w-12 h-1 bg-zinc-700 rounded-full mx-auto mb-3 sm:hidden"></div>
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
                 <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                    <span class="text-xs font-extrabold uppercase tracking-widest text-zinc-300">Stream Configuration</span>
+                    <span class="w-2 h-2 rounded-full bg-zinc-300"></span>
+                    <span class="text-xs font-bold uppercase tracking-widest text-zinc-200">Stream &amp; Server Configuration</span>
                 </div>
-                <button onclick="toggleQualityServerModal(false)" class="p-1 text-zinc-400 hover:text-white transition-colors cursor-pointer">
+                <button onclick="toggleQualityServerModal(false)" class="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition-colors cursor-pointer">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
 
             <!-- Two Columns: QUALITY (Left) & SERVER (Right) -->
             <div class="grid grid-cols-2 gap-3 sm:gap-4 py-3">
-                <div class="space-y-1">
-                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 mb-1 px-1">QUALITY</div>
-                    <div class="px-2.5 py-1.5 mb-2 rounded-xl glass-sub-panel text-[10px] font-bold text-amber-400 flex items-center justify-between">
-                        <span>4K / UHD Master</span>
-                        <span class="px-1.5 py-0.5 rounded bg-amber-400/20 text-[9px] font-black">HLS</span>
+                <div class="space-y-1.5">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1 px-1">QUALITY</div>
+                    <div class="px-2.5 py-1.5 mb-2 rounded-xl bg-zinc-900/90 border border-zinc-800 text-[10px] font-bold text-zinc-200 flex items-center justify-between">
+                        <span>UHD / FHD Master</span>
+                        <span class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 text-[9px] font-mono font-bold">HLS</span>
                     </div>
-                    <div id="qualityList" class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                        <button onclick="setQualityLevel(-1)" id="quality-btn-auto" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-left glass-sub-panel bg-white/15 text-white">
+                    <div id="qualityList" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                        <button onclick="setQualityLevel(-1)" id="quality-btn-auto" class="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-left bg-zinc-200 text-zinc-950 shadow-sm">
                             <span>Auto (Adaptive)</span>
-                            <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+                            <i data-lucide="check" class="w-3.5 h-3.5 text-zinc-950"></i>
                         </button>
                     </div>
                 </div>
 
-                <div class="space-y-1 border-l border-white/10 pl-3">
-                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 mb-1 px-1">SERVER CLUSTER</div>
-                    <div id="serverList" class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1"></div>
+                <div class="space-y-1.5 border-l border-zinc-800 pl-3">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1 px-1">SERVER CLUSTER</div>
+                    <div id="serverList" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1"></div>
                 </div>
             </div>
 
-            <!-- DEDICATED ANIME SERVER CLUSTERS SECTION IN SERVER MODAL -->
-            <div id="modalAnimeClusterSection" class="pt-2.5 pb-2 border-t border-white/10">
-                <div class="flex items-center justify-between mb-1.5 px-0.5">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-rose-400"></i>
-                        Anime Server Clusters (Specialized JP/EN)
+            <!-- DEDICATED ANIME SERVER CLUSTERS SECTION IN SERVER MODAL (Shown only for Anime) -->
+            <div id="modalAnimeClusterSection" class="hidden pt-2.5 pb-2 border-t border-zinc-800">
+                <div class="flex items-center justify-between mb-2 px-0.5">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-3.5 h-3.5 text-zinc-400"></i>
+                        Anime Specialized Clusters (JP/EN)
                     </span>
-                    <span class="text-[9px] text-zinc-400 font-medium">Top Priority Anime Engines</span>
+                    <span class="text-[9px] text-zinc-500 font-medium">Direct Sub/Dub</span>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5" id="animeServersQuickGrid">
-                    <button type="button" onclick="switchServerCluster('megaplay_buzz')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                    <button type="button" onclick="switchServerCluster('megaplay_buzz')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
                         <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
                                 <span>MegaPlay Buzz</span>
-                                <span class="text-[9px] bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded font-mono font-bold">HLS</span>
+                                <span class="text-[9px] bg-zinc-800 text-zinc-300 border border-zinc-700 px-1 py-0.5 rounded font-mono font-bold">HLS</span>
                             </div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Bitrate Master</div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">Multi-Bitrate Master</div>
                         </div>
                     </button>
-                    <button type="button" onclick="switchServerCluster('animepahe')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                    <button type="button" onclick="switchServerCluster('animepahe')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
                         <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
                                 <span>AnimePahe</span>
-                                <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-mono font-bold">Google CDN</span>
+                                <span class="text-[9px] bg-zinc-800 text-zinc-300 border border-zinc-700 px-1 py-0.5 rounded font-mono font-bold">MP4</span>
                             </div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">Direct 720p/360p MP4</div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">Direct CDN</div>
                         </div>
                     </button>
-                    
-                    <button type="button" onclick="switchServerCluster('anivexa')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-purple-500/15 border border-purple-500/30 text-white hover:bg-purple-500/25">
+                    <button type="button" onclick="switchServerCluster('anikoto')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
                         <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
+                                <span>Anikoto HD</span>
+                                <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-1 py-0.5 rounded font-mono font-bold">1080p</span>
+                            </div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">Pure HLS / Fast</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="switchServerCluster('anivexa')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
+                        <div class="truncate">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
                                 <span>Kitsune Anivexa</span>
-                                <span class="text-[9px] bg-purple-500/30 text-purple-200 px-1 py-0.5 rounded font-mono font-bold">1080p Engine</span>
+                                <span class="text-[9px] bg-zinc-800 text-zinc-300 border border-zinc-700 px-1 py-0.5 rounded font-mono font-bold">1080p</span>
                             </div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Source Sub/Dub</div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">Sub/Dub Engine</div>
                         </div>
                     </button>
-                    <button type="button" onclick="switchServerCluster('reanime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-indigo-500/15 border border-indigo-500/30 text-white hover:bg-indigo-500/25">
+                    <button type="button" onclick="switchServerCluster('reanime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
                         <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
                                 <span>ReAnime</span>
-                                <span class="text-[9px] bg-indigo-500/30 text-indigo-200 px-1 py-0.5 rounded font-mono font-bold">FlixCloud</span>
+                                <span class="text-[9px] bg-zinc-800 text-zinc-300 border border-zinc-700 px-1 py-0.5 rounded font-mono font-bold">HLS</span>
                             </div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted HLS & Subs</div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">Decrypted &amp; Subs</div>
                         </div>
                     </button>
-                    <button type="button" onclick="switchServerCluster('bing_anime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                    <button type="button" onclick="switchServerCluster('bing_anime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
                         <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
                                 <span>Bing Anime</span>
-                                <span class="text-[9px] bg-sky-500/20 text-sky-300 px-1 py-0.5 rounded font-mono font-bold">Multi-Audio</span>
+                                <span class="text-[9px] bg-zinc-800 text-zinc-300 border border-zinc-700 px-1 py-0.5 rounded font-mono font-bold">Audio</span>
                             </div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">AnimeSalt / HLS Direct</div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">HLS Direct</div>
                         </div>
                     </button>
-                    <button type="button" onclick="switchServerCluster('tokyoinsider')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel bg-rose-500/15 border border-rose-500/30 text-white hover:bg-rose-500/25">
+                    <button type="button" onclick="switchServerCluster('tokyoinsider')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all bg-zinc-900 border border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700">
                         <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
+                            <div class="truncate text-zinc-100 font-bold text-[11px] flex items-center gap-1">
                                 <span>TokyoInsider</span>
-                                <span class="text-[9px] bg-red-500/20 text-red-300 px-1 py-0.5 rounded font-mono font-bold">1080p</span>
+                                <span class="text-[9px] bg-zinc-800 text-zinc-300 border border-zinc-700 px-1 py-0.5 rounded font-mono font-bold">1080p</span>
                             </div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">High-Speed MP4</div>
+                            <div class="text-[9px] text-zinc-500 font-normal truncate">High-Speed MP4</div>
                         </div>
                     </button>
-                    <button type="button" onclick="switchServerCluster('hianime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel text-zinc-300 hover:bg-white/10">
-                        <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px]">HiAnime</div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Audio Scraper</div>
-                        </div>
-                    </button>
-                    <button type="button" onclick="switchServerCluster('animesalt')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all glass-sub-panel text-zinc-300 hover:bg-white/10">
-                        <div class="truncate">
-                            <div class="truncate text-white font-bold text-[11px]">AnimeSalt</div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">Special Multi-Audio</div>
-                        </div>
-                    </button>
-                    
                 </div>
             </div>
 
-            <!-- HUGE EMBEDDED STREAMS SECTION -->
-            <div class="pt-3 pb-1 border-t border-white/10">
+            <!-- EMBEDDED STREAMS SECTION -->
+            <div class="pt-3 pb-1 border-t border-zinc-800">
                 <div class="flex items-center justify-between mb-2 px-1">
-                    <div class="text-[11px] font-extrabold uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
-                        <i data-lucide="monitor-play" class="w-3.5 h-3.5"></i>
+                    <div class="text-[10px] font-bold uppercase tracking-widest text-zinc-300 flex items-center gap-1.5">
+                        <i data-lucide="monitor-play" class="w-3.5 h-3.5 text-zinc-400"></i>
                         EMBEDDED STREAMS
                     </div>
                     <span class="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Alternative Players</span>
@@ -1458,22 +1453,22 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 <div class="grid grid-cols-2 gap-2" id="embedProvidersGrid">
                     <!-- Populated by JS -->
                 </div>
-                <button type="button" onclick="openInPurePlayer()" class="w-full mt-2.5 flex items-center justify-between p-2.5 rounded-xl text-xs font-bold text-left glass-sub-panel bg-red-600/25 border border-red-500/40 hover:bg-red-600 text-white transition-all cursor-pointer shadow-lg active:scale-98">
+                <button type="button" onclick="openInPurePlayer()" class="w-full mt-2.5 flex items-center justify-between p-2.5 rounded-xl text-xs font-bold text-left bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 hover:border-zinc-500 text-zinc-100 transition-all cursor-pointer active:scale-98">
                     <div class="flex items-center gap-2">
-                        <i data-lucide="play-circle" class="w-4 h-4 text-red-400"></i>
-                        <span>Open in Stalker Pure Player (play.php)</span>
+                        <i data-lucide="play-circle" class="w-4 h-4 text-zinc-300"></i>
+                        <span>Open in Pure Player (play.php)</span>
                     </div>
-                    <span class="text-[10px] text-zinc-300 font-normal">Direct Smooth Mode &rarr;</span>
+                    <span class="text-[10px] text-zinc-400 font-normal">Direct Mode &rarr;</span>
                 </button>
             </div>
 
             <!-- Bottom Row: Speed Selector -->
-            <div class="pt-3 border-t border-white/10 flex items-center justify-between gap-1 flex-wrap">
+            <div class="pt-3 border-t border-zinc-800 flex items-center justify-between gap-1 flex-wrap">
                 <div class="flex items-center gap-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-zinc-400 mr-1">SPEED</span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-500 mr-1">SPEED</span>
                     <button onclick="setPlaybackSpeed(0.5, this)" class="speed-btn px-2 py-1 rounded-lg text-[10px] font-bold text-zinc-400 hover:text-white transition-all">0.5x</button>
                     <button onclick="setPlaybackSpeed(0.75, this)" class="speed-btn px-2 py-1 rounded-lg text-[10px] font-bold text-zinc-400 hover:text-white transition-all">0.75x</button>
-                    <button onclick="setPlaybackSpeed(1, this)" class="speed-btn px-2 py-1 rounded-lg text-[10px] font-bold bg-white text-black transition-all">1x</button>
+                    <button onclick="setPlaybackSpeed(1, this)" class="speed-btn px-2 py-1 rounded-lg text-[10px] font-bold bg-zinc-200 text-zinc-950 transition-all">1x</button>
                     <button onclick="setPlaybackSpeed(1.25, this)" class="speed-btn px-2 py-1 rounded-lg text-[10px] font-bold text-zinc-400 hover:text-white transition-all">1.25x</button>
                     <button onclick="setPlaybackSpeed(1.5, this)" class="speed-btn px-2 py-1 rounded-lg text-[10px] font-bold text-zinc-400 hover:text-white transition-all">1.5x</button>
                     <button onclick="setPlaybackSpeed(2, this)" class="speed-btn px-2 py-1 rounded-lg text-[10px] font-bold text-zinc-400 hover:text-white transition-all">2x</button>
@@ -1481,29 +1476,29 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             </div>
         </div>
 
-        <!-- FULL AUDIO & SUBTITLES CONTROLLER MODAL (TRANSPARENT GLASS) -->
-        <div id="subtitlesModal" class="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-auto sm:inset-auto sm:top-16 sm:right-6 lg:right-10 z-50 sm:z-40 hidden animate-fade-in w-full sm:w-[460px] max-h-[85vh] sm:max-h-[80vh] overflow-y-auto glass-panel rounded-t-3xl sm:rounded-2xl p-4 sm:p-5 shadow-[0_25px_60px_rgba(0,0,0,0.95)] text-white pb-8 sm:pb-5">
-            <div class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 sm:hidden"></div>
-            <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+        <!-- FULL AUDIO & SUBTITLES CONTROLLER MODAL (BLACK & GRAY THEME) -->
+        <div id="subtitlesModal" class="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-auto sm:inset-auto sm:top-16 sm:right-6 lg:right-10 z-50 sm:z-40 hidden animate-fade-in w-full sm:w-[460px] max-h-[85vh] sm:max-h-[80vh] overflow-y-auto bg-[#0a0a0c]/95 backdrop-blur-2xl border border-zinc-800/90 rounded-t-3xl sm:rounded-2xl p-4 sm:p-5 shadow-[0_25px_70px_rgba(0,0,0,0.95)] text-zinc-100 pb-8 sm:pb-5">
+            <div class="w-12 h-1 bg-zinc-700 rounded-full mx-auto mb-3 sm:hidden"></div>
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-800 mb-3">
                 <div class="flex items-center gap-2">
-                    <i data-lucide="languages" class="w-4 h-4 text-red-500"></i>
-                    <span class="text-xs font-extrabold uppercase tracking-widest text-zinc-300">Audio & Subtitles Controller</span>
+                    <i data-lucide="languages" class="w-4 h-4 text-zinc-300"></i>
+                    <span class="text-xs font-bold uppercase tracking-widest text-zinc-200">Audio &amp; Subtitles</span>
                 </div>
-                <button onclick="toggleSubtitlesModal(false)" class="p-1 text-zinc-400 hover:text-white transition-colors cursor-pointer">
+                <button onclick="toggleSubtitlesModal(false)" class="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition-colors cursor-pointer">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
 
             <!-- Tabs: Audio Tracks vs Subtitles vs Subtitle Search vs Appearance & Sync -->
-            <div class="grid grid-cols-4 gap-1 rounded-xl glass-sub-panel p-1 mb-3">
+            <div class="grid grid-cols-4 gap-1 rounded-xl bg-zinc-900/90 border border-zinc-800 p-1 mb-3">
                 <button id="tabAudioBtn" onclick="switchSubTab('audio')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
                     Audio
                 </button>
-                <button id="tabSubtitlesBtn" onclick="switchSubTab('subtitles')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow">
+                <button id="tabSubtitlesBtn" onclick="switchSubTab('subtitles')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all bg-zinc-200 text-zinc-950 shadow-sm">
                     Active
                 </button>
                 <button id="tabSearchSubsBtn" onclick="switchSubTab('search')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all text-zinc-400 hover:text-white flex items-center justify-center gap-1">
-                    <i data-lucide="search" class="w-3 h-3 text-red-400"></i> <span>Search</span>
+                    <i data-lucide="search" class="w-3 h-3"></i> <span>Search</span>
                 </button>
                 <button id="tabVisualBtn" onclick="switchSubTab('visual')" class="py-1.5 text-[11px] font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
                     Styling
@@ -1513,62 +1508,62 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             <!-- Tab 1: AUDIO TRACKS (MULTI-LANGUAGE DUBS) -->
             <div id="tabContentAudio" class="hidden space-y-2">
                 <div class="flex items-center justify-between">
-                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">DETECTED AUDIO TRACKS</div>
-                    <span id="audioTrackCountBadge" class="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-zinc-300 font-bold">1 Track</span>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">DETECTED AUDIO TRACKS</div>
+                    <span id="audioTrackCountBadge" class="text-[9px] px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold">1 Track</span>
                 </div>
-                <div id="audioTracksList" class="space-y-1.5 max-h-52 overflow-y-auto custom-scrollbar pr-1">
-                    <div class="p-3 text-center text-xs text-zinc-400 glass-sub-panel rounded-xl">Detecting audio streams...</div>
+                <div id="audioTracksList" class="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                    <div class="p-3 text-center text-xs text-zinc-400 bg-zinc-900/80 border border-zinc-800 rounded-xl">Detecting audio streams...</div>
                 </div>
             </div>
 
             <!-- Tab 2: ACTIVE SUBTITLE TRACKS -->
-            <div id="tabContentSubtitles" class="space-y-2">
+            <div id="tabContentSubtitles" class="space-y-2.5">
                 <!-- Search Subtitles Quick Launcher -->
-                <button type="button" onclick="switchSubTab('search')" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-red-600/30 via-rose-600/20 to-red-600/30 hover:from-red-600/50 hover:to-rose-600/40 border border-red-500/30 text-white text-xs font-bold flex items-center justify-between transition-all shadow-md group cursor-pointer">
+                <button type="button" onclick="switchSubTab('search')" class="w-full py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-100 text-xs font-bold flex items-center justify-between transition-all group cursor-pointer">
                     <span class="flex items-center gap-2">
-                        <i data-lucide="search" class="w-3.5 h-3.5 text-red-400 group-hover:scale-110 transition-transform"></i>
-                        <span>Search Subtitles (Multi-Provider)</span>
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-300 group-hover:scale-110 transition-transform"></i>
+                        <span>Search External Subtitles</span>
                     </span>
-                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-red-500 text-white uppercase font-black tracking-wider">Find</span>
+                    <span class="text-[9px] px-2 py-0.5 rounded-md bg-zinc-200 text-zinc-950 uppercase font-extrabold tracking-wider">Find</span>
                 </button>
 
                 <div class="flex items-center justify-between pt-1">
-                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">ACTIVE TRACKS</div>
-                    <span id="subtitleTrackCountBadge" class="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-zinc-300 font-bold">Auto-detected</span>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">ACTIVE TRACKS</div>
+                    <span id="subtitleTrackCountBadge" class="text-[9px] px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold">Auto-detected</span>
                 </div>
                 <div id="subtitlesList" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                    <button onclick="setSubtitleTrack(-1)" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-left glass-sub-panel bg-white/15 text-white">
+                    <button onclick="setSubtitleTrack(-1)" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-left bg-zinc-200 text-zinc-950">
                         <span>Off</span>
-                        <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+                        <i data-lucide="check" class="w-3.5 h-3.5 text-zinc-950"></i>
                     </button>
                 </div>
-                <div class="border-t border-white/10 pt-2">
-                    <label class="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Upload Custom Subtitle (.vtt / .srt)</label>
-                    <input type="file" id="customSubInput" accept=".vtt,.srt" class="block w-full text-[11px] text-zinc-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer">
+                <div class="border-t border-zinc-800 pt-2.5">
+                    <label class="block text-[10px] font-bold text-zinc-400 uppercase mb-1.5">Upload Custom Subtitle (.vtt / .srt)</label>
+                    <input type="file" id="customSubInput" accept=".vtt,.srt" class="block w-full text-[11px] text-zinc-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-zinc-700 file:text-[10px] file:font-bold file:bg-zinc-800 file:text-zinc-100 hover:file:bg-zinc-700 cursor-pointer">
                 </div>
             </div>
 
             <!-- Tab 3: SUBTITLE SEARCH & MULTI-PROVIDER STUDIO -->
             <div id="tabContentSearchSubs" class="hidden space-y-3">
                 <!-- Search Inputs Group -->
-                <div class="space-y-2 p-3 rounded-2xl bg-black/50 border border-white/10 shadow-inner">
+                <div class="space-y-2.5 p-3 rounded-xl bg-zinc-900/70 border border-zinc-800">
                     <div>
-                        <label class="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block mb-1">Show / Movie Title</label>
+                        <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Show / Movie Title</label>
                         <div class="relative flex items-center">
-                            <i data-lucide="film" class="w-3.5 h-3.5 text-zinc-400 absolute left-3 pointer-events-none"></i>
-                            <input type="text" id="subSearchQueryInput" placeholder="Enter show or movie name..." class="w-full pl-8 pr-3 py-2 rounded-xl bg-white/[0.06] border border-white/15 focus:border-red-500 text-xs font-semibold text-white outline-none placeholder:text-zinc-500 transition-colors">
+                            <i data-lucide="film" class="w-3.5 h-3.5 text-zinc-500 absolute left-3 pointer-events-none"></i>
+                            <input type="text" id="subSearchQueryInput" placeholder="Enter show or movie name..." class="w-full pl-8 pr-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-zinc-500 text-xs font-semibold text-white outline-none placeholder:text-zinc-600 transition-colors">
                         </div>
                     </div>
 
-                    <!-- Season & Episode (shown for TV shows or editable) -->
+                    <!-- Season & Episode -->
                     <div id="subSearchSeasonEpRow" class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Season</label>
-                            <input type="number" id="subSearchSeasonInput" placeholder="1" min="1" class="w-full px-3 py-1.5 rounded-xl bg-white/[0.06] border border-white/15 focus:border-red-500 text-xs font-semibold text-white outline-none">
+                            <input type="number" id="subSearchSeasonInput" placeholder="1" min="1" class="w-full px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-zinc-500 text-xs font-semibold text-white outline-none">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Episode</label>
-                            <input type="number" id="subSearchEpisodeInput" placeholder="1" min="1" class="w-full px-3 py-1.5 rounded-xl bg-white/[0.06] border border-white/15 focus:border-red-500 text-xs font-semibold text-white outline-none">
+                            <input type="number" id="subSearchEpisodeInput" placeholder="1" min="1" class="w-full px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-zinc-500 text-xs font-semibold text-white outline-none">
                         </div>
                     </div>
 
@@ -1576,7 +1571,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Provider</label>
-                            <select id="subSearchProviderSelect" class="w-full px-2 py-1.5 rounded-xl bg-zinc-900 border border-white/15 focus:border-red-500 text-xs font-medium text-white outline-none">
+                            <select id="subSearchProviderSelect" class="w-full px-2 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-zinc-500 text-xs font-medium text-white outline-none">
                                 <option value="all" selected>All Providers (Aggregator)</option>
                                 <option value="opensubtitles">OpenSubtitles v3</option>
                                 <option value="subdl">SubDL</option>
@@ -1589,7 +1584,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Language</label>
-                            <select id="subSearchLangSelect" class="w-full px-2 py-1.5 rounded-xl bg-zinc-900 border border-white/15 focus:border-red-500 text-xs font-medium text-white outline-none">
+                            <select id="subSearchLangSelect" class="w-full px-2 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-zinc-500 text-xs font-medium text-white outline-none">
                                 <option value="all">All Languages</option>
                                 <option value="en" selected>English</option>
                                 <option value="es">Spanish (Español)</option>
@@ -1613,7 +1608,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     </div>
 
                     <!-- Search Button -->
-                    <button type="button" onclick="executeSubtitleSearch()" id="btnExecuteSubSearch" class="w-full mt-2 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer">
+                    <button type="button" onclick="executeSubtitleSearch()" id="btnExecuteSubSearch" class="w-full mt-2 py-2.5 rounded-xl bg-zinc-200 hover:bg-white text-zinc-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow active:scale-95 transition-all cursor-pointer">
                         <i data-lucide="search" class="w-4 h-4"></i>
                         <span id="subSearchBtnLabel">Search Available Subtitles</span>
                     </button>
@@ -1621,22 +1616,22 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
 
                 <!-- Results Header & Counter -->
                 <div class="flex items-center justify-between px-1">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">SEARCH RESULTS</span>
-                    <span id="subSearchResultsCountBadge" class="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 font-bold">0 Results</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">SEARCH RESULTS</span>
+                    <span id="subSearchResultsCountBadge" class="text-[9px] px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold">0 Results</span>
                 </div>
 
                 <!-- Subtitles Results List -->
                 <div id="subSearchResultsList" class="space-y-1.5 max-h-52 overflow-y-auto custom-scrollbar pr-1">
-                    <div class="p-4 text-center text-xs text-zinc-400 glass-sub-panel rounded-xl">
+                    <div class="p-4 text-center text-xs text-zinc-400 bg-zinc-900/70 border border-zinc-800 rounded-xl">
                         Enter title and click Search to query across all subtitle providers.
                     </div>
                 </div>
             </div>
 
-            <!-- Tab 3: Visual Controller & Audio Sync -->
+            <!-- Tab 4: Visual Controller & Audio Sync -->
             <div id="tabContentVisual" class="hidden space-y-3">
                 <!-- Live Preview Card -->
-                <div class="p-2.5 glass-sub-panel rounded-xl text-center">
+                <div class="p-2.5 bg-zinc-900/80 border border-zinc-800 rounded-xl text-center">
                     <div id="subPreviewBox" class="py-1.5 px-3 rounded-lg inline-block transition-all" style="font-size: var(--sub-font-size); color: var(--sub-color); background-color: var(--sub-bg); text-shadow: var(--sub-shadow); font-weight: 700;">
                         The quick brown fox jumps over the lazy dog
                     </div>
@@ -1646,10 +1641,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 <div>
                     <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Font Size</label>
                     <div class="grid grid-cols-4 gap-1">
-                        <button onclick="setSubtitleFontSize('0.85rem', this)" class="sub-font-btn py-1 px-1.5 bg-black/70 hover:bg-zinc-900 border border-white/10 hover:border-white/20 rounded-lg text-[11px] font-bold text-zinc-300 transition-all">Small</button>
-                        <button onclick="setSubtitleFontSize('1.15rem', this)" class="sub-font-btn py-1 px-1.5 bg-zinc-900 border border-white/40 ring-1 ring-white/20 text-white rounded-lg text-[11px] font-bold shadow-lg transition-all">Normal</button>
-                        <button onclick="setSubtitleFontSize('1.45rem', this)" class="sub-font-btn py-1 px-1.5 bg-black/70 hover:bg-zinc-900 border border-white/10 hover:border-white/20 rounded-lg text-[11px] font-bold text-zinc-300 transition-all">Large</button>
-                        <button onclick="setSubtitleFontSize('1.75rem', this)" class="sub-font-btn py-1 px-1.5 bg-black/70 hover:bg-zinc-900 border border-white/10 hover:border-white/20 rounded-lg text-[11px] font-bold text-zinc-300 transition-all">Huge</button>
+                        <button onclick="setSubtitleFontSize('0.85rem', this)" class="sub-font-btn py-1.5 px-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-[11px] font-bold text-zinc-300 transition-all">Small</button>
+                        <button onclick="setSubtitleFontSize('1.15rem', this)" class="sub-font-btn py-1.5 px-1.5 bg-zinc-200 text-zinc-950 border border-zinc-300 rounded-lg text-[11px] font-bold shadow transition-all">Normal</button>
+                        <button onclick="setSubtitleFontSize('1.45rem', this)" class="sub-font-btn py-1.5 px-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-[11px] font-bold text-zinc-300 transition-all">Large</button>
+                        <button onclick="setSubtitleFontSize('1.75rem', this)" class="sub-font-btn py-1.5 px-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-[11px] font-bold text-zinc-300 transition-all">Huge</button>
                     </div>
                 </div>
 
@@ -1657,54 +1652,54 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 <div>
                     <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Color</label>
                     <div class="grid grid-cols-4 gap-1.5">
-                        <button onclick="setSubtitleColor('#ffffff', this)" class="sub-color-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-white text-[11px] font-bold border border-white/30">White</button>
-                        <button onclick="setSubtitleColor('#facc15', this)" class="sub-color-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-yellow-300 text-[11px] font-bold border border-white/10">Yellow</button>
-                        <button onclick="setSubtitleColor('#38bdf8', this)" class="sub-color-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-sky-300 text-[11px] font-bold border border-white/10">Cyan</button>
-                        <button onclick="setSubtitleColor('#4ade80', this)" class="sub-color-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-emerald-300 text-[11px] font-bold border border-white/10">Green</button>
+                        <button onclick="setSubtitleColor('#ffffff', this)" class="sub-color-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-bold border border-zinc-600">White</button>
+                        <button onclick="setSubtitleColor('#facc15', this)" class="sub-color-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-yellow-300 text-[11px] font-bold border border-zinc-800">Yellow</button>
+                        <button onclick="setSubtitleColor('#38bdf8', this)" class="sub-color-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-sky-300 text-[11px] font-bold border border-zinc-800">Cyan</button>
+                        <button onclick="setSubtitleColor('#4ade80', this)" class="sub-color-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-emerald-300 text-[11px] font-bold border border-zinc-800">Green</button>
                     </div>
                 </div>
                 <!-- Background -->
                 <div>
                     <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Background</label>
                     <div class="grid grid-cols-4 gap-1.5">
-                        <button onclick="setSubtitleBg('rgba(0,0,0,0)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-white text-[11px] font-bold border border-white/10">None</button>
-                        <button onclick="setSubtitleBg('rgba(0,0,0,0.55)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-white text-[11px] font-bold border border-white/30">Half</button>
-                        <button onclick="setSubtitleBg('rgba(0,0,0,0.85)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-white text-[11px] font-bold border border-white/10">Dark</button>
-                        <button onclick="setSubtitleBg('rgba(255,255,255,0.85)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-zinc-200 hover:bg-white text-black text-[11px] font-bold border border-white/10">Light</button>
+                        <button onclick="setSubtitleBg('rgba(0,0,0,0)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[11px] font-bold border border-zinc-800">None</button>
+                        <button onclick="setSubtitleBg('rgba(0,0,0,0.55)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-bold border border-zinc-600">Half</button>
+                        <button onclick="setSubtitleBg('rgba(0,0,0,0.85)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[11px] font-bold border border-zinc-800">Dark</button>
+                        <button onclick="setSubtitleBg('rgba(255,255,255,0.85)', this)" class="sub-bg-btn py-1.5 rounded-lg bg-zinc-200 hover:bg-white text-black text-[11px] font-bold border border-zinc-400">Light</button>
                     </div>
                 </div>
                 <!-- Shadow -->
                 <div>
                     <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Shadow</label>
                     <div class="grid grid-cols-3 gap-1.5">
-                        <button onclick="setSubtitleShadow('none', this)" class="sub-shadow-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-white text-[11px] font-bold border border-white/10">None</button>
-                        <button onclick="setSubtitleShadow('1px 1px 2px black, 0 0 1em black', this)" class="sub-shadow-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-white text-[11px] font-bold border border-white/30">Drop</button>
-                        <button onclick="setSubtitleShadow('-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000', this)" class="sub-shadow-btn py-1.5 rounded-lg bg-black/70 hover:bg-zinc-900 text-white text-[11px] font-bold border border-white/10">Outline</button>
+                        <button onclick="setSubtitleShadow('none', this)" class="sub-shadow-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[11px] font-bold border border-zinc-800">None</button>
+                        <button onclick="setSubtitleShadow('1px 1px 2px black, 0 0 1em black', this)" class="sub-shadow-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-bold border border-zinc-600">Drop</button>
+                        <button onclick="setSubtitleShadow('-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000', this)" class="sub-shadow-btn py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[11px] font-bold border border-zinc-800">Outline</button>
                     </div>
                 </div>
 
                 <!-- Audio / Subtitle Sync Offset -->
-                <div class="p-2.5 glass-sub-panel rounded-xl">
+                <div class="p-2.5 bg-zinc-900/80 border border-zinc-800 rounded-xl">
                     <div class="flex items-center justify-between mb-1.5">
                         <span class="text-[10px] font-bold text-zinc-300 uppercase">Timing Sync Offset</span>
-                        <span id="subOffsetDisplay" class="px-2 py-0.5 rounded-full bg-zinc-900 text-white border border-white/20 font-mono text-[10px] font-bold">0.00s</span>
+                        <span id="subOffsetDisplay" class="px-2 py-0.5 rounded-md bg-zinc-950 text-zinc-200 border border-zinc-800 font-mono text-[10px] font-bold">0.00s</span>
                     </div>
                     <div class="grid grid-cols-5 gap-1">
-                        <button onclick="adjustSubtitleSync(-1.0)" class="py-1 bg-black/70 hover:bg-zinc-900 border border-white/10 text-white rounded-lg text-[10px] font-bold transition-all">-1.0s</button>
-                        <button onclick="adjustSubtitleSync(-0.25)" class="py-1 bg-black/70 hover:bg-zinc-900 border border-white/10 text-white rounded-lg text-[10px] font-bold transition-all">-0.25s</button>
-                        <button onclick="resetSubtitleSync()" class="py-1 bg-black/90 hover:bg-zinc-900 border border-white/25 text-white rounded-lg text-[10px] font-bold transition-all">Reset</button>
-                        <button onclick="adjustSubtitleSync(0.25)" class="py-1 bg-black/70 hover:bg-zinc-900 border border-white/10 text-white rounded-lg text-[10px] font-bold transition-all">+0.25s</button>
-                        <button onclick="adjustSubtitleSync(1.0)" class="py-1 bg-black/70 hover:bg-zinc-900 border border-white/10 text-white rounded-lg text-[10px] font-bold transition-all">+1.0s</button>
+                        <button onclick="adjustSubtitleSync(-1.0)" class="py-1 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 rounded-lg text-[10px] font-bold transition-all">-1.0s</button>
+                        <button onclick="adjustSubtitleSync(-0.25)" class="py-1 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 rounded-lg text-[10px] font-bold transition-all">-0.25s</button>
+                        <button onclick="resetSubtitleSync()" class="py-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded-lg text-[10px] font-bold transition-all">Reset</button>
+                        <button onclick="adjustSubtitleSync(0.25)" class="py-1 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 rounded-lg text-[10px] font-bold transition-all">+0.25s</button>
+                        <button onclick="adjustSubtitleSync(1.0)" class="py-1 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 rounded-lg text-[10px] font-bold transition-all">+1.0s</button>
                     </div>
                 </div>
 
-                <!-- Apply Subtitle Styles & Reset Controls (Explicit User Apply Action) -->
-                <div class="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
-                    <button id="btnApplySubStyles" onclick="applyAndConfirmSubtitleStyles()" class="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-900/40 transition-all cursor-pointer">
-                        <i data-lucide="check-circle-2" class="w-4 h-4 text-white"></i>
+                <!-- Apply Subtitle Styles & Reset Controls -->
+                <div class="pt-2 border-t border-zinc-800 flex items-center justify-between gap-2">
+                    <button id="btnApplySubStyles" onclick="applyAndConfirmSubtitleStyles()" class="flex-1 py-2.5 px-3 rounded-xl bg-zinc-200 hover:bg-white active:scale-95 text-zinc-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow transition-all cursor-pointer">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-zinc-950"></i>
                         <span id="btnApplySubStylesLabel">Apply Subtitle Styles</span>
                     </button>
-                    <button onclick="resetSubtitleStylesToDefault()" class="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-zinc-300 hover:text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5" title="Reset Subtitle Styles to Default">
+                    <button onclick="resetSubtitleStylesToDefault()" class="px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 active:scale-95 text-zinc-300 hover:text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5" title="Reset Subtitle Styles to Default">
                         <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                         <span>Reset</span>
                     </button>
@@ -1875,23 +1870,23 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             </div>
         </div>
 
-        <!-- RESUME WATCHING LOCALSTORAGE MODAL -->
+        <!-- RESUME WATCHING / YOU WATCHED THIS CONTINUE MODAL (BLACK & GRAY THEME) -->
         <div id="resumeModal" class="hidden fixed inset-0 z-[10005] bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-            <div class="glass-panel border border-white/20 rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-[0_30px_90px_rgba(0,0,0,0.95)] text-center relative flex flex-col items-center animate-fade-in">
-                <div class="w-14 h-14 bg-red-600/20 border border-red-500/30 rounded-2xl flex items-center justify-center text-red-500 mb-4 shadow-inner">
-                    <i data-lucide="history" class="w-7 h-7"></i>
+            <div class="bg-[#0c0c0e] border border-zinc-800 rounded-2xl p-6 sm:p-7 w-full max-w-md shadow-[0_30px_90px_rgba(0,0,0,0.95)] text-center relative flex flex-col items-center animate-fade-in">
+                <div class="w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center text-zinc-200 mb-3.5">
+                    <i data-lucide="history" class="w-6 h-6"></i>
                 </div>
-                <span class="px-3 py-0.5 rounded-full bg-white/10 text-zinc-300 text-[10px] font-extrabold uppercase tracking-widest mb-1">Watch History Detected</span>
-                <h3 class="text-lg sm:text-xl font-black text-white tracking-tight mb-1" id="resumeTitleText">Resume Playback?</h3>
+                <span class="px-2.5 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1.5">You Watched This</span>
+                <h3 class="text-base sm:text-lg font-extrabold text-zinc-100 tracking-tight mb-1" id="resumeTitleText">Continue Watching?</h3>
                 <p class="text-xs text-zinc-400 leading-relaxed mb-5" id="resumeDescText">
-                    You left off at <span class="font-bold text-white" id="resumeTimeDisplay">00:00</span> on server <span class="font-bold text-red-400" id="resumeServerDisplay">Bastion</span>. Would you like to pick up where you left off?
+                    You left off at <span class="font-mono font-bold text-zinc-100" id="resumeTimeDisplay">00:00</span> on server <span class="font-bold text-zinc-200" id="resumeServerDisplay">VidLink</span>. Pick up where you left off?
                 </p>
                 <div class="flex flex-col sm:flex-row gap-2.5 w-full">
-                    <button onclick="confirmResumeWatching()" class="flex-1 py-3 px-4 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer">
-                        <i data-lucide="play" class="w-4 h-4 fill-white"></i> Continue Watching
+                    <button onclick="confirmResumeWatching()" class="flex-1 py-2.5 px-4 bg-zinc-200 hover:bg-white active:scale-95 text-zinc-950 font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer">
+                        <i data-lucide="play" class="w-4 h-4 fill-zinc-950"></i> Continue Watching
                     </button>
-                    <button onclick="confirmStartBeginning()" class="flex-1 py-3 px-4 bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-300 hover:text-white font-bold text-xs sm:text-sm rounded-xl transition-all border border-zinc-700 flex items-center justify-center gap-1.5 cursor-pointer">
-                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Start Beginning
+                    <button onclick="confirmStartBeginning()" class="flex-1 py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 active:scale-95 text-zinc-300 hover:text-white font-bold text-xs sm:text-sm rounded-xl transition-all border border-zinc-800 flex items-center justify-center gap-1.5 cursor-pointer">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Start Over
                     </button>
                 </div>
             </div>
@@ -1989,8 +1984,8 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let MEDIA_SEASON = parseInt(urlParams.get('s') || urlParams.get('season') || '<?php echo $s; ?>', 10) || 1;
         let MEDIA_EPISODE = parseInt(urlParams.get('e') || urlParams.get('episode') || '<?php echo $e; ?>', 10) || 1;
         const isAnimeReq = MEDIA_TYPE === 'anime' || Boolean(urlParams.get('malId')) || Boolean(urlParams.get('anilistId'));
-        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || (isAnimeReq ? 'anivexa' : 'vidlink');
-        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61' || !CURRENT_SERVER) CURRENT_SERVER = (isAnimeReq ? 'anivexa' : 'vidlink');
+        let CURRENT_SERVER = urlParams.get('srv') || '<?php echo addslashes($srv); ?>' || (isAnimeReq ? 'anikoto' : 'vidlink');
+        if (CURRENT_SERVER === '{{SRV}}' || CURRENT_SERVER === 's61' || !CURRENT_SERVER) CURRENT_SERVER = (isAnimeReq ? 'anikoto' : 'vidlink');
         let DIRECT_STREAM_URL = urlParams.get('url') || '<?php echo addslashes($directUrl); ?>';
         if (DIRECT_STREAM_URL === '{{URL}}') DIRECT_STREAM_URL = '';
         const SOURCE_ORIGIN = urlParams.get('source') || '<?php echo addslashes($source); ?>' || 'consumet.html';
@@ -2107,7 +2102,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         if (MAL_ID && MEDIA_TYPE !== 'movie') saveStoredMalId(MAL_ID);
 
         const rawAnilistParam = urlParams.get('anilistId') || urlParams.get('anilist_id') || urlParams.get('anilist') || '<?php echo addslashes($anilistId); ?>';
-        let ANILIST_ID = (rawAnilistParam && !isNaN(parseInt(rawAnilistParam, 10))) ? parseInt(rawAnilistParam, 10) : null;
+        let ANILIST_ID = (rawAnilistParam && !isNaN(parseInt(rawAnilistParam, 10))) ? parseInt(rawAnilistParam, 10) : (MEDIA_TYPE === 'anime' && !isNaN(parseInt(MEDIA_ID, 10)) ? parseInt(MEDIA_ID, 10) : null);
         window.ANILIST_ID = ANILIST_ID;
 
         /* ---------------- ROBUST PLAY/PAUSE CONTROLLER & ABORT REJECTION SUPPRESSION ---------------- */
@@ -2208,26 +2203,20 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         let currentActiveSubtitleTrack = -1;
         let externalSubtitlesLoaded = [];
 
-        const isAnimeContent = (typeof MEDIA_TYPE !== 'undefined' && (MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'tv_anime')) || 
-                               Boolean(MAL_ID) || Boolean(ANILIST_ID) ||
-                               (typeof window.location !== 'undefined' && (
-                                   window.location.search.includes('type=anime') || 
-                                   window.location.search.includes('anime') ||
-                                   window.location.search.includes('mal') ||
-                                   window.location.search.includes('ani') ||
-                                   window.location.search.includes('srv=megaplay_buzz') || 
-                                   window.location.search.includes('srv=animepahe') ||
-                                   window.location.search.includes('srv=bing_anime') || 
-                                   window.location.search.includes('srv=tokyoinsider') || 
-                                   window.location.search.includes('srv=hianime') || 
-                                   window.location.search.includes('srv=animesalt') || 
-                                   window.location.search.includes('srv=aniembed') || 
-                                   window.location.search.includes('srv=zanix') ||
-                                   window.location.search.includes('srv=kisskh') ||
-                                   window.location.search.includes('srv=asiaflix')
-                               ));
+        const _urlParamsCheck = (typeof window !== 'undefined' && window.location) ? new URLSearchParams(window.location.search) : null;
+        const _explicitTypeParam = _urlParamsCheck ? (_urlParamsCheck.get('type') || '').toLowerCase().trim() : '';
+        const _explicitSrvParam = _urlParamsCheck ? (_urlParamsCheck.get('srv') || '').toLowerCase().trim() : '';
+        const _isExplicitMovie = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'movie') && _explicitTypeParam !== 'anime' && _explicitTypeParam !== 'tv_anime';
+        const isAnimeContent = !_isExplicitMovie && (
+            (typeof MEDIA_TYPE !== 'undefined' && (MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'tv_anime')) ||
+            Boolean(MAL_ID && String(MAL_ID).trim() !== '' && String(MAL_ID) !== '0') ||
+            Boolean(ANILIST_ID && String(ANILIST_ID).trim() !== '' && String(ANILIST_ID) !== '0') ||
+            _explicitTypeParam === 'anime' ||
+            _explicitTypeParam === 'tv_anime' ||
+            ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'zanix'].includes(_explicitSrvParam)
+        );
         const ANIME_SPECIAL_SERVERS = [
-            
+            { id: 'anikoto', name: 'Anikoto HD (1080p Pure HLS / Dual Audio)', cc: 'JP' },
             { id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' },
             { id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' },
             { id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' },
@@ -2249,10 +2238,21 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             { id: 'framex', name: 'FrameX TV (Multi-Source 4K/1080p Anime)', cc: 'US' }
         ];
 
+        const animeClusterModalEl = document.getElementById('modalAnimeClusterSection');
+        if (animeClusterModalEl) {
+            if (isAnimeContent) animeClusterModalEl.classList.remove('hidden');
+            else animeClusterModalEl.classList.add('hidden');
+        }
+
         if (isAnimeContent) {
             const animeIds = ANIME_SPECIAL_SERVERS.map(s => s.id);
             if (!CURRENT_SERVER || !animeIds.includes(CURRENT_SERVER)) {
-                CURRENT_SERVER = 'anivexa';
+                CURRENT_SERVER = 'anikoto';
+            }
+        } else {
+            const pureAnimeOnlyIds = ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'bing_anime', 'tokyoinsider', 'hianime', 'animesalt', 'aniembed', 'zanix'];
+            if (pureAnimeOnlyIds.includes(CURRENT_SERVER)) {
+                CURRENT_SERVER = 'vidlink';
             }
         }
 
@@ -2512,13 +2512,13 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     season: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_SEASON : undefined,
                     episode: (MEDIA_TYPE === 'tv' || MEDIA_TYPE === 'anime') ? MEDIA_EPISODE : undefined,
                     srv: serverId,
-                    strictSrv: isManual || (Boolean(urlParams.get('srv')) && urlParams.get('srv') === serverId),
+                    strictSrv: isManual || Boolean(urlParams.get('srv')),
                     malId: MAL_ID || undefined,
                     anilistId: ANILIST_ID || undefined
                 };
 
-                // Generous timeout for anime and movie server resolution (24s manual, 20s auto)
-                const serverTimeoutMs = isManual ? 24000 : 20000;
+                // Generous timeout for manual server selection (16s), fast 11s cascade in auto mode
+                const serverTimeoutMs = isManual ? 16000 : 11000;
                 const timeoutTimer = setTimeout(() => {
                     isTimedOut = true;
                     try { fetchCtrl.abort('timeout'); } catch(_) {}
@@ -2721,7 +2721,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             failedServers.add(failedServerId);
             const isAnimeMode = (typeof MEDIA_TYPE !== 'undefined' && MEDIA_TYPE === 'anime') || (MEDIA_TYPE !== 'movie' && (Boolean(window.MAL_ID) || Boolean(window.ANILIST_ID)));
             const fallbackOrder = isAnimeMode
-                ? ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
+                ? ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'filmu', 'vidsrc', 'zanix', 'flux', 'two_embed', 'kisskh', 'asiaflix', 's40', 'framex']
                 : (MEDIA_TYPE === 'tv'
                     ? ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'two_embed', 'flux', 'filmu', 's62', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']
                     : ['vidlink', 'vidrift', 'm4u', 'prism', 's80', 's30', 'filmu', 'two_embed', 'smashy', 's62', 'flux', 's31', 'sm_hub', 's70', 'framex', 's81', 's40', 's3', 'vidsrc', 's60', 's63', 's61', 'cinepro']);
@@ -2984,8 +2984,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 // Auto-proxy progressive videos on CDNs that enforce strict Referer or lack browser CORS headers
                 const isCorsExempt = !window._directNoProxyMode && (
                     rawUrl.includes('tokyoinsider.com') ||
-                    rawUrl.includes('googlevideo.com') ||
-                    rawUrl.includes('blogger.com') ||
                     rawUrl.includes('dash-hls-bridge') ||
                     rawUrl.includes('workers.dev') ||
                     rawUrl.startsWith(window.location.origin) ||
@@ -3039,8 +3037,6 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     effectiveUrl = effectiveUrl.replace('/live.php?url=', '/stream_proxy.php?url=');
                 }
                 const isCorsReady = effectiveUrl.includes('dash-hls-bridge') ||
-                                    effectiveUrl.includes('dramahot.top') ||
-                                    effectiveUrl.includes('drama1.cfd') ||
                                     effectiveUrl.includes('workers.dev') ||
                                     effectiveUrl.includes('proxy-web-sage.vercel.app') ||
                                     effectiveUrl.includes('cloudfront.net') ||
@@ -3644,18 +3640,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 }
 
                 html += `
-                    <button type="button" onclick="setAudioTrack(${track.id})" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${track.isSelected ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30 shadow-md' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                    <button type="button" onclick="setAudioTrack(${track.id})" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${track.isSelected ? 'bg-zinc-200 text-zinc-950 shadow-sm' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-300 hover:bg-zinc-800'}">
                         <div class="flex items-center gap-2.5 truncate">
-                            <i data-lucide="volume-2" class="w-4 h-4 ${track.isSelected ? 'text-emerald-400' : 'text-zinc-400'} shrink-0"></i>
+                            <i data-lucide="volume-2" class="w-4 h-4 ${track.isSelected ? 'text-zinc-950' : 'text-zinc-400'} shrink-0"></i>
                             <div class="truncate">
-                                <div class="text-white font-bold truncate flex items-center gap-1.5">
+                                <div class="${track.isSelected ? 'text-zinc-950' : 'text-zinc-100'} font-bold truncate flex items-center gap-1.5">
                                     <span>${track.name}</span>
-                                    ${track.isDefault ? '<span class="text-[8px] px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 font-bold uppercase">Default</span>' : ''}
+                                    ${track.isDefault ? `<span class="text-[8px] px-1.5 py-0.5 rounded ${track.isSelected ? 'bg-zinc-950/15 text-zinc-900' : 'bg-zinc-800 text-zinc-300'} font-bold uppercase">Default</span>` : ''}
                                 </div>
-                                <div class="text-[10px] text-zinc-400 font-normal truncate">${track.details}</div>
+                                <div class="text-[10px] ${track.isSelected ? 'text-zinc-700' : 'text-zinc-400'} font-normal truncate">${track.details}</div>
                             </div>
                         </div>
-                        ${track.isSelected ? '<i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0 ml-2"></i>' : ''}
+                        ${track.isSelected ? '<i data-lucide="check" class="w-4 h-4 text-zinc-950 shrink-0 ml-2"></i>' : ''}
                     </button>
                 `;
             });
@@ -3666,9 +3662,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const languageSources = (window.bingrSources || []).filter(s => s.language || s.isDub || (s.audio && !s.audio.toLowerCase().includes('original')) || (s.label && (s.label.includes('—') || s.label.includes('·') || s.label.toLowerCase().includes('dub') || s.label.toLowerCase().includes('hindi') || s.label.toLowerCase().includes('tamil') || s.label.toLowerCase().includes('telugu'))));
             if (languageSources.length > 0) {
                 html += `
-                    <div class="border-t border-white/10 pt-2.5 mt-2 mb-1.5">
+                    <div class="border-t border-zinc-800 pt-2.5 mt-2 mb-1.5">
                         <div class="flex items-center justify-between mb-1.5 px-0.5">
-                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">Multi-Audio & Dubbed Regional Feeds</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-300">Multi-Audio &amp; Dubbed Regional Feeds</span>
                             <span class="text-[9px] text-zinc-500 font-medium">${languageSources.length} Feeds</span>
                         </div>
                         <div class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
@@ -3679,18 +3675,18 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     const labelText = srcObj.language || srcObj.label || ('Language ' + (idx + 1));
                     const safeUrl = encodeURIComponent(srcObj.url);
                     html += `
-                        <button type="button" onclick="switchStreamUrl(decodeURIComponent('${safeUrl}'))" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${isActive ? 'bg-gradient-to-r from-red-600 to-purple-600 text-white shadow-lg shadow-red-500/25 border border-white/20' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                        <button type="button" onclick="switchStreamUrl(decodeURIComponent('${safeUrl}'))" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${isActive ? 'bg-zinc-200 text-zinc-950 shadow-sm' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-300 hover:bg-zinc-800'}">
                             <div class="flex items-center gap-2.5 truncate">
-                                <i data-lucide="globe" class="w-4 h-4 ${isActive ? 'text-white' : 'text-zinc-400'} shrink-0"></i>
+                                <i data-lucide="globe" class="w-4 h-4 ${isActive ? 'text-zinc-950' : 'text-zinc-400'} shrink-0"></i>
                                 <div class="truncate">
-                                    <div class="text-white font-bold truncate flex items-center gap-1.5">
+                                    <div class="${isActive ? 'text-zinc-950' : 'text-zinc-100'} font-bold truncate flex items-center gap-1.5">
                                         <span>${labelText}</span>
-                                        <span class="text-[8px] font-bold text-amber-400 uppercase bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">DUB</span>
+                                        <span class="text-[8px] font-bold uppercase ${isActive ? 'bg-zinc-950/15 text-zinc-900' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'} px-1.5 py-0.5 rounded">DUB</span>
                                     </div>
-                                    <div class="text-[10px] text-zinc-400 font-normal truncate">${srcObj.quality || '1080p'}</div>
+                                    <div class="text-[10px] ${isActive ? 'text-zinc-700' : 'text-zinc-400'} font-normal truncate">${srcObj.quality || '1080p'}</div>
                                 </div>
                             </div>
-                            ${isActive ? '<i data-lucide="check" class="w-4 h-4 text-white shrink-0 ml-2"></i>' : ''}
+                            ${isActive ? '<i data-lucide="check" class="w-4 h-4 text-zinc-950 shrink-0 ml-2"></i>' : ''}
                         </button>
                     `;
                 });
@@ -3711,10 +3707,10 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             ];
 
             html += `
-                <div class="border-t border-white/10 pt-2.5 mt-2 mb-2">
+                <div class="border-t border-zinc-800 pt-2.5 mt-2 mb-2">
                     <div class="flex items-center justify-between mb-1.5 px-0.5">
-                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Audio Channels & Stereo Downmix</span>
-                        <span class="text-[9px] text-zinc-400 font-medium">${currentAudioMode === 'stereo' ? '5.1 Downmixed' : currentAudioMode.toUpperCase()}</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Audio Channels &amp; Downmix</span>
+                        <span class="text-[9px] text-zinc-500 font-medium">${currentAudioMode === 'stereo' ? '5.1 Downmixed' : currentAudioMode.toUpperCase()}</span>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5" id="audioModeSelectorGrid">
             `;
@@ -3722,12 +3718,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             audioModes.forEach(m => {
                 const isSelected = (currentAudioMode === m.id);
                 html += `
-                    <button type="button" onclick="setAudioDownmixMode('${m.id}')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${isSelected ? 'glass-sub-panel bg-emerald-500/20 text-white ring-1 ring-emerald-400/40 shadow' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                    <button type="button" onclick="setAudioDownmixMode('${m.id}')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${isSelected ? 'bg-zinc-200 text-zinc-950 shadow-sm' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-300 hover:bg-zinc-800'}">
                         <div class="truncate">
-                            <div class="text-white font-bold text-[11px] truncate">${m.name}</div>
-                            <div class="text-[9px] text-zinc-400 font-normal truncate">${m.desc}</div>
+                            <div class="${isSelected ? 'text-zinc-950' : 'text-zinc-100'} font-bold text-[11px] truncate">${m.name}</div>
+                            <div class="text-[9px] ${isSelected ? 'text-zinc-700' : 'text-zinc-500'} font-normal truncate">${m.desc}</div>
                         </div>
-                        ${isSelected ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
+                        ${isSelected ? '<span class="w-2 h-2 rounded-full bg-zinc-950 shrink-0 ml-1"></span>' : ''}
                     </button>
                 `;
             });
@@ -3738,243 +3734,77 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             `;
 
             // Multi-Language Dub Server Clusters Fast Switcher
+            const fastSwitchClusters = [
+                { id: 'vidlink', name: 'VidLink Pro', desc: 'Decrypted Direct CDN' },
+                { id: 'vidrift', name: 'Vidrift', desc: 'Decrypted Multi-HLS' },
+                { id: 'm4u', name: 'Movie 4U (m4u)', desc: 'Direct M3U8 Master' },
+                { id: 'prism', name: 'Prism', desc: 'Multi-Audio 1080p CDN' },
+                { id: 's80', name: 'Moscow (s80)', desc: 'Fast Direct HLS' },
+                { id: 's30', name: 'Nova (s30)', desc: 'Fast Direct HLS' },
+                { id: 'filmu', name: 'Filmu / Vidly', desc: 'Decrypted Native HLS' },
+                { id: 's62', name: 'Bastion (s62)', desc: 'Dual Audio & Dubs' },
+                { id: 's31', name: 'Orion (s31)', desc: 'Worker High-Speed' },
+                { id: 'sm_hub', name: 'SM Movie Hub', desc: 'Direct VOD/MKV Audio' },
+                { id: 's70', name: 'Polaris (s70)', desc: 'Multi-Language Dubs' },
+                { id: 'cinepro', name: 'CinePro Core', desc: '4K/1080p Streamer' }
+            ];
+
             html += `
-                <div class="border-t border-white/10 pt-2.5 mt-2">
+                <div class="border-t border-zinc-800 pt-2.5 mt-2">
                     <div class="flex items-center justify-between mb-1.5 px-0.5">
-                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Language Dub Clusters</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Language Dub Clusters</span>
                         <span class="text-[9px] text-zinc-500 font-medium">Fast Server Switch</span>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                        <button type="button" onclick="switchServerCluster('vidlink')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'vidlink' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">VidLink Pro</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Direct CDN</div>
-                            </div>
-                            ${CURRENT_SERVER === 'vidlink' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('vidrift')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'vidrift' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Vidrift</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Multi-HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 'vidrift' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('m4u')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'm4u' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Movie 4U (m4u)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Direct M3U8 Master</div>
-                            </div>
-                            ${CURRENT_SERVER === 'm4u' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('prism')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'prism' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Prism</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Audio 1080p CDN</div>
-                            </div>
-                            ${CURRENT_SERVER === 'prism' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s80')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's80' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Moscow (s80)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Fast Direct HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 's80' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s30')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's30' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Nova (s30)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Fast Direct HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 's30' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('filmu')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'filmu' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Filmu / Vidly</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Decrypted Native HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 'filmu' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s62')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's62' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Bastion (s62)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Dual Audio & Dubs</div>
-                            </div>
-                            ${CURRENT_SERVER === 's62' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s31')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's31' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Orion (s31)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Worker High-Speed</div>
-                            </div>
-                            ${CURRENT_SERVER === 's31' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('sm_hub')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'sm_hub' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">SM Movie Hub</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Direct VOD/MKV Audio</div>
-                            </div>
-                            ${CURRENT_SERVER === 'sm_hub' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s70')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's70' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Polaris (s70)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Language Dubs</div>
-                            </div>
-                            ${CURRENT_SERVER === 's70' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('framex')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'framex' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">FrameX TV</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Source 4K/1080p</div>
-                            </div>
-                            ${CURRENT_SERVER === 'framex' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s81')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's81' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Novo (s81)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">StreamRip Direct HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 's81' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s40')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's40' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Aphelion (s40)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">DarkMatter Direct</div>
-                            </div>
-                            ${CURRENT_SERVER === 's40' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s3')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's3' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Edmunds (s3)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Filmu Original Audio</div>
-                            </div>
-                            ${CURRENT_SERVER === 's3' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('vidsrc')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'vidsrc' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">VidSrc VIP</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Universal VIP Stream</div>
-                            </div>
-                            ${CURRENT_SERVER === 'vidsrc' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s60')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's60' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Vertex (s60)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Direct CDN</div>
-                            </div>
-                            ${CURRENT_SERVER === 's60' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s63')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's63' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Hallyu (s63)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Asian & International</div>
-                            </div>
-                            ${CURRENT_SERVER === 's63' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('s61')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 's61' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Corvus (s61)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Multi-Source Hub</div>
-                            </div>
-                            ${CURRENT_SERVER === 's61' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('cinepro')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'cinepro' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">CinePro Core</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">OMSS 4K/1080p Streamer</div>
-                            </div>
-                            ${CURRENT_SERVER === 'cinepro' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                    </div>
-                </div>
-
-                <!-- DEDICATED ANIME SERVER CLUSTERS SECTION -->
-                <div class="border-t border-white/10 pt-2.5 mt-2">
-                    <div class="flex items-center justify-between mb-1.5 px-0.5">
-                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-rose-400"></i>
-                            Anime Server Clusters (Specialized JP/EN)
-                        </span>
-                        <span class="text-[9px] text-zinc-500 font-medium">Top Priority Anime Engines</span>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                        <button type="button" onclick="switchServerCluster('megaplay_buzz')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'megaplay_buzz' ? 'glass-sub-panel bg-rose-500/25 border border-rose-500/40 text-white ring-1 ring-rose-400/50 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
-                                    <span>MegaPlay</span>
-                                    <span class="text-[9px] bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded font-mono font-bold">HLS Master</span>
-                                </div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Direct Multi-Bitrate HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 'megaplay_buzz' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('animepahe')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'animepahe' ? 'glass-sub-panel bg-rose-500/25 border border-rose-500/40 text-white ring-1 ring-rose-400/50 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
-                                    <span>AnimePahe</span>
-                                    <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-mono font-bold">Google CDN</span>
-                                </div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Direct 720p/360p MP4</div>
-                            </div>
-                            ${CURRENT_SERVER === 'animepahe' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('tokyoinsider')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'tokyoinsider' ? 'glass-sub-panel bg-rose-500/25 border border-rose-500/40 text-white ring-1 ring-rose-400/50 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px] flex items-center gap-1">
-                                    <span>TokyoInsider</span>
-                                    <span class="text-[9px] bg-red-500/20 text-red-300 px-1 py-0.5 rounded font-mono font-bold">1080p MP4</span>
-                                </div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">High-Speed Direct CDN</div>
-                            </div>
-                            ${CURRENT_SERVER === 'tokyoinsider' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-
-                        <button type="button" onclick="switchServerCluster('hianime')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'hianime' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">HiAnime (Anime)</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">MegaPlay Multi-Audio</div>
-                            </div>
-                            ${CURRENT_SERVER === 'hianime' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('animesalt')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'animesalt' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">AnimeSalt</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Special Multi-Audio</div>
-                            </div>
-                            ${CURRENT_SERVER === 'animesalt' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        
-                        <button type="button" onclick="switchServerCluster('zanix')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'zanix' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Zanix Anime</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">FlixEra & NovusCloud</div>
-                            </div>
-                            ${CURRENT_SERVER === 'zanix' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('flux')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'flux' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Flux Anime</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">SudoFlix & VidBinge HLS</div>
-                            </div>
-                            ${CURRENT_SERVER === 'flux' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('asiaflix')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'asiaflix' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">Asiaflix</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Vidmoly Multi-Bitrate</div>
-                            </div>
-                            ${CURRENT_SERVER === 'asiaflix' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
-                        <button type="button" onclick="switchServerCluster('kisskh')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${CURRENT_SERVER === 'kisskh' ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/30' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
-                            <div class="truncate">
-                                <div class="truncate text-white font-bold text-[11px]">KissKH</div>
-                                <div class="text-[9px] text-zinc-400 font-normal truncate">Asian Drama & Anime</div>
-                            </div>
-                            ${CURRENT_SERVER === 'kisskh' ? '<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1"></span>' : ''}
-                        </button>
+                        ${fastSwitchClusters.map(sc => {
+                            const isCur = CURRENT_SERVER === sc.id;
+                            return `
+                                <button type="button" onclick="switchServerCluster('${sc.id}')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${isCur ? 'bg-zinc-200 text-zinc-950 shadow-sm' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-300 hover:bg-zinc-800'}">
+                                    <div class="truncate">
+                                        <div class="truncate ${isCur ? 'text-zinc-950' : 'text-zinc-100'} font-bold text-[11px]">${sc.name}</div>
+                                        <div class="text-[9px] ${isCur ? 'text-zinc-700' : 'text-zinc-500'} font-normal truncate">${sc.desc}</div>
+                                    </div>
+                                    ${isCur ? '<span class="w-2 h-2 rounded-full bg-zinc-950 shrink-0 ml-1"></span>' : ''}
+                                </button>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
+
+            if (isAnimeContent) {
+                const animeAudioClusters = [
+                    { id: 'anikoto', name: 'Anikoto HD', desc: '1080p Pure HLS Direct' },
+                    { id: 'megaplay_buzz', name: 'MegaPlay', desc: 'Direct Multi-Bitrate HLS' },
+                    { id: 'animepahe', name: 'AnimePahe', desc: 'Direct Google CDN' },
+                    { id: 'anivexa', name: 'Kitsune Anivexa', desc: '1080p Sub/Dub' },
+                    { id: 'reanime', name: 'ReAnime', desc: 'Decrypted HLS & Subs' },
+                    { id: 'tokyoinsider', name: 'TokyoInsider', desc: 'High-Speed Direct CDN' },
+                    { id: 'hianime', name: 'HiAnime', desc: 'MegaPlay Multi-Audio' }
+                ];
+                html += `
+                    <div class="border-t border-zinc-800 pt-2.5 mt-2">
+                        <div class="flex items-center justify-between mb-1.5 px-0.5">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-300">Anime Specialized Clusters (JP/EN)</span>
+                            <span class="text-[9px] text-zinc-500 font-medium">Sub/Dub</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                            ${animeAudioClusters.map(ac => {
+                                const isCur = CURRENT_SERVER === ac.id;
+                                return `
+                                    <button type="button" onclick="switchServerCluster('${ac.id}')" class="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${isCur ? 'bg-zinc-200 text-zinc-950 shadow-sm' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-300 hover:bg-zinc-800'}">
+                                        <div class="truncate">
+                                            <div class="truncate ${isCur ? 'text-zinc-950' : 'text-zinc-100'} font-bold text-[11px]">${ac.name}</div>
+                                            <div class="text-[9px] ${isCur ? 'text-zinc-700' : 'text-zinc-500'} font-normal truncate">${ac.desc}</div>
+                                        </div>
+                                        ${isCur ? '<span class="w-2 h-2 rounded-full bg-zinc-950 shrink-0 ml-1"></span>' : ''}
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
 
             list.innerHTML = html;
             if (topBarAudioLabel) {
@@ -4418,16 +4248,16 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                             const format = (sub.format || 'SRT').toUpperCase();
 
                             return `
-                                <div class="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold glass-sub-panel border border-white/5 hover:border-white/20 transition-all ${isSelected ? 'ring-1 ring-red-500 bg-red-950/20' : ''}">
+                                <div class="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold bg-zinc-900/90 border ${isSelected ? 'border-zinc-400 bg-zinc-800/90' : 'border-zinc-800 hover:border-zinc-700'} transition-all">
                                     <div class="flex-1 min-w-0 pr-2">
                                         <div class="flex items-center gap-1.5 flex-wrap">
-                                            <span class="font-bold text-white">${sub.language || 'English'}</span>
-                                            <span class="text-[9px] px-1.5 py-0.2 rounded bg-red-600/25 text-red-300 font-extrabold uppercase border border-red-500/30">${provName}</span>
-                                            <span class="text-[9px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono font-bold">${format}</span>
+                                            <span class="font-bold text-zinc-100">${sub.language || 'English'}</span>
+                                            <span class="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-bold uppercase border border-zinc-700">${provName}</span>
+                                            <span class="text-[9px] px-1.5 py-0.5 rounded bg-zinc-950 text-zinc-400 border border-zinc-800 font-mono font-bold">${format}</span>
                                         </div>
                                         <p class="text-[10px] text-zinc-400 truncate mt-0.5">${sub.display || 'Full Release'}</p>
                                     </div>
-                                    <button onclick="applySearchedSubtitle('${safeUrl}', '${safeLabel}', ${virtualId})" class="px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-red-600 hover:bg-red-500 text-white shadow-md active:scale-95'} cursor-pointer">
+                                    <button onclick="applySearchedSubtitle('${safeUrl}', '${safeLabel}', ${virtualId})" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${isSelected ? 'bg-zinc-200 text-zinc-950' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 active:scale-95'} cursor-pointer">
                                         ${isSelected ? 'Active ✓' : 'Apply'}
                                     </button>
                                 </div>
@@ -4473,20 +4303,21 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             });
             [contentAudio, contentSubs, contentSearch, contentVisual].filter(Boolean).forEach(c => c.classList.add('hidden'));
 
+            const activeTabCls = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-zinc-200 text-zinc-950 shadow-sm flex items-center justify-center gap-1';
             if (tab === 'audio') {
-                if (btnAudio) btnAudio.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (btnAudio) btnAudio.className = activeTabCls;
                 if (contentAudio) contentAudio.classList.remove('hidden');
                 detectAndPopulateAudioTracks();
             } else if (tab === 'subtitles') {
-                if (btnSubs) btnSubs.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (btnSubs) btnSubs.className = activeTabCls;
                 if (contentSubs) contentSubs.classList.remove('hidden');
                 populateSubtitlesList();
             } else if (tab === 'search') {
-                if (btnSearch) btnSearch.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (btnSearch) btnSearch.className = activeTabCls;
                 if (contentSearch) contentSearch.classList.remove('hidden');
                 prefillSubtitleSearchInputs();
             } else if (tab === 'visual') {
-                if (btnVisual) btnVisual.className = 'py-1.5 text-[11px] font-bold rounded-lg transition-all bg-red-600 text-white shadow flex items-center justify-center gap-1';
+                if (btnVisual) btnVisual.className = activeTabCls;
                 if (contentVisual) contentVisual.classList.remove('hidden');
             }
             if (window.lucide) lucide.createIcons();
@@ -4589,33 +4420,42 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
         }
 
         async function loadServerList() {
+            const animeClusterModalEl = document.getElementById('modalAnimeClusterSection');
+            if (animeClusterModalEl) {
+                if (isAnimeContent) animeClusterModalEl.classList.remove('hidden');
+                else animeClusterModalEl.classList.add('hidden');
+            }
             try {
-                const isAnime = Boolean(isAnimeContent || (typeof MEDIA_TYPE !== 'undefined' && (MEDIA_TYPE === 'anime' || MEDIA_TYPE === 'tv_anime')) || window.MAL_ID || window.ANILIST_ID || (typeof window.location !== 'undefined' && window.location.search.includes('anime')));
+                const isAnime = Boolean(isAnimeContent);
                 const queryParam = isAnime 
                     ? `?type=anime&malId=${encodeURIComponent(window.MAL_ID || '')}&anilistId=${encodeURIComponent(window.ANILIST_ID || '')}` 
                     : `?type=${encodeURIComponent(MEDIA_TYPE)}`;
                 const res = await fetch(`/api/bingr/servers${queryParam}`);
                 const data = await res.json();
                 if (data.status === 'success' && data.servers && data.servers.length > 0) {
-                    const animeAllowed = ['anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    const animeAllowed = ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'vidlink', 'vidrift', 'zanix', 'flux', 'filmu', 'two_embed', 'vidsrc', 'kisskh', 'asiaflix', 's40', 'framex'];
+                    const pureAnimeOnly = ['anikoto', 'anivexa', 'reanime', 'megaplay_buzz', 'animepahe', 'tokyoinsider', 'hianime', 'bing_anime', 'animesalt', 'aniembed', 'zanix'];
                     let list = isAnime 
                         ? data.servers.filter(s => animeAllowed.includes(s.id))
-                        : data.servers;
-                    // Ensure nestzone, anivexa, reanime, megaplay_buzz are unconditionally available at the top
-                    const hasNest = list.some(s => s.id === 'nestzone');
-                    const hasAnivexa = list.some(s => s.id === 'anivexa');
-                    const hasReanime = list.some(s => s.id === 'reanime');
-                    const hasMega = list.some(s => s.id === 'megaplay_buzz');
-                    const hasPahe = list.some(s => s.id === 'animepahe');
-                    const hasBing = list.some(s => s.id === 'bing_anime');
-                    const prepend = [];
-                    
-                    if (!hasAnivexa) prepend.push({ id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' });
-                    if (!hasReanime) prepend.push({ id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' });
-                    if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });
-                    if (!hasPahe) prepend.push({ id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' });
-                    if (!hasBing) prepend.push({ id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' });
-                    availableServers = [...prepend, ...list];
+                        : data.servers.filter(s => !pureAnimeOnly.includes(s.id));
+                    if (isAnime) {
+                        const hasAnikoto = list.some(s => s.id === 'anikoto');
+                        const hasAnivexa = list.some(s => s.id === 'anivexa');
+                        const hasReanime = list.some(s => s.id === 'reanime');
+                        const hasMega = list.some(s => s.id === 'megaplay_buzz');
+                        const hasPahe = list.some(s => s.id === 'animepahe');
+                        const hasBing = list.some(s => s.id === 'bing_anime');
+                        const prepend = [];
+                        if (!hasAnikoto) prepend.push({ id: 'anikoto', name: 'Anikoto HD (1080p Pure HLS / Dual Audio)', cc: 'JP' });
+                        if (!hasAnivexa) prepend.push({ id: 'anivexa', name: 'Kitsune Anivexa (Multi-Engine 1080p & Sub/Dub)', cc: 'JP' });
+                        if (!hasReanime) prepend.push({ id: 'reanime', name: 'ReAnime FlixCloud (1080p Decrypted & Soft Subs)', cc: 'JP' });
+                        if (!hasMega) prepend.push({ id: 'megaplay_buzz', name: 'MegaPlay Buzz (Direct Multi-Bitrate HLS)', cc: 'GL' });
+                        if (!hasPahe) prepend.push({ id: 'animepahe', name: 'AnimePahe (Direct Google CDN MP4)', cc: 'JP' });
+                        if (!hasBing) prepend.push({ id: 'bing_anime', name: 'Bing Anime (Multi-Audio HLS & Direct)', cc: 'JP' });
+                        availableServers = [...prepend, ...list];
+                    } else {
+                        availableServers = list.length > 0 ? list : DEFAULT_SERVERS;
+                    }
                 } else {
                     availableServers = DEFAULT_SERVERS;
                 }
@@ -4633,9 +4473,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const isSelected = srv.id === CURRENT_SERVER;
                 const flag = srv.cc === 'BD' ? '🇧🇩' : (srv.cc === 'IN' ? '🇮🇳' : (srv.cc === 'US' ? '🇺🇸' : (srv.cc === 'JP' ? '🇯🇵' : (srv.cc === 'KR' ? '🇰🇷' : (srv.cc === 'IT' ? '🇮🇹' : (srv.cc === 'IS' ? '🇮🇸' : (srv.cc === 'TR' ? '🇹🇷' : (srv.cc === 'GL' ? '🌐' : '⚡'))))))));
                 return `
-                    <button onclick="switchServer('${srv.id}')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-all ${isSelected ? 'glass-sub-panel bg-white/20 text-white ring-1 ring-white/20' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}">
+                    <button onclick="switchServer('${srv.id}')" class="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all ${isSelected ? 'bg-zinc-200 text-zinc-950 shadow-sm' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-300 hover:bg-zinc-800'}">
                         <span class="truncate">${flag} ${srv.name.split('(')[0].trim()}</span>
-                        ${isSelected ? '<i data-lucide="check" class="w-3.5 h-3.5 text-white shrink-0 ml-1"></i>' : ''}
+                        ${isSelected ? '<i data-lucide="check" class="w-3.5 h-3.5 text-zinc-950 shrink-0 ml-1"></i>' : ''}
                     </button>
                 `;
             }).join('');
@@ -4657,7 +4497,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     if (match) {
                         const srvId = match[1];
                         const isCur = srvId === CURRENT_SERVER;
-                        btn.className = `flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${isCur ? 'glass-sub-panel bg-rose-500/30 border border-rose-500/50 text-white ring-1 ring-rose-400/60 shadow-lg' : 'glass-sub-panel text-zinc-300 hover:bg-white/10'}`;
+                        btn.className = `flex items-center justify-between p-2 rounded-xl text-xs font-bold text-left transition-all ${isCur ? 'bg-zinc-200 text-zinc-950 shadow-sm' : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800'}`;
                     }
                 });
             }

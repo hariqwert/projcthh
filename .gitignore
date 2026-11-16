@@ -5,7 +5,19 @@ node_modules/
 .system_generated/
 bin/TorrServer.exe
 bin/TorrServer
-# Environment configs and secrets included
+
+# CRITICAL SECURITY: Never commit secrets, env configs, or dynamic tokens
+.env
+.env.*
+firebase-applet-config.json
+doctor_strange/jwt_secret.txt
+doctor_strange/admin_db.json
+doctor_strange/*.stalker
+doctor_strange/*.token
+doctor_strange/*.json
+doctor_strange/login.stalker
+doctor_strange/token.stalker
+
 scratch/
 cache_stalker/
 torr_db/

@@ -1629,18 +1629,13 @@ router.post('/gate-verify', async (req: Request, res: Response) => {
     }
 
     // 3. Constant-Time Passcode Verification
-    const gatePass = process.env.ADMIN_GATE_PASS || process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || '2008';
-    const gatePassHash = process.env.ADMIN_PASS_HASH || '$2b$10$XU2SnQWK0eNdT0exkreSQONDlStSJRuwPJTYLc/KoxuKi3U3EGkLW';
+    const gatePass = (process.env.ADMIN_GATE_PASS || process.env.ADMIN_PASSWORD || '').trim();
+    const gatePassHash = (process.env.ADMIN_GATE_PASS_HASH || process.env.ADMIN_PASS_HASH || '').trim();
 
     let isValid = false;
-    if (SecurityGateKeeper.constantTimeCompare(cleanPass, gatePass) ||
-        SecurityGateKeeper.constantTimeCompare(cleanPass, '2008') ||
-        (process.env.ADMIN_PASSWORD && SecurityGateKeeper.constantTimeCompare(cleanPass, process.env.ADMIN_PASSWORD)) ||
-        (process.env.ADMIN_PASS && SecurityGateKeeper.constantTimeCompare(cleanPass, process.env.ADMIN_PASS))) {
+    if (gatePass && SecurityGateKeeper.constantTimeCompare(cleanPass, gatePass)) {
         isValid = true;
-    } else if (process.env.ADMIN_PASS_HASH && SecurityGateKeeper.constantTimeCompare(cleanPass, process.env.ADMIN_PASS_HASH)) {
-        isValid = true;
-    } else {
+    } else if (gatePassHash) {
         try {
             isValid = bcrypt.compareSync(cleanPass, gatePassHash);
         } catch (e) {}
@@ -1750,14 +1745,15 @@ router.post('/login', async (req: Request, res: Response) => {
         });
     }
 
-    const adminUser = (process.env.ADMIN_USER || 'hari').trim();
-    const adminPassHash = process.env.ADMIN_PASS_HASH || '$2b$10$XU2SnQWK0eNdT0exkreSQONDlStSJRuwPJTYLc/KoxuKi3U3EGkLW';
+    const adminUser = (process.env.ADMIN_USER || '').trim();
+    const adminPassHash = (process.env.ADMIN_PASS_HASH || '').trim();
+    const adminPass = (process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || '').trim();
 
     const cleanUsername = String(username || '').trim().toLowerCase();
     const cleanPassword = String(password || '').trim();
     const targetUser = adminUser.toLowerCase();
 
-    if (!cleanUsername || !cleanPassword) {
+    if (!cleanUsername || !cleanPassword || !targetUser) {
         return res.status(400).json({
             status: "error",
             message: "Both Admin Username and Password must be provided."
@@ -1765,13 +1761,9 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     let isPasswordCorrect = false;
-    if (SecurityGateKeeper.constantTimeCompare(cleanPassword, '2008') ||
-        (process.env.ADMIN_PASSWORD && SecurityGateKeeper.constantTimeCompare(cleanPassword, process.env.ADMIN_PASSWORD)) ||
-        (process.env.ADMIN_PASS && SecurityGateKeeper.constantTimeCompare(cleanPassword, process.env.ADMIN_PASS))) {
+    if (adminPass && SecurityGateKeeper.constantTimeCompare(cleanPassword, adminPass)) {
         isPasswordCorrect = true;
-    } else if (process.env.ADMIN_PASS_HASH && SecurityGateKeeper.constantTimeCompare(cleanPassword, process.env.ADMIN_PASS_HASH)) {
-        isPasswordCorrect = true;
-    } else {
+    } else if (adminPassHash) {
         try {
             isPasswordCorrect = bcrypt.compareSync(cleanPassword, adminPassHash);
         } catch (e) {
@@ -1779,8 +1771,7 @@ router.post('/login', async (req: Request, res: Response) => {
         }
     }
 
-    const validUsernames = new Set([targetUser, 'hari', 'admin']);
-    const userMatches = cleanUsername.length > 0 && validUsernames.has(cleanUsername);
+    const userMatches = SecurityGateKeeper.constantTimeCompare(cleanUsername, targetUser);
 
     if (userMatches && isPasswordCorrect) {
         console.log(`[STAGE-1-SUCCESS] User "${cleanUsername}" passed credential check from ${clientIp}. Issuing 2FA challenge token.`);
@@ -1907,16 +1898,19 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     const cleanPin = String(pin).trim();
-    const primaryPin = (process.env.ADMIN_2FA_PIN_PRIMARY || process.env.ADMIN_2FA_PIN || '2325').trim();
-    const secondaryPin = (process.env.ADMIN_2FA_PIN_SECONDARY || '232512').trim();
+    const primaryPin = (process.env.ADMIN_2FA_PIN_PRIMARY || process.env.ADMIN_2FA_PIN || '').trim();
+    const secondaryPin = (process.env.ADMIN_2FA_PIN_SECONDARY || '').trim();
     const db = getDB();
     const dbPin = (db.admin2faPin || '').trim();
 
     // Constant-time PIN verification
-    let isValidPin = SecurityGateKeeper.constantTimeCompare(cleanPin, primaryPin) ||
-                     SecurityGateKeeper.constantTimeCompare(cleanPin, secondaryPin);
-    if (!isValidPin && dbPin) {
-        isValidPin = SecurityGateKeeper.constantTimeCompare(cleanPin, dbPin);
+    let isValidPin = false;
+    if (primaryPin && SecurityGateKeeper.constantTimeCompare(cleanPin, primaryPin)) {
+        isValidPin = true;
+    } else if (secondaryPin && SecurityGateKeeper.constantTimeCompare(cleanPin, secondaryPin)) {
+        isValidPin = true;
+    } else if (dbPin && SecurityGateKeeper.constantTimeCompare(cleanPin, dbPin)) {
+        isValidPin = true;
     }
 
     if (!isValidPin) {

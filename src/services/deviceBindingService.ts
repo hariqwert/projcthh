@@ -51,19 +51,25 @@ function persistBoundDevices(): void {
 loadBoundDevices();
 
 /**
- * Verify if input PIN matches Master 2FA PINs or Configured Site Lock PIN
+ * Verify if input PIN matches Configured 2FA PIN or Site Lock PIN using constant-time comparison
  */
-export function verifyMasterPin(inputPin: string, configuredPin: string = '202012'): boolean {
+export function verifyMasterPin(inputPin: string, configuredPin?: string): boolean {
     const cleanInput = String(inputPin || '').trim();
-    // Authorized Master 2FA PINs: 2325 (short), 232512 (extended), and current configured siteLockPassword
+    if (!cleanInput) return false;
+    const envPin = (process.env.ADMIN_2FA_PIN || '').trim();
     const allowedPins = [
-        '2325',
-        '232512',
-        String(configuredPin || '').trim(),
-        '202012'
+        envPin,
+        String(configuredPin || '').trim()
     ].filter(Boolean);
 
-    return allowedPins.includes(cleanInput);
+    return allowedPins.some(pin => {
+        if (!pin || pin.length !== cleanInput.length) return false;
+        try {
+            return crypto.timingSafeEqual(Buffer.from(cleanInput), Buffer.from(pin));
+        } catch {
+            return false;
+        }
+    });
 }
 
 /**

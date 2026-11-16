@@ -392,33 +392,36 @@ export const verifyAdminCredentials = (username: string, password: string): bool
     const cleanPass = String(password || '').trim();
     if (!cleanUser || !cleanPass) return false;
 
-    const adminUser = (process.env.ADMIN_USER || 'hari').trim().toLowerCase();
-    const validUsers = new Set([adminUser, 'hari', 'admin']);
-    if (!validUsers.has(cleanUser)) return false;
+    const adminUser = (process.env.ADMIN_USER || '').trim().toLowerCase();
+    if (!adminUser || cleanUser !== adminUser) return false;
 
-    if (cleanPass === '2008' || cleanPass === process.env.ADMIN_PASSWORD || cleanPass === process.env.ADMIN_PASS) return true;
-    if (process.env.ADMIN_PASS_HASH && cleanPass === process.env.ADMIN_PASS_HASH) return true;
-    const hash = process.env.ADMIN_PASS_HASH || '$2b$10$XU2SnQWK0eNdT0exkreSQONDlStSJRuwPJTYLc/KoxuKi3U3EGkLW';
-    
-    try {
-        return bcrypt.compareSync(cleanPass, hash);
-    } catch (e: any) {
-        return false;
+    const envPass = (process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || '').trim();
+    if (envPass && cleanPass === envPass) return true;
+    const hash = (process.env.ADMIN_PASS_HASH || '').trim();
+    if (hash) {
+        try {
+            return bcrypt.compareSync(cleanPass, hash);
+        } catch (e: any) {
+            return false;
+        }
     }
+    return false;
 };
 
 const verifyAdminPassword = (password: string): boolean => {
     const clean = String(password || '').trim();
     if (!clean) return false;
-    if (clean === '2008' || clean === process.env.ADMIN_PASSWORD || clean === process.env.ADMIN_PASS) return true;
-    if (process.env.ADMIN_PASS_HASH && clean === process.env.ADMIN_PASS_HASH) return true;
-    const hash = process.env.ADMIN_PASS_HASH || '$2b$10$XU2SnQWK0eNdT0exkreSQONDlStSJRuwPJTYLc/KoxuKi3U3EGkLW';
-    
-    try {
-        return bcrypt.compareSync(clean, hash);
-    } catch (e: any) {
-        return false;
+    const envPass = (process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || '').trim();
+    if (envPass && clean === envPass) return true;
+    const hash = (process.env.ADMIN_PASS_HASH || '').trim();
+    if (hash) {
+        try {
+            return bcrypt.compareSync(clean, hash);
+        } catch (e: any) {
+            return false;
+        }
     }
+    return false;
 };
 
 // Legacy exports for compatibility
@@ -7835,10 +7838,10 @@ app.post('/api/system/verify-m3u-vault', async (req: Request, res: Response) => 
     }
 
     const cleanPass = String(password || '').trim();
-    const currentLockPass = String(systemState.siteLockPassword || '202012').trim();
+    const currentLockPass = String(systemState.siteLockPassword || process.env.SITE_LOCK_PASSWORD || '').trim();
 
-    // Verify passcode against Master Gate Key, site lock pass, admin master pass, or master PINs
-    const isValid = ['2008', '202012', '2325', '232512'].includes(cleanPass) ||
+    // Verify passcode against site lock pass, admin master pass, or 2FA PIN
+    const isValid = (currentLockPass && cleanPass === currentLockPass) ||
                     verifyMasterPin(cleanPass, currentLockPass) ||
                     verifyAdminPassword(cleanPass);
 
@@ -13123,15 +13126,13 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
         const currentIp = clientIp.replace('::ffff:', '');
         
         const passcode = (params.passcode || params.pin || params.password || '').toString().trim();
-        const gatePass = process.env.ADMIN_GATE_PASS || process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || '2008';
-        const gatePassHash = process.env.ADMIN_PASS_HASH || '$2b$10$XU2SnQWK0eNdT0exkreSQONDlStSJRuwPJTYLc/KoxuKi3U3EGkLW';
+        const gatePass = (process.env.ADMIN_GATE_PASS || process.env.ADMIN_PASSWORD || '').trim();
+        const gatePassHash = (process.env.ADMIN_GATE_PASS_HASH || process.env.ADMIN_PASS_HASH || '').trim();
 
         let isValid = false;
-        if (passcode === gatePass || passcode === '2008' || passcode === process.env.ADMIN_PASSWORD || passcode === process.env.ADMIN_PASS) {
+        if (gatePass && passcode === gatePass) {
             isValid = true;
-        } else if (process.env.ADMIN_PASS_HASH && passcode === process.env.ADMIN_PASS_HASH) {
-            isValid = true;
-        } else {
+        } else if (gatePassHash) {
             try {
                 isValid = bcrypt.compareSync(passcode, gatePassHash);
             } catch (e) {}
@@ -14004,7 +14005,7 @@ app.all('/stalker_api.php', async (req: Request, res: Response) => {
             } catch (err) {}
         }
         
-        if (!isAdmin && (params.password || '').toString() === "2008") {
+        if (!isAdmin && params.password && verifyAdminPassword(String(params.password))) {
             isAdmin = true;
         }
 

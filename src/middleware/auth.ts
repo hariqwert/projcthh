@@ -13,12 +13,13 @@ if (!secret) {
     if (fs.existsSync(SECRET_FILE)) {
         secret = fs.readFileSync(SECRET_FILE, 'utf8').trim();
     }
-    if (!secret) {
-        secret = 'stalker_pro_quantum_master_jwt_secret_2025_v2';
+    if (!secret || secret.length < 32) {
+        secret = crypto.randomBytes(48).toString('hex');
         try {
-            if (fs.existsSync(path.join(process.cwd(), 'doctor_strange'))) {
-                fs.writeFileSync(SECRET_FILE, secret);
+            if (!fs.existsSync(path.join(process.cwd(), 'doctor_strange'))) {
+                fs.mkdirSync(path.join(process.cwd(), 'doctor_strange'), { recursive: true });
             }
+            fs.writeFileSync(SECRET_FILE, secret, 'utf8');
         } catch (e) {}
     }
 }

@@ -734,12 +734,8 @@ export class StalkerAPI {
         if (parsed?.js?.password && statusCode === 200) {
             const host_id = StalkerAPI.getHostId(portal);
             const tokenPath = path.join(DARK_SIDE, `token_${host_id}.stalker`);
-            const livePath = path.join(DARK_SIDE, `live_${host_id}.stalker`);
-            const genrePath = path.join(DARK_SIDE, `genre_${host_id}.json`);
             
             if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
-            if (fs.existsSync(livePath)) fs.unlinkSync(livePath);
-            if (fs.existsSync(genrePath)) fs.unlinkSync(genrePath);
 
             // Clear directory cache_stalker
             const cachedFiles = fs.readdirSync(LIGHT_SIDE);
@@ -1663,10 +1659,10 @@ export class StalkerAPI {
     }
 
     static getHostId(portal: any) {
-        if (!portal || !portal.URL) return 'portal';
+        if (!portal || (!portal.URL && !portal.url)) return 'portal';
         try {
-            let host = new URL(portal.URL).host;
-            let id = portal.MAC || portal.username || '';
+            let host = new URL(portal.URL || portal.url).host;
+            let id = portal.MAC || portal.mac || portal.username || '';
             id = id.replace(/[^a-zA-Z0-9_-]/g, '');
             return id ? `${host}_${id}` : host;
         } catch (e) {
@@ -1994,14 +1990,23 @@ export class StalkerAPI {
         } else if (/^\d+$/.test(id)) {
             const host_id = StalkerAPI.getHostId(portal);
             const liveCacheFile = path.join(DARK_SIDE, `live_${host_id}.stalker`);
+            let list: any[] = [];
             if (fs.existsSync(liveCacheFile)) {
                 try {
-                    const list = JSON.parse(fs.readFileSync(liveCacheFile, 'utf8'));
-                    const found = list.find((c: any) => c.id === id || c.id === parseInt(id, 10) || c.id === id.toString());
-                    if (found && found.cmd) {
-                        finalCmd = found.cmd;
-                    }
+                    list = JSON.parse(fs.readFileSync(liveCacheFile, 'utf8'));
                 } catch(e) {}
+            }
+            if (!Array.isArray(list) || list.length === 0) {
+                try {
+                    const freshStr = await this.json_fetcher('live', portal);
+                    list = JSON.parse(freshStr);
+                } catch(e) {}
+            }
+            if (Array.isArray(list) && list.length > 0) {
+                const found = list.find((c: any) => c.id === id || c.id === parseInt(id, 10) || c.id === id.toString() || (c.number && c.number.toString() === id));
+                if (found && found.cmd) {
+                    finalCmd = found.cmd;
+                }
             }
         }
         

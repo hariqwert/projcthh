@@ -7,6 +7,15 @@
     <title>IPTV Xtream Optimized Player</title>
     
     <!-- Styling & Icons -->
+    <script>
+        (function() {
+            var origWarn = console.warn;
+            console.warn = function() {
+                if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].indexOf('cdn.tailwindcss.com') !== -1) return;
+                return origWarn.apply(console, arguments);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Plyr, Hls.js & mpegts.js Libraries with Multi-CDN Resilient Loading -->

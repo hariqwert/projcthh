@@ -760,12 +760,12 @@ export async function resolveTimChannel(channelSlugOrId: string, forceFresh = fa
 
     // 1. If it is an HTTP/HTTPS URL, detect whether it is a timstreams/timst page or an embed
     if (channelSlugOrId.startsWith('http://') || channelSlugOrId.startsWith('https://')) {
-        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?(?:timst\.(?:top|cfd)|timstreams\.co\.rw)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
+        const pageMatch = channelSlugOrId.match(/https?:\/\/(?:www\.)?(?:timst\.(?:top|cfd)|timstreams\.co\.rw|tim-streams\.com)\/(?:channel|watch|replay|live-tv)\/([a-zA-Z0-9_\-]+)/i);
         if (pageMatch && pageMatch[1]) {
             channelSlugOrId = pageMatch[1];
         } else if (channelSlugOrId.includes('exmxbxe') || channelSlugOrId.includes('ehgembxe') || channelSlugOrId.includes('grandemx') || channelSlugOrId.includes('epiembeds') || channelSlugOrId.includes('/e/')) {
             return await resolveEmbedUrl(channelSlugOrId, forceFresh);
-        } else if ((channelSlugOrId.includes('timst') || channelSlugOrId.includes('timstreams')) && channelSlugOrId.includes('/channel/')) {
+        } else if ((channelSlugOrId.includes('timst') || channelSlugOrId.includes('timstreams') || channelSlugOrId.includes('tim-streams')) && channelSlugOrId.includes('/channel/')) {
             channelSlugOrId = channelSlugOrId.split('/channel/')[1].split(/[?#]/)[0];
         } else {
             return channelSlugOrId;

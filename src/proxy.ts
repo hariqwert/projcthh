@@ -1489,7 +1489,7 @@ export async function handleLiveStream(req: Request, res: Response) {
         } catch (e) {}
     }
     
-    if (req_id && (req_id.includes('exmxbxe.cfd/') || req_id.includes('timstreams.co.rw/') || req_id.includes('timst.top/') || req_id.includes('epiembeds.online/embed/') || req_id.includes('embedindia.st/embed/'))) {
+    if (req_id && (req_id.includes('exmxbxe.cfd/') || req_id.includes('ehgembxe.cfd/') || req_id.includes('timstreams.co.rw') || req_id.includes('tim-streams.com') || req_id.includes('timst.top') || req_id.includes('timst.cfd') || req_id.includes('epiembeds.online/embed/') || req_id.includes('embedindia.st/embed/'))) {
         if (!await isSafeUrl(req_id)) {
             return res.status(403).send('Access Denied: Unsafe URL detected.');
         }
@@ -1500,11 +1500,16 @@ export async function handleLiveStream(req: Request, res: Response) {
             try {
                 const original_req_id = req_id;
                 let targetUrl = req_id;
-                if (req_id.includes('epiembeds.online') || req_id.includes('embedindia.st')) {
-                    const embedSlugMatch = req_id.match(/\/embed\/([a-zA-Z0-9_-]+)/);
-                    targetUrl = embedSlugMatch ? `https://epiembeds.online/embed/${embedSlugMatch[1]}` : req_id;
+                let m3u8Found: string | null = null;
+                if (req_id.includes('/channel/') || req_id.includes('/watch/') || req_id.includes('/live-tv/')) {
+                    m3u8Found = await resolveTimChannel(req_id);
+                } else {
+                    if (req_id.includes('epiembeds.online') || req_id.includes('embedindia.st')) {
+                        const embedSlugMatch = req_id.match(/\/embed\/([a-zA-Z0-9_-]+)/);
+                        targetUrl = embedSlugMatch ? `https://epiembeds.online/embed/${embedSlugMatch[1]}` : req_id;
+                    }
+                    m3u8Found = await resolveEmbedUrl(targetUrl);
                 }
-                const m3u8Found = await resolveEmbedUrl(targetUrl);
                 if (m3u8Found) {
                     req_id = m3u8Found;
                     embedCache.set(original_req_id, { url: req_id, time: Date.now() });

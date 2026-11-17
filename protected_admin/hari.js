@@ -1958,6 +1958,199 @@ function renderPortals(portals) {
         portalsTableBody.appendChild(row);
     });
     lucide.createIcons();
+    updateStalkerSectionController(portals);
+}
+
+// --- LIVE TV STALKER SECTION CONTROLLER ---
+async function updateStalkerSectionController(portals) {
+    const selector = document.getElementById('stalkerActivePortalSelector');
+    const urlEl = document.getElementById('stalkerActiveUrl');
+    const macEl = document.getElementById('stalkerActiveMac');
+    const countEl = document.getElementById('stalkerActiveCountText');
+    const badgeEl = document.getElementById('stalkerStatusBadge');
+    if (!selector) return;
+
+    const stalkerPortals = (portals || window.portalsData || []).filter(p => p.type === 'stalker' || !p.type);
+    
+    // Fetch current status from backend
+    try {
+        const res = await secureFetch('/api/admin/stalker/status');
+        const data = await res.json();
+        
+        const activePortal = data.portal || (stalkerPortals.find(p => p.isStalkerDefault) || stalkerPortals[0]);
+        const activeId = activePortal ? activePortal.id : '';
+
+        // Populate selector
+        let optionsHtml = '';
+        if (stalkerPortals.length === 0) {
+            optionsHtml = '<option value="">No Stalker Portals configured</option>';
+        } else {
+            stalkerPortals.forEach(p => {
+                const selected = p.id === activeId ? 'selected' : '';
+                optionsHtml += `<option value="${p.id}" ${selected}>${p.name || p.url} (${p.mac || 'MAC'})</option>`;
+            });
+        }
+        selector.innerHTML = optionsHtml;
+
+        if (activePortal) {
+            if (urlEl) {
+                urlEl.textContent = activePortal.url || 'No URL';
+                urlEl.title = activePortal.url || '';
+            }
+            if (macEl) {
+                macEl.textContent = `${activePortal.mac || 'N/A'} • ${activePortal.model || 'MAG250'}`;
+                macEl.title = activePortal.mac || '';
+            }
+            if (countEl) {
+                countEl.textContent = `${(data.totalChannels || 0).toLocaleString()} channels`;
+            }
+            if (badgeEl) {
+                if (data.online) {
+                    badgeEl.className = "text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5";
+                    badgeEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online (${data.latencyMs || 0}ms)`;
+                } else {
+                    badgeEl.className = "text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5";
+                    badgeEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Inactive / Standby`;
+                }
+            }
+        }
+    } catch (err) {
+        console.error('[Stalker Controller] Error updating:', err);
+    }
+}
+
+async function checkStalkerLiveStatus() {
+    const btn = document.getElementById('btnCheckStalkerStatus');
+    const badgeEl = document.getElementById('stalkerStatusBadge');
+    const diagBox = document.getElementById('stalkerDiagnosticsBox');
+    const selector = document.getElementById('stalkerActivePortalSelector');
+    const countEl = document.getElementById('stalkerActiveCountText');
+    const portalId = selector ? selector.value : '';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Pinging Portal...</span>`;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    try {
+        const query = portalId ? `?portal_id=${encodeURIComponent(portalId)}` : '';
+        const res = await secureFetch(`/api/admin/stalker/status${query}`);
+        const data = await res.json();
+
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i><span>Check Live Status</span>`;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        if (countEl && typeof data.totalChannels === 'number') {
+            countEl.textContent = `${data.totalChannels.toLocaleString()} channels`;
+        }
+
+        if (diagBox) {
+            diagBox.classList.remove('hidden');
+            const p = data.profile || {};
+            diagBox.innerHTML = `
+                <div class="flex items-center justify-between pb-1 border-b border-gray-800 text-[11px] text-gray-400">
+                    <span class="text-white font-bold">PORTAL TELEMETRY</span>
+                    <span class="${data.online ? 'text-emerald-400' : 'text-red-400'} font-bold">${data.online ? 'CONNECTED • 200 OK' : 'FAILED'}</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1 text-[11px]">
+                    <div><span class="text-gray-500">Latency:</span> <span class="text-purple-300 font-bold">${data.latencyMs || 0} ms</span></div>
+                    <div><span class="text-gray-500">Subscription:</span> <span class="text-white font-bold">${p.expire_billing_date || 'Active'}</span></div>
+                    <div><span class="text-gray-500">Package:</span> <span class="text-white font-bold">${p.package || 'Premium'}</span></div>
+                    <div><span class="text-gray-500">Cached Feeds:</span> <span class="text-emerald-300 font-bold">${(data.totalChannels || 0).toLocaleString()}</span></div>
+                </div>
+                ${data.message ? `<div class="text-[10px] text-gray-400 pt-1 border-t border-gray-800/60 truncate">Server Handshake: ${data.message}</div>` : ''}
+            `;
+        }
+
+        if (badgeEl) {
+            if (data.online) {
+                badgeEl.className = "text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5";
+                badgeEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online (${data.latencyMs || 0}ms)`;
+                showToast('Stalker Online', `Connected to "${data.portal?.name || 'Portal'}" (${data.latencyMs}ms)`, 'success');
+            } else {
+                badgeEl.className = "text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5";
+                badgeEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Offline`;
+                showToast('Stalker Offline', data.message || 'Cannot establish handshake', 'error');
+            }
+        }
+    } catch (err) {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i><span>Check Live Status</span>`;
+            if (window.lucide) lucide.createIcons();
+        }
+        showToast('Error', 'Failed to reach portal status endpoint.', 'error');
+    }
+}
+
+async function changeStalkerActivePortal(portalId) {
+    if (!portalId) return;
+    try {
+        const res = await secureFetch('/api/admin/stalker/set-active', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ portalId })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            showToast('Active Portal Changed', data.message, 'success');
+            updateStalkerSectionController(window.portalsData);
+        } else {
+            showToast('Error', data.message || 'Failed to switch portal', 'error');
+        }
+    } catch (err) {
+        showToast('Error', 'Failed to update active Stalker portal.', 'error');
+    }
+}
+
+async function refreshStalkerChannelCache() {
+    const btn = document.getElementById('btnRefreshStalkerCache');
+    const selector = document.getElementById('stalkerActivePortalSelector');
+    const portalId = selector ? selector.value : '';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Re-fetching...</span>`;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    try {
+        const res = await secureFetch('/api/admin/stalker/refresh-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ portalId })
+        });
+        const data = await res.json();
+        
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i><span>Re-fetch Channels</span>`;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        if (res.ok && data.status === 'success') {
+            showToast('Cache Refreshed', data.message, 'success');
+            const countEl = document.getElementById('stalkerActiveCountText');
+            if (countEl && typeof data.total === 'number') {
+                countEl.textContent = `${data.total.toLocaleString()} channels`;
+            }
+            updateStalkerSectionController(window.portalsData);
+        } else {
+            showToast('Error', data.message || 'Failed to refresh channels cache', 'error');
+        }
+    } catch (err) {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i><span>Re-fetch Channels</span>`;
+            if (window.lucide) lucide.createIcons();
+        }
+        showToast('Error', 'Failed to re-fetch channels.', 'error');
+    }
+}
 }
 
 portalForm.addEventListener('submit', async (e) => {

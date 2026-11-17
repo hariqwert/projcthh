@@ -240,6 +240,7 @@ interface AdminDB {
         musicUseSongVideo?: boolean;
     };
     portals: Portal[];
+    activeStalkerPortalId?: string;
     m3uPlaylists: M3UPlaylist[];
     sports?: SportsSection[];
     sportsContainers?: SportsContainer[];
@@ -2426,6 +2427,171 @@ router.delete('/portals/:id', requireAdmin, (req: Request, res: Response) => {
     }
 
     return res.json({ status: "success", message: "Portal deleted successfully" });
+});
+
+/**
+ * Live TV Stalker Section Controller Endpoints
+ */
+router.get('/stalker/status', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const db = getDB();
+        const portalId = (req.query.portal_id as string) || db.activeStalkerPortalId;
+        const portals: any[] = Array.isArray(db.portals) ? db.portals : [];
+
+        let targetPortal = portalId ? portals.find((p: any) => p.id === portalId) : null;
+        if (!targetPortal) {
+            targetPortal = portals.find((p: any) => p.type === 'stalker' && p.isDefault)
+                        || portals.find((p: any) => p.type === 'stalker')
+                        || db.portals.find((p: any) => p.isDefault);
+        }
+
+        if (!targetPortal) {
+            return res.json({
+                status: 'error',
+                online: false,
+                message: 'No Stalker portal registered in system database.',
+                portal: null,
+                totalChannels: 0
+            });
+        }
+
+        const portalFile = path.join(DARK_SIDE, `${targetPortal.id}.json`);
+        let fullConfig = targetPortal;
+        if (fs.existsSync(portalFile)) {
+            try { fullConfig = { ...targetPortal, ...JSON.parse(fs.readFileSync(portalFile, 'utf8')) }; } catch (e) {}
+        }
+
+        const host_id = StalkerAPI.getHostId(fullConfig);
+        const liveCacheFile = path.join(DARK_SIDE, `live_${host_id}.stalker`);
+        let totalChannels = 0;
+        if (fs.existsSync(liveCacheFile)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(liveCacheFile, 'utf8'));
+                if (Array.isArray(parsed)) totalChannels = parsed.length;
+            } catch (e) {}
+        }
+
+        const t0 = Date.now();
+        let online = false;
+        let profileData: any = null;
+        let errorMsg = '';
+
+        try {
+            const rawProfile = await StalkerAPI.get_profile(fullConfig);
+            const latencyMs = Date.now() - t0;
+            const profile = typeof rawProfile === 'string' ? JSON.parse(rawProfile) : rawProfile;
+
+            if (profile && (profile.id || profile.mac || profile.phone || profile.fname || profile.name || profile.status === 'OK' || profile.expire_billing_date || profile?.STALKER?.Statuscode === 200)) {
+                online = true;
+                const innerData = profile.data || profile.STALKER || profile;
+                profileData = {
+                    name: profile.name || profile.fname || targetPortal.name,
+                    mac: profile.mac || targetPortal.mac,
+                    expire_billing_date: profile.expire_billing_date || profile.end_date || 'Active',
+                    package: profile.package || profile.tariff_plan || 'Premium',
+                    msg: profile?.STALKER?.message || innerData?.msg || 'Authenticated',
+                    latencyMs
+                };
+            } else if (profile && !profile.error) {
+                online = true;
+                profileData = { ...profile, latencyMs };
+            } else {
+                errorMsg = profile?.error || profile?.message || 'Handshake returned non-profile response';
+            }
+        } catch (err: any) {
+            errorMsg = err?.message || 'Connection timeout or handshake failed';
+        }
+
+        return res.json({
+            status: online ? 'success' : 'warning',
+            online,
+            message: online ? 'Portal handshake active & responsive' : errorMsg,
+            portal: {
+                id: targetPortal.id,
+                name: targetPortal.name,
+                url: targetPortal.url,
+                mac: targetPortal.mac,
+                model: targetPortal.model || 'MAG250',
+                isDefault: targetPortal.isDefault || false,
+                isStalkerActive: targetPortal.id === (db.activeStalkerPortalId || targetPortal.id)
+            },
+            profile: profileData,
+            totalChannels,
+            latencyMs: profileData?.latencyMs || (Date.now() - t0)
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', online: false, message: e?.message });
+    }
+});
+
+router.post('/stalker/set-active', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const { portalId } = req.body;
+        if (!portalId) {
+            return res.status(400).json({ status: 'error', message: 'Missing portalId parameter.' });
+        }
+        const db = getDB();
+        const target = db.portals.find((p: any) => p.id === portalId);
+        if (!target) {
+            return res.status(404).json({ status: 'error', message: 'Portal not found in database.' });
+        }
+
+        db.activeStalkerPortalId = portalId;
+        saveDB(db);
+
+        // Also copy configuration to login.stalker so all native stalker endpoints use it
+        const portalFile = path.join(DARK_SIDE, `${portalId}.json`);
+        if (fs.existsSync(portalFile)) {
+            const configData = fs.readFileSync(portalFile, 'utf8');
+            fs.writeFileSync(path.join(DARK_SIDE, 'login.stalker'), configData, 'utf8');
+        }
+
+        return res.json({
+            status: 'success',
+            message: `Active Stalker Portal updated to "${target.name}".`,
+            portal: target
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message });
+    }
+});
+
+router.post('/stalker/refresh-cache', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const db = getDB();
+        const portalId = req.body?.portalId || db.activeStalkerPortalId;
+        let targetPortal = portalId ? db.portals.find((p: any) => p.id === portalId) : null;
+        if (!targetPortal) {
+            targetPortal = db.portals.find((p: any) => p.type === 'stalker') || db.portals[0];
+        }
+
+        if (!targetPortal) {
+            return res.status(400).json({ status: 'error', message: 'No stalker portal to refresh.' });
+        }
+
+        const portalFile = path.join(DARK_SIDE, `${targetPortal.id}.json`);
+        let fullConfig = targetPortal;
+        if (fs.existsSync(portalFile)) {
+            try { fullConfig = { ...targetPortal, ...JSON.parse(fs.readFileSync(portalFile, 'utf8')) }; } catch (e) {}
+        }
+
+        const host_id = StalkerAPI.getHostId(fullConfig);
+        const liveCacheFile = path.join(DARK_SIDE, `live_${host_id}.stalker`);
+        if (fs.existsSync(liveCacheFile)) {
+            try { fs.unlinkSync(liveCacheFile); } catch (e) {}
+        }
+
+        const freshJson = await StalkerAPI.json_fetcher('live', fullConfig);
+        const channels = JSON.parse(freshJson);
+
+        return res.json({
+            status: 'success',
+            message: `Successfully refreshed Stalker channels for "${targetPortal.name}".`,
+            total: Array.isArray(channels) ? channels.length : 0
+        });
+    } catch (e: any) {
+        return res.status(500).json({ status: 'error', message: e?.message });
+    }
 });
 
 /**

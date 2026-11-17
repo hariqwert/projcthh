@@ -1,4 +1,31 @@
 #EXTM3U
+#EXTINF:-1 tvg-id="fancode-4250650" tvg-name="Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026)" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/BAN-vs-SA_Test_fc-web_1794644019035.jpg" group-title="Fancode-Cricket",Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026)
+#KODIPROP:inputstream.adaptive.manifest_type=mpd
+#KODIPROP:inputstream.adaptive.license_type=clearkey
+#KODIPROP:inputstream.adaptive.license_key=1994b1df7dfd2e8a8d7b9bf3fb900285:22a1444b3da18e139191665b3d652835
+https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/avqlywnuzx/out/v1/aefca6420f944a9482e117f315de535f/cenc.mpd
+
+#EXTINF:-1 tvg-id="fancode-4250650_bk1" tvg-name="Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) [AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW FHD)]" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/BAN-vs-SA_Test_fc-web_1794644019035.jpg" group-title="Fancode-Cricket Backup",Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) (AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW FHD))
+#KODIPROP:inputstream.adaptive.manifest_type=mpd
+#KODIPROP:inputstream.adaptive.license_type=clearkey
+#KODIPROP:inputstream.adaptive.license_key=6edfcab8821c7437717ab9c94300a8a0:1dc141c8ac131a68bd1c445acfdc673c
+https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/fq9jzduffm/out/v1/999c61c2f5114b66b1c408dd3e97f5f3/cenc.mpd
+
+#EXTINF:-1 tvg-id="fancode-4250650_bk2" tvg-name="Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) [AllInOne Sports Data JSON (104 Matches with ClearKey) (SKY SPORTS CRICKET)]" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/BAN-vs-SA_Test_fc-web_1794644019035.jpg" group-title="Fancode-Cricket Backup",Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) (AllInOne Sports Data JSON (104 Matches with ClearKey) (SKY SPORTS CRICKET))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fbl.rutube.ru%2Flivestream%2F7c13a51576b9ff2601f08f5d57dd5169%2Findex.m3u8%3Fs%3DuiXES2ePt7xTpQnbJxn7Dg%26e%3D2074684474%26scheme%3Dhttps
+
+#EXTINF:-1 tvg-id="fancode-4250650_bk3" tvg-name="Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) [AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD)]" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/BAN-vs-SA_Test_fc-web_1794644019035.jpg" group-title="Fancode-Cricket Backup",Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) (AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
+
+#EXTINF:-1 tvg-id="fancode-4250650_bk4" tvg-name="Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) [AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW ALT)]" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/BAN-vs-SA_Test_fc-web_1794644019035.jpg" group-title="Fancode-Cricket Backup",Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) (AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW ALT))
+#KODIPROP:inputstream.adaptive.manifest_type=mpd
+#KODIPROP:inputstream.adaptive.license_type=clearkey
+#KODIPROP:inputstream.adaptive.license_key=6edfcab8821c7437717ab9c94300a8a0:1dc141c8ac131a68bd1c445acfdc673c
+https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/fq9jzduffm/out/v1/999c61c2f5114b66b1c408dd3e97f5f3/cenc.mpd
+
+#EXTINF:-1 tvg-id="fancode-4250650_bk5" tvg-name="Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/BAN-vs-SA_Test_fc-web_1794644019035.jpg" group-title="Fancode-Cricket Backup",Bangladesh vs South Africa (Bangladesh tour of South Africa, 2026) (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.59%2Fhls%2FRREGEGEAA.m3u8
+
 #EXTINF:-1 tvg-id="fancode-4250642" tvg-name="Australia vs England (England tour of Australia, 2026)" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/ENG-mini.png" group-title="Fancode-Cricket",Australia vs England (England tour of Australia, 2026)
 #KODIPROP:inputstream.adaptive.manifest_type=mpd
 #KODIPROP:inputstream.adaptive.license_type=clearkey
@@ -200,83 +227,20 @@ https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clie
 #KODIPROP:inputstream.adaptive.license_key=1994b1df7dfd2e8a8d7b9bf3fb900285:22a1444b3da18e139191665b3d652835
 https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/avqlywnuzx/out/v1/aefca6420f944a9482e117f315de535f/cenc.mpd
 
-#EXTINF:-1 tvg-id="fancode-2335326917" tvg-name="Afghanistan Vs Zimbabwe - TNT1UK SPORTS FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Afghanistan%20Vs%20Zimbabwe.jpg" group-title="Fancode-Cricket",Afghanistan Vs Zimbabwe - TNT1UK SPORTS FHD
+#EXTINF:-1 tvg-id="fancode-12142435876" tvg-name="ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/ABU%20DHABI%20T10%20LEAGUE%20Vs%20ABU%20DHABI%20T10%20LEAGUE.jpg" group-title="Fancode-Cricket",ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD
 #KODIPROP:inputstream.adaptive.manifest_type=mpd
 #KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=f780c2f1d5a79df25cbf84c3100ae9db:147c4e675e69a128ed783faf67a5b72c
-https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/qsiyy3pj1z/out/v1/18e7e922d8f44a768c404c3304bbf8ee/cenc.mpd
+#KODIPROP:inputstream.adaptive.license_key=b50eedac4fd1a7f6068fc90c875a2f2e:b6c288c9a0112f3729538b3fb37bd044
+https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/5ijjfwkrfb/out/v1/6be8fdc7d3324eb2b7774e8081c508cc/cenc.mpd
 
-#EXTINF:-1 tvg-id="fancode-3455942844" tvg-name="Afghanistan Vs Zimbabwe - WILLOW ALT" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Afghanistan%20Vs%20Zimbabwe.jpg" group-title="Fancode-Cricket",Afghanistan Vs Zimbabwe - WILLOW ALT
+#EXTINF:-1 tvg-id="fancode-12142435876_bk1" tvg-name="ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/ABU%20DHABI%20T10%20LEAGUE%20Vs%20ABU%20DHABI%20T10%20LEAGUE.jpg" group-title="Fancode-Cricket Backup",ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
 #KODIPROP:inputstream.adaptive.manifest_type=mpd
 #KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=f780c2f1d5a79df25cbf84c3100ae9db:147c4e675e69a128ed783faf67a5b72c
-https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/qsiyy3pj1z/out/v1/18e7e922d8f44a768c404c3304bbf8ee/cenc.mpd
+#KODIPROP:inputstream.adaptive.license_key=1a5df53609ebc9857898c490f4724918:77f62980d582ec541280796acf8b2d19
+https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/bcj3iscpd6/out/v1/fcd137b391214f7cb99dd4d7be90ca87/cenc.mpd
 
-#EXTINF:-1 tvg-id="fancode-5684164863" tvg-name="Afghanistan Vs Zimbabwe - ATN SPORTS FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Afghanistan%20Vs%20Zimbabwe.jpg" group-title="Fancode-Cricket",Afghanistan Vs Zimbabwe - ATN SPORTS FHD
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fstream1.liveland.af%2Fhls%2Ftv%2Fariana%2Fplaylist.m3u8
-
-#EXTINF:-1 tvg-id="fancode-4798220365" tvg-name="Afghanistan Vs Zimbabwe - FANCODE2 FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Afghanistan%20Vs%20Zimbabwe.jpg" group-title="Fancode-Cricket",Afghanistan Vs Zimbabwe - FANCODE2 FHD
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=1994b1df7dfd2e8a8d7b9bf3fb900285:22a1444b3da18e139191665b3d652835
-https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/avqlywnuzx/out/v1/aefca6420f944a9482e117f315de535f/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-4797296844" tvg-name="Afghanistan Vs Zimbabwe - FANCODE1 FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Afghanistan%20Vs%20Zimbabwe.jpg" group-title="Fancode-Cricket",Afghanistan Vs Zimbabwe - FANCODE1 FHD
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=82dfca238e8c4b430a3269db71965db9:a00b28caf4ac628e77a553d440c0ddca
-https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/b3b3fkmrbl/out/v1/1084d5c9a97a4c5b9f9554c88f486646/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-613717904" tvg-name="Afghanistan Vs Zimbabwe - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Afghanistan%20Vs%20Zimbabwe.jpg" group-title="Fancode-Cricket",Afghanistan Vs Zimbabwe - LOW QUALITY (USE VPN)
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.44%2Fhls%2FRREGEGEA.m3u8
-
-#EXTINF:-1 tvg-id="fancode-1663868918" tvg-name="Pakistan Vs Sri Lanka - WILLOW FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Pakistan%20Vs%20Sri%20Lanka.jpg" group-title="Fancode-Cricket",Pakistan Vs Sri Lanka - WILLOW FHD
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=717e39c4207ef6bd6a1a495fb2e3b133:f9f666cac7de2e2d69bd42e8fcd06ad7
-https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/q81cdtuumj/out/v1/55851c07cf594e8d8e260f8cc0a7f89c/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-1663868918_bk1" tvg-name="Pakistan Vs Sri Lanka - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Pakistan%20Vs%20Sri%20Lanka.jpg" group-title="Fancode-Cricket Backup",Pakistan Vs Sri Lanka - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=717e39c4207ef6bd6a1a495fb2e3b133:f9f666cac7de2e2d69bd42e8fcd06ad7
-https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/q81cdtuumj/out/v1/55851c07cf594e8d8e260f8cc0a7f89c/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-1663868918_bk2" tvg-name="Pakistan Vs Sri Lanka - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Pakistan%20Vs%20Sri%20Lanka.jpg" group-title="Fancode-Cricket Backup",Pakistan Vs Sri Lanka - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
-
-#EXTINF:-1 tvg-id="fancode-1663868918_bk3" tvg-name="Pakistan Vs Sri Lanka - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Pakistan%20Vs%20Sri%20Lanka.jpg" group-title="Fancode-Cricket Backup",Pakistan Vs Sri Lanka - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FRREGEGE.m3u8
-
-#EXTINF:-1 tvg-id="fancode-1121280002" tvg-name="WBBL Vs WBBL - WILLOW FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/WBBL%20Vs%20WBBL.jpg" group-title="Fancode-Cricket",WBBL Vs WBBL - WILLOW FHD
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=82ea980c6b72eb9d845d3bb239330c30:e205798bb1646f1e0ab0ee3459b084bf
-https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/jyqp4rh7ty/out/v1/a61e5db610214d8ab29de73c6750d65d/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-1121280002_bk1" tvg-name="WBBL Vs WBBL - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/WBBL%20Vs%20WBBL.jpg" group-title="Fancode-Cricket Backup",WBBL Vs WBBL - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=82ea980c6b72eb9d845d3bb239330c30:e205798bb1646f1e0ab0ee3459b084bf
-https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/jyqp4rh7ty/out/v1/a61e5db610214d8ab29de73c6750d65d/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-1121280002_bk2" tvg-name="WBBL Vs WBBL - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/WBBL%20Vs%20WBBL.jpg" group-title="Fancode-Cricket Backup",WBBL Vs WBBL - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=93e19c6b590f07c3b9ba8fed76a01b61:f893d5d988d7649ba856dfc1269710ba
-https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/ybyaz2dp7v/out/v1/e662810efd6a41689af68291d4c318c4/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-5878404626" tvg-name="WBBL Vs WBBL - SKY CRICKET FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/WBBL%20Vs%20WBBL.jpg" group-title="Fancode-Cricket",WBBL Vs WBBL - SKY CRICKET FHD
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fbl.rutube.ru%2Flivestream%2F7c13a51576b9ff2601f08f5d57dd5169%2Findex.m3u8%3Fs%3DuiXES2ePt7xTpQnbJxn7Dg%26e%3D2074684474%26scheme%3Dhttps
-
-#EXTINF:-1 tvg-id="fancode-5582115133" tvg-name="WBBL Vs WBBL - EUROSPORT FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/WBBL%20Vs%20WBBL.jpg" group-title="Fancode-Cricket",WBBL Vs WBBL - EUROSPORT FHD
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=12ed56d780abcfebcd23aa27e4ac5015:6784567890abcfebcd23aa27e4ac2814
-https://wbd.skandha.tv/EuroSport_HD/EuroSport_HD.isml/.mpd
-
-#EXTINF:-1 tvg-id="fancode-3275750966" tvg-name="WBBL Vs WBBL - SD QUALITY" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/WBBL%20Vs%20WBBL.jpg" group-title="Fancode-Cricket",WBBL Vs WBBL - SD QUALITY
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FZZZZAA.m3u8
+#EXTINF:-1 tvg-id="fancode-12142435876_bk2" tvg-name="ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/ABU%20DHABI%20T10%20LEAGUE%20Vs%20ABU%20DHABI%20T10%20LEAGUE.jpg" group-title="Fancode-Cricket Backup",ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Flive.msnetworks.net%2Fa-sports%2Fmaster.m3u8
 
 #EXTINF:-1 tvg-id="fancode-8114571292" tvg-name="South Africa Vs Bangladesh - WILLOW FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket",South Africa Vs Bangladesh - WILLOW FHD
 #KODIPROP:inputstream.adaptive.manifest_type=mpd
@@ -293,33 +257,6 @@ https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clie
 #EXTINF:-1 tvg-id="fancode-2885759343" tvg-name="South Africa Vs Bangladesh - SKY SPORTS CRICKET" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket",South Africa Vs Bangladesh - SKY SPORTS CRICKET
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fbl.rutube.ru%2Flivestream%2F7c13a51576b9ff2601f08f5d57dd5169%2Findex.m3u8%3Fs%3DuiXES2ePt7xTpQnbJxn7Dg%26e%3D2074684474%26scheme%3Dhttps
 
-#EXTINF:-1 tvg-id="fancode-1867866818" tvg-name="South Africa Vs Bangladesh - FANCODE FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket",South Africa Vs Bangladesh - FANCODE FHD
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=1994b1df7dfd2e8a8d7b9bf3fb900285:22a1444b3da18e139191665b3d652835
-https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/avqlywnuzx/out/v1/aefca6420f944a9482e117f315de535f/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-1867866818_bk1" tvg-name="South Africa Vs Bangladesh - FANCODE FHD [AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW FHD)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket Backup",South Africa Vs Bangladesh - FANCODE FHD (AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW FHD))
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=6edfcab8821c7437717ab9c94300a8a0:1dc141c8ac131a68bd1c445acfdc673c
-https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/fq9jzduffm/out/v1/999c61c2f5114b66b1c408dd3e97f5f3/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-1867866818_bk2" tvg-name="South Africa Vs Bangladesh - FANCODE FHD [AllInOne Sports Data JSON (104 Matches with ClearKey) (SKY SPORTS CRICKET)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket Backup",South Africa Vs Bangladesh - FANCODE FHD (AllInOne Sports Data JSON (104 Matches with ClearKey) (SKY SPORTS CRICKET))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fbl.rutube.ru%2Flivestream%2F7c13a51576b9ff2601f08f5d57dd5169%2Findex.m3u8%3Fs%3DuiXES2ePt7xTpQnbJxn7Dg%26e%3D2074684474%26scheme%3Dhttps
-
-#EXTINF:-1 tvg-id="fancode-1867866818_bk3" tvg-name="South Africa Vs Bangladesh - FANCODE FHD [AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket Backup",South Africa Vs Bangladesh - FANCODE FHD (AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
-
-#EXTINF:-1 tvg-id="fancode-1867866818_bk4" tvg-name="South Africa Vs Bangladesh - FANCODE FHD [AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW ALT)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket Backup",South Africa Vs Bangladesh - FANCODE FHD (AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW ALT))
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=6edfcab8821c7437717ab9c94300a8a0:1dc141c8ac131a68bd1c445acfdc673c
-https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/fq9jzduffm/out/v1/999c61c2f5114b66b1c408dd3e97f5f3/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-1867866818_bk5" tvg-name="South Africa Vs Bangladesh - FANCODE FHD [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket Backup",South Africa Vs Bangladesh - FANCODE FHD (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.59%2Fhls%2FRREGEGEAA.m3u8
-
 #EXTINF:-1 tvg-id="fancode-2769100751" tvg-name="South Africa Vs Bangladesh - T SPORTS HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Africa%20Vs%20Bangladesh.jpg" group-title="Fancode-Cricket",South Africa Vs Bangladesh - T SPORTS HD
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
 
@@ -331,6 +268,9 @@ https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.59%2
 #KODIPROP:inputstream.adaptive.license_type=clearkey
 #KODIPROP:inputstream.adaptive.license_key=4fce30c060b7b0464ab765e24fee5ecc:65d612238736eec3794c7e75a6fd362c
 https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/n7hbpksb18/out/v1/be5403be4a674a7da8b3c81b1fe79692/cenc.mpd
+
+#EXTINF:-1 tvg-id="fancode-1311314768" tvg-name="Lesotho Vs Gabon - HD QUALITY" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Lesotho%20Vs%20Gabon.jpg" group-title="Fancode-Football",Lesotho Vs Gabon - HD QUALITY
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F59af5074-339a-4afd-9440-8cf4365d4035.m3u8
 
 #EXTINF:-1 tvg-id="fancode-4222972140" tvg-name="Lesotho Vs Gabon - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Lesotho%20Vs%20Gabon.jpg" group-title="Fancode-Football",Lesotho Vs Gabon - LOW QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FTTTTAA.m3u8
@@ -353,23 +293,29 @@ https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/n7hbpksb18/
 #KODIPROP:inputstream.adaptive.license_key=7995c724a13748ed970840a8ab5bb9b3:67bdaf1e2175b9ff682fcdf0e2354b1e
 https://otte.cache.aiv-cdn.net/bom-nitro/live/clients/dash/enc/q4u5nwaogz/out/v1/18de6d3e65934f3a8de4358e69eab86c/cenc.mpd
 
+#EXTINF:-1 tvg-id="fancode-11273414053" tvg-name="Malawi Vs Egypt - HD QUALITY 4" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Malawi%20Vs%20Egypt.jpg" group-title="Fancode-Football",Malawi Vs Egypt - HD QUALITY 4
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F50127d52-8556-469e-9ae7-15f060864c3b.m3u8
+
 #EXTINF:-1 tvg-id="fancode-9540543661" tvg-name="Malawi Vs Egypt - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Malawi%20Vs%20Egypt.jpg" group-title="Fancode-Football",Malawi Vs Egypt - LOW QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.55%2Fhls%2FTTTTAAA.m3u8
 
 #EXTINF:-1 tvg-id="fancode-563051762" tvg-name="Burundi Vs Zambia - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Burundi%20Vs%20Zambia.jpg" group-title="Fancode-Football",Burundi Vs Zambia - STREAM TV + HD
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.55%2Fhls%2FTTTT.m3u8
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F8ac411a1-461d-42c3-a06c-56554c7ed9e7.m3u8
 
 #EXTINF:-1 tvg-id="fancode-6601872246" tvg-name="Burundi Vs Zambia - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Burundi%20Vs%20Zambia.jpg" group-title="Fancode-Football",Burundi Vs Zambia - LOW QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.55%2Fhls%2FTTTT.m3u8
 
 #EXTINF:-1 tvg-id="fancode-559032217" tvg-name="South Sudan Vs Angola - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Sudan%20Vs%20Angola.jpg" group-title="Fancode-Football",South Sudan Vs Angola - STREAM TV + HD
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.55%2Fhls%2FTTTTAAAA.m3u8
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F5a65e2d5-ac96-4791-aa28-0284b664fb1e.m3u8
 
 #EXTINF:-1 tvg-id="fancode-4504724895" tvg-name="South Sudan Vs Angola - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/South%20Sudan%20Vs%20Angola.jpg" group-title="Fancode-Football",South Sudan Vs Angola - LOW QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.55%2Fhls%2FTTTTAAAA.m3u8
 
 #EXTINF:-1 tvg-id="fancode-6936078326" tvg-name="Ethiopia Vs Mozambique - beIN SPORTS HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Ethiopia%20Vs%20Mozambique.jpg" group-title="Fancode-Football",Ethiopia Vs Mozambique - beIN SPORTS HD
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fbl.rutube.ru%2Flivestream%2F05550e441b09aeec53e60de66b6c47bf%2Findex.m3u8%3Fs%3DjJ8GHzeJIzYZUoWBKmzdFw%26e%3D2094509894%26scheme%3Dhttps
+
+#EXTINF:-1 tvg-id="fancode-3671849580" tvg-name="Ethiopia Vs Mozambique - HD QUALITY" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Ethiopia%20Vs%20Mozambique.jpg" group-title="Fancode-Football",Ethiopia Vs Mozambique - HD QUALITY
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F574a24d8-002c-447e-88c4-ffce6332bc14.m3u8
 
 #EXTINF:-1 tvg-id="fancode-3724487720" tvg-name="Ethiopia Vs Mozambique - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Ethiopia%20Vs%20Mozambique.jpg" group-title="Fancode-Football",Ethiopia Vs Mozambique - LOW QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.55%2Fhls%2FTTTTA.m3u8
@@ -386,26 +332,29 @@ https://otte.cache.aiv-cdn.net/bom-nitro/live/clients/dash/enc/8m8cd46i1t/out/v1
 #KODIPROP:inputstream.adaptive.license_key=27759a440e8ad821b800b3de00cd5851:1b8743adee559f27845f55e8b4d639fe
 https://otte.live.fly.ww.aiv-cdn.net/pdx-nitro/live/clients/dash/enc/katdnhkzqv/out/v1/2469724fa7754a4da6861d8ba80de958/cenc.mpd?
 
+#EXTINF:-1 tvg-id="fancode-5260109999" tvg-name="Tanzania Vs Nigeria - HD QUALITY 3" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Tanzania%20Vs%20Nigeria.jpg" group-title="Fancode-Football",Tanzania Vs Nigeria - HD QUALITY 3
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F7c933eda-431f-4caa-9008-17ac8e7ebb54.m3u8
+
 #EXTINF:-1 tvg-id="fancode-404814918" tvg-name="Tanzania Vs Nigeria - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Tanzania%20Vs%20Nigeria.jpg" group-title="Fancode-Football",Tanzania Vs Nigeria - LOW QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.50%2Fhls%2FNYNYNY.m3u8
 
-#EXTINF:-1 tvg-id="fancode-9427856545" tvg-name="Kyrgyzstan Vs Vietnam - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Kyrgyzstan%20Vs%20Vietnam.jpg" group-title="Fancode-Football",Kyrgyzstan Vs Vietnam - STREAM TV + HD
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F55217c48-6317-4259-80a7-9df8f0c89bde.m3u8
+#EXTINF:-1 tvg-id="fancode-8055565926" tvg-name="Qatar Vs South Korea - ALKASS 1" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Qatar%20Vs%20South%20Korea.jpg" group-title="Fancode-Football",Qatar Vs South Korea - ALKASS 1
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAAA.m3u8
 
-#EXTINF:-1 tvg-id="fancode-8572555033" tvg-name="Kyrgyzstan Vs Vietnam - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Kyrgyzstan%20Vs%20Vietnam.jpg" group-title="Fancode-Football",Kyrgyzstan Vs Vietnam - LOW QUALITY (USE VPN)
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGA.m3u8
+#EXTINF:-1 tvg-id="fancode-8369084148" tvg-name="United Arab Emirates Vs Syria - Dubai Sports 1" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/United%20Arab%20Emirates%20Vs%20Syria.jpg" group-title="Fancode-Football",United Arab Emirates Vs Syria - Dubai Sports 1
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAAAA.m3u8
 
-#EXTINF:-1 tvg-id="fancode-80823007" tvg-name="China Vs Bahrain - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/China%20Vs%20Bahrain.jpg" group-title="Fancode-Football",China Vs Bahrain - STREAM TV + HD
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2F5c7b683162943.streamlock.net%2Flive%2Fngrp%3Asportsone_all%2Fplaylist.m3u8
+#EXTINF:-1 tvg-id="fancode-5554526452" tvg-name="United Arab Emirates Vs Syria - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/United%20Arab%20Emirates%20Vs%20Syria.jpg" group-title="Fancode-Football",United Arab Emirates Vs Syria - LOW QUALITY (USE VPN)
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAAAA.m3u8
 
-#EXTINF:-1 tvg-id="fancode-2426852021" tvg-name="China Vs Bahrain - HD QUALITY" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/China%20Vs%20Bahrain.jpg" group-title="Fancode-Football",China Vs Bahrain - HD QUALITY
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F16e7e114-f5c9-436e-ae15-8b26b9186da0.m3u8
+#EXTINF:-1 tvg-id="fancode-1448224191" tvg-name="Japan Vs Paraguay - HD QUALITY" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Japan%20Vs%20Paraguay.jpg" group-title="Fancode-Football",Japan Vs Paraguay - HD QUALITY
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F03555648-a6e1-4fa1-935a-30ff11848a99.m3u8
 
-#EXTINF:-1 tvg-id="fancode-862941081" tvg-name="China Vs Bahrain - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/China%20Vs%20Bahrain.jpg" group-title="Fancode-Football",China Vs Bahrain - LOW QUALITY (USE VPN)
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGG.m3u8
+#EXTINF:-1 tvg-id="fancode-7030644397" tvg-name="Japan Vs Paraguay - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Japan%20Vs%20Paraguay.jpg" group-title="Fancode-Football",Japan Vs Paraguay - STREAM TV + HD
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Flive2.jorvakstreamcache.com%2Flive%2Fchannel6.m3u8%3F
 
-#EXTINF:-1 tvg-id="fancode-1156940992" tvg-name="China Vs Bahrain - Bahrain Sports2" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/China%20Vs%20Bahrain.jpg" group-title="Fancode-Football",China Vs Bahrain - Bahrain Sports2
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2F5c7b683162943.streamlock.net%2Flive%2Fngrp%3Abahrainsportstwo_all%2Fplaylist.m3u8
+#EXTINF:-1 tvg-id="fancode-1445619365" tvg-name="Japan Vs Paraguay - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Japan%20Vs%20Paraguay.jpg" group-title="Fancode-Football",Japan Vs Paraguay - LOW QUALITY (USE VPN)
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAA.m3u8
 
 #EXTINF:-1 tvg-id="fancode-4631454816" tvg-name="Tajikistan Vs Thailand - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Tajikistan%20Vs%20Thailand.jpg" group-title="Fancode-Football",Tajikistan Vs Thailand - STREAM TV + HD
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAA.m3u8
@@ -413,35 +362,26 @@ https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2
 #EXTINF:-1 tvg-id="fancode-2871866632" tvg-name="Tajikistan Vs Thailand - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Tajikistan%20Vs%20Thailand.jpg" group-title="Fancode-Football",Tajikistan Vs Thailand - LOW QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAA.m3u8
 
-#EXTINF:-1 tvg-id="fancode-12142435876" tvg-name="ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/ABU%20DHABI%20T10%20LEAGUE%20Vs%20ABU%20DHABI%20T10%20LEAGUE.jpg" group-title="Fancode-Cricket",ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=eee1d2e4356d92d478fe04f24d3f34f7:b5d5b65cfc1e342bbfb30101b46fc531
-https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/xctbh0jely/out/v1/5fa99c274f9d4ba896fa7d398393398b/cenc.mpd
+#EXTINF:-1 tvg-id="fancode-398917763" tvg-name="India Vs Pakistan - FASTER TV" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football",India Vs Pakistan - FASTER TV
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Flive.vivo155.com%2Flive%2Fsd-1-4669474.m3u8%3FtxSecret%3D1ed73fd0e716a25fb5200e8db10fe530%26txTime%3D6AFC73AC
 
-#EXTINF:-1 tvg-id="fancode-12142435876_bk1" tvg-name="ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/ABU%20DHABI%20T10%20LEAGUE%20Vs%20ABU%20DHABI%20T10%20LEAGUE.jpg" group-title="Fancode-Cricket Backup",ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
-#KODIPROP:inputstream.adaptive.manifest_type=mpd
-#KODIPROP:inputstream.adaptive.license_type=clearkey
-#KODIPROP:inputstream.adaptive.license_key=1a5df53609ebc9857898c490f4724918:77f62980d582ec541280796acf8b2d19
-https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/bcj3iscpd6/out/v1/fcd137b391214f7cb99dd4d7be90ca87/cenc.mpd
+#EXTINF:-1 tvg-id="fancode-7546658108" tvg-name="India Vs Pakistan - BTV BD FHD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football",India Vs Pakistan - BTV BD FHD
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fnkafmbewiff.gpcdn.net%2Ftile_2%2Fmaster.m3u8
 
-#EXTINF:-1 tvg-id="fancode-12142435876_bk2" tvg-name="ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/ABU%20DHABI%20T10%20LEAGUE%20Vs%20ABU%20DHABI%20T10%20LEAGUE.jpg" group-title="Fancode-Cricket Backup",ABU DHABI T10 LEAGUE Vs ABU DHABI T10 LEAGUE - WILLOW FHD (AllInOne Sports Data M3U (sm-monirulislam))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Flive.msnetworks.net%2Fa-sports%2Fmaster.m3u8
+#EXTINF:-1 tvg-id="fancode-648645899" tvg-name="India Vs Pakistan - T SPORTS HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football",India Vs Pakistan - T SPORTS HD
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F116.204.149.16%2FT_SportsFHD%2Findex.m3u8
 
-#EXTINF:-1 tvg-id="fancode-8055565926" tvg-name="Qatar Vs South Korea - ALKASS 1" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Qatar%20Vs%20South%20Korea.jpg" group-title="Fancode-Football",Qatar Vs South Korea - ALKASS 1
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAAA.m3u8
+#EXTINF:-1 tvg-id="fancode-648645899_bk1" tvg-name="India Vs Pakistan - T SPORTS HD [AllInOne Sports Data M3U (sm-monirulislam)]" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football Backup",India Vs Pakistan - T SPORTS HD (AllInOne Sports Data M3U (sm-monirulislam))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
 
-#EXTINF:-1 tvg-id="fancode-7030644397" tvg-name="Japan Vs Paraguay - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Japan%20Vs%20Paraguay.jpg" group-title="Fancode-Football",Japan Vs Paraguay - STREAM TV + HD
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAA.m3u8
-
-#EXTINF:-1 tvg-id="fancode-1445619365" tvg-name="Japan Vs Paraguay - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Japan%20Vs%20Paraguay.jpg" group-title="Fancode-Football",Japan Vs Paraguay - LOW QUALITY (USE VPN)
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAA.m3u8
-
-#EXTINF:-1 tvg-id="fancode-706465355" tvg-name="India Vs Pakistan - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football",India Vs Pakistan - STREAM TV + HD
+#EXTINF:-1 tvg-id="fancode-3225334119" tvg-name="India Vs Pakistan - QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football",India Vs Pakistan - QUALITY (USE VPN)
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAA.m3u8
 
-#EXTINF:-1 tvg-id="fancode-2193526099" tvg-name="India Vs Pakistan - LOW QUALITY (USE VPN)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football",India Vs Pakistan - LOW QUALITY (USE VPN)
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAA.m3u8
+#EXTINF:-1 tvg-id="fancode-8015551282" tvg-name="India Vs Pakistan - VETO TV (IND)" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/India%20Vs%20Pakistan.jpg" group-title="Fancode-Football",India Vs Pakistan - VETO TV (IND)
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fvetointv.akamaized.net%2FDreamboat-CH01%2Fmaster.m3u8
+
+#EXTINF:-1 tvg-id="fancode-2648160909" tvg-name="Saudi Arabia Vs Uzbekistan - STREAM TV + HD" tvg-logo="https://raw.githubusercontent.com/sm-monirulislam/Upcoming-and-Live-Sports-Data/main/match_image/Saudi%20Arabia%20Vs%20Uzbekistan.jpg" group-title="Fancode-Football",Saudi Arabia Vs Uzbekistan - STREAM TV + HD
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fchatgpt.hereisman.net%2Fplaylist%2F%2Fload-playlist%3F%26.m3u8
 
 #EXTINF:-1 tvg-id="fancode-4249065" tvg-name="Mussoorie Thunder Vs Selaqui Strikers" tvg-logo="https://www.fancode.com/skillup-uploads/cms-media/4249065_53058_MT_SS_fc-Web_fc-webtvbg.jpg" group-title="Fancode-Cricket",Mussoorie Thunder Vs Selaqui Strikers
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fin-mc-flive.fancode.com%2Fmumbai%2F4249065_english_hls_25a1a01cab66933_1ta-di_h264%2Findex.m3u8
@@ -530,32 +470,41 @@ https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.c
 #EXTINF:-1 tvg-id="fancode-4605405936_bk3" tvg-name="Tanzania Vs Nigeria [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/1848/image/dark" group-title="Fancode-Football Backup",Tanzania Vs Nigeria (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.50%2Fhls%2FNYNYNY.m3u8
 
-#EXTINF:-1 tvg-id="fancode-11260151491" tvg-name="Kyrgyzstan Vs Vietnam" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football",Kyrgyzstan Vs Vietnam
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F55217c48-6317-4259-80a7-9df8f0c89bde.m3u8
-
-#EXTINF:-1 tvg-id="fancode-11260151491_bk1" tvg-name="Kyrgyzstan Vs Vietnam [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football Backup",Kyrgyzstan Vs Vietnam (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGA.m3u8
-
-#EXTINF:-1 tvg-id="fancode-668624707" tvg-name="China Vs Bahrain" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football",China Vs Bahrain
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2F5c7b683162943.streamlock.net%2Flive%2Fngrp%3Asportsone_all%2Fplaylist.m3u8
-
-#EXTINF:-1 tvg-id="fancode-668624707_bk1" tvg-name="China Vs Bahrain [AllInOne Sports Data JSON (104 Matches with ClearKey) (HD QUALITY )]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football Backup",China Vs Bahrain (AllInOne Sports Data JSON (104 Matches with ClearKey) (HD QUALITY ))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F16e7e114-f5c9-436e-ae15-8b26b9186da0.m3u8
-
-#EXTINF:-1 tvg-id="fancode-668624707_bk2" tvg-name="China Vs Bahrain [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football Backup",China Vs Bahrain (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGG.m3u8
-
-#EXTINF:-1 tvg-id="fancode-668624707_bk3" tvg-name="China Vs Bahrain [AllInOne Sports Data JSON (104 Matches with ClearKey) (Bahrain Sports2)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football Backup",China Vs Bahrain (AllInOne Sports Data JSON (104 Matches with ClearKey) (Bahrain Sports2))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2F5c7b683162943.streamlock.net%2Flive%2Fngrp%3Abahrainsportstwo_all%2Fplaylist.m3u8
+#EXTINF:-1 tvg-id="fancode-9576706462" tvg-name="United Arab Emirates Vs Syria" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football",United Arab Emirates Vs Syria
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAAAA.m3u8
 
 #EXTINF:-1 tvg-id="fancode-3035808335" tvg-name="Japan Vs Paraguay" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football",Japan Vs Paraguay
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fwww.rtmpcdn.com%2Flive%2F03555648-a6e1-4fa1-935a-30ff11848a99.m3u8
+
+#EXTINF:-1 tvg-id="fancode-3035808335_bk1" tvg-name="Japan Vs Paraguay [AllInOne Sports Data JSON (104 Matches with ClearKey) (STREAM TV + HD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football Backup",Japan Vs Paraguay (AllInOne Sports Data JSON (104 Matches with ClearKey) (STREAM TV + HD))
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Flive2.jorvakstreamcache.com%2Flive%2Fchannel6.m3u8%3F
 
-#EXTINF:-1 tvg-id="fancode-3035808335_bk1" tvg-name="Japan Vs Paraguay [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football Backup",Japan Vs Paraguay (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
+#EXTINF:-1 tvg-id="fancode-3035808335_bk2" tvg-name="Japan Vs Paraguay [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football Backup",Japan Vs Paraguay (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAA.m3u8
 
 #EXTINF:-1 tvg-id="fancode-4141273182" tvg-name="Tajikistan Vs Thailand" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/10416/image/dark" group-title="Fancode-Football",Tajikistan Vs Thailand
 https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAA.m3u8
+
+#EXTINF:-1 tvg-id="fancode-2301847127" tvg-name="India Vs Pakistan" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football",India Vs Pakistan
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Flive.vivo155.com%2Flive%2Fsd-1-4669474.m3u8%3FtxSecret%3D1ed73fd0e716a25fb5200e8db10fe530%26txTime%3D6AFC73AC
+
+#EXTINF:-1 tvg-id="fancode-2301847127_bk1" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (BTV BD FHD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (BTV BD FHD))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fnkafmbewiff.gpcdn.net%2Ftile_2%2Fmaster.m3u8
+
+#EXTINF:-1 tvg-id="fancode-2301847127_bk2" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F116.204.149.16%2FT_SportsFHD%2Findex.m3u8
+
+#EXTINF:-1 tvg-id="fancode-2301847127_bk3" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (QUALITY (USE VPN))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (QUALITY (USE VPN)))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAA.m3u8
+
+#EXTINF:-1 tvg-id="fancode-2301847127_bk4" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
+
+#EXTINF:-1 tvg-id="fancode-2301847127_bk5" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (VETO TV (IND))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (VETO TV (IND)))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fvetointv.akamaized.net%2FDreamboat-CH01%2Fmaster.m3u8
+
+#EXTINF:-1 tvg-id="fancode-2301847127_bk6" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (BTV BD FHD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (BTV BD FHD))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fnkafmbewiff.gpcdn.net%2Ftile_2%2Fmaster.m3u8
 
 #EXTINF:-1 tvg-id="fancode-1789522557" tvg-name="WWE NXT Vs WWE NXT" tvg-logo="https://i.ibb.co/jPMHTs55/20260310-202452.png" group-title="Fancode-Boxing",WWE NXT Vs WWE NXT
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fubuntu.fromthyheart.site%2Fdailymotion%2Flive%2Fplaylist%2F4.m3u8
@@ -704,6 +653,24 @@ https://dash-ott.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/kun3tuq8
 #KODIPROP:inputstream.adaptive.license_key=3a4e1c0452e8620aa47a64c82b81f90d:f11223850b04db47d8815871e6b77d05
 https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/azerlw3rnq/out/v1/d8655060ec4447548120f9322101963b/cenc.mpd?
 
+#EXTINF:-1 tvg-id="fancode-4666713479" tvg-name="Pakistan Vs Sri Lanka" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/18833/image/dark" group-title="Fancode-Cricket",Pakistan Vs Sri Lanka
+#KODIPROP:inputstream.adaptive.manifest_type=mpd
+#KODIPROP:inputstream.adaptive.license_type=clearkey
+#KODIPROP:inputstream.adaptive.license_key=717e39c4207ef6bd6a1a495fb2e3b133:f9f666cac7de2e2d69bd42e8fcd06ad7
+https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/q81cdtuumj/out/v1/55851c07cf594e8d8e260f8cc0a7f89c/cenc.mpd
+
+#EXTINF:-1 tvg-id="fancode-4666713479_bk1" tvg-name="Pakistan Vs Sri Lanka [AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW ALT)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/18833/image/dark" group-title="Fancode-Cricket Backup",Pakistan Vs Sri Lanka (AllInOne Sports Data JSON (104 Matches with ClearKey) (WILLOW ALT))
+#KODIPROP:inputstream.adaptive.manifest_type=mpd
+#KODIPROP:inputstream.adaptive.license_type=clearkey
+#KODIPROP:inputstream.adaptive.license_key=717e39c4207ef6bd6a1a495fb2e3b133:f9f666cac7de2e2d69bd42e8fcd06ad7
+https://abfjk4haaaaaaaamkitc5445rybm6.bia-cf.live.pv-cdn.net/iad-nitro/live/clients/dash/enc/q81cdtuumj/out/v1/55851c07cf594e8d8e260f8cc0a7f89c/cenc.mpd
+
+#EXTINF:-1 tvg-id="fancode-4666713479_bk2" tvg-name="Pakistan Vs Sri Lanka [AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/18833/image/dark" group-title="Fancode-Cricket Backup",Pakistan Vs Sri Lanka (AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
+
+#EXTINF:-1 tvg-id="fancode-4666713479_bk3" tvg-name="Pakistan Vs Sri Lanka [AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/18833/image/dark" group-title="Fancode-Cricket Backup",Pakistan Vs Sri Lanka (AllInOne Sports Data JSON (104 Matches with ClearKey) (LOW QUALITY (USE VPN)))
+https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FRREGEGE.m3u8
+
 #EXTINF:-1 tvg-id="fancode-1748282173" tvg-name="College GameDay Vs College GameDay" tvg-logo="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZAZLm4MEGcVg2M3e1d9NInswFDpDuffYBVGKPQbhlIw&s=10" group-title="Fancode-American football",College GameDay Vs College GameDay
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fchatgpt.hereisman.net%2Fplaylist%2F55418%2Fload-playlist%3F%26.m3u8
 
@@ -785,9 +752,6 @@ https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fchatgpt.herei
 #EXTINF:-1 tvg-id="fancode-2201311787" tvg-name="Saudi Arabia Vs Uzbekistan" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football",Saudi Arabia Vs Uzbekistan
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fchatgpt.hereisman.net%2Fplaylist%2F%2Fload-playlist%3F%26.m3u8
 
-#EXTINF:-1 tvg-id="fancode-9576706462" tvg-name="United Arab Emirates Vs Syria" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football",United Arab Emirates Vs Syria
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAAAA.m3u8
-
 #EXTINF:-1 tvg-id="fancode-5664813497" tvg-name="Jordan Vs Australia" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/851/image/dark" group-title="Fancode-Football",Jordan Vs Australia
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fchatgpt.hereisman.net%2Fplaylist%2F%2Fload-playlist%3F%26.m3u8
 
@@ -859,18 +823,6 @@ https://otte.cache.aiv-cdn.net/bom-nitro/live/clients/dash/enc/o2vy4aahsh/out/v1
 #KODIPROP:inputstream.adaptive.license_type=clearkey
 #KODIPROP:inputstream.adaptive.license_key=5466ebd70704bdeb657f0abf3c5ca4ef:bdd79b72d8e48ed483aa623cc38a8a16
 https://otte.cache.aiv-cdn.net/bom-nitro/live/clients/dash/enc/fsu3wl2rwb/out/v1/be61206c04e643349d53fb22301f3b50/cenc.mpd
-
-#EXTINF:-1 tvg-id="fancode-2301847127" tvg-name="India Vs Pakistan" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football",India Vs Pakistan
-https://proxy-web-sage.vercel.app/api/live-proxy?url=http%3A%2F%2F193.47.62.41%2Fhls%2FDGGGAAAA.m3u8
-
-#EXTINF:-1 tvg-id="fancode-2301847127_bk1" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (T SPORTS HD))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Ftvsen5.aynaott.com%2FTnMn5kZz8aLmjklkk%2Findex.m3u8
-
-#EXTINF:-1 tvg-id="fancode-2301847127_bk2" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (VETO TV (IND))]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (VETO TV (IND)))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fvetointv.akamaized.net%2FDreamboat-CH01%2Fmaster.m3u8
-
-#EXTINF:-1 tvg-id="fancode-2301847127_bk3" tvg-name="India Vs Pakistan [AllInOne Sports Data JSON (104 Matches with ClearKey) (BTV BD FHD)]" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/2354/image/dark" group-title="Fancode-Football Backup",India Vs Pakistan (AllInOne Sports Data JSON (104 Matches with ClearKey) (BTV BD FHD))
-https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fnkafmbewiff.gpcdn.net%2Ftile_2%2Fmaster.m3u8
 
 #EXTINF:-1 tvg-id="fancode-6652487417" tvg-name="Los Angeles Lakers Vs Charlotte Hornets" tvg-logo="http://img.sofascore.com/api/v1/unique-tournament/132/image/dark" group-title="Fancode-Basketball",Los Angeles Lakers Vs Charlotte Hornets
 https://proxy-web-sage.vercel.app/api/live-proxy?url=https%3A%2F%2Fchatgpt.hereisman.net%2Fplaylist%2F%2Fload-playlist%3F%26.m3u8

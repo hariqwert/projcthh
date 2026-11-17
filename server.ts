@@ -8539,6 +8539,125 @@ app.get(['/api/tim/channels', '/api/timstreams/channels', '/api/sports/timstream
     }
 });
 
+app.get(['/api/stalker/channels', '/api/portal/channels'], async (req: Request, res: Response) => {
+    try {
+        const force = req.query.refresh === '1' || req.query.force === '1';
+        const portalId = (req.query.portal_id as string) || '';
+
+        // 1. Determine active portal
+        let db: any = {};
+        if (fs.existsSync(ADMIN_DB_PATH)) {
+            try { db = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf8')); } catch (e) {}
+        }
+        const portals: any[] = Array.isArray(db.portals) ? db.portals : [];
+
+        let targetPortal: any = null;
+        if (portalId) {
+            targetPortal = portals.find((p: any) => p.id === portalId || p.url?.includes(portalId));
+        }
+        if (!targetPortal && db.activeStalkerPortalId) {
+            targetPortal = portals.find((p: any) => p.id === db.activeStalkerPortalId);
+        }
+        if (!targetPortal) {
+            targetPortal = portals.find((p: any) => (p.type === 'stalker' || !p.type) && p.isDefault)
+                        || portals.find((p: any) => p.type === 'stalker' || !p.type)
+                        || portals.find((p: any) => p.isDefault);
+        }
+        if (!targetPortal) {
+            targetPortal = StalkerAPI.getActivePortal(req);
+        }
+
+        if (!targetPortal) {
+            return res.json({
+                status: 'error',
+                message: 'No Stalker portal configured',
+                portal: null,
+                total: 0,
+                categories: [],
+                channels: []
+            });
+        }
+
+        const portalFile = path.join(process.cwd(), 'doctor_strange', `${targetPortal.id}.json`);
+        let fullConfig = targetPortal;
+        if (fs.existsSync(portalFile)) {
+            try {
+                fullConfig = { ...targetPortal, ...JSON.parse(fs.readFileSync(portalFile, 'utf8')) };
+            } catch (e) {}
+        }
+
+        const host_id = StalkerAPI.getHostId(fullConfig);
+        const liveCacheFile = path.join(process.cwd(), 'doctor_strange', `live_${host_id}.stalker`);
+
+        let rawChannels: any[] = [];
+        if (!force && fs.existsSync(liveCacheFile)) {
+            try {
+                rawChannels = JSON.parse(fs.readFileSync(liveCacheFile, 'utf8'));
+            } catch (e) {}
+        }
+
+        if ((!rawChannels || rawChannels.length === 0 || force) && (fullConfig.URL || fullConfig.url)) {
+            try {
+                const freshJson = await StalkerAPI.json_fetcher('live', fullConfig);
+                rawChannels = JSON.parse(freshJson);
+            } catch (err: any) {
+                console.error('[StalkerAPI] Channels fetch error:', err?.message);
+            }
+        }
+
+        if (!Array.isArray(rawChannels)) {
+            rawChannels = [];
+        }
+
+        const catMap = new Map<string, number>();
+        const mapped = rawChannels.map((ch: any) => {
+            const chId = String(ch.id || ch.cmd || '');
+            const chName = ch.name || ch.Name || ch.title || 'Live Channel';
+            const cat = ch.genre || ch.category || 'General';
+            catMap.set(cat, (catMap.get(cat) || 0) + 1);
+
+            const streamUrl = `/live.php?id=${encodeURIComponent(chId)}`;
+            const playUrl = `/iptvplay.php?id=${encodeURIComponent(chId)}&name=${encodeURIComponent(chName)}&source=stalker`;
+
+            return {
+                id: chId,
+                channel_id: chId,
+                name: chName,
+                title: chName,
+                number: ch.number || '',
+                logo: ch.logo || ch.stream_icon || '/stalker_pro_infinity.svg',
+                category: cat,
+                genre: cat,
+                group: cat,
+                source: 'stalker',
+                cmd: ch.cmd || '',
+                stream_url: streamUrl,
+                url: streamUrl,
+                play_url: playUrl,
+                playUrl: playUrl
+            };
+        });
+
+        const categories = Array.from(catMap.entries()).map(([name, count]) => ({ name, count }));
+
+        res.json({
+            status: 'success',
+            portal: {
+                id: targetPortal.id || host_id,
+                name: targetPortal.name || targetPortal.Name || targetPortal.url || 'Stalker Portal',
+                url: targetPortal.url || targetPortal.URL,
+                mac: targetPortal.mac || targetPortal.MAC,
+                model: targetPortal.model || targetPortal.Model || 'MAG250'
+            },
+            total: mapped.length,
+            categories,
+            channels: mapped
+        });
+    } catch (e: any) {
+        res.status(500).json({ status: 'error', error: e.message, channels: [] });
+    }
+});
+
 
 app.get('/api/live/event/:id', async (req: Request, res: Response) => {
     try {

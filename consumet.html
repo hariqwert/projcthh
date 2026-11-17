@@ -5345,8 +5345,14 @@ async function executeSearch() {
             }
         }
     } catch (err) {
-        if (err.name === 'AbortError') return;
-        resultsContainer.innerHTML = `<div class="text-center py-8 text-red-400 text-xs font-bold uppercase">Search error: ${safeEscapeHtml(err.message)}</div>`;
+        if (err?.name === 'AbortError' || currentSignal?.aborted || (err?.message && String(err.message).toLowerCase().includes('abort'))) {
+            return;
+        }
+        // If preview results are already displayed, do not wipe them on network blip
+        const hasExistingResults = resultsContainer.querySelector('.movie-card, .channel-card, .event-card, [data-media-id], button[onclick*="play"]');
+        if (!hasExistingResults) {
+            resultsContainer.innerHTML = `<div class="text-center py-8 text-neutral-400 text-xs font-bold uppercase">No results found for "${safeEscapeHtml(query)}"</div>`;
+        }
     } finally {
         toggleSearchSpinner(false);
     }

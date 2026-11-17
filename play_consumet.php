@@ -4824,13 +4824,17 @@
                         lastProgressTime = Date.now();
                     } else {
                         const stalledTime = Date.now() - lastProgressTime;
-                        // Micro gap jump at 2.5s for seamless continuity
-                        if (stalledTime >= 2500 && stalledTime < 7500) {
-                            video.currentTime = Math.max(0, video.currentTime + 0.35);
+                        const isLiveStream = !video.duration || !isFinite(video.duration) || video.duration === 0;
+                        const stallThreshold = isLiveStream ? 14000 : 7500;
+                        // Micro gap jump only for finite VOD streams; live edge streams should reload fragments cleanly
+                        if (stalledTime >= 2500 && stalledTime < stallThreshold) {
+                            if (!isLiveStream && isFinite(video.duration)) {
+                                video.currentTime = Math.max(0, video.currentTime + 0.35);
+                            }
                             if (hls) { try { hls.startLoad(); } catch(e){} }
                             if (video.paused && !video.ended) video.play().catch(() => {});
-                        } else if (stalledTime >= 7500) {
-                            console.warn(`[Watchdog] Stalled for ${(stalledTime/1000).toFixed(1)}s. Invoking AI Stream Doctor...`);
+                        } else if (stalledTime >= stallThreshold) {
+                            console.warn(`[Watchdog] Stalled for ${(stalledTime/1000).toFixed(1)}s. Invoking Auto-Backup Failover / Stream Doctor...`);
                             lastProgressTime = Date.now();
                             if (window.AiStreamDoctor) {
                                 window.AiStreamDoctor.heal(`Playback stalled for ${(stalledTime/1000).toFixed(1)}s`);

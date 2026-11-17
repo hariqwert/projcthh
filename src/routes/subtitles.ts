@@ -250,11 +250,30 @@ async function fetchStremioOpenSubtitles(imdbId: string, season?: string, episod
         const isTv = !!(season && episode && season !== '0');
         const idPath = isTv ? `series/${cleanImdb}:${season}:${episode}` : `movie/${cleanImdb}`;
         const url = `https://opensubtitles-v3.strem.io/subtitles/${idPath}.json`;
-        const res = await axios.get(url, {
+        let res = await axios.get(url, {
             timeout: 6000,
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
             validateStatus: () => true
         });
+
+        // If TV query returned 0 subtitles and season was 1 with a high episode count (e.g. anime absolute numbering),
+        // try querying season 2 with relative episode or querying without season
+        if (isTv && (!res.data || !Array.isArray(res.data.subtitles) || res.data.subtitles.length === 0)) {
+            const epNum = parseInt(episode!, 10);
+            if (epNum > 24) {
+                // Try season 2 relative
+                const fallbackPath = `series/${cleanImdb}:2:${epNum - 24}`;
+                const fbRes = await axios.get(`https://opensubtitles-v3.strem.io/subtitles/${fallbackPath}.json`, {
+                    timeout: 4000,
+                    headers: { 'User-Agent': 'Mozilla/5.0' },
+                    validateStatus: () => true
+                });
+                if (fbRes.status === 200 && Array.isArray(fbRes.data?.subtitles) && fbRes.data.subtitles.length > 0) {
+                    res = fbRes;
+                }
+            }
+        }
+
         if (res.status === 200 && res.data && Array.isArray(res.data.subtitles)) {
             res.data.subtitles.slice(0, 60).forEach((s: any) => {
                 if (s.url) {
@@ -739,19 +758,26 @@ router.get('/fetch', async (req: Request, res: Response) => {
         tmdbId = '';
     }
 
-    // Auto-extract Season and Episode if present in query string (e.g. S01E01)
+    // Auto-extract Season and Episode if present in query string (e.g. S01E01, S1 E58, Ep 58)
     if (!season || !episode) {
-        const seMatch = rawTitle.match(/s(\d{1,2})[\s._-]*e(\d{1,2})/i) || rawTitle.match(/(\d{1,2})x(\d{1,2})/i);
+        const seMatch = rawTitle.match(/s(\d{1,2})[\s._-]*e(\d{1,4})/i) || rawTitle.match(/(\d{1,2})x(\d{1,4})/i);
         if (seMatch) {
             season = String(parseInt(seMatch[1], 10));
             episode = String(parseInt(seMatch[2], 10));
+        } else {
+            const epOnlyMatch = rawTitle.match(/\be(?:pisode)?[\s._-]*(\d{1,4})\b/i);
+            if (epOnlyMatch) {
+                episode = String(parseInt(epOnlyMatch[1], 10));
+                if (!season) season = '1';
+            }
         }
     }
 
-    // Clean title from release tags, hashes, and codec labels
+    // Clean title from release tags, episode tags, hashes, and codec labels
     let title = rawTitle
         .replace(/\.(mp4|mkv|avi|webm|ts|mov)$/i, '')
-        .replace(/s\d{1,2}[\s._-]*e\d{1,2}.*$/i, '')
+        .replace(/s\d{1,2}[\s._-]*e\d{1,4}.*$/i, '')
+        .replace(/\be(?:pisode)?[\s._-]*\d{1,4}.*$/i, '')
         .replace(/\b(19\d\d|20\d\d)\b.*$/i, '')
         .replace(/(1080p|720p|2160p|4k|hdr|web-?dl|bluray|hdrip|x264|x265|hevc|aac|dts|cakes|eztv|yts|yify|rarbg|ettv|galaxyrg|tgx|vostfr|multi).*$/gi, '')
         .replace(/[\.\[\]\(\)\-_]/g, ' ')

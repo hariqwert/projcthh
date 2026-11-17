@@ -2727,14 +2727,6 @@ __HOSTURL__/live.php?url=https%3A%2F%2Fjiotvmblive.cdn.jio.com%2Fbpk-tv%2FSonyLi
 __HOSTURL__/live.php?url=https%3A%2F%2Fjiotvmblive.cdn.jio.com%2Fbpk-tv%2F4sites%2FHLSPartner%2Findex.m3u8%3F__hdnea__%3Dst%3D1794758416~exp%3D1794844816~acl%3D%2F*~hmac%3D3e89d09bd5484305e7c6d85f1a92c7ee23c92ba8e514b052fe3c2f1484ed3b65
 #EXTINF:-1 tvg-name="UIPM Pentathlon World Cup" tvg-logo="https://jiotv.catchup.cdn.jio.com/dare_images/images/UIPMPentathlonWC.png" group-title="JioTV-Sports",UIPM Pentathlon World Cup
 __HOSTURL__/live.php?url=https%3A%2F%2Fjiotvmblive.cdn.jio.com%2Fbpk-tv%2FUIPMPentathlonWC_MOB%2FWDVLive%2Findex.mpd%3F__hdnea__%3Dst%3D1794758416~exp%3D1794844816~acl%3D%2F*~hmac%3D3e89d09bd5484305e7c6d85f1a92c7ee23c92ba8e514b052fe3c2f1484ed3b65
-#EXTINF:-1 tvg-name="ENG | Finland vs San Marino - 15 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027773/1793249866500892_UNL26_MD6_Finland_vs_San_Marino_landscape_thumb.jpg" group-title="SonyLIV-Football",ENG | Finland vs San Marino - 15 Nov 2026
-__HOSTURL__/live.php?url=https%3A%2F%2Fsonymtmnew-akamaized.pages.dev%2Fhls%2Flive%2F2120305%2FFootlive1511%2FENG%2Fstd_lrh-800300010.m3u8
-#EXTINF:-1 tvg-name="ENG | Finland vs San Marino - 15 Nov 2026 (DRMLive SonyLIV JSON)" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027773/1793249866500892_UNL26_MD6_Finland_vs_San_Marino_landscape_thumb.jpg" group-title="SonyLIV-Football Backup",ENG | Finland vs San Marino - 15 Nov 2026 (DRMLive SonyLIV JSON)
-__HOSTURL__/live.php?url=https%3A%2F%2Fsonyeventsglobal.akamaized.net%2Fhls%2Flive%2F2120305%2FFootlive1511%2FENG%2Fstd_lrh-800300010.m3u8%3Fhdnea%3Dexp%3D1794809163~acl%3D%2F*~id%3D45899604360461302622120146958407~hmac%3D943f6026c38cb769b9a84396a545df01d964c04307f544f6d772e55396137aff
-#EXTINF:-1 tvg-name="ENG | Belarus vs Albania - 15 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027747/1793250451231217_UNL26_MD6_Belarus_vs_Albania_landscape_thumb.jpg" group-title="SonyLIV-Football",ENG | Belarus vs Albania - 15 Nov 2026
-__HOSTURL__/live.php?url=https%3A%2F%2Fsonymtmnew-akamaized.pages.dev%2Fhls%2Flive%2F2120304%2FFootlive1511%2FENG%2Fstd_lrh-800300010.m3u8
-#EXTINF:-1 tvg-name="ENG | Belarus vs Albania - 15 Nov 2026 (DRMLive SonyLIV JSON)" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027747/1793250451231217_UNL26_MD6_Belarus_vs_Albania_landscape_thumb.jpg" group-title="SonyLIV-Football Backup",ENG | Belarus vs Albania - 15 Nov 2026 (DRMLive SonyLIV JSON)
-__HOSTURL__/live.php?url=https%3A%2F%2Fsonyeventsglobal.akamaized.net%2Fhls%2Flive%2F2120304%2FFootlive1511%2FENG%2Fstd_lrh-800300010.m3u8%3Fhdnea%3Dexp%3D1794809163~acl%3D%2F*~id%3D45899604360461302622120146958407~hmac%3D943f6026c38cb769b9a84396a545df01d964c04307f544f6d772e55396137aff
 #EXTINF:-1 tvg-name="⚡ ABC" tvg-logo="https://cdn.abcotvs.com/dip/images/11479454_011822-cc-abc-generic-thumb-img.jpg" group-title="Proxy Streams",⚡ ABC
 __HOSTURL__/live.php?token=STALKER_PRO&id=tim_abc&m3u=1
 #EXTINF:-1 tvg-name="⚡ ACC Network" tvg-logo="https://theacc.com/images/2018/11/30/ACCN_Launch.png" group-title="Proxy Streams",⚡ ACC Network
@@ -3237,3 +3229,11 @@ __HOSTURL__/live.php?token=STALKER_PRO&id=dlhd-eurosport-1&m3u=1
 __HOSTURL__/live.php?token=STALKER_PRO&id=dlhd-wwe-network&m3u=1
 #EXTINF:-1 tvg-name="⚡ Willow 2 (Embed)" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/6/69/Willow_logo.png/512px-Willow_logo.png" group-title="Cricket",⚡ Willow 2 (Embed)
 __HOSTURL__/live.php?token=STALKER_PRO&id=embed-247-willow-2&m3u=1
+#EXTINF:-1 tvg-name="🔴 HIN | Kaun Banega Crorepati" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000029211/1794827919866206_kbc_generic_simulcast_landscape_thumb.jpg" group-title="SonyLIV Live (Game show)",🔴 HIN | Kaun Banega Crorepati
+__HOSTURL__/live.php?url=https%3A%2F%2Fsonymtmnew-akamaized.pages.dev%2Fhls%2Flive%2F2022321%2Fkbc181611%2FHIN%2Fstd_lrh-800300010.m3u8
+#EXTINF:-1 tvg-name="🔴 MAR | Kon Honaar Crorepati" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000028865/1794493302237513_KHC26_rev_12nov_simulcast_landscape.jpg" group-title="SonyLIV Live (Game show)",🔴 MAR | Kon Honaar Crorepati
+__HOSTURL__/live.php?url=https%3A%2F%2Fsonymtmnew-akamaized.pages.dev%2Fhls%2Flive%2F2022318%2Fgeclive1611%2FMAR%2Fstd_lrh-800300010.m3u8
+#EXTINF:-1 tvg-name="🔴 ENG | Faroe Islands vs Moldova - 16 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027772/1793257474667102_UNL26_MD6_Faroe_Islands_vs_Moldova_landscape_thumb.jpg" group-title="SonyLIV Live (Football)",🔴 ENG | Faroe Islands vs Moldova - 16 Nov 2026
+__HOSTURL__/live.php?url=https%3A%2F%2Fsonymtmnew-akamaized.pages.dev%2Fhls%2Flive%2F2120299%2Ffootlive1611%2FENG%2Fstd_lrh-800300010.m3u8
+#EXTINF:-1 tvg-name="🔴 ENG | Kazakhstan vs Slovakia - 16 Nov 2026" tvg-logo="https://origin-staticv2.sonyliv.com/videoasset_images/manage_file/1000027833/179325832303640_UNL26_MD6_Kazakhstan_vs_Slovakia_landscape_thumb.jpg" group-title="SonyLIV Live (Football)",🔴 ENG | Kazakhstan vs Slovakia - 16 Nov 2026
+__HOSTURL__/live.php?url=https%3A%2F%2Fsonymtmnew-akamaized.pages.dev%2Fhls%2Flive%2F2120301%2FFootlive1611%2FENG%2Fstd_lrh-800300010.m3u8

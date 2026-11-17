@@ -169,7 +169,11 @@ export function getJtvSources(): JtvSourceConfigItem[] {
             const db = JSON.parse(fs.readFileSync(ADMIN_DB_PATH_JTV, 'utf8'));
             const saved = db?.streamSourcesConfig?.jtv;
             if (Array.isArray(saved) && saved.length > 0) {
-                return saved.map((s: JtvSourceConfigItem) => {
+                const missingDefaults = DEFAULT_JTV_SOURCES.filter(
+                    d => !saved.some((s: JtvSourceConfigItem) => s.id === d.id || s.url === d.url)
+                );
+                const combined = [...saved, ...missingDefaults];
+                return combined.map((s: JtvSourceConfigItem) => {
                     const stat = lastJtvSourceStats.find(st => st.id === s.id || st.url === s.url);
                     return {
                         ...s,
@@ -1549,13 +1553,15 @@ export class JtvService {
                 const m3u8Content = ev.m3u8Content || '';
                 const sUrl = ev.streamUrl || (m3u8Content ? `/api/live/manifest/fancode-${matchIdStr}.m3u8` : '');
                 const token = ev.token || (sUrl.match(/((?:__hdnea__|hdnea|hdntl)=[^&]+)/i)?.[1] || '');
+                const isMpd = ev.streamType === 'dash' || (sUrl && sUrl.includes('.mpd'));
+                const ckParts = (ev.clearkey || '').split(':');
 
                 events.unshift({
                     id: `fancode-${matchIdStr}`,
                     name: ev.title,
                     title: ev.eventName ? `${ev.eventName} - ${ev.title}` : ev.title,
-                    badge: 'FANCODE',
-                    quality: '1080p',
+                    badge: isMpd ? 'DASH' : 'FANCODE',
+                    quality: isMpd ? 'DASH ClearKey' : '1080p',
                     tournament: ev.eventName || 'FanCode Live',
                     group: ev.sportCategory || 'Cricket',
                     logo: ev.thumbnail,
@@ -1563,10 +1569,10 @@ export class JtvService {
                     full_stream_url: sUrl,
                     manifest_url: `/api/live/manifest/fancode-${matchIdStr}.m3u8`,
                     token,
-                    manifest_type: 'hls',
-                    clearkey: '',
-                    key_id: '',
-                    key: '',
+                    manifest_type: isMpd ? 'mpd' : 'hls',
+                    clearkey: ev.clearkey || '',
+                    key_id: ckParts[0] || '',
+                    key: ckParts[1] || '',
                     referrer: 'https://fancode.com/',
                     user_agent: 'ReactNativeVideo/9.11.1 (Linux;Android 13) AndroidXMedia3/1.6.1',
                     source: 'fancode',
@@ -2091,33 +2097,6 @@ export class JtvService {
             }
 
             const upstreamUrl = cookiePart ? `${baseUrl}?${cookiePart}` : baseUrl;
-
-            // For jiotvpllive.cdn.jio.com (/bpk-tv/) channels, use mini.allinonereborn.site/jtv-plus/jtv.php/ relay first to bypass Cloud Run 451 geo-blocks
-            if (baseUrl.includes('jiotvpllive.cdn.jio.com/bpk-tv/')) {
-                const proxyUrl = upstreamUrl.replace('https://jiotvpllive.cdn.jio.com/bpk-tv/', 'https://mini.allinonereborn.site/jtv-plus/jtv.php/');
-                try {
-                    const proxyRes = await axios.get(proxyUrl, {
-                        headers: {
-                            'Referer': 'https://allinonereborn2.online/',
-                            'Origin': 'https://allinonereborn2.online',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-                            'Accept': '*/*',
-                            'Accept-Language': 'en-US,en;q=0.9',
-                            'Sec-Fetch-Dest': 'empty',
-                            'Sec-Fetch-Mode': 'cors',
-                            'Sec-Fetch-Site': 'cross-site'
-                        },
-                        httpsAgent: agent,
-                        timeout: 6500,
-                        responseType: 'text'
-                    });
-                    if (proxyRes.data && typeof proxyRes.data === 'string' && proxyRes.data.includes('<MPD')) {
-                        return proxyRes;
-                    }
-                } catch (_) {
-                    // Fall through to direct upstream fetch
-                }
-            }
 
             const headers: Record<string, string> = {
                 'User-Agent': 'plaYtv/7.1.5',

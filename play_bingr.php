@@ -2785,6 +2785,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     }
                     if (typeof syncDurationDisplay === 'function') {
                         syncDurationDisplay();
+                updateSubtitleOverlay();
                     }
                     if (typeof detectAndPopulateAudioTracks === 'function') {
                         detectAndPopulateAudioTracks();
@@ -3110,7 +3111,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 if (playerMode === 'embed') return;
                 clearHlsPlaybackWatchdog();
                 const allSrcs = (window.bingrSources || []).filter(s => s && s.type !== 'embed' && s.type !== 'text/html' && s.url && !s.url.includes('abyssplayer.com'));
-                const curIdx = allSrcs.findIndex(s => s.url === streamUrl || s.url === effectiveUrl);
+                const curIdx = allSrcs.findIndex(s => s.url === streamUrl || s.url === effectiveUrl || (s.url && streamUrl.includes(encodeURIComponent(s.url))) || (s.url && effectiveUrl.includes(encodeURIComponent(s.url))));
                 if (curIdx >= 0 && curIdx + 1 < allSrcs.length && allSrcs[curIdx + 1]?.url) {
                     console.log(`[HLS Failover] ${reason} on source #${curIdx + 1}; trying backup source #${curIdx + 2} on "${CURRENT_SERVER}"...`);
                     initHlsPlayer(allSrcs[curIdx + 1].url);
@@ -3131,9 +3132,19 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 hlsPlaybackWatchdog = setTimeout(() => {
                     if (playerMode === 'embed' || activeReqSnapshot !== currentFetchReqId) return;
                     if (!hasLoadedFirstFragOrFrame && (!mainVideo || mainVideo.readyState < 2)) {
-                        tryNextSourceOrCascade('Stream startup watchdog timeout (8.5s)');
+                        tryNextSourceOrCascade('Stream startup watchdog timeout (15s)');
                     }
-                }, 8500);
+                }, 15000);
+
+                if (mainVideo) {
+                    const clearWd = () => {
+                        hasLoadedFirstFragOrFrame = true;
+                        clearHlsPlaybackWatchdog();
+                    };
+                    mainVideo.addEventListener('playing', clearWd, { once: true });
+                    mainVideo.addEventListener('canplay', clearWd, { once: true });
+                    mainVideo.addEventListener('timeupdate', clearWd, { once: true });
+                }
 
                 hlsInstance = new Hls({
                     enableWorker: true,
@@ -3147,15 +3158,15 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                     highBufferWatchdogPeriod: 2,
                     nudgeOffset: 0.1,
                     nudgeMaxRetry: 5,
-                    manifestLoadingTimeOut: 7000,
-                    manifestLoadingMaxRetry: 1,
-                    manifestLoadingRetryDelay: 500,
-                    levelLoadingTimeOut: 7000,
-                    levelLoadingMaxRetry: 1,
-                    levelLoadingRetryDelay: 500,
-                    fragLoadingTimeOut: 10000,
-                    fragLoadingMaxRetry: 2,
-                    fragLoadingRetryDelay: 600,
+                    manifestLoadingTimeOut: 10000,
+                    manifestLoadingMaxRetry: 2,
+                    manifestLoadingRetryDelay: 1000,
+                    levelLoadingTimeOut: 10000,
+                    levelLoadingMaxRetry: 2,
+                    levelLoadingRetryDelay: 1000,
+                    fragLoadingTimeOut: 12000,
+                    fragLoadingMaxRetry: 4,
+                    fragLoadingRetryDelay: 1000,
                     xhrSetup: (xhr, url) => {
                         xhr.withCredentials = false;
                     }
@@ -4201,7 +4212,9 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const episodeInput = document.getElementById('subSearchEpisodeInput');
 
             if (queryInput && (!queryInput.value || queryInput.dataset.autoPrefilled === 'true')) {
-                queryInput.value = (MEDIA_TITLE && MEDIA_TITLE !== 'Cinema Presentation') ? MEDIA_TITLE : '';
+                let cleanTitle = (MEDIA_TITLE && MEDIA_TITLE !== 'Cinema Presentation') ? MEDIA_TITLE : '';
+                cleanTitle = cleanTitle.replace(/[\s._-]*(?:s\d{1,2}[\s._-]*e\d{1,4}|season\s*\d+|episode\s*\d+|ep\s*\d+).*$/i, '').trim();
+                queryInput.value = cleanTitle || MEDIA_TITLE;
                 queryInput.dataset.autoPrefilled = 'true';
             }
             if (seasonInput) {
@@ -4222,11 +4235,12 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             const countBadge = document.getElementById('subSearchResultsCountBadge');
             const btnLabel = document.getElementById('subSearchBtnLabel');
 
-            const query = (queryInput ? queryInput.value.trim() : '') || MEDIA_TITLE;
+            let query = (queryInput ? queryInput.value.trim() : '') || MEDIA_TITLE;
             if (!query) {
                 if (typeof showToast === 'function') showToast('Please enter a show or movie title');
                 return;
             }
+            const cleanQueryForSearch = query.replace(/[\s._-]*(?:s\d{1,2}[\s._-]*e\d{1,4}|season\s*\d+|episode\s*\d+|ep\s*\d+).*$/i, '').trim() || query;
 
             const season = seasonInput ? seasonInput.value : (MEDIA_SEASON || 1);
             const episode = episodeInput ? episodeInput.value : (MEDIA_EPISODE || 1);
@@ -4247,7 +4261,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 const sParam = MEDIA_TYPE === 'tv' || season ? `&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}` : '';
                 const imdbParam = IMDB_ID ? `&imdb=${encodeURIComponent(IMDB_ID)}` : '';
                 const tmdbParam = (MEDIA_ID && MEDIA_ID !== '{{ID}}') ? `&tmdb=${encodeURIComponent(MEDIA_ID)}` : '';
-                const url = `/api/subtitles/fetch?title=${encodeURIComponent(query)}&provider=${encodeURIComponent(provider)}&lang=${encodeURIComponent(lang)}${sParam}${imdbParam}${tmdbParam}`;
+                const url = `/api/subtitles/fetch?title=${encodeURIComponent(cleanQueryForSearch)}&provider=${encodeURIComponent(provider)}&lang=${encodeURIComponent(lang)}${sParam}${imdbParam}${tmdbParam}`;
 
                 const res = await fetch(url);
                 const data = await res.json();
@@ -5001,6 +5015,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
                 if (timeCurrentMob) timeCurrentMob.textContent = curFmt;
 
                 syncDurationDisplay();
+                updateSubtitleOverlay();
 
                 if (current >= 85 || current < 1) {
                     window._manualFallbackIntroSkipped = false;
@@ -5173,6 +5188,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             mainVideo.addEventListener('loadedmetadata', () => {
                 if (!validatePlayingStreamDuration()) return;
                 syncDurationDisplay();
+                updateSubtitleOverlay();
                 updateTimelineAniSkipMarkers();
                 if (!aniSkipResults || aniSkipResults.length === 0) {
                     fetchAniSkipData(null, MEDIA_EPISODE);
@@ -5182,6 +5198,7 @@ $imdbId = isset($_GET['imdbId']) ? $_GET['imdbId'] : (isset($_GET['imdb_id']) ? 
             mainVideo.addEventListener('durationchange', () => {
                 if (!validatePlayingStreamDuration()) return;
                 syncDurationDisplay();
+                updateSubtitleOverlay();
                 updateTimelineAniSkipMarkers();
             });
 

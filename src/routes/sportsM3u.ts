@@ -281,14 +281,15 @@ async function resolveChannelStream(rawId: string): Promise<string | null> {
     let html = '';
 
     if (isTim || isDlhd || isEmbed) {
-
-        html = await fetchUrl(`https://epiembeds.online/embed/${encodeURIComponent(channelId)}`, 'https://epiembeds.online/');
+        html = await fetchUrl(`https://ehgembxe.cfd/embed/${encodeURIComponent(channelId)}`, 'https://ehgembxe.cfd/') ||
+               await fetchUrl(`https://timstreams.co.rw/e/${encodeURIComponent(channelId)}`, 'https://timstreams.co.rw/');
         streamUrl = decodeStreamUrl(html);
 
         if (!streamUrl && isDlhd) {
             // Try without -uk suffix
             const plainId = channelId.replace(/[-_]/g, '').toLowerCase();
-            html = await fetchUrl(`https://epiembeds.online/embed/${encodeURIComponent(plainId)}`, 'https://epiembeds.online/');
+            html = await fetchUrl(`https://ehgembxe.cfd/embed/${encodeURIComponent(plainId)}`, 'https://ehgembxe.cfd/') ||
+                   await fetchUrl(`https://timstreams.co.rw/e/${encodeURIComponent(plainId)}`, 'https://timstreams.co.rw/');
             streamUrl = decodeStreamUrl(html);
         }
     }
